@@ -70,9 +70,9 @@
   ;; Misc. UI tweaks
   (blink-cursor-mode -1) 
   (pixel-scroll-precision-mode)
-  (cua-mode)
   (xterm-mouse-mode 1)
-
+  ;;(cua-mode)
+  
   ;; Display line numbers in programming mode
   (add-hook 'prog-mode-hook 'display-line-numbers-mode)
 
@@ -86,6 +86,14 @@
   ;; Modes to highlight the current line with
   (let ((hl-line-hooks '(text-mode-hook prog-mode-hook)))
     (mapc (lambda (hook) (add-hook hook 'hl-line-mode)) hl-line-hooks))) 
+
+(use-package doom-modeline
+  :init
+  (doom-modeline-mode 1))
+
+(use-package spacious-padding
+  :config
+  (spacious-padding-mode 1))
 
 (provide 'dl-interface)
 

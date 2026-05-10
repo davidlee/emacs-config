@@ -11,8 +11,9 @@
            (filePath (replace-regexp-in-string "[A-Za-z]:" "" fpath )) ; remove Windows driver letter in path
            (backupFilePath (replace-regexp-in-string "//" "/" (concat backupRootDir filePath "~") )))
       (make-directory (file-name-directory backupFilePath) (file-name-directory backupFilePath))
-      backupFilePath))  
+      backupFilePath))
   :custom
-  (make-backup-file-name-function 'bedrock--backup-file-name))
+  (make-backup-file-name-function 'bedrock--backup-file-name)
+  (auto-save-file-name-transforms `((".*", (concat user-emacs-directory "auto-save/") t))))
 
 (provide 'dl-backup-dir)
