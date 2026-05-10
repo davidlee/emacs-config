@@ -25,7 +25,8 @@
 
   ;; put custom vars from configurators somewhere other than my init.el
   (custom-file (locate-user-emacs-file "custom-vars.el"))
-  
+
+  (standard-indent 2) ; this is the way
   :config
   ;; don't warn when loading stuff from custom-vars.el 
   (load custom-file 'noerror 'nomessage)
@@ -35,11 +36,12 @@
   (save-place-mode 1)
 
   ;; Move through windows with Ctrl-<arrow keys>
+  ;; TODO move this to dl-movement.el
   (windmove-default-keybindings 'control) ; You can use other modifiers here
-  ())
 
-;; which-key: shows a popup of available keybindings when typing a long key
-;; sequence (e.g. C-x ...)
+  ;; Show the help buffer after startup
+  (add-hook 'after-init-hook 'help-quick))
+
 (use-package which-key
   :ensure t
   :config

@@ -43,8 +43,7 @@
   (completion-auto-help 'always) ; or 'lazy
 
   ;; TAB acts more like how it does in the shell
-  (keymap-set minibuffer-mode-map "TAB" 'minibuffer-complete) 
-)
+  (keymap-set minibuffer-mode-map "TAB" 'minibuffer-complete))
 
 ;; Persist minibuffer history.
 (use-package savehist

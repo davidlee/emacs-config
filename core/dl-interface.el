@@ -6,28 +6,29 @@
 
   ;; startup
   (inhibit-splash-screen t)
+  (inhibit-startup-message t)
+  (inhibit-startup-echo-area-message t)
 
-  ;; performance
-  (gc-cons-threshold 50000000)
-  (large-file-warning-threshold 100000000)
-  (load-prefer-newer t) ; new bytecode pls
-  (initial-major-mode 'fundamental-mode)
+  (tooltip-use-echo-area t)
 
-  ;; sensible defaults
-  (display-time-default-load-average nil)
-
-  ;; Automatically reread from disk if the underlying file changes
-  (auto-revert-avoid-polling t)
-  (auto-revert-interval 3)
-  (auto-revert-check-vc-info t)
-  (history-length 80)
-  (global-auto-revert-non-file-buffers t) ; dired, etc
-
-  (sentence-end-double-space nil) ; no
+  (use-short-anwswers t)
+  (use-file-dialog nil)
   
-  ;; Identity
-  (user-full-name "David Lee")
-  (user-email-address "dav@davlee.com")
+  (use-dialog-box nil)
+  (confirm-nonexistent-file-or-buffer nil)
+  
+  (default-frame-alist '((fullscreen . maximised)
+                         (vertical-scroll-bars . nil)
+                         (horizontal-scroll-bars . nil)
+
+                         ;; Setting the face in here prevents flashes of
+                         ;; color as the theme gets activated
+                         (background-color . "#000000")
+                         (foreground-color . "#ffffff")
+                         (ns-appearance . dark)
+                         (ns-transparent-titlebar . t)))
+			 
+  (display-time-default-load-average nil)
 
   ;; UI tweaks
   (line-number-mode t)                        ; Show current line in modeline
@@ -42,6 +43,9 @@
   (show-trailing-whitespace nil)    
   (indicate-buffer-boundaries 'left)  ; Show buffer top and bottom in the margin
 
+  (frame-resize-pixelwise t)
+  
+  
   ;; Enable horizontal scrolling
   (mouse-wheel-tilt-scroll t)
   (mouse-wheel-flip-direction t)
@@ -53,9 +57,6 @@
   ;; Show the tab-bar as soon as tab-bar functions are invoked
   (tab-bar-show 1)
   (display-line-numbers-width 3) ; min width
-
-  ;; put custom vars from configurators somewhere other than my init.el
-  (custom-file (locate-user-emacs-file "custom-vars.el"))
   
   :init
   (display-time-mode)
@@ -65,16 +66,7 @@
   (add-to-list 'tab-bar-format 'tab-bar-format-global 'append)
 
   :config
-  ;; don't warn when loading stuff from custom-vars.el 
-  (load custom-file 'noerror 'nomessage)
   
-  ;; history & recent files
-  (global-auto-revert-mode)
-  (save-place-mode 1)
-
-  ;; Move through windows with Ctrl-<arrow keys>
-  (windmove-default-keybindings 'control) ; You can use other modifiers here
-
   ;; Misc. UI tweaks
   (blink-cursor-mode -1) 
   (pixel-scroll-precision-mode)
@@ -94,13 +86,6 @@
   ;; Modes to highlight the current line with
   (let ((hl-line-hooks '(text-mode-hook prog-mode-hook)))
     (mapc (lambda (hook) (add-hook hook 'hl-line-mode)) hl-line-hooks))) 
-
-;; which-key: shows a popup of available keybindings when typing a long key
-;; sequence (e.g. C-x ...)
-(use-package which-key
-  :ensure t
-  :config
-  (which-key-mode))
 
 (provide 'dl-interface)
 
