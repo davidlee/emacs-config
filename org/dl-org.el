@@ -1,3 +1,5 @@
+;;; ddl-org.el --- ORG  -*- lexical-binding: t; -*-
+
 (use-package org
   :ensure nil
   :custom
@@ -51,12 +53,52 @@
 
 (global-set-key (kbd "C-c c") #'org-capture)
 
+
+;;
+;; custom functions for periodic notes
+;;
+(defun my/org-daily-note ()
+  "Open today's plain Org daily note."
+  (interactive)
+  (let* ((dir (expand-file-name "2026" org-directory))
+          (file (expand-file-name
+                  (format-time-string "%Y-%m-%d.org")
+                  dir)))
+    (make-directory dir t)
+    (find-file file)
+    (when (= (point-max) 1)
+      (insert "#+title: " (format-time-string "%Y-%m-%d %A") "\n")
+      (insert "#+filetags: :journal:\n\n")
+      (insert "* Tasks\n\n* Notes\n\n* Log\n")
+      )))
+
+
+
+(defun my/org-weekly-note ()
+  "Open this week's plain Org weekly note."
+  (interactive)
+  (let* ((dir (expand-file-name "2026" org-directory))
+          (file (expand-file-name
+                  (format-time-string "%G-W%V.org")
+                  dir)))
+    (make-directory dir t)
+    (find-file file)
+    (when (= (point-max) 1)
+      (insert "#+title: " (format-time-string "Week %G-W%V") "\n")
+      (insert "#+filetags: :journal:weekly:\n\n")
+      (insert "* Review\n\n* Projects\n\n* Notes promoted\n\n* Next week\n"))))
+
+;; and keybinds
+
+(global-set-key (kbd "C-c n j") #'my/org-daily-note)
+(global-set-key (kbd "C-c n W") #'my/org-weekly-note)
+
 (provide 'dl-org)
 
+;;;;;;;;;;;;;;;;
+;; cheatsheet ;;
+;;;;;;;;;;;;;;;;
 
-;;
-;; usage
-;;
 ;; C-c c     capture
 ;; C-c a     agenda
 ;; C-c C-t   cycle TODO state
@@ -68,3 +110,5 @@
 ;; M-S-RET   new TODO heading
 ;; M-up/down move heading
 ;; M-left/right promote/demote heading
+
+;;; dl-org.el ends here

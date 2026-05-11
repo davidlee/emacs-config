@@ -1,4 +1,5 @@
 ;;; dl-project.el --- projects / QOL  -*- lexical-binding: t; -*-
+;;; Commentary: none
 
 (use-package emacs
   :config
