@@ -5,13 +5,14 @@
 		         "editing"
                          "completion"
 			 "apps"
+                         "org"
 			 "lang"))
 
 (seq-do
  (lambda (dir) (add-to-list
 		'load-path
 		(expand-file-name dir user-emacs-directory))) 
-  custom-lisp-dirs) 
+ custom-lisp-dirs)
 
 (require 'dl-package-loader)
 (require 'dl-core)

@@ -32,5 +32,3 @@
    '(read-only t cursor-intangible t face minibuffer-prompt)))
 
 (provide 'dl-vertico)
-
-

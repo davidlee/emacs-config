@@ -19,5 +19,10 @@
 (use-package consult-eglot
   :after (consult eglot))
 
+(use-package treesit-auto
+  :custom
+  (treesit-auto-install 'prompt)
+  :config
+  (global-treesit-auto-mode))
 
 (provide 'dl-lsp)

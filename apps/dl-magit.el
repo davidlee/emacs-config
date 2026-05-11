@@ -6,6 +6,7 @@
 (use-package diff-hl
   :hook ((prog-mode text-mode) . diff-hl-mode)
   :config
+  (require 'diff-hl-flydiff)
   (diff-hl-flydiff-mode))
 
                                         ;(use-package git-modes)

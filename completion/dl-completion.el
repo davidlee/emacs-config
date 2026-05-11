@@ -73,4 +73,13 @@
 (when (fboundp 'global-completion-preview-mode)
   (global-completion-preview-mode 1))
 
+(require 'dl-vertico)   ; better minibuffer UI
+(require 'dl-orderless) ; fuzzy / flexible matching
+(require 'dl-marginalia); completion metadata
+(require 'dl-prescient) ; frequency sorting
+(require 'dl-embark)    ; actions on search results
+(require 'dl-consult)   ; Search/navigation commands
+(require 'dl-cape)      ; completion sources
+(require 'dl-corfu)     ; in-buffer completion UI
+
 (provide 'dl-completion)
