@@ -22,7 +22,8 @@
        package-lint-flymake puni shut-up slack spacious-padding
        suggest tempel treesit-auto undo-fu undo-fu-session use-package
        vertico-prescient visual-fill-column vundo which-key ws-butler
-       yaml-mode yasnippet-snippets)))
+       yaml-mode yasnippet-snippets))
+ '(safe-local-variable-values '((lexical-binding . f))))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.

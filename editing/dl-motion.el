@@ -14,9 +14,9 @@
 (use-package avy
   :ensure t
   :demand t
-  :bind (("C-'"   . avy-goto-char-2)
-          ("C-c j" . avy-goto-line)
-          ("C-;"   . avy-goto-char-timer)))
+  :bind  ( ("C-'"   . avy-goto-char-2)
+           ("C-c j" . avy-goto-line)
+           ("C-;"   . avy-goto-char-timer)))
 
 (use-package ace-window
   :bind (("M-o" . ace-window)))

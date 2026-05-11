@@ -20,3 +20,5 @@ authinfo.gpg
 
 *.secret.el
 *.so
+
+/url/cache
