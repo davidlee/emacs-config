@@ -13,17 +13,17 @@
 
   ;; Hide commands irrelevant to the current mode from M-x.
   (read-extended-command-predicate
-   #'command-completion-default-include-p)
+    #'command-completion-default-include-p)
 
   ;; Matching behavior.
   (completion-styles '(basic partial-completion substring))
   (completion-category-defaults nil)
   (completion-category-overrides
-   '((file (styles basic partial-completion))
-     (buffer (styles basic substring))
-     (command (styles basic substring initials))
-     (variable (styles basic substring initials))
-     (symbol (styles basic substring initials))))
+    '((file (styles basic partial-completion))
+       (buffer (styles basic substring))
+       (command (styles basic substring initials))
+       (variable (styles basic substring initials))
+       (symbol (styles basic substring initials))))
 
   ;; Candidate display.
   (completions-detailed t)
@@ -72,14 +72,5 @@
 ;; Emacs 30+: inline in-buffer completion previews.
 (when (fboundp 'global-completion-preview-mode)
   (global-completion-preview-mode 1))
-
-(require 'dl-vertico)   ; better minibuffer UI
-(require 'dl-orderless) ; fuzzy / flexible matching
-(require 'dl-marginalia); completion metadata
-(require 'dl-prescient) ; frequency sorting
-(require 'dl-embark)    ; actions on search results
-(require 'dl-consult)   ; Search/navigation commands
-(require 'dl-cape)      ; completion sources
-(require 'dl-corfu)     ; in-buffer completion UI
 
 (provide 'dl-completion)

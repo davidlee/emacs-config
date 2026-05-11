@@ -8,6 +8,8 @@
 
 /transient
 /var
+/undo-fu-session
+/projects
 
 .\#*
 

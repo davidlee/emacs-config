@@ -105,20 +105,21 @@
 (use-package nerd-icons
   :ensure t)
 
-;; ??
+(use-package nerd-icons-completion
+  :after marginalia
+  :config
+  (nerd-icons-completion-mode)
+  (add-hook 'marginalia-mode-hook #'nerd-icons-completion-marginalia-setup))
+
+(use-package nerd-icons-dired
+  :hook (dired-mode . nerd-icons-dired-mode))
+
 (use-package beacon
   :ensure t
   :diminish beacon-mode
   :config
   (beacon-mode 1))
 
-;; ??
-(use-package swiper
-	:ensure t
-	:bind ("C-s" . 'swiper))
-
-
 (setopt scroll-conservatively 100)
 
 (provide 'dl-interface)
-

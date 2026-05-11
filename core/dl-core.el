@@ -54,7 +54,4 @@
   :config
   (which-key-mode))
 
-;; ??
-(use-package transient :ensure t)
-
 (provide 'dl-core)

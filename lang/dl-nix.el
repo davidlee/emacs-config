@@ -23,4 +23,6 @@
 (use-package eglot
   :config
   (add-to-list 'eglot-server-programs
-               '(nix-mode . ("nil")))) ; or nixd
+    '(nix-mode . ("nil")))) ; or nixd
+
+(provide 'dl-nix)

@@ -9,6 +9,8 @@
   (require 'diff-hl-flydiff)
   (diff-hl-flydiff-mode))
 
-                                        ;(use-package git-modes)
+(use-package git-modes)
+
+(use-package transient :ensure t)
 
 (provide 'dl-magit)

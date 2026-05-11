@@ -13,6 +13,11 @@
 (require 'dl-theme)
 (require 'dl-help)
 
+;; DEV
+(require 'dl-eglot)
+(require 'dl-treesit)
+
+
 ;; Completion
 (require 'dl-completion) ; mostly vanilla emacs completion
 
@@ -44,11 +49,13 @@
 
 ;; Org
 (require 'dl-org)
+(require 'dl-denote)
 
 ;; Language support
-(require 'dl-eglot)
-(require 'dl-treesit)
 (require 'dl-elisp)
+(require 'dl-markdown)
+(require 'dl-lang-common)
+(require 'dl-nix)
 
 ;; (set-face-attribute 'default nil :font "JetBrains Mono" :height 115)
 (set-face-attribute 'default nil :font "JetBrainsMono Nerd Font Mono" :height 115)
