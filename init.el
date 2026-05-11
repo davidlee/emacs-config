@@ -33,6 +33,8 @@
 (require 'dl-project)
 (require 'dl-snippets)
 (require 'dl-motion)
+(require 'dl-persist)
+(require 'dl-indent)
 
 ;; Apps
 (require 'dl-slack)
@@ -44,7 +46,7 @@
 (require 'dl-org)
 
 ;; Language support
-(require 'dl-lsp)
+(require 'dl-eglot)
 (require 'dl-treesit)
 (require 'dl-elisp)
 

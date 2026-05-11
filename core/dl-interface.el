@@ -18,16 +18,16 @@
   (confirm-nonexistent-file-or-buffer nil)
   
   (default-frame-alist '((fullscreen . maximised)
-                         (vertical-scroll-bars . nil)
-                         (horizontal-scroll-bars . nil)
+                          (vertical-scroll-bars . nil)
+                          (horizontal-scroll-bars . nil)
 
-                         ;; Setting the face in here prevents flashes of
-                         ;; color as the theme gets activated
-                         (background-color . "#000000")
-                         (foreground-color . "#ffffff")
-                         (ns-appearance . dark)
-                         (ns-transparent-titlebar . t)))
-			 
+                          ;; Setting the face in here prevents flashes of
+                          ;; color as the theme gets activated
+                          (background-color . "#000000")
+                          (foreground-color . "#ffffff")
+                          (ns-appearance . dark)
+                          (ns-transparent-titlebar . t)))
+
   (display-time-default-load-average nil)
 
   ;; UI tweaks
@@ -44,7 +44,8 @@
   (indicate-buffer-boundaries 'left)  ; Show buffer top and bottom in the margin
 
   (frame-resize-pixelwise t)
-  
+  (show-paren-mode 1)
+
   
   ;; Enable horizontal scrolling
   (mouse-wheel-tilt-scroll t)
@@ -57,7 +58,9 @@
   ;; Show the tab-bar as soon as tab-bar functions are invoked
   (tab-bar-show 1)
   (display-line-numbers-width 3) ; min width
-  
+
+  (global-prettify-symbols-mode t)
+
   :init
   (display-time-mode)
   
@@ -95,6 +98,27 @@
 (use-package spacious-padding
   :config
   (spacious-padding-mode 1))
+
+(use-package diminish
+  :ensure t)
+
+(use-package nerd-icons
+  :ensure t)
+
+;; ??
+(use-package beacon
+  :ensure t
+  :diminish beacon-mode
+  :config
+  (beacon-mode 1))
+
+;; ??
+(use-package swiper
+	:ensure t
+	:bind ("C-s" . 'swiper))
+
+
+(setopt scroll-conservatively 100)
 
 (provide 'dl-interface)
 

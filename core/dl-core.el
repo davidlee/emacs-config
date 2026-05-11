@@ -27,6 +27,7 @@
   (custom-file (locate-user-emacs-file "custom-vars.el"))
 
   (standard-indent 2) ; this is the way
+
   :config
   ;; don't warn when loading stuff from custom-vars.el 
   (load custom-file 'noerror 'nomessage)
@@ -37,7 +38,13 @@
 
   ;; Move through windows with Ctrl-<arrow keys>
   ;; TODO move this to dl-movement.el
-  (windmove-default-keybindings 'control) ; You can use other modifiers here
+  ;; (windmove-default-keybindings 'control) ; You can use other modifiers here
+  (windmove-default-keybindings '(ctrl shift))
+  ;; compensate in org-mode
+  ;; (define-key org-mode-map (kbd "<M-up>") nil)
+  ;; (define-key org-mode-map (kbd "<M-down>") nil)
+  ;; (define-key org-mode-map (kbd "<M-left>") nil)
+  ;; (define-key org-mode-map (kbd "<M-right>") nil)
 
   ;; Show the help buffer after startup
   (add-hook 'after-init-hook 'help-quick))
@@ -46,5 +53,8 @@
   :ensure t
   :config
   (which-key-mode))
+
+;; ??
+(use-package transient :ensure t)
 
 (provide 'dl-core)

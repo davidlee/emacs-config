@@ -8,14 +8,21 @@
   :config
   (add-hook 'xref-backend-functions #'dumb-jump-xref-activate))
 
+;;(use-package avy
+;;  :bind (("M-j" . avy-goto-char-timer)))
+
 (use-package avy
-  :bind (("M-j" . avy-goto-char-timer)))
+  :ensure t
+  :demand t
+  :bind (("C-'"   . avy-goto-char-2)
+          ("C-c j" . avy-goto-line)
+          ("C-;"   . avy-goto-char-timer)))
 
 (use-package ace-window
   :bind (("M-o" . ace-window)))
 
 (use-package goto-chg
   :bind (("C-," . goto-last-change) ;; CONFLICT? EMBARK
-         ("C-." . goto-last-change-reverse)))
+          ("C-." . goto-last-change-reverse)))
 
 (provide 'dl-motion)
