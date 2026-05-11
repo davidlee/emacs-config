@@ -1,4 +1,4 @@
-;;; dl-theme.el --- Theme settings -*- lexical-binding: t; -*-
+;;; dl-theme.el --- Theme settings -*- lexical-binding: f; -*-
 
 ;; (use-package modus-themes
 ;;   :ensure t
@@ -45,7 +45,8 @@
 ;;   (modus-themes-load-theme 'ef-summer))
 
 (setq dl/themes
-  '(doom-one doom-gruvbox doom-nord doom-material doom-ayu-dark doom-zenburn
+  '(doom-one doom-gruvbox doom-nord doom-material doom-ayu-dark
+     doom-zenburn
      doom-laserwave doom-molokai doom-moonlight doom-dracula))
 
 (defvar dl/current-theme-index -1
@@ -63,6 +64,8 @@
 
 (use-package doom-themes
   :ensure t
+  ;;  :bind
+  ;;(("<f5>" . dl/rotate-themes))
   :custom
   ;; Global settings (defaults)
   (doom-themes-enable-bold t)   ; if nil, bold is universally disabled
@@ -79,9 +82,8 @@
   ;; Corrects (and improves) org-mode's native fontification.
   (doom-themes-org-config)
   :config
-  (load-theme 'doom-one t)
-  :bind
-  (("<f5>" . dl/rotate-themes))
-  )
+  (load-theme 'doom-one t))
+
+(global-set-key (kbd "<f5>") #'dl/rotate-themes)
 
 (provide 'dl-theme)
