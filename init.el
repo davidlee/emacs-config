@@ -50,6 +50,7 @@
 ;; Org
 (require 'dl-org)
 (require 'dl-denote)
+(require 'dl-org-roam)
 
 ;; Language support
 (require 'dl-elisp)

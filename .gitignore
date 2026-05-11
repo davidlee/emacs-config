@@ -13,4 +13,10 @@
 
 .\#*
 
+.authinfo
+.authinfo.gpg
+authinfo
+authinfo.gpg
+
+*.secret.el
 *.so
