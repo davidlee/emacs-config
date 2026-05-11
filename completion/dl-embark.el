@@ -3,7 +3,15 @@
 (use-package embark
   :ensure t
   :demand t
+  :custom
+  (prefix-help-command #'embark-prefix-help-command)
   :after (avy embark-consult)
+  ;; use embark instead of which-key
+
+  ;; https://www.matem.unam.mx/~omar/apropos-emacs.html#the-case-against-which-key-a-polemic
+  (vertico-multiform-mode)
+  (add-to-list 'vertico-multiform-categories '(embark-keybinding grid))
+
   :bind (("C-c a" . embark-act) ; C-. ?
           ("C-;" . embark-dwim)
           ("C-h B" . embark-bindings))
@@ -18,6 +26,7 @@
         (cdr (ring-ref avy-ring 0))))
     t)
 
+  
   ;; After invoking avy-goto-char-timer, hit "." to run embark at the next
   ;; candidate you select
   (setf (alist-get ?. avy-dispatch-alist) 'bedrock/avy-action-embark))

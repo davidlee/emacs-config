@@ -16,6 +16,7 @@
 ;; DEV
 (require 'dl-eglot)
 (require 'dl-treesit)
+(require 'dl-delimeters)
 
 
 ;; Completion
@@ -40,6 +41,7 @@
 (require 'dl-motion)
 (require 'dl-persist)
 (require 'dl-indent)
+
 
 ;; Apps
 (require 'dl-slack)

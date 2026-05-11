@@ -1,5 +1,7 @@
 ;;; dl-org-roam.el --- ORG ROAM as Denote DB -*- lexical-binding: t; -*-
 
+;; https://github.com/BardofSprites/denote-roam/blob/master/denote-roam.el
+
 ;; Org-roam
 (use-package org-roam
   :after org
@@ -7,6 +9,7 @@
   (org-roam-directory (file-truename org-directory))
   (org-roam-db-location
     (expand-file-name ".org-roam.db" org-roam-directory))
+
   (org-roam-completion-everywhere t)
   (org-roam-capture-templates
     '(("d" "default" plain
@@ -33,7 +36,7 @@
            "#+title: ${title}\n#+filetags: :reference:\n")
          :unnarrowed t)))
   :bind
-  (("C-c r f" . org-roam-node-find)
+  (( "C-c r f" . org-roam-node-find)
     ("C-c r i" . org-roam-node-insert)
     ("C-c r b" . org-roam-buffer-toggle)
     ("C-c r c" . org-roam-capture)

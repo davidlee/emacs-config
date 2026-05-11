@@ -18,7 +18,7 @@
   (global-auto-revert-non-file-buffers t) ; dired, etc
 
   (sentence-end-double-space nil) ; no
-  
+
   ;; Identity
   (user-full-name "David Lee")
   (user-email-address "dav@davlee.com")
@@ -29,29 +29,29 @@
   (standard-indent 2) ; this is the way
 
   :config
-  ;; don't warn when loading stuff from custom-vars.el 
+  ;; don't warn when loading stuff from custom-vars.el
   (load custom-file 'noerror 'nomessage)
-  
+
   ;; history & recent files
   (global-auto-revert-mode)
   (save-place-mode 1)
 
-  ;; Move through windows with Ctrl-<arrow keys>
-  ;; TODO move this to dl-movement.el
-  ;; (windmove-default-keybindings 'control) ; You can use other modifiers here
-  (windmove-default-keybindings '(ctrl shift))
-  ;; compensate in org-mode
-  ;; (define-key org-mode-map (kbd "<M-up>") nil)
-  ;; (define-key org-mode-map (kbd "<M-down>") nil)
-  ;; (define-key org-mode-map (kbd "<M-left>") nil)
-  ;; (define-key org-mode-map (kbd "<M-right>") nil)
+  (windmove-default-keybindings '(ctrl shift)))
 
-  ;; Show the help buffer after startup
-  (add-hook 'after-init-hook 'help-quick))
+;; Show the help buffer after startup
+;; (add-hook 'after-init-hook 'help-quick))
 
 (use-package which-key
-  :ensure t
+  :ensure nil
+  :custom
+  (prefix-help-command #'embark-prefix-help-command)
+  (which-key-show-early-on-C-h t)
+  (which-key-idle-delay 1e6)
+  (which-key-idle-secondary-delay 0.05)
   :config
   (which-key-mode))
 
+(use-package direnv
+  :config
+  (direnv-mode))
 (provide 'dl-core)

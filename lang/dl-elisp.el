@@ -32,6 +32,9 @@
           ("C-c C-z" . ielm)))
 
 ;; Structural editing. Pick this OR paredit.
+;; Or maybe try lispy: https://github.com/abo-abo/lispy
+;;
+
 (use-package puni
   :hook
   ((emacs-lisp-mode lisp-interaction-mode ielm-mode) . puni-mode)
@@ -44,15 +47,6 @@
 ;; Inline evaluation result overlays.
 (use-package eros
   :hook (emacs-lisp-mode . eros-mode))
-
-;; Better help buffers.
-(use-package helpful
-  :bind
-  (("C-h f" . helpful-callable)
-    ("C-h v" . helpful-variable)
-    ("C-h k" . helpful-key)
-    ("C-h x" . helpful-command)
-    ("C-c C-d" . helpful-at-point)))
 
 ;; Add examples to Helpful buffers.
 (use-package elisp-demos

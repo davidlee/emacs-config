@@ -1,18 +1,15 @@
 ;;; early-init.el --- Emacs pre-init -*- lexical-binding: t; -*-
 
-(setq custom-lisp-dirs '("lisp"
-			 "core"
-		         "editing"
-                         "completion"
-			 "apps"
-                         "org"
-			 "lang"))
-
 (seq-do
- (lambda (dir) (add-to-list
-		'load-path
-		(expand-file-name dir user-emacs-directory))) 
- custom-lisp-dirs)
+  (lambda (dir) (add-to-list 'load-path (expand-file-name dir user-emacs-directory)))
+  '("lisp"
+		 "core"
+		 "editing"
+     "completion"
+		 "apps"
+     "org"
+     "dev"
+		 "lang")))
 
 (require 'dl-package-loader)
 (require 'dl-core)
