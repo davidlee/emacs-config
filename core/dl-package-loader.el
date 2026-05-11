@@ -1,24 +1,10 @@
-;;; dl-package.el --- package manager -*- lexical-binding: t; -*-
+;;; dl-package-loader.el --- package manager -*- lexical-binding: t; -*-
+
+;; Packages are provided by nix (emacsWithPackagesFromUsePackage).
+;; No runtime installation needed.
 
 (setopt package-enable-at-startup nil
-	use-package-always-ensure t)
-
-(require 'package)
-
-(add-to-list 'package-archives
-	     '("gnu"    . "https://elpa.gnu.org/packages/") t)
-(add-to-list 'package-archives
-	     '("nongnu" . "https://elpa.nongnu.org/packages/") t)
-(add-to-list 'package-archives
-	     '("melpa"  . "https://melpa.org/packages/") t)
-
-(package-initialize)
-
-(unless package-archive-contents
-  (package-refresh-contents))
-
-(unless (package-installed-p 'use-package)
-  (package-install 'use-package))
+        use-package-always-ensure nil)
 
 (require 'use-package)
 

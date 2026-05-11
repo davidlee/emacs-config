@@ -88,7 +88,8 @@
     (mapc (lambda (hook) (add-hook hook 'hl-line-mode)) hl-line-hooks))) 
 
 (use-package doom-modeline
-  :init
+  :demand t
+  :config
   (doom-modeline-mode 1))
 
 (use-package spacious-padding

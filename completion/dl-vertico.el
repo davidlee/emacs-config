@@ -1,13 +1,13 @@
 ;;; dl-orderless.el --- Vertico config -*- lexical-binding: t; -*-
 
 (use-package vertico
-  :ensure t
+  :demand t
   :custom
   ;; (vertico-scroll-margin 0) ;; Different scroll margin
   (vertico-count 20) ;; Show more candidates
   ;; (vertico-resize t) ;; Grow and shrink the Vertico minibuffer
   ;; (vertico-cycle t) ;; Enable cycling for `vertico-next/previous'
-  :init
+  :config
   (vertico-mode))
 
 ;; Persist history over Emacs restarts. Vertico sorts by history position.
