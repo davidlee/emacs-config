@@ -9,7 +9,10 @@
 		 "apps"
      "org"
      "dev"
-		 "lang")))
+		 "lang"
+     
+     ;; git checkouts
+     "checkout/combobulate"))
 
 (require 'dl-package-loader)
 (require 'dl-core)

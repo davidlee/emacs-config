@@ -16,7 +16,7 @@
 ;; DEV
 (require 'dl-eglot)
 (require 'dl-treesit)
-(require 'dl-delimeters)
+(require 'dl-delimiters)
 
 
 ;; Completion
@@ -31,7 +31,6 @@
 (require 'dl-consult)    ; Search/navigation commands
 (require 'dl-cape)       ; completion sources
 (require 'dl-corfu)      ; in-buffer completion UI
-
 
 ;; Editing
 (require 'dl-format)

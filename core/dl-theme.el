@@ -1,24 +1,87 @@
 ;;; dl-theme.el --- Theme settings -*- lexical-binding: t; -*-
 
-(use-package modus-themes
+;; (use-package modus-themes
+;;   :ensure t
+;;   :custom
+;;   (modus-themes-mode-line '(accented borderless)
+;;     modus-themes-bold-constructs t
+;;     modus-themes-italic-constructs t
+;;     modus-themes-fringes 'subtle
+;;     modus-themes-tabs-accented t
+;;     modus-themes-paren-match '(bold)
+;;     ;; modus-themes-prompts '(bold intense)
+;;     ;; modus-themes-completions 'opinionated
+;;     modus-themes-org-blocks 'tinted-background
+;;     modus-themes-scale-headings t
+;;     modus-themes-region '(bg-only))
+;;   :config
+;;   (modus-themes-load-theme 'modus-vivendi)
+;;   (define-key global-map (kbd "<f5>") #'modus-themes-toggle))
+
+;; (use-package ef-themes
+;;   :ensure t
+;;   :custom
+;;   ;; This makes the Modus commands listed below consider only the Ef
+;;   ;; themes.  For an alternative that includes Modus and all
+;;   ;; derivative themes (like Ef), enable the
+;;   ;; `modus-themes-include-derivatives-mode' instead.  The manual of
+;;   ;; the Ef themes has a section that explains all the possibilities:
+;;   ;;
+;;   ;; - Evaluate `(info "(ef-themes) Working with other Modus themes or taking over Modus")'
+;;   ;; - Visit <https://protesilaos.com/emacs/ef-themes#h:6585235a-5219-4f78-9dd5-6a64d87d1b6e>
+;;   (ef-themes-take-over-modus-themes-mode 1)
+;;   :bind
+;;   (("<f5>" . modus-themes-rotate)
+;;     ("C-<f5>" . modus-themes-select)
+;;     ("M-<f5>" . modus-themes-load-random))
+;;   :config
+;;   ;; All customisations here.
+;;   (setq modus-themes-mixed-fonts t)
+;;   (setq modus-themes-italic-constructs t)
+
+;;   ;; Finally, load your theme of choice (or a random one with
+;;   ;; `modus-themes-load-random', `modus-themes-load-random-dark',
+;;   ;; `modus-themes-load-random-light').
+;;   (modus-themes-load-theme 'ef-summer))
+
+(setq dl/themes
+  '(doom-one doom-gruvbox doom-nord doom-material doom-ayu-dark doom-zenburn
+     doom-laserwave doom-molokai doom-moonlight doom-dracula))
+
+(defvar dl/current-theme-index -1
+  "Index of the currently selected theme in `dl/themes'.")
+
+(defun dl/rotate-themes ()
+  "Rotate through `dl/themes', disabling currently enabled themes first."
+  (interactive)
+  (mapc #'disable-theme custom-enabled-themes)
+  (setq dl/current-theme-index
+    (mod (1+ dl/current-theme-index) (length dl/themes)))
+  (let ((theme (nth dl/current-theme-index dl/themes)))
+    (load-theme theme t)
+    (message "Loaded theme: %s" theme)))
+
+(use-package doom-themes
   :ensure t
   :custom
-  (modus-themes-mode-line '(accented borderless)
-                          modus-themes-bold-constructs t
-                          modus-themes-italic-constructs t
-                          modus-themes-fringes 'subtle
-                          modus-themes-tabs-accented t
-                          modus-themes-paren-match '(bold)
-                          ;; modus-themes-prompts '(bold intense)
-                          ;; modus-themes-completions 'opinionated
-                          modus-themes-org-blocks 'tinted-background
-                          modus-themes-scale-headings t
-                          modus-themes-region '(bg-only))
+  ;; Global settings (defaults)
+  (doom-themes-enable-bold t)   ; if nil, bold is universally disabled
+  (doom-themes-enable-italic t) ; if nil, italics is universally disabled
+  ;; for treemacs users
+  (doom-themes-treemacs-theme "doom-one") ; use "doom-colors" for less minimal icon theme
 
+  ;; Enable flashing mode-line on errors
+  (doom-themes-visual-bell-config)
+  ;; Enable custom neotree theme (nerd-icons must be installed!)
+  (doom-themes-neotree-config)
+  ;; or for treemacs users
+  (doom-themes-treemacs-config)
+  ;; Corrects (and improves) org-mode's native fontification.
+  (doom-themes-org-config)
   :config
-
-  (modus-themes-load-theme 'modus-vivendi)
-
-  (define-key global-map (kbd "<f5>") #'modus-themes-toggle))
+  (load-theme 'doom-one t)
+  :bind
+  (("<f5>" . dl/rotate-themes))
+  )
 
 (provide 'dl-theme)

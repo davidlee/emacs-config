@@ -5,7 +5,11 @@
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(custom-safe-themes
-    '("6dcf1ca4c7432773084b9d52649ee5eb2c663131c4c06859f648dea98d9acb3e"
+    '("3061706fa92759264751c64950df09b285e3a2d3a9db771e99bcbb2f9b470037"
+       "ff24d14f5f7d355f47d53fd016565ed128bf3af30eb7ce8cae307ee4fe7f3fd0"
+       "f1e8339b04aef8f145dd4782d03499d9d716fdc0361319411ac2efc603249326"
+       "720838034f1dd3b3da66f6bd4d053ee67c93a747b219d1c546c41c4e425daf93"
+       "6dcf1ca4c7432773084b9d52649ee5eb2c663131c4c06859f648dea98d9acb3e"
        default))
  '(package-selected-packages
     '(ace-window apheleia beacon cape consult-eglot consult-yasnippet
