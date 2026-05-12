@@ -1,3 +1,5 @@
+;;; dl-multi-edit.el --- multi-edit -*- lexical-binding: t; -*-
+
 (use-package multiple-cursors
   :bind (("C-S-c C-S-c" . mc/edit-lines)
           ("C->" . mc/mark-next-like-this)
@@ -13,3 +15,4 @@
   :hook (prog-mode . rainbow-delimiters-mode))
 
 (provide 'dl-multi-edit)
+;;; dl-multi-edit.el ends here

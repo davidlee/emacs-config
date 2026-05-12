@@ -33,14 +33,11 @@
   (completions-max-height 20)
 
   ;; Completion interaction.
-  (completion-auto-help 'always)
+  ;;  (completion-auto-help 'always)
   (completion-auto-select 'second-tab) ; See `C-h v completion-auto-select' for more
   (completion-cycle-threshold 3)
   (completion-auto-wrap t)
-  (completion-cycle-threshold 1)  ; TAB cycles candidates
-
-  ;; halp
-  (completion-auto-help 'always) ; or 'lazy
+  (completion-auto-help 'lazy) ; or 'lazy
 
   ;; TAB acts more like how it does in the shell
   (keymap-set minibuffer-mode-map "TAB" 'minibuffer-complete))

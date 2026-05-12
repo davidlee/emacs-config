@@ -10,13 +10,6 @@
   (load-prefer-newer t) ; new bytecode pls
   (initial-major-mode 'fundamental-mode)
 
-  ;; Automatically reread from disk if the underlying file changes
-  (auto-revert-avoid-polling t)
-  (auto-revert-interval 3)
-  (auto-revert-check-vc-info t)
-  (history-length 80)
-  (global-auto-revert-non-file-buffers t) ; dired, etc
-
   (sentence-end-double-space nil) ; no
 
   ;; Identity
@@ -31,10 +24,6 @@
   :config
   ;; don't warn when loading stuff from custom-vars.el
   (load custom-file 'noerror 'nomessage)
-
-  ;; history & recent files
-  (global-auto-revert-mode)
-  (save-place-mode 1)
 
   (windmove-default-keybindings '(ctrl shift)))
 
@@ -54,4 +43,7 @@
 (use-package direnv
   :config
   (direnv-mode))
+
+(use-package wgrep)
+
 (provide 'dl-core)

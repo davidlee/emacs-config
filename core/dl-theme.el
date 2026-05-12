@@ -44,28 +44,28 @@
 ;;   ;; `modus-themes-load-random-light').
 ;;   (modus-themes-load-theme 'ef-summer))
 
-(setq dl/themes
+(setq my/themes
   '(doom-one doom-gruvbox doom-nord doom-material doom-ayu-dark
      doom-zenburn
      doom-laserwave doom-molokai doom-moonlight doom-dracula))
 
-(defvar dl/current-theme-index -1
-  "Index of the currently selected theme in `dl/themes'.")
+(defvar my/current-theme-index -1
+  "Index of the currently selected theme in `my/themes'.")
 
-(defun dl/rotate-themes ()
-  "Rotate through `dl/themes', disabling currently enabled themes first."
+(defun my/rotate-themes ()
+  "Rotate through `my/themes', disabling currently enabled themes first."
   (interactive)
   (mapc #'disable-theme custom-enabled-themes)
-  (setq dl/current-theme-index
-    (mod (1+ dl/current-theme-index) (length dl/themes)))
-  (let ((theme (nth dl/current-theme-index dl/themes)))
+  (setq my/current-theme-index
+    (mod (1+ my/current-theme-index) (length my/themes)))
+  (let ((theme (nth my/current-theme-index my/themes)))
     (load-theme theme t)
     (message "Loaded theme: %s" theme)))
 
 (use-package doom-themes
   :ensure t
   ;;  :bind
-  ;;(("<f5>" . dl/rotate-themes))
+  ;;(("<f5>" . my/rotate-themes))
   :custom
   ;; Global settings (defaults)
   (doom-themes-enable-bold t)   ; if nil, bold is universally disabled
@@ -84,6 +84,11 @@
   :config
   (load-theme 'doom-one t))
 
-(global-set-key (kbd "<f5>") #'dl/rotate-themes)
+(global-set-key (kbd "<f5>") #'my/rotate-themes)
+
+(use-package solaire-mode
+  :config
+  (solaire-global-mode +1))
+
 
 (provide 'dl-theme)

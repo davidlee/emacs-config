@@ -3,6 +3,7 @@
 /eln-cache
 /elpaca
 
+*.eld
 
 /history
 /places
@@ -24,3 +25,5 @@ authinfo.gpg
 *.so
 
 /url/cache
+/eshell
+/bookmarks

@@ -14,7 +14,8 @@
 (use-package avy
   :ensure t
   :demand t
-  :bind  ( ("C-'"   . avy-goto-char-2)
+  :bind  ( ("C-:"   . avy-goto-char)
+           ("C-'"   . avy-goto-char-2)
            ("C-c j" . avy-goto-line)
            ("C-;"   . avy-goto-char-timer)))
 

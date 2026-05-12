@@ -1,18 +1,9 @@
 ;;; early-init.el --- Emacs pre-init -*- lexical-binding: t; -*-
 
-(seq-do
-  (lambda (dir) (add-to-list 'load-path (expand-file-name dir user-emacs-directory)))
-  '("lisp"
-		 "core"
-		 "editing"
-     "completion"
-		 "apps"
-     "org"
-     "dev"
-		 "lang"
-     
-     ;; git checkouts
-     "checkout/combobulate"))
-
-(require 'dl-package-loader)
-(require 'dl-core)
+;; Packages are provided by nix (emacsWithPackagesFromUsePackage).
+;; after adding a new use-package declaration:
+;; -- ensure file is known to git (staged or committed previously)
+;; -- cd ~/flakes && just home-switch
+(setopt package-enable-at-startup nil
+  use-package-always-ensure nil)
+(require 'use-package)

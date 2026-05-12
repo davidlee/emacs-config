@@ -52,6 +52,7 @@
     (add-hook 'completion-at-point-functions #'tempel-expand -1 'local))
   ;; Put tempel-expand on the list whenever you start programming or
   ;; writing prose.
+  :after
   (add-hook 'prog-mode-hook 'tempel-setup-capf)
   (add-hook 'text-mode-hook 'tempel-setup-capf))
 

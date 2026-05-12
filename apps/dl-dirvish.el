@@ -14,11 +14,12 @@
 
   :custom
   (dirvish-quick-access-entries ; It's a custom option, `setq' won't work
-    '(("h" "~/"                          "Home")
-       ("d" "~/Downloads/"                "Downloads")
-       ("m" "/mnt/"                       "Drives")
-       ("s" "/ssh:my-remote-server")      "SSH server"
-       ("e" "/sudo:root@localhost:/etc")  "Modify program settings"
+    '( ("h" "~/"                          "Home")
+       ("d" "~/dev/"                      "dev")
+       ("D" "~/Downloads/"                "Downloads")
+       ("n" "~/notes/"                    "notes")
+       ("c" "~/.config/"                  "config")
+
        ("t" "~/.local/share/Trash/files/" "TrashCan")))
   :config
   (dirvish-override-dired-mode) 
