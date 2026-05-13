@@ -28,11 +28,12 @@
        visual-fill-column vundo which-key ws-butler yaml-mode
        yasnippet-snippets))
  '(package-vc-selected-packages
-    '((combobulate :url "https://github.com/mickeynp/combobulate.git")
-       (meow-vterm :url "https://github.com/accelbread/meow-vterm.git")
-       (claude-code-ide :url
-         "https://github.com/manzaltu/claude-code-ide.el")))
- '(safe-local-variable-values '((lexical-binding . f))))
+    '((claude-code-ide :url
+        "https://github.com/manzaltu/claude-code-ide.el")
+       (combobulate :vc-backend Git :url
+         "https://github.com/mickeynp/combobulate.git")
+       (meow-vterm :url "https://github.com/accelbread/meow-vterm.git")))
+ '(safe-local-variable-values '((lexical-bindings . t) (lexical-binding . f))))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.

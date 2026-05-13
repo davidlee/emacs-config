@@ -15,15 +15,15 @@
   :hook (prog-mode . rainbow-delimiters-mode))
 
 ;; (setq-local combobulate-checkout-path (expand-file-name "checkout/combobulate" user-emacs-directory))
-(use-package combobulate
-  :vc (:url "https://github.com/mickeynp/combobulate.git")
-  :custom
-  ;; You can customize Combobulate's key prefix here.
-  ;; Note that you may have to restart Emacs for this to take effect!
-  (combobulate-key-prefix "C-c o")
-  :hook ((prog-mode . combobulate-mode))
-  ;; :load-path combobulate-checkout-path
-  )
+;; (use-package combobulate
+;;   :ensure t
+;;   :vc (:url "https://github.com/mickeynp/combobulate.git")
+;;   :custom
+;;   ;; You can customize Combobulate's key prefix here.
+;;   ;; Note that you may have to restart Emacs for this to take effect!
+;;   (combobulate-key-prefix "C-c o")
+;;   :hook ((prog-mode . combobulate-mode)))
+
 
 (provide 'dl-multi-edit)
 ;;; dl-multi-edit.el ends here

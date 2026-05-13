@@ -7,5 +7,12 @@
 (setopt package-enable-at-startup nil
 	use-package-always-ensure nil)
 
-(require 'use-package)
+(setq package-archives
+  '(("gnu" . "https://elpa.gnu.org/packages/")
+     ("nongnu" . "https://elpa.nongnu.org/nongnu/")
+     ("melpa" . "https://melpa.org/packages/")))
 
+(require 'use-package)
+(require 'package)
+(require 'package-vc)
+(package-initialize)

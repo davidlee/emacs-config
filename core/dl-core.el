@@ -24,6 +24,8 @@
   ;; using `load' or `require'.
   (compile-angel-on-load-mode 1))
 
+(require 'package-vc)
+
 (use-package emacs
   :ensure nil
   :custom
@@ -32,6 +34,7 @@
   (large-file-warning-threshold 100000000)
   (load-prefer-newer t) ; new bytecode pls
   (initial-major-mode 'fundamental-mode)
+  (bidi-paragraph-direction 'left-to-right)
 
   (sentence-end-double-space nil) ; no
 

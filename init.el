@@ -31,6 +31,17 @@
 ;; Ensure Emacs loads the most recent byte-compiled files.
 (setq load-prefer-newer t)
 
+;; NIX path
+;; (use-package exec-path-from-shell
+;;   :if (memq window-system '(mac ns x pgtk))
+;;   :config
+;;   (exec-path-from-shell-initialize))
+
+(add-to-list 'exec-path "~/.nix-profile/bin")
+(add-to-list 'exec-path "/run/current-system/sw/bin")
+(add-to-list 'exec-path "~/.local/bin")
+(setenv "PATH" (concat "~/.nix-profile/bin:" (getenv "PATH")))
+
 ;;; load custom packages
 
 ;; CORE
@@ -75,6 +86,7 @@
 (require 'dl-term)
 (require 'dl-magit)
 (require 'dl-term)
+(require 'dl-claude)
 ;; (require 'dl-slack)
 ;; (require 'dl-dirvish)
 
