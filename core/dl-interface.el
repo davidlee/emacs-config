@@ -61,7 +61,9 @@
   (global-prettify-symbols-mode t)
 
   ;; TAB BAR
+
   (tab-bar-mode 1)
+  (global-tab-line-mode 1)
   (winner-mode 1)
 
   :init
@@ -138,6 +140,24 @@
 (use-package breadcrumb
   :ensure t)
 
+(use-package shackle) ; https://depp.brause.cc/shackle/
+
+(use-package popper
+  :ensure t ; or :straight t
+  :bind ( ("C-`"   . popper-toggle)
+          ("M-`"   . popper-cycle)
+          ("C-M-`" . popper-toggle-type))
+  :config
+  (setq popper-reference-buffers
+    '("\\*Messages\\*"
+       "Output\\*$"
+       "\\*Async Shell Command\\*"
+       help-mode
+       compilation-mode))
+  (popper-mode +1)
+  (popper-echo-mode +1)) ; For echo area hints
+
 (setopt scroll-conservatively 100)
 
 (provide 'dl-interface)
+;;; dl-interface.el ends here

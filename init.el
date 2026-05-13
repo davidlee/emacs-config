@@ -28,6 +28,10 @@
 ;; Trust only my own code.
 (mapc #'my/trust-lisp-dir my/lisp-dirs)
 
+;; Ensure Emacs loads the most recent byte-compiled files.
+(setq load-prefer-newer t)
+
+
 ;;; load custom packages
 
 ;; CORE
@@ -37,6 +41,8 @@
 (require 'dl-theme)
 (require 'dl-font)
 (require 'dl-keybind)
+;; (require 'dl-god)
+(require 'dl-meow)
 (require 'dl-help)
 
 ;; DEV
