@@ -2,7 +2,7 @@
 ;; --------------------------------------------------------------------------
 ;; Desktop File for Emacs
 ;; --------------------------------------------------------------------------
-;; Created Wed May 13 09:59:32 2026
+;; Created Wed May 13 10:02:40 2026
 ;; Desktop file format version 208
 ;; Emacs version 30.2
 
@@ -22,12 +22,12 @@
   "dl-term.el"
   'emacs-lisp-mode
   '(font-lock-mode prettify-symbols-mode completion-preview-mode corfu-mode apheleia-mode yas-minor-mode undo-fu-session-mode eldoc-mode flymake-mode puni-mode display-line-numbers-mode hl-line-mode ws-butler-mode rainbow-delimiters-mode diff-hl-mode)
-  6807
-  '(5489 nil)
+  9038
+  '(6188 nil)
   nil
   nil
-  '((buffer-display-time 27139 48779 379630 686000) (buffer-file-coding-system . prefer-utf-8-unix))
-  '((mark-ring (3872 3872 3872 3872 3872 3872 3872 2343 2343 2343 2344 5331 4367 6893 4439 2128))))
+  '((buffer-display-time 27139 49053 76262 931000) (buffer-file-coding-system . prefer-utf-8-unix))
+  '((mark-ring (3389 2630 5591 2606 2606 2606 9436 9436 2606 2606 2606 2606 2606 2606 2606 2606))))
 
 (desktop-create-buffer 208
   "/home/david/.emacs.d/editing/dl-persist.el"
