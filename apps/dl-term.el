@@ -63,7 +63,7 @@
   :ensure t
   :after vterm
   :bind
-  (("C-c t t" . multi-vterm)
+  ( ("C-c t t" . multi-vterm)
     ("C-c t n" . multi-vterm-next)
     ("C-c t p" . multi-vterm-prev)))
 
@@ -176,7 +176,11 @@ The default is derived from the current project when available."
 If the old Emacs died without detaching cleanly, attach can fail because
 shpool still thinks another client is attached. In that case, detach once
 and retry attach."
-  (format "%s attach %s || (%s detach %s; %s attach %s)"
+
+  ;; NOTE: -D stops it hanging while it tries to daemonize -
+  ;; which means it depends on a systemd user service running
+
+  (format "%s attach -D %s || (%s detach %s; %s attach -D %s)"
     dl-shpool-command
     (shell-quote-argument name)
     dl-shpool-command
@@ -314,3 +318,4 @@ This does not kill the persistent shpool session."
 (global-set-key (kbd "C-c t -") #'dl/shpool-remove-from-restore)
 
 (provide 'dl-term)
+;;; dl-term.el ends here

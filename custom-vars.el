@@ -11,7 +11,7 @@
        "720838034f1dd3b3da66f6bd4d053ee67c93a747b219d1c546c41c4e425daf93"
        "6dcf1ca4c7432773084b9d52649ee5eb2c663131c4c06859f648dea98d9acb3e"
        default))
- '(dl-shpool-known-sessions '("claude"))
+ '(dl-shpool-known-sessions '("team" "claude"))
  '(package-selected-packages
     '(ace-window apheleia beacon cape consult-eglot consult-yasnippet
        corfu denote diff-hl diminish dired-subtree diredfl dirvish
