@@ -14,6 +14,7 @@
 (require 'dl-interface)
 (require 'dl-theme)
 (require 'dl-font)
+(require 'dl-keybind)
 (require 'dl-help)
 
 ;; DEV

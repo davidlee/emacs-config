@@ -1,0 +1,67 @@
+;; -*- mode: emacs-lisp; lexical-binding:t; coding: utf-8-emacs; -*-
+;; --------------------------------------------------------------------------
+;; Desktop File for Emacs
+;; --------------------------------------------------------------------------
+;; Created Wed May 13 09:59:32 2026
+;; Desktop file format version 208
+;; Emacs version 30.2
+
+;; Global section:
+(setq desktop-saved-frameset nil)
+(setq desktop-missing-file-warning nil)
+(setq tags-file-name nil)
+(setq tags-table-list nil)
+(setq search-ring '(#("vterm-but" 0 9 (isearch-case-fold-search t isearch-regexp-function nil)) #("cor" 0 3 (isearch-case-fold-search t isearch-regexp-function nil)) #("dimin" 0 5 (isearch-case-fold-search t isearch-regexp-function nil)) #("tmux" 0 4 (isearch-case-fold-search t isearch-regexp-function nil)) #("tab-bar" 0 7 (isearch-case-fold-search t isearch-regexp-function nil)) #("apps" 0 4 (isearch-case-fold-search t isearch-regexp-function nil)) #("cape" 0 4 (isearch-case-fold-search t isearch-regexp-function nil)) #("abbr" 0 4 (isearch-case-fold-search t isearch-regexp-function nil)) #("dl" 0 2 (isearch-case-fold-search t isearch-regexp-function nil)) #("my" 0 2 (isearch-case-fold-search t isearch-regexp-function nil)) #("add" 0 3 (isearch-case-fold-search t isearch-regexp-function nil)) #("ens" 0 3 (isearch-case-fold-search t isearch-regexp-function nil)) #("edit" 0 4 (isearch-case-fold-search t isearch-regexp-function nil)) #("inb" 0 3 (isearch-case-fold-search t isearch-regexp-function nil)) #(";inb" 0 1 (isearch-regexp-function nil isearch-case-fold-search t) 1 4 (isearch-case-fold-search t isearch-regexp-function nil)) #("dev" 0 3 (isearch-case-fold-search t isearch-regexp-function nil))))
+(setq regexp-search-ring nil)
+(setq register-alist nil)
+(setq file-name-history '("~/.emacs.d/" "~/.emacs.d/apps/dl-term.el" "~/.emacs.d/editing/dl-persist.el" "~/.emacs.d/" "~/.emacs.d/core/dl-interface.el" #("/home/david/flakes/modules/shared/cli.nix" 0 41 (project "~/flakes/")) #("/home/david/.emacs.d/apps/dl-term.el" 0 36 (project "~/.emacs.d/")) "~/.emacs.d/core/dl-interface.el" #("/home/david/.emacs.d/core/dl-font.el" 0 36 (project "~/.emacs.d/")) "~/.emacs.d/core/dl-interface.el" "~/.emacs.d/" "~/flakes/flake.nix" "~/.emacs.d/apps/dl-term.el" "~/.emacs.d/core/dl-keybind.el" "~/.emacs.d/early-init.el" "~/.emacs.d/init.el" "~/.emacs.d/core/" "~/.emacs.d/early-init.el" "~/.emacs.d/core/dl-keybind.el" "~/.emacs.d/core/" "~/flakes/modules/nixos/util.nix" #("/home/david/flakes/modules/home/emacs.nix" 0 41 (project "~/flakes/")) "~/.emacs.d/core/dl-prose.el" "~/.emacs.d/core/" "~/.emacs.d/early-init.el" #("/home/david/.emacs.d/core/dl-package-loader.el" 0 46 (project "~/.emacs.d/")) "~/.local/share/Trash/files/" #("/home/david/.emacs.d/apps/dl-dirvish.el" 0 39 (project "~/.emacs.d/")) "~/.emacs.d/init.el" #("/home/david/.emacs.d/completion/dl-consult.el" 0 45 (project "~/.emacs.d/")) "~/.emacs.d/init.el" "~/.emacs.d/completion/dl-completion.el" "~/notes/20260512T181127--substrate__emacs_idea_project_tech.org" "~/.emacs.d/completion/dl-corfu.el" "~/.emacs.d/completion/dl-cape.el" "~/.emacs.d/completion/dl-corfu.el" "~/.emacs.d/completion/dl-cape.el" "~/.emacs.d/completion/dl-completion.el" #("/home/david/notes/inbox.org" 0 27 (project "~/notes/")) "~/dev/vk/README.md" "~/.emacs.d/core/dl-font.el" "~/notes/20260511T204553--proficiency-with-emacs__emacs_org_pkm_tech.org" "~/notes/20260512T181127--substrate__emacs_idea_project_tech.org" "~/.emacs.d/core/dl-font.el" "~/.emacs.d/editing/dl-multi-edit.el" "~/.emacs.d/core/dl-font.el" "~/.emacs.d/init.el" "~/.emacs.d/core/dl-font.el" #("/home/david/notes/20260512T181127--substrate__emacs_idea_project_tech.org" 0 73 (project "~/notes/")) "~/.emacs.d/core/dl-core.el" "~/.emacs.d/editing/dl-persist.el" "~/notes/20260512T181127--substrate__emacs_idea_project_tech.org" "~/.emacs.d/editing/dl-keybind.el" #("/home/david/.emacs.d/editing/dl-project.el" 0 42 (project "~/.emacs.d/")) #("/home/david/dev/inlight/HRIS/.spec-driver/" 0 42 (project "~/dev/inlight/HRIS/")) "~/dev/inlight/HRIS/" #("/home/david/dev/vk/.spec-driver/deltas/DE-115-week_planning_workflow_fit_and_finish_2_vh_regressions/DR-115.md" 0 110 (project "~/dev/vk/")) "~/dev/vk/" #("/home/david/.config/sway/sway.conf" 0 34 (project "~/.config/")) "~/.config/" "~/.config/.project" "~/.config/QtProject.conf" "~/.config/" "~/.emacs.d/core/dl-theme.el" "~/.emacs.d/editing/dl-motion.el" #("/home/david/notes/inbox.org" 0 27 (project "~/notes/")) "~/.emacs.d/lisp/denote-roam.el" "~/.emacs.d/org/dl-org.el" "~/.emacs.d/org/dl-denote.el" "~/.emacs.d/org/dl-org-roam.el" "~/.emacs.d/editing/dl-motion.el" "~/.emacs.d/init.el" #("/home/david/notes/20260511T204553--proficiency-with-emacs__emacs_org_pkm_tech.org" 0 81 (project "~/notes/")) #("/home/david/.emacs.d/core/dl-theme.el" 0 37 (project "~/.emacs.d/")) "~/.emacs.d/core/dl-theme.el" "~/.emacs.d/core/" "~/.emacs.d/core/dl-theme.el" "~/.emacs.d/" "~/.emacs.d/init.el" "~/.emacs.d/dev/dl-treesit.el"))
+
+;; Buffer section -- buffers listed in same order as in buffer list:
+(desktop-create-buffer 208
+  "/home/david/.emacs.d/apps/dl-term.el"
+  "dl-term.el"
+  'emacs-lisp-mode
+  '(font-lock-mode prettify-symbols-mode completion-preview-mode corfu-mode apheleia-mode yas-minor-mode undo-fu-session-mode eldoc-mode flymake-mode puni-mode display-line-numbers-mode hl-line-mode ws-butler-mode rainbow-delimiters-mode diff-hl-mode)
+  6807
+  '(5489 nil)
+  nil
+  nil
+  '((buffer-display-time 27139 48779 379630 686000) (buffer-file-coding-system . prefer-utf-8-unix))
+  '((mark-ring (3872 3872 3872 3872 3872 3872 3872 2343 2343 2343 2344 5331 4367 6893 4439 2128))))
+
+(desktop-create-buffer 208
+  "/home/david/.emacs.d/editing/dl-persist.el"
+  "dl-persist.el"
+  'emacs-lisp-mode
+  '(font-lock-mode prettify-symbols-mode completion-preview-mode corfu-mode apheleia-mode yas-minor-mode undo-fu-session-mode eldoc-mode flymake-mode puni-mode display-line-numbers-mode hl-line-mode ws-butler-mode rainbow-delimiters-mode diff-hl-mode)
+  509
+  '(437 nil)
+  nil
+  nil
+  '((buffer-display-time 27139 48408 119212 475000) (buffer-file-coding-system . prefer-utf-8-unix))
+  '((mark-ring (437 1350 413 391 413 495 509))))
+
+(desktop-create-buffer 208
+  "/home/david/.emacs.d/places"
+  "places"
+  'lisp-data-mode
+  '(font-lock-mode prettify-symbols-mode completion-preview-mode corfu-mode apheleia-mode yas-minor-mode undo-fu-session-mode display-line-numbers-mode hl-line-mode ws-butler-mode rainbow-delimiters-mode diff-hl-mode)
+  1
+  '(nil nil)
+  nil
+  nil
+  '((buffer-display-time 27139 48407 963282 122000) (buffer-file-coding-system . utf-8-unix))
+  '((mark-ring nil)))
+
+(desktop-create-buffer 208
+  nil
+  ".emacs.d"
+  'dired-mode
+  '(solaire-mode apheleia-mode yas-minor-mode undo-fu-session-mode nerd-icons-dired-mode font-lock-mode diredfl-mode)
+  1622
+  '(1308 nil)
+  t
+  '("/home/david/.emacs.d/")
+  '((tab-width . 1) (buffer-display-time 27139 48407 777202 226000))
+  '((mark-ring nil)))
+

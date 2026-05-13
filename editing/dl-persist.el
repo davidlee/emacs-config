@@ -12,9 +12,16 @@
   (auto-revert-check-vc-info t)
   (global-auto-revert-non-file-buffers t)
   (global-auto-revert-mode)
+
   ;; history & recent files
   (history-length 80)
-  (save-place-mode 1)) ; dired, etc
+  (save-place-mode 1)
+
+  (desktop-save-mode 1)
+  (desktop-restore-frames nil)
+  ) ; dired, etc
+
+
 
 ;; eglot auto-format with error handling
 

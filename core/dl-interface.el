@@ -40,13 +40,12 @@
   (x-underline-at-descent-line nil)           ; Prettier underlines
   (switch-to-buffer-obey-display-actions t)   ; Make switching buffers more consistent
 
-  (show-trailing-whitespace nil)    
+  (show-trailing-whitespace nil)
   (indicate-buffer-boundaries 'left)  ; Show buffer top and bottom in the margin
 
   (frame-resize-pixelwise t)
   (show-paren-mode 1)
 
-  
   ;; Enable horizontal scrolling
   (mouse-wheel-tilt-scroll t)
   (mouse-wheel-flip-direction t)
@@ -61,6 +60,10 @@
 
   (global-prettify-symbols-mode t)
 
+  ;; TAB BAR
+  (tab-bar-mode 1)
+  (winner-mode 1)
+  
   :init
   (display-time-mode)
   
@@ -90,17 +93,29 @@
   (let ((hl-line-hooks '(text-mode-hook prog-mode-hook)))
     (mapc (lambda (hook) (add-hook hook 'hl-line-mode)) hl-line-hooks))) 
 
+;; Modeline
 (use-package doom-modeline
   :demand t
+  :custom
+  (doom-modeline-height 50)
+  (doom-modeline-icon t)
+  (doom-modeline-time-clock-size 0.4)
+  (doom-modeline-spc-face-overrides (list :family (face-attribute 'fixed-pitch :family)))
   :config
+  (if (facep 'mode-line-active)
+    (set-face-attribute 'mode-line-active nil :family "NerdFontMono" :height 120) ; For 29+
+    (set-face-attribute 'mode-line nil :family "NerdFontMono" :height 120))
+  (set-face-attribute 'mode-line-inactive nil :family "NerdFontMono" :height 120)
+
   (doom-modeline-mode 1))
+
 
 (use-package spacious-padding
   :config
   (spacious-padding-mode 1))
 
 (use-package diminish
-  :ensure t)
+  :ensure t) ; disable
 
 (use-package nerd-icons
   :ensure t)

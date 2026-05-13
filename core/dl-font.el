@@ -49,7 +49,7 @@
                          :mode-line-inactive-weight nil ; falls back to :default-weight
                          :mode-line-inactive-height 0.9
 
-                         :header-line-family "Monacpace Radon" ; falls back to :default-family
+                         :header-line-family "Monaspace Radon" ; falls back to :default-family
                          :header-line-weight nil ; falls back to :default-weight
                          :header-line-height 1.4
 
@@ -82,7 +82,7 @@
                          :line-spacing nil)))
   :config
   ;; (define-key global-map (kbd "<f6>") #'fontaine-toggle-preset)
-  (define-key global-map (kbd "C-c f") #'fontaine-set-preset)
+  (define-key global-map (kbd "<f6>") #'fontaine-set-preset)
   (fontaine-set-preset
     (or (fontaine-restore-latest-preset) 'regular))
   (fontaine-mode 1))
