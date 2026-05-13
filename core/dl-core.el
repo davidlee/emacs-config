@@ -27,7 +27,6 @@
 (use-package emacs
   :ensure nil
   :custom
-
   ;; performance
   (gc-cons-threshold 50000000)
   (large-file-warning-threshold 100000000)
@@ -91,6 +90,29 @@
 
 (require 'uniquify)
 (setopt uniquify-buffer-name-style 'forward)
+
+(use-package atomic-chrome
+  :ensure t
+  :config
+  (setq atomic-chrome-extension-type-list '(ghost-text))
+  (setq atomic-chrome-default-major-mode 'markdown-mode)
+  (setq atomic-chrome-buffer-open-style 'frame)
+  (setq atomic-chrome-enable-auto-update t)
+  (setq atomic-chrome-enable-bidirectional-edit t)
+  (atomic-chrome-start-server))
+
+
+;; Avoid Corfu/ispell crashing GhostText buffers.
+;; (defun my-atomic-chrome-setup ()
+;;   (setq-local completion-at-point-functions
+;;     (remove #'ispell-completion-at-point
+;;       completion-at-point-functions)))
+
+;; (add-hook 'atomic-chrome-edit-mode-hook #'my-atomic-chrome-setup)
+
+;; Optional, only if you have this file:
+;;(when (file-exists-p "/usr/share/dict/words")
+;;  (setq ispell-alternate-dictionary "/usr/share/dict/words"))
 
 (provide 'dl-core)
 ;;; dl-core.el ends here

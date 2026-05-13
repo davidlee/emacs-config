@@ -29,3 +29,4 @@
   (global-treesit-auto-mode))
 
 (provide 'dl-eglot)
+;;; dl-eglot.el ends here

@@ -1,3 +1,4 @@
+;;; dl-meow.el --- Meow modal bindings -*- lexical-binding: t; -*-
 
 (defun meow-setup ()
   (setq meow-cheatsheet-layout meow-cheatsheet-layout-qwerty)
@@ -90,5 +91,12 @@
   (meow-setup)
   (meow-global-mode 1))
 
+;; (use-package meow-vterm
+;;   :vc (:url "https://github.com/accelbread/meow-vterm.git")
+;;   :config
+;;  (meow-vterm-enable))
+
+(setq meow-mode-state-list (append meow-mode-state-list '((vterm-mode . insert))))
+
 (provide 'dl-meow)
-;;;
+;;; dl-meow.el ends here

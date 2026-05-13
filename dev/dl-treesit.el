@@ -6,19 +6,6 @@
   :config
   (global-treesit-auto-mode))
 
-(setq-local combobulate-checkout-path (expand-file-name "checkout/combobulate" user-emacs-directory))
-(use-package combobulate
-  :custom
-  ;; You can customize Combobulate's key prefix here.
-  ;; Note that you may have to restart Emacs for this to take effect!
-  (combobulate-key-prefix "C-c o")
-  :hook ((prog-mode . combobulate-mode))
-  :load-path combobulate-checkout-path)
-
-
-;; GIT CHECKOUT PATH
-;;:load-path combobulate-checkout-path)
-
 
 (when (treesit-available-p)
   

@@ -5,7 +5,7 @@
   "My own Lisp directories, relative to `user-emacs-directory'.")
 
 (defvar my/checkout-lisp-dirs
-  '("checkout/combobulate")
+  '("checkout/example")
   "External checkout Lisp directories, relative to `user-emacs-directory'.")
 
 (defun my/expand-emacs-dir (dir)
@@ -31,12 +31,11 @@
 ;; Ensure Emacs loads the most recent byte-compiled files.
 (setq load-prefer-newer t)
 
-
 ;;; load custom packages
 
 ;; CORE
 (require 'dl-core)
-(require 'dl-backup-dir)
+(require 'dl-backup)
 (require 'dl-interface)
 (require 'dl-theme)
 (require 'dl-font)
@@ -44,6 +43,7 @@
 ;; (require 'dl-god)
 (require 'dl-meow)
 (require 'dl-help)
+(require 'dl-prose)
 
 ;; DEV
 (require 'dl-eglot)
@@ -72,11 +72,11 @@
 (require 'dl-indent)
 
 ;; Apps
-(require 'dl-slack)
 (require 'dl-term)
 (require 'dl-magit)
 (require 'dl-term)
-(require 'dl-dirvish)
+;; (require 'dl-slack)
+;; (require 'dl-dirvish)
 
 ;; Org
 (require 'dl-org)
@@ -89,8 +89,12 @@
 (require 'dl-lang-common)
 (require 'dl-nix)
 
+;; elisp: util
+(require 'dl-insert-elisp-header)
+
 ;; (set-face-attribute 'default nil :font "JetBrains Mono" :height 115)
 ;; (set-face-attribute 'default nil :font "JetBrainsMono Nerd Font Mono" :height 115)
 ;; (set-frame-font "Iosevka Nerd Font Mono-12" nil t)
 ;; (set-frame-font "Fira Mono-12" nil t)
-(put 'scroll-left 'disabled nil)
+
+;;; init.el ends here

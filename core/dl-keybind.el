@@ -19,7 +19,4 @@
 
 (provide 'dl-keybind)
 
-;; look at: god-mode // meow-mode
-
-
 ;;; dl-keybind.el ends here
