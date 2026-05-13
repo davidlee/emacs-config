@@ -12,6 +12,7 @@
        "6dcf1ca4c7432773084b9d52649ee5eb2c663131c4c06859f648dea98d9acb3e"
        default))
  '(dl-shpool-known-sessions '(".emacs.d" "hris" "team" "claude"))
+ '(my-shpool-known-sessions '("example" ".emacs.d"))
  '(package-selected-packages
     '(ace-window apheleia beacon cape consult-eglot consult-yasnippet
        corfu denote diff-hl diminish dired-subtree diredfl dirvish

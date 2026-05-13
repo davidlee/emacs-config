@@ -22,14 +22,14 @@
 ;;
 ;; ESHELL
 ;;
-(defun eshell/sudo-open (filename)
-  "Open a file as root in Eshell."
-  (let ((qual-filename (if (string-match "^/" filename)
-                         filename
-                         (concat (expand-file-name (eshell/pwd)) "/" filename))))
-    (switch-to-buffer
-      (find-file-noselect
-        (concat "/sudo::" qual-filename)))))
+;; (defun eshell/sudo-open (filename)
+;;   "Open a file as root in Eshell."
+;;   (let ((qual-filename (if (string-match "^/" filename)
+;;                          filename
+;;                          (concat (expand-file-name (eshell/pwd)) "/" filename))))
+;;     (switch-to-buffer
+;;       (find-file-noselect
+;;         (concat "/sudo::" qual-filename)))))
 
 
 (defun eshell-other-window ()
@@ -95,40 +95,44 @@
 (require 'subr-x)
 (require 'seq)
 
-(defgroup dl-shpool nil
+(defgroup my-shpool nil
   "Persistent vterm sessions via shpool."
   :group 'terminals)
 
-(defcustom dl-shpool-command "shpool"
+(defcustom my-shpool-command "shpool"
   "Command used to invoke shpool."
   :type 'string)
 
-(defcustom dl-shpool-known-sessions nil
+(defcustom my-shpool-known-sessions nil
   "Known shpool session names.
 
-This list is updated by `my/shpool' when you create or attach to
-sessions interactively. It is only a local completion cache; live
-sessions are also read from `shpool list'."
+This is local session name history. It is not authoritative shpool state;
+live sessions are read from `shpool list'."
   :type '(repeat string))
 
-(defcustom dl-shpool-restore-sessions nil
+(defcustom my-shpool-restore-sessions nil
   "Shpool sessions to restore with `my/shpool-restore'.
 
-Unlike `dl-shpool-known-sessions', this is the intentional restore list,
-not every session you have ever opened. Use `my/shpool-add-current-to-restore'
-to add sessions to it."
+This is the intentional restore list, not every session you have ever
+opened. Use `my/shpool-add-current-to-restore' to add sessions to it."
   :type '(repeat string))
 
-(defcustom dl-shpool-auto-restore nil
-  "When non-nil, restore `dl-shpool-restore-sessions' after Emacs startup."
+(defcustom my-shpool-auto-restore nil
+  "When non-nil, restore `my-shpool-restore-sessions' after Emacs startup."
   :type 'boolean)
+
+(defvar my/shpool-completion-metadata
+  '(metadata
+     (category . shpool-session)
+     (annotation-function . my/shpool-annotate-session))
+  "Completion metadata for shpool session names.")
 
 (defun my/shpool-buffer-name (name)
   "Return vterm buffer name for shpool session NAME."
   (format "*shpool:%s*" name))
 
 (defun my/shpool--command-output (&rest args)
-  "Return output from running `dl-shpool-command' with ARGS.
+  "Return output from running `my-shpool-command' with ARGS.
 
 Captures stderr as well as stdout so CLI failures are visible from
 Emacs."
@@ -136,7 +140,7 @@ Emacs."
     (shell-command-to-string
       (concat
         (mapconcat #'shell-quote-argument
-          (cons dl-shpool-command args)
+          (cons my-shpool-command args)
           " ")
         " 2>&1"))))
 
@@ -159,17 +163,54 @@ the session name."
           (car (split-string (string-trim line) "[[:space:]]+" t)))
         (split-string output "\n" t)))))
 
-(defun my/shpool-session-candidates ()
-  "Return shpool session candidates for completion.
+(defun my/shpool-candidates-with-status ()
+  "Return shpool session candidates with status metadata.
 
-This merges live sessions from shpool with locally remembered sessions
-and restore-listed sessions."
-  (sort
-    (delete-dups
-      (append (ignore-errors (my/shpool-live-sessions))
-        dl-shpool-known-sessions
-        dl-shpool-restore-sessions))
-    #'string-lessp))
+Each item is (NAME . PLIST), where PLIST may contain:
+  :active     non-nil when present in `shpool list'
+  :remembered non-nil when present in `my-shpool-known-sessions'
+  :restore   non-nil when present in `my-shpool-restore-sessions'."
+  (let* ((live (ignore-errors (my/shpool-live-sessions)))
+          (all (delete-dups
+                 (append live
+                   my-shpool-known-sessions
+                   my-shpool-restore-sessions))))
+    (mapcar
+      (lambda (name)
+        (cons name
+          (list :active (member name live)
+            :remembered (member name my-shpool-known-sessions)
+            :restore (member name my-shpool-restore-sessions))))
+      (sort all #'string-lessp))))
+
+(defun my/shpool-session-candidates ()
+  "Return shpool session candidate names for completion."
+  (mapcar #'car (my/shpool-candidates-with-status)))
+
+(defun my/shpool--candidate-status (candidate)
+  "Return status plist for shpool completion CANDIDATE."
+  (cdr (assoc candidate (my/shpool-candidates-with-status))))
+
+(defun my/shpool--candidate-status-label (candidate)
+  "Return display status label for shpool completion CANDIDATE."
+  (let* ((meta (my/shpool--candidate-status candidate))
+          (active (plist-get meta :active))
+          (remembered (plist-get meta :remembered))
+          (restore (plist-get meta :restore)))
+    (cond
+      ((and active restore) "active restore")
+      (active "active")
+      (restore "restore missing")
+      (remembered "remembered")
+      (t "new"))))
+
+(defun my/shpool-annotate-session (candidate)
+  "Return completion annotation for shpool session CANDIDATE.
+
+This is exposed directly through the completion table metadata, so Vertico can
+show useful annotations even if Marginalia does not pick up the custom category."
+  (let ((status (my/shpool--candidate-status-label candidate)))
+    (concat " " (propertize status 'face 'completions-annotations))))
 
 (defun my/shpool--session-name-at-point ()
   "Return a plausible shpool session name from context."
@@ -179,14 +220,22 @@ and restore-listed sessions."
           (directory-file-name root)))
     (buffer-name)))
 
-(defun my/shpool-read-session-name (&optional prompt)
-  "Read a shpool session name, asking PROMPT, with completion.
+(defun my/shpool--completion-table ()
+  "Return a completion table for shpool sessions."
+  (let ((candidates (my/shpool-session-candidates)))
+    (lambda (string pred action)
+      (if (eq action 'metadata)
+        my/shpool-completion-metadata
+        (complete-with-action action candidates string pred)))))
 
-Existing live and remembered sessions are offered as completions, but
-new names are allowed because this command is also used to create
-sessions. The default is derived from the current project when available."
+(defun my/shpool-read-session-name (&optional prompt require-match)
+  "Read a shpool session name with completion.
+
+PROMPT is the prompt prefix. When REQUIRE-MATCH is non-nil, only an
+existing candidate may be selected. The completion category is
+`shpool-session', so Marginalia can annotate active, remembered, and
+restore-listed candidates."
   (let* ((default (my/shpool--session-name-at-point))
-          (candidates (my/shpool-session-candidates))
           (input
             (completing-read
               (if default
@@ -194,46 +243,95 @@ sessions. The default is derived from the current project when available."
                   (or prompt "Shpool session")
                   default)
                 (format "%s: " (or prompt "Shpool session")))
-              candidates
-              nil nil nil nil default)))
+              (my/shpool--completion-table)
+              nil require-match nil nil default)))
     (string-trim input)))
+
+;; Keep Marginalia optional. Marginalia 2.x uses `marginalia-annotators'
+;; for category registration.
+(defvar marginalia-annotators)
+
+(defun my/marginalia-annotate-shpool-session (candidate)
+  "Annotate shpool session completion CANDIDATE."
+  (concat
+    (propertize " " 'display '(space :align-to center))
+    (propertize (my/shpool--candidate-status-label candidate)
+      'face 'marginalia-documentation)))
+
+(defun my/shpool-marginalia-setup ()
+  "Register Marginalia annotations for shpool session completion.
+
+Call this from Marginalia's `:config' block if the automatic
+`with-eval-after-load' registration does not run in your setup."
+  (interactive)
+  (if (boundp 'marginalia-annotators)
+    (add-to-list 'marginalia-annotators
+      '(shpool-session my/marginalia-annotate-shpool-session builtin none))
+    (when (called-interactively-p 'interactive)
+      (user-error "Marginalia has not defined `marginalia-annotators' yet"))))
+
+(with-eval-after-load 'marginalia
+  (my/shpool-marginalia-setup))
 
 (defun my/shpool--remember-session (name)
   "Remember shpool session NAME for future completion."
   (when (and name (not (string-empty-p name)))
-    (add-to-list 'dl-shpool-known-sessions name)
+    (add-to-list 'my-shpool-known-sessions name)
     (customize-save-variable
-      'dl-shpool-known-sessions
-      dl-shpool-known-sessions)))
+      'my-shpool-known-sessions
+      my-shpool-known-sessions)))
 
 (defun my/shpool--forget-session (name)
   "Remove NAME from local shpool session registries."
-  (setq dl-shpool-known-sessions
-    (delete name dl-shpool-known-sessions))
-  (setq dl-shpool-restore-sessions
-    (delete name dl-shpool-restore-sessions))
+  (setq my-shpool-known-sessions
+    (delete name my-shpool-known-sessions))
+  (setq my-shpool-restore-sessions
+    (delete name my-shpool-restore-sessions))
   (customize-save-variable
-    'dl-shpool-known-sessions
-    dl-shpool-known-sessions)
+    'my-shpool-known-sessions
+    my-shpool-known-sessions)
   (customize-save-variable
-    'dl-shpool-restore-sessions
-    dl-shpool-restore-sessions))
+    'my-shpool-restore-sessions
+    my-shpool-restore-sessions))
+
+(defcustom my-shpool-debug nil
+  "When non-nil, log shpool commands before sending them to vterm."
+  :type 'boolean)
+
+(defun my/shpool--log-command (command)
+  "Log COMMAND when `my-shpool-debug' is non-nil."
+  (when my-shpool-debug
+    (let ((buf (get-buffer-create "*shpool-debug*")))
+      (with-current-buffer buf
+        (goto-char (point-max))
+        (insert (format "%s %s\n"
+                  (format-time-string "%F %T")
+                  command))))
+    (message "shpool command: %s" command)))
 
 (defun my/shpool--send-command (command)
   "Send COMMAND to the current vterm and press return."
+  (my/shpool--log-command command)
   (vterm-send-string command)
   (vterm-send-return))
 
-
 (defun my/shpool-attach-command (name)
-  "Return shell command to attach to shpool session NAME."
+  "Return shell command to attach to shpool session NAME.
+
+Use plain `shpool attach NAME'. The systemd socket/service handles daemon
+startup; adding daemon-specific flags here makes debugging harder."
   (format "exec %s attach %s"
     my-shpool-command
     (shell-quote-argument name)))
 
-(defun my/shpool-force (name)
-  "Open or create a vterm force-attached to persistent shpool session NAME."
-  (interactive (list (my/shpool-read-session-name)))
+(defun my/shpool-attach-command-force (name)
+  "Return shell command to force attach to shpool session NAME."
+  (format "exec %s attach --force %s"
+    my-shpool-command
+    (shell-quote-argument name)))
+
+(defun my/shpool--open (name command-fn)
+  "Open or create vterm buffer NAME using COMMAND-FN to build attach command."
   (unless (and name (not (string-empty-p name)))
     (user-error "Empty shpool session name"))
   (my/shpool--remember-session name)
@@ -241,20 +339,18 @@ sessions. The default is derived from the current project when available."
     (if (get-buffer buf-name)
       (pop-to-buffer buf-name)
       (vterm buf-name)
-      (my/shpool--send-command
-        (my/shpool-attach-command-force name)))))
+      (with-current-buffer buf-name
+        (my/shpool--send-command (funcall command-fn name))))))
 
 (defun my/shpool (name)
   "Open or create a vterm attached to persistent shpool session NAME."
   (interactive (list (my/shpool-read-session-name)))
-  (unless (and name (not (string-empty-p name)))
-    (user-error "Empty shpool session name"))
-  (my/shpool--remember-session name)
-  (let ((buf-name (my/shpool-buffer-name name)))
-    (if (get-buffer buf-name)
-      (pop-to-buffer buf-name)
-      (vterm buf-name)
-      (my/shpool--send-command (my/shpool-attach-command name)))))
+  (my/shpool--open name #'my/shpool-attach-command))
+
+(defun my/shpool-force (name)
+  "Open or create a vterm force-attached to persistent shpool session NAME."
+  (interactive (list (my/shpool-read-session-name)))
+  (my/shpool--open name #'my/shpool-attach-command-force))
 
 (defun my/shpool-project ()
   "Open a project-named persistent shpool session."
@@ -287,33 +383,33 @@ Emacs buffer name."
     t))
 
 (defun my/shpool-add-current-to-restore ()
-  "Add current shpool buffer's session to `dl-shpool-restore-sessions'."
+  "Add current shpool buffer's session to `my-shpool-restore-sessions'."
   (interactive)
   (let ((name (my/shpool-current-session-name)))
-    (add-to-list 'dl-shpool-restore-sessions name)
-    (add-to-list 'dl-shpool-known-sessions name)
+    (add-to-list 'my-shpool-restore-sessions name)
+    (add-to-list 'my-shpool-known-sessions name)
     (customize-save-variable
-      'dl-shpool-restore-sessions
-      dl-shpool-restore-sessions)
+      'my-shpool-restore-sessions
+      my-shpool-restore-sessions)
     (customize-save-variable
-      'dl-shpool-known-sessions
-      dl-shpool-known-sessions)
+      'my-shpool-known-sessions
+      my-shpool-known-sessions)
     (message "Added %s to shpool restore sessions" name)))
 
 (defun my/shpool-remove-from-restore (name)
-  "Remove shpool session NAME from `dl-shpool-restore-sessions'."
+  "Remove shpool session NAME from `my-shpool-restore-sessions'."
   (interactive
     (list
-      (if dl-shpool-restore-sessions
+      (if my-shpool-restore-sessions
         (completing-read "Remove restore session: "
-          dl-shpool-restore-sessions
+          my-shpool-restore-sessions
           nil t)
         (user-error "No shpool restore sessions configured"))))
-  (setq dl-shpool-restore-sessions
-    (delete name dl-shpool-restore-sessions))
+  (setq my-shpool-restore-sessions
+    (delete name my-shpool-restore-sessions))
   (customize-save-variable
-    'dl-shpool-restore-sessions
-    dl-shpool-restore-sessions)
+    'my-shpool-restore-sessions
+    my-shpool-restore-sessions)
   (message "Removed %s from shpool restore sessions" name))
 
 (defun my/shpool-detach-current ()
@@ -325,7 +421,7 @@ This does not kill the persistent shpool session."
     (when (derived-mode-p 'vterm-mode)
       (my/shpool--send-command
         (format "%s detach %s"
-          dl-shpool-command
+          my-shpool-command
           (shell-quote-argument name))))
     (kill-buffer)))
 
@@ -345,7 +441,7 @@ This does not kill the persistent shpool session."
       (my/shpool--forget-session name)
       (if (string-empty-p output)
         (message "Killed shpool session: %s" name)
-        (message "Killed shpool session: %s -- %s" name output)))))
+        (message "Killed shpool session: %s - %s" name output)))))
 
 (defun my/shpool-forget-session (name)
   "Forget local record of shpool session NAME.
@@ -356,12 +452,11 @@ This does not kill the real shpool session."
       (completing-read "Forget local shpool session: "
         (sort
           (delete-dups
-            (append dl-shpool-known-sessions
-              dl-shpool-restore-sessions))
+            (append my-shpool-known-sessions
+              my-shpool-restore-sessions))
           #'string-lessp)
         nil t)))
   (my/shpool--forget-session name)
-
   (message "Forgot local shpool session: %s" name))
 
 (defun my/shpool-list ()
@@ -380,18 +475,19 @@ This does not kill the real shpool session."
     (pop-to-buffer buf)))
 
 (defun my/shpool-restore ()
-  "Restore sessions listed in `dl-shpool-restore-sessions'."
+  "Restore sessions listed in `my-shpool-restore-sessions'."
   (interactive)
-  (if dl-shpool-restore-sessions
-    (dolist (name dl-shpool-restore-sessions)
+  (if my-shpool-restore-sessions
+    (dolist (name my-shpool-restore-sessions)
       (my/shpool name))
     (message "No shpool restore sessions configured")))
 
-(when dl-shpool-auto-restore
+(when my-shpool-auto-restore
   (add-hook 'emacs-startup-hook #'my/shpool-restore))
 
 (global-set-key (kbd "C-c t a") #'my/shpool)          ;; attach/create by name
 (global-set-key (kbd "C-c t p") #'my/shpool-project)  ;; project-named session
+(global-set-key (kbd "C-c t F") #'my/shpool-force)    ;; force attach/create by name
 (global-set-key (kbd "C-c t r") #'my/shpool-restore)
 (global-set-key (kbd "C-c t L") #'my/shpool-list)
 (global-set-key (kbd "C-c t d") #'my/shpool-detach-current)
@@ -399,7 +495,6 @@ This does not kill the real shpool session."
 (global-set-key (kbd "C-c t +") #'my/shpool-add-current-to-restore)
 (global-set-key (kbd "C-c t -") #'my/shpool-remove-from-restore)
 (global-set-key (kbd "C-c t f") #'my/shpool-forget-session)
-;; (global-set-key (kbd "C-c t F") #'my/shpool-force)
 
 (provide 'dl-term)
 ;;; dl-term.el ends here

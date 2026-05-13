@@ -1,10 +1,32 @@
 ;;; init.el --- Emacs init -*- lexical-binding: t; -*-
 
-;; add load paths
-(seq-do
-  (lambda (dir) (add-to-list 'load-path (expand-file-name dir user-emacs-directory)))
-  '("lisp" "core" "editing" "completion" "apps" "org" "dev" "lang"
-     "checkout/combobulate")) ; git checkouts
+(defvar my/lisp-dirs
+  '("lisp" "core" "editing" "completion" "apps" "org" "dev" "lang")
+  "My own Lisp directories, relative to `user-emacs-directory'.")
+
+(defvar my/checkout-lisp-dirs
+  '("checkout/combobulate")
+  "External checkout Lisp directories, relative to `user-emacs-directory'.")
+
+(defun my/expand-emacs-dir (dir)
+  "Expand DIR relative to `user-emacs-directory' as a directory path."
+  (file-name-as-directory
+    (expand-file-name dir user-emacs-directory)))
+
+(defun my/add-load-path-dir (dir)
+  "Add DIR under `user-emacs-directory' to `load-path'."
+  (add-to-list 'load-path (my/expand-emacs-dir dir)))
+
+(defun my/trust-lisp-dir (dir)
+  "Add DIR under `user-emacs-directory' to `trusted-content'."
+  (add-to-list 'trusted-content (my/expand-emacs-dir dir)))
+
+;; Load both my code and external checkouts.
+(mapc #'my/add-load-path-dir
+  (append my/lisp-dirs my/checkout-lisp-dirs))
+
+;; Trust only my own code.
+(mapc #'my/trust-lisp-dir my/lisp-dirs)
 
 ;;; load custom packages
 
@@ -65,3 +87,4 @@
 ;; (set-face-attribute 'default nil :font "JetBrainsMono Nerd Font Mono" :height 115)
 ;; (set-frame-font "Iosevka Nerd Font Mono-12" nil t)
 ;; (set-frame-font "Fira Mono-12" nil t)
+(put 'scroll-left 'disabled nil)
