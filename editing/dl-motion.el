@@ -23,7 +23,15 @@
   :bind (("M-o" . ace-window)))
 
 (use-package goto-chg
-  :bind (("C-," . goto-last-change) ;; CONFLICT? EMBARK
+  :bind (("C-," . goto-last-change)
           ("C-." . goto-last-change-reverse)))
+
+(use-package visual-regexp-steroids
+  :bind
+  ( ("C-c q r" . vr/replace)
+    ("C-c q q" . vr/query-replace)
+    ("C-r"     . vr/isearch-backward)
+    ("C-s"     . vr/isearch-forward)
+    ))
 
 (provide 'dl-motion)

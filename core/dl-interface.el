@@ -13,10 +13,10 @@
 
   (use-short-anwswers t)
   (use-file-dialog nil)
-  
+
   (use-dialog-box nil)
   (confirm-nonexistent-file-or-buffer nil)
-  
+
   (default-frame-alist '((fullscreen . maximised)
                           (vertical-scroll-bars . nil)
                           (horizontal-scroll-bars . nil)
@@ -33,7 +33,7 @@
   ;; UI tweaks
   (line-number-mode t)                        ; Show current line in modeline
   (column-number-mode t)                      ; Show column as well
-  
+
   (menu-bar-mode nil)
   (tool-bar-mode nil)
 
@@ -53,7 +53,7 @@
   ;; Time format
   (display-time-format "%a %F %T")
   (display-time-interval 1)
-  
+
   ;; Show the tab-bar as soon as tab-bar functions are invoked
   (tab-bar-show 1)
   (display-line-numbers-width 3) ; min width
@@ -63,22 +63,22 @@
   ;; TAB BAR
   (tab-bar-mode 1)
   (winner-mode 1)
-  
+
   :init
   (display-time-mode)
-  
+
   ;; Add the time to the tab-bar, if visible
   (add-to-list 'tab-bar-format 'tab-bar-format-align-right 'append)
   (add-to-list 'tab-bar-format 'tab-bar-format-global 'append)
 
   :config
-  
+
   ;; Misc. UI tweaks
-  (blink-cursor-mode -1) 
+  (blink-cursor-mode -1)
   (pixel-scroll-precision-mode)
   (xterm-mouse-mode 1)
   ;;(cua-mode)
-  
+
   ;; Display line numbers in programming mode
   (add-hook 'prog-mode-hook 'display-line-numbers-mode)
 
@@ -91,7 +91,7 @@
 
   ;; Modes to highlight the current line with
   (let ((hl-line-hooks '(text-mode-hook prog-mode-hook)))
-    (mapc (lambda (hook) (add-hook hook 'hl-line-mode)) hl-line-hooks))) 
+    (mapc (lambda (hook) (add-hook hook 'hl-line-mode)) hl-line-hooks)))
 
 ;; Modeline
 (use-package doom-modeline
@@ -134,6 +134,9 @@
   :diminish beacon-mode
   :config
   (beacon-mode 1))
+
+(use-package breadcrumb
+  :ensure t)
 
 (setopt scroll-conservatively 100)
 

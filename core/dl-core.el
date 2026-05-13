@@ -1,3 +1,4 @@
+
 ;;; dl-core.el --- basic setup -*- lexical-binding: t; -*-
 
 (use-package emacs
@@ -21,6 +22,20 @@
 
   (standard-indent 2) ; this is the way
 
+  ;; better defaults
+  (save-interprogram-paste-before-kill t)
+  (apropos-do-all t)
+  (mouse-yank-at-point t)
+  (require-final-newline t)
+  (visible-bell t)
+  (load-prefer-newer t)
+  (backup-by-copying t)
+  (frame-inhibit-implied-resize t)
+  (read-file-name-completion-ignore-case t)
+  (read-buffer-completion-ignore-case t)
+  (completion-ignore-case t)
+  ;; (ediff-window-setup-function 'ediff-setup-windows-plain)
+
   :config
   ;; don't warn when loading stuff from custom-vars.el
   (load custom-file 'noerror 'nomessage)
@@ -29,9 +44,11 @@
   :init
   (server-start)) ; emacsclient
 
-
 ;; Show the help buffer after startup
 ;; (add-hook 'after-init-hook 'help-quick))
+
+(autoload 'zap-up-to-char "misc"
+  "Kill up to, but not including ARGth occurrence of CHAR." t)
 
 (use-package which-key
   :ensure nil
@@ -48,6 +65,9 @@
   (direnv-mode))
 
 (use-package wgrep)
+
+(require 'uniquify)
+(setopt uniquify-buffer-name-style 'forward)
 
 (provide 'dl-core)
 ;;; dl-core.el ends here
