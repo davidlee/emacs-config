@@ -224,22 +224,25 @@ sessions. The default is derived from the current project when available."
   (vterm-send-string command)
   (vterm-send-return))
 
+
 (defun my/shpool-attach-command (name)
-  "Return shell command to attach to shpool session NAME.
-
-If the old Emacs died without detaching cleanly, attach can fail because
-shpool still thinks another client is attached. In that case, detach once
-and retry attach.
-
-The `-D' flag assumes the shpool daemon is already running, for example
-via a systemd user service."
-  (format "%s attach %s -D || (%s detach %s; %s attach %s)"
-    dl-shpool-command
-    (shell-quote-argument name)
-    dl-shpool-command
-    (shell-quote-argument name)
-    dl-shpool-command
+  "Return shell command to attach to shpool session NAME."
+  (format "exec %s attach %s"
+    my-shpool-command
     (shell-quote-argument name)))
+
+(defun my/shpool-force (name)
+  "Open or create a vterm force-attached to persistent shpool session NAME."
+  (interactive (list (my/shpool-read-session-name)))
+  (unless (and name (not (string-empty-p name)))
+    (user-error "Empty shpool session name"))
+  (my/shpool--remember-session name)
+  (let ((buf-name (my/shpool-buffer-name name)))
+    (if (get-buffer buf-name)
+      (pop-to-buffer buf-name)
+      (vterm buf-name)
+      (my/shpool--send-command
+        (my/shpool-attach-command-force name)))))
 
 (defun my/shpool (name)
   "Open or create a vterm attached to persistent shpool session NAME."
@@ -396,6 +399,7 @@ This does not kill the real shpool session."
 (global-set-key (kbd "C-c t +") #'my/shpool-add-current-to-restore)
 (global-set-key (kbd "C-c t -") #'my/shpool-remove-from-restore)
 (global-set-key (kbd "C-c t f") #'my/shpool-forget-session)
+;; (global-set-key (kbd "C-c t F") #'my/shpool-force)
 
 (provide 'dl-term)
 ;;; dl-term.el ends here
