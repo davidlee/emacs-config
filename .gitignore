@@ -3,6 +3,9 @@
 /eln-cache
 /elpaca
 
+.emacs.desktop
+.emacs.desktop.lock
+
 *.eld
 
 /history

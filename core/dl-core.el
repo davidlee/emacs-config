@@ -25,7 +25,10 @@
   ;; don't warn when loading stuff from custom-vars.el
   (load custom-file 'noerror 'nomessage)
 
-  (windmove-default-keybindings '(ctrl shift)))
+  (windmove-default-keybindings '(ctrl shift))
+  :init
+  (server-start)) ; emacsclient
+
 
 ;; Show the help buffer after startup
 ;; (add-hook 'after-init-hook 'help-quick))
@@ -47,3 +50,4 @@
 (use-package wgrep)
 
 (provide 'dl-core)
+;;; dl-core.el ends here

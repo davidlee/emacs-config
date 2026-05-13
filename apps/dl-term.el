@@ -1,10 +1,5 @@
 ;;; dl-term.el --- terminals -*- lexical-binding: t; -*-
 
-
-(setq dl-shpool-sessions '("main" "claude"))
-(setq dl-shpool-auto-restore nil)
-                                        ; (setq dl-shpool-auto-restore t)
-
 ;;
 ;; EAT
 ;;
@@ -103,6 +98,9 @@
 ;;
 (require 'subr-x)
 
+(setq dl-shpool-sessions '("main" "claude"))
+(setq dl-shpool-auto-restore nil)
+
 (defgroup dl-shpool nil
   "Persistent vterm sessions via shpool."
   :group 'terminals)
@@ -142,7 +140,7 @@ not every session you have ever opened."
     (buffer-name)))
 
 (defun dl/shpool-read-session-name (&optional prompt)
-  "Read a shpool session name with completion.
+  "Read a shpool session name, asking PROMPT, with completion.
 
 The default is derived from the current project when available."
   (let* ((default (dl/shpool--session-name-at-point))

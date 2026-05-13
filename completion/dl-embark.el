@@ -12,8 +12,8 @@
   (vertico-multiform-mode)
   (add-to-list 'vertico-multiform-categories '(embark-keybinding grid))
 
-  :bind (("C-c a" . embark-act) ; C-. ?
-          ("C-;" . embark-dwim)
+  :bind (("C-c a"  . embark-act) ; C-. ?
+          ("C-;"   . embark-dwim)
           ("C-h B" . embark-bindings))
   :init
   ;; Add the option to run embark when using avy
