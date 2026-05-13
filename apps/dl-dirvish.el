@@ -9,7 +9,6 @@
   (put 'dired-find-alternate-file 'disabled nil))
 
 (use-package dirvish
-  :ensure t
   :init
 
   :custom

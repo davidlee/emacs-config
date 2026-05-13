@@ -1,7 +1,6 @@
 ;; https://github.com/xenodium/dwim-shell-command
 ;; https://github.com/xenodium/dwim-shell-command/blob/main/dwim-shell-commands.el
 (use-package dwim-shell-command
-  :ensure t
   :bind (([remap shell-command] . dwim-shell-command)
           :map dired-mode-map
           ([remap dired-do-async-shell-command] . dwim-shell-command)

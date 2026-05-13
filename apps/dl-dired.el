@@ -1,14 +1,12 @@
 ;;; -*- lexical-binding: t; -*-
 
 (use-package dired-preview
-  :ensure t
   :custom
   (setq dired-preview-delay 0.3)
   :config
   (dired-preview-global-mode 1))
 
 (use-package ready-player
-  :ensure t
   :config
   (ready-player-mode +1))
 

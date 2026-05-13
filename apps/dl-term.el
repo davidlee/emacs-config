@@ -5,7 +5,6 @@
 ;;
 
 (use-package eat
-  :ensure t
   :custom
   (eat-term-name "xterm")
   (eat-eshell-mode)                     ; use Eat to handle term codes in program output
@@ -49,13 +48,11 @@
 ;;
 
 (use-package vterm
-  :ensure t
   :commands vterm
   :config
   (setq vterm-max-scrollback 100000))
 
 (use-package multi-vterm
-  :ensure t
   :after vterm
   :bind
   ( ("C-c t t" . multi-vterm)

@@ -1,8 +1,6 @@
 ;;; dl-embark.el --- EMBARK -*- lexical-binding: t; -*-
 
 (use-package embark
-  :ensure t
-  :demand t
   :custom
   (prefix-help-command #'embark-prefix-help-command)
   :after (avy embark-consult)
@@ -32,7 +30,6 @@
   (setf (alist-get ?. avy-dispatch-alist) 'bedrock/avy-action-embark))
 
 (use-package embark-consult
-  :ensure t
   :after (embark consult))
 
 (provide 'dl-embark)

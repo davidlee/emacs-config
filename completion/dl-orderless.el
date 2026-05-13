@@ -1,7 +1,6 @@
 ;;; dl-orderless.el --- Orderless config -*- lexical-binding: t; -*-
 
 (use-package orderless
-  :ensure t
   :custom
   (completion-styles '(orderless basic))
   (completion-category-overrides '((file (styles partial-completion))))

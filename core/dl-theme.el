@@ -1,7 +1,6 @@
 ;;; dl-theme.el --- Theme settings -*- lexical-binding: f; -*-
 
 ;; (use-package modus-themes
-;;   :ensure t
 ;;   :custom
 ;;   (modus-themes-mode-line '(accented borderless)
 ;;     modus-themes-bold-constructs t
@@ -19,7 +18,6 @@
 ;;   (define-key global-map (kbd "<f5>") #'modus-themes-toggle))
 
 ;; (use-package ef-themes
-;;   :ensure t
 ;;   :custom
 ;;   ;; This makes the Modus commands listed below consider only the Ef
 ;;   ;; themes.  For an alternative that includes Modus and all
@@ -63,7 +61,6 @@
     (message "Loaded theme: %s" theme)))
 
 (use-package doom-themes
-  :ensure t
   ;;  :bind
   ;;(("<f5>" . my/rotate-themes))
   :custom

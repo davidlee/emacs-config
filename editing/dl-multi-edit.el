@@ -16,7 +16,6 @@
 
 ;; (setq-local combobulate-checkout-path (expand-file-name "checkout/combobulate" user-emacs-directory))
 ;; (use-package combobulate
-;;   :ensure t
 ;;   :vc (:url "https://github.com/mickeynp/combobulate.git")
 ;;   :custom
 ;;   ;; You can customize Combobulate's key prefix here.

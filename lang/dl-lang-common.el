@@ -7,17 +7,13 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (use-package markdown-mode
-  :ensure t
   :hook ((markdown-mode . visual-line-mode)))
 
-(use-package yaml-mode
-  :ensure t)
+(use-package yaml-mode)
 
-(use-package json-mode
-  :ensure t)
+(use-package json-mode)
 
-(use-package go-mode
-  :ensure t)
+(use-package go-mode)
 
 
 ;; Emacs ships with a lot of popular programming language modes. If it's not
@@ -31,7 +27,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (use-package tempel
-  :ensure t
   ;; By default, tempel looks at the file "templates" in
   ;; user-emacs-directory, but you can customize that with the
   ;; tempel-path variable:

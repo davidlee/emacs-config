@@ -4,15 +4,15 @@
 ;; after adding a new use-package declaration:
 ;; -- ensure file is known to git (staged or committed previously)
 ;; -- cd ~/flakes && just home-switch
-(setopt package-enable-at-startup nil
-	use-package-always-ensure nil)
 
-(setq package-archives
-  '(("gnu" . "https://elpa.gnu.org/packages/")
-     ("nongnu" . "https://elpa.nongnu.org/nongnu/")
-     ("melpa" . "https://melpa.org/packages/")))
+(setopt
+  package-enable-at-startup nil
+  package-archives nil ; don't download if missing
+  use-package-always-ensure nil)
+
+(require 'package)
+(package-initialize)
 
 (require 'use-package)
-(require 'package)
 (require 'package-vc)
-(package-initialize)
+;;; early-init.el ends here

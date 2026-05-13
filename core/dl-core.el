@@ -95,7 +95,6 @@
 (setopt uniquify-buffer-name-style 'forward)
 
 (use-package atomic-chrome
-  :ensure t
   :config
   (setq atomic-chrome-extension-type-list '(ghost-text))
   (setq atomic-chrome-default-major-mode 'markdown-mode)

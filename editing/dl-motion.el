@@ -1,7 +1,6 @@
 ;;; dl-motion.el --- Getting around -*- lexical-binding: t; -*-
 
 (use-package dumb-jump
-  :ensure t
   :custom
   (dumb-jump-prefer-searcher 'rg)
   (xref-show-definitions-function #'consult-xref)
@@ -12,8 +11,6 @@
 ;;  :bind (("M-j" . avy-goto-char-timer)))
 
 (use-package avy
-  :ensure t
-  :demand t
   :bind  ( ("C-:"   . avy-goto-char)
            ("C-'"   . avy-goto-char-2)
            ("C-c j" . avy-goto-line)

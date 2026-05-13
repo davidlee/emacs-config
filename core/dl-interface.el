@@ -116,11 +116,9 @@
   :config
   (spacious-padding-mode 1))
 
-(use-package diminish
-  :ensure t) ; disable
+(use-package diminish) ; disable
 
-(use-package nerd-icons
-  :ensure t)
+(use-package nerd-icons)
 
 (use-package nerd-icons-completion
   :after marginalia
@@ -132,18 +130,15 @@
   :hook (dired-mode . nerd-icons-dired-mode))
 
 (use-package beacon
-  :ensure t
   :diminish beacon-mode
   :config
   (beacon-mode 1))
 
-(use-package breadcrumb
-  :ensure t)
+(use-package breadcrumb)
 
 (use-package shackle) ; https://depp.brause.cc/shackle/
 
 (use-package popper
-  :ensure t ; or :straight t
   :bind ( ("C-`"   . popper-toggle)
           ("M-`"   . popper-cycle)
           ("C-M-`" . popper-toggle-type))

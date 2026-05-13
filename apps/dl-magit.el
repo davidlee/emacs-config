@@ -11,6 +11,11 @@
 
 (use-package git-modes)
 
-(use-package transient :ensure t)
+(use-package transient)
+
+;; get diff mode for commits
+(use-package git-commit
+  :ensure nil
+  :mode ("/COMMIT_EDITMSG\\'" . git-commit-mode))
 
 (provide 'dl-magit)

@@ -2,7 +2,6 @@
 
 (use-package
   fontaine
-  :ensure t
   :custom
   (fontaine-presets '((small
                         :default-family "JetBrainsMono Nerd Font Mono"
