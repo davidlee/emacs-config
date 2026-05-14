@@ -7,19 +7,27 @@
 ;; `eaf-get-theme-foreground-color').
 
 (use-package eaf
+  :ensure nil
   :demand t)
 
 (use-package eaf-browser
+  :ensure nil
   :demand t
   :after eaf)
 
 (use-package eaf-pdf-viewer
+  :ensure nil
   :demand t
   :after eaf)
 
 (use-package eaf-image-viewer
+  :ensure nil
   :demand t
   :after eaf)
+
+(use-package eaf-markdown-previewer
+  :ensure nil
+  :vc (:url "https://github.com/emacs-eaf/eaf-markdown-previewer.git"))
 
 (provide 'dl-eaf)
 ;;; dl-eaf.el ends here
