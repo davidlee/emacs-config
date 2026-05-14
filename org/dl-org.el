@@ -55,9 +55,14 @@
 
 
 ;;
+;; Google calendar
+;;
+(use-package org-gcal)
+
+;;
 ;; custom functions for periodic notes
 ;;
-(defun my/org-daily-note ()
+(defun my/daily-note ()
   "Open today's plain Org daily note."
   (interactive)
   (let* ((dir (expand-file-name "2026" org-directory))
@@ -74,7 +79,7 @@
 
 
 
-(defun my/org-weekly-note ()
+(defun my/weekly-note ()
   "Open this week's plain Org weekly note."
   (interactive)
   (let* ((dir (expand-file-name "2026" org-directory))
@@ -90,8 +95,8 @@
 
 ;; and keybinds
 
-(global-set-key (kbd "C-c n j") #'my/org-daily-note)
-(global-set-key (kbd "C-c n W") #'my/org-weekly-note)
+(global-set-key (kbd "C-c n j") #'my/daily-note)
+(global-set-key (kbd "C-c n W") #'my/weekly-note)
 
 (provide 'dl-org)
 

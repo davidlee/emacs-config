@@ -12,15 +12,15 @@
        "6dcf1ca4c7432773084b9d52649ee5eb2c663131c4c06859f648dea98d9acb3e"
        default))
  '(dl-shpool-known-sessions '(".emacs.d" "hris" "team" "claude"))
- '(my-shpool-known-sessions '("example" ".emacs.d"))
+ '(my-shpool-known-sessions '("team" "flakes" "example" ".emacs.d"))
  '(package-selected-packages
-    '(ace-window apheleia beacon cape claude-code-ide combobulate
-       consult-eglot consult-yasnippet corfu denote diff-hl diminish
-       dired-preview dired-subtree diredfl dirvish doom-modeline
-       dumb-jump eat editorconfig elisp-demos embark-consult eros
-       expreg git-modes go-mode goto-chg grip-mode helpful jinx
-       json-mode kind-icon magit marginalia markdown-toc meow-vterm
-       modus-themes multiple-cursors nerd-icons-completion
+    '(ace-window agent-shell apheleia beacon cape claude-code-ide
+       combobulate consult-eglot consult-yasnippet corfu denote
+       diff-hl diminish dired-preview dired-subtree diredfl dirvish
+       doom-modeline dumb-jump eaf eat editorconfig elisp-demos
+       embark-consult eros expreg git-modes go-mode goto-chg grip-mode
+       helpful jinx json-mode kind-icon magit marginalia markdown-toc
+       meow-vterm modus-themes multiple-cursors nerd-icons-completion
        nerd-icons-dired nix-mode olivetti orderless org-roam
        package-lint-flymake puni ready-player shut-up slack
        spacious-padding suggest tempel treesit-auto undo-fu
@@ -28,8 +28,10 @@
        visual-fill-column vundo which-key ws-butler yaml-mode
        yasnippet-snippets))
  '(package-vc-selected-packages
-    '((claude-code-ide :url
-        "https://github.com/manzaltu/claude-code-ide.el")
+    '((eaf :url
+        "https://github.com/emacs-eaf/emacs-application-framework.git")
+       (claude-code-ide :url
+         "https://github.com/manzaltu/claude-code-ide.el")
        (combobulate :vc-backend Git :url
          "https://github.com/mickeynp/combobulate.git")
        (meow-vterm :url "https://github.com/accelbread/meow-vterm.git")))

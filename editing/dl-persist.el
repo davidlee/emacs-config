@@ -5,25 +5,66 @@
 (use-package emacs
   :ensure nil
   :custom
-  ;; Automatically reread from disk
-  ;; if the underlying file changes
-  (auto-revert-avoid-polling t)
-  (auto-revert-interval 3)
-  (auto-revert-check-vc-info t)
+  (auto-revert-avoid-polling nil)
+  (auto-revert-interval 1)
   (global-auto-revert-non-file-buffers t)
-  (global-auto-revert-mode)
+  ;; (auto-revert-check-vc-info t)
+  :config
+  (global-auto-revert-mode 1))
 
+(use-package
+  emacs :ensure nil
+  :custom
   ;; history & recent files
   (history-length 80)
   (save-place-mode 1)
-
   (desktop-save-mode 1)
-  (desktop-restore-frames nil)
-  ) ; dired, etc
+  (desktop-restore-frames nil))
+
+;; Autosave Aggressively
+;; Save visited files on buffer/window/frame focus loss.
+(add-hook 'buffer-list-update-hook #'my/save-buffer-on-focus-change)
+(add-hook 'focus-out-hook #'my/save-all-file-buffers)
+
+(defun my/save-buffer-on-focus-change ()
+  "Save the previously current file buffer when switching buffers."
+  (when-let ((buf (other-buffer (current-buffer) t)))
+    (when (buffer-live-p buf)
+      (with-current-buffer buf
+        (my/save-buffer-if-reasonable)))))
+
+(defun my/save-buffer-if-reasonable ()
+  "Save current buffer if it is a normal modified file buffer."
+  (when (and buffer-file-name
+          (buffer-modified-p)
+          (file-writable-p buffer-file-name)
+          ;; Avoid saving remote/TRAMP buffers automatically.
+          (not (file-remote-p buffer-file-name))
+          ;; Avoid saving temporary/special buffers.
+          (not (string-prefix-p " " (buffer-name))))
+    (save-buffer)))
+
+(defun my/save-all-file-buffers ()
+  "Save all reasonable file buffers."
+  (dolist (buf (buffer-list))
+    (with-current-buffer buf
+      (my/save-buffer-if-reasonable))))
 
 
+;;; Save after idle time
 
-;; eglot auto-format with error handling
+(defvar my/auto-save-idle-timer nil)
+
+(defun my/auto-save-after-idle ()
+  "Save all reasonable file buffers after idle time."
+  (my/save-all-file-buffers))
+
+(setq my/auto-save-idle-timer
+  (run-with-idle-timer 3 t #'my/auto-save-after-idle))
+
+;;
+;; Eglot - auto-format with error handling
+;;
 
 (defun my/eglot-connected-p ()
   "Return non-nil when current buffer has a live Eglot server."
@@ -65,6 +106,5 @@
 
 (use-package vundo
   :bind (("C-x u" . vundo)))
-
 
 (provide 'dl-persist)

@@ -1,50 +1,7 @@
 ;;; init.el --- Emacs init -*- lexical-binding: t; -*-
 
-(defvar my/lisp-dirs
-  '("lisp" "core" "editing" "completion" "apps" "org" "dev" "lang")
-  "My own Lisp directories, relative to `user-emacs-directory'.")
-
-(defvar my/checkout-lisp-dirs
-  '("checkout/example")
-  "External checkout Lisp directories, relative to `user-emacs-directory'.")
-
-(defun my/expand-emacs-dir (dir)
-  "Expand DIR relative to `user-emacs-directory' as a directory path."
-  (file-name-as-directory
-    (expand-file-name dir user-emacs-directory)))
-
-(defun my/add-load-path-dir (dir)
-  "Add DIR under `user-emacs-directory' to `load-path'."
-  (add-to-list 'load-path (my/expand-emacs-dir dir)))
-
-(defun my/trust-lisp-dir (dir)
-  "Add DIR under `user-emacs-directory' to `trusted-content'."
-  (add-to-list 'trusted-content (my/expand-emacs-dir dir)))
-
-;; Load both my code and external checkouts.
-(mapc #'my/add-load-path-dir
-  (append my/lisp-dirs my/checkout-lisp-dirs))
-
-;; Trust only my own code.
-(mapc #'my/trust-lisp-dir my/lisp-dirs)
-
-;; Ensure Emacs loads the most recent byte-compiled files.
-(setq load-prefer-newer t)
-
-;; NIX path
-;; (use-package exec-path-from-shell
-;;   :if (memq window-system '(mac ns x pgtk))
-;;   :config
-;;   (exec-path-from-shell-initialize))
-
-(add-to-list 'exec-path "~/.nix-profile/bin")
-(add-to-list 'exec-path "/run/current-system/sw/bin")
-(add-to-list 'exec-path "~/.local/bin")
-(setenv "PATH" (concat "~/.nix-profile/bin:" (getenv "PATH")))
-
-;;; load custom packages
-
 ;; CORE
+(require 'dl-compile)
 (require 'dl-core)
 (require 'dl-backup)
 (require 'dl-interface)
@@ -61,10 +18,8 @@
 (require 'dl-treesit)
 (require 'dl-delimiters)
 
-;; Completion
-(require 'dl-completion) ; mostly vanilla emacs completion
-
-;; VOMPECCC
+;; Completion / VOMPECCC
+(require 'dl-completion) ; vanilla emacs completion
 (require 'dl-vertico)    ; better minibuffer UI
 (require 'dl-orderless)  ; fuzzy / flexible matching
 (require 'dl-marginalia) ; completion metadata
@@ -82,14 +37,6 @@
 (require 'dl-persist)
 (require 'dl-indent)
 
-;; Apps
-(require 'dl-term)
-(require 'dl-magit)
-(require 'dl-term)
-(require 'dl-claude)
-;; (require 'dl-slack)
-;; (require 'dl-dirvish)
-
 ;; Org
 (require 'dl-org)
 (require 'dl-denote)
@@ -100,6 +47,18 @@
 (require 'dl-markdown)
 (require 'dl-lang-common)
 (require 'dl-nix)
+
+;; Apps
+(require 'dl-term)
+(require 'dl-magit)
+(require 'dl-term)
+(require 'dl-claude)
+(require 'dl-eaf)
+(require 'dl-agent-shell)
+
+;; (require 'dl-spotify)
+;; (require 'dl-slack)
+;; (require 'dl-dirvish)
 
 ;; elisp: util
 (require 'dl-insert-elisp-header)

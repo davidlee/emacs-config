@@ -38,4 +38,7 @@
 (use-package git-link) ; https://github.com/sshaw/git-link
 (use-package copy-as-format) ; https://github.com/sshaw/copy-as-format
 
+;; SELECTION
+(use-package expand-region)
+
 (provide 'dl-motion)

@@ -154,5 +154,7 @@
 
 (setopt scroll-conservatively 100)
 
+(use-package transpose-frame)
+
 (provide 'dl-interface)
 ;;; dl-interface.el ends here

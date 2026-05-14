@@ -15,4 +15,7 @@
 
 (require 'use-package)
 (require 'package-vc)
+
+(load-file "~/.emacs.d/core/dl-path.el")
+
 ;;; early-init.el ends here

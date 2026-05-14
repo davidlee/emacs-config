@@ -2,6 +2,10 @@
 /emacs-backup
 /eln-cache
 /elpaca
+tramp
+oauth2.*
+*.plstore
+.org-generic-*
 
 .emacs.desktop
 .emacs.desktop.lock
@@ -12,7 +16,7 @@
 /history
 /places
 /recentf
-
+/eaf
 /transient
 /var
 /undo-fu-session
