@@ -41,7 +41,10 @@
           ;; Avoid saving remote/TRAMP buffers automatically.
           (not (file-remote-p buffer-file-name))
           ;; Avoid saving temporary/special buffers.
-          (not (string-prefix-p " " (buffer-name))))
+          (not (string-prefix-p " " (buffer-name)))
+          ;; Never autosave in-progress commit messages or other
+          ;; with-editor sessions; the user hasn't finished composing.
+          (not (derived-mode-p 'git-commit-mode 'with-editor-mode)))
     (save-buffer)))
 
 (defun my/save-all-file-buffers ()
