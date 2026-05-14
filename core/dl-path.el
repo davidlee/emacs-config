@@ -41,9 +41,15 @@ Returned path is abbreviated (\"~/...\") so it matches what
 (add-to-list 'exec-path "~/.local/bin")
 (setenv "PATH" (concat "~/.nix-profile/bin:" (getenv "PATH")))
 
-(use-package direnv
+(require 'use-package-ensure-system-package)
+
+;;(use-package direnv
+;;  :config
+;; (direnv-mode))
+
+(use-package envrc
   :config
-  (direnv-mode))
+  (envrc-global-mode))
 
 (provide 'dl-path)
 ;;; dl-path.el ends here

@@ -11,20 +11,27 @@
   (global-set-key (kbd "C-s-<up>")    #'windmove-up)
   (global-set-key (kbd "C-s-<down>")  #'windmove-down))
 
-(keymap-global-set "s-<prior>" 'switch-to-next-buffer)
-(keymap-global-set "s-<next>" 'switch-to-prev-buffer)
+;; TAB-BAR // Buffer
+(keymap-global-set "s-<prior>" 'tab-bar-switch-to-next-tab)
+(keymap-global-set "s-<next>" 'tab-bar-switch-to-prev-tab)
+(keymap-global-set "M-s-<prior>" 'switch-to-next-buffer)
+(keymap-global-set "M-s-<next>" 'switch-to-prev-buffer)
 
 (global-set-key (kbd "M-/") 'hippie-expand)
 (global-set-key (kbd "C-x C-b") 'ibuffer)
 (global-set-key (kbd "M-z") 'zap-up-to-char)
 
-(global-set-key (kbd "C-s") 'isearch-forward-regexp)
-(global-set-key (kbd "C-r") 'isearch-backward-regexp)
-(global-set-key (kbd "C-M-s") 'isearch-forward)
-(global-set-key (kbd "C-M-r") 'isearch-backward)
+;; Search -- see dl-search.el
+
+;; (global-set-key (kbd "C-s")   'isearch-forward-regexp)
+;; (global-set-key (kbd "C-r")   'isearch-backward-regexp)
+;; (global-set-key (kbd "C-M-s") 'isearch-forward)
+;; (global-set-key (kbd "C-M-r") 'isearch-backward)
 
 ;; Use Hydras for repeatable, sticky subinterfaces
-(use-package hydra)
+(use-package hydra
+  :commands defhydra)
+
 
 (use-package which-key
   :ensure nil

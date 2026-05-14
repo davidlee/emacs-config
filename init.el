@@ -7,7 +7,7 @@
 (require 'dl-interface)
 (require 'dl-theme)
 (require 'dl-font)
-(require 'dl-keybind)
+(require 'dl-keymap)
 ;; (require 'dl-god)
 (require 'dl-meow)
 (require 'dl-help)
@@ -34,6 +34,7 @@
 (require 'dl-project)
 (require 'dl-snippets)
 (require 'dl-motion)
+(require 'dl-search)
 (require 'dl-persist)
 (require 'dl-indent)
 
@@ -50,6 +51,7 @@
 
 ;; Apps
 (require 'dl-term)
+(require 'dl-shpool)
 (require 'dl-magit)
 (require 'dl-term)
 (require 'dl-claude)
@@ -57,6 +59,7 @@
 (require 'dl-agent-shell)
 (require 'treemacs)
 
+(require 'dl-keybind)
 ;; (require 'dl-spotify)
 ;; (require 'dl-slack)
 ;; (require 'dl-dirvish)

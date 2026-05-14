@@ -2,10 +2,10 @@
 (setopt dictionary-server "localhost")
 
 (use-package inflow
-  :vc (:url "https://github.com/eshrh/inflow.el.git"))
-
-(meow-normal-define-key
-  '("`" . far-fill-paragraph))
+  :vc (:url "https://github.com/eshrh/inflow.el.git")
+  :config
+  (meow-normal-define-key
+    '("`" . far-fill-paragraph)))
 
 (provide 'dl-prose)
 ;;; dl-prose.el ends here

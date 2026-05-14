@@ -4,7 +4,7 @@
 
 (use-package dired-preview
   :custom
-  (setq dired-preview-delay 0.3)
+  (setq dired-preview-delay 0.1)
   :config
   (dired-preview-global-mode 1))
 

@@ -1,4 +1,5 @@
 ;; https://github.com/xenodium/dwim-shell-command
+
 ;; https://github.com/xenodium/dwim-shell-command/blob/main/dwim-shell-commands.el
 (use-package dwim-shell-command
   :bind (([remap shell-command] . dwim-shell-command)

@@ -1,5 +1,7 @@
 ;;; dl-orderless.el --- Vertico config -*- lexical-binding: t; -*-
 
+;; lots here https://github.com/minad/vertico/tree/main
+
 (use-package vertico
   :demand t
   :custom
@@ -34,5 +36,21 @@
   ;; Do not allow the cursor in the minibuffer prompt
   (minibuffer-prompt-properties
     '(read-only t cursor-intangible t face minibuffer-prompt)))
+
+(keymap-set vertico-map "M-?" #'minibuffer-completion-help)
+(keymap-set vertico-map "M-RET" #'minibuffer-force-complete-and-exit)
+(keymap-set vertico-map "M-TAB" #'minibuffer-complete)
+
+;; Configure directory extension.
+(use-package vertico-directory
+  :after vertico
+  :ensure nil
+  ;; More convenient directory navigation commands
+  :bind (:map vertico-map
+          ("RET" . vertico-directory-enter)
+          ("DEL" . vertico-directory-delete-char)
+          ("M-DEL" . vertico-directory-delete-word))
+  ;; Tidy shadowed file names
+  :hook (rfn-eshadow-update-overlay . vertico-directory-tidy))
 
 (provide 'dl-vertico)

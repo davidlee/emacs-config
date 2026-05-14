@@ -18,4 +18,9 @@
   :ensure nil
   :mode ("/COMMIT_EDITMSG\\'" . git-commit-mode))
 
+;; (setq ediff-diff-options "")
+;; (setq ediff-custom-diff-options "-u")
+;; (setq ediff-window-setup-function 'ediff-setup-windows-plain)
+;; (setq ediff-split-window-function 'split-window-vertically)
+
 (provide 'dl-magit)

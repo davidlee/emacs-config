@@ -4,7 +4,7 @@
   :ensure nil
   :init
   ;; Don't litter file system with *~ backup files; put them all somewhere nice
-  (defun bedrock--backup-file-name (fpath)
+  (defun my--backup-file-name (fpath)
     "Return a new file path of a given file path.
      If the new path's directories does not exist, create them."
     (let* ((backupRootDir (concat user-emacs-directory "emacs-backup/"))
@@ -13,7 +13,7 @@
       (make-directory (file-name-directory backupFilePath) (file-name-directory backupFilePath))
       backupFilePath))
   :custom
-  (make-backup-file-name-function 'bedrock--backup-file-name)
+  (make-backup-file-name-function 'my--backup-file-name)
   (auto-save-file-name-transforms `((".*", (concat user-emacs-directory "auto-save/") t))))
 
 (provide 'dl-backup)

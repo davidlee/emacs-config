@@ -28,17 +28,6 @@
   :bind (("C-," . goto-last-change)
           ("C-." . goto-last-change-reverse)))
 
-(use-package visual-regexp-steroids
-  :bind
-  ( ("C-c q r" . vr/replace)
-    ("C-c q q" . vr/query-replace)
-    ("C-r"     . vr/isearch-backward)
-    ("C-s"     . vr/isearch-forward)
-    ))
-
-(use-package rg
-  :config
-  (rg-enable-default-bindings)) ; https://github.com/dajva/rg.el
 
 (use-package git-link) ; https://github.com/sshaw/git-link
 (use-package copy-as-format) ; https://github.com/sshaw/copy-as-format

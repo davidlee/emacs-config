@@ -25,11 +25,13 @@
        nix-mode olivetti orderless org-roam package-lint-flymake puni
        ready-player shut-up slack spacious-padding suggest tempel
        treesit-auto undo-fu undo-fu-session use-package
-       vertico-prescient visual-fill-column vundo which-key ws-butler
-       yaml-mode yasnippet-snippets))
+       use-package-ensure-system-package vertico-prescient
+       visual-fill-column vundo which-key ws-butler yaml-mode
+       yasnippet-snippets))
  '(package-vc-selected-packages
-    '((eaf-markdown-previewer :url
-        "https://github.com/emacs-eaf/eaf-markdown-previewer.git")
+    '((inflow :url "https://github.com/eshrh/inflow.el.git")
+       (eaf-markdown-previewer :url
+         "https://github.com/emacs-eaf/eaf-markdown-previewer.git")
        (eaf :url
          "https://github.com/emacs-eaf/emacs-application-framework.git")
        (claude-code-ide :url

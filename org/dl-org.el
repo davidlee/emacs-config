@@ -53,12 +53,10 @@
 
 (global-set-key (kbd "C-c c") #'org-capture)
 
-(add-hook 'org-mode-hook #'org-modern-mode)
-(add-hook 'org-agenda-finalize-hook #'org-modern-agenda)
-;;
-;; Google calendar
-;;
-(use-package org-gcal)
+(use-package org-modern
+  :after
+  (add-hook 'org-mode-hook #'org-modern-mode)
+  (add-hook 'org-agenda-finalize-hook #'org-modern-agenda))
 
 ;;
 ;; custom functions for periodic notes

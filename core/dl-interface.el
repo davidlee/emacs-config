@@ -90,13 +90,13 @@
   (when (display-graphic-p)
     (context-menu-mode))
 
-  (defun pixel-scroll-setup ()
+  (defun my/pixel-scroll-setup ()
     (interactive)
     (setq pixel-scroll-precision-large-scroll-height 1)
     (setq pixel-scroll-precision-interpolation-factor 1))
 
   (when (boundp 'pixel-scroll-precision-mode)
-    (pixel-scroll-setup)
+    (my/pixel-scroll-setup)
     (add-hook 'prog-mode-hook #'pixel-scroll-precision-mode)
     (add-hook 'org-mode-hook #'pixel-scroll-precision-mode))
 
@@ -106,44 +106,71 @@
 
 ;; Modeline
 (use-package doom-modeline
-  :demand t
+  ;; :demand t
+  :defer t
   :custom
   (doom-modeline-height 50)
   (doom-modeline-icon t)
   (doom-modeline-time-clock-size 0.4)
-  (doom-modeline-spc-face-overrides (list :family (face-attribute 'fixed-pitch :family)))
+  (doom-modeline-spc-face-overrides
+    (list :family (face-attribute 'fixed-pitch :family)))
   :config
   (if (facep 'mode-line-active)
-    (set-face-attribute 'mode-line-active nil :family "NerdFontMono" :height 120) ; For 29+
-    (set-face-attribute 'mode-line nil :family "NerdFontMono" :height 120))
-  (set-face-attribute 'mode-line-inactive nil :family "NerdFontMono" :height 120)
+    (set-face-attribute 'mode-line-active nil
+      :family "NerdFontMono" :height 120) ; For 29+
+    (set-face-attribute 'mode-line nil
+      :family "NerdFontMono" :height 120))
+  (set-face-attribute 'mode-line-inactive nil
+    :family "NerdFontMono" :height 120)
 
-  (doom-modeline-mode 1))
+  (doom-modeline-mode nil))
 
+(use-package telephone-line
+  :defer t
+  :config
+  (telephone-line-mode 1))
 
 (use-package spacious-padding
   :config
   (spacious-padding-mode 1))
 
-(use-package diminish) ; disable
+(use-package diminish
+  :defer t) ; disable
 
-(use-package nerd-icons)
+(use-package nerd-icons
+  :defer t)
 
 (use-package nerd-icons-completion
   :after marginalia
+  :defer t
+  :commands (nerd-icons-completion-mode nerd-icons-completion-marginalia-setup)
   :config
   (nerd-icons-completion-mode)
   (add-hook 'marginalia-mode-hook #'nerd-icons-completion-marginalia-setup))
 
 (use-package nerd-icons-dired
+  :defer t
   :hook (dired-mode . nerd-icons-dired-mode))
 
 (use-package beacon
   :diminish beacon-mode
   :config
+  :defer t
   (beacon-mode 1))
 
-(use-package breadcrumb)
+(setopt scroll-conservatively 100)
+
+(use-package breadcrumb
+  :defer t)
+
+(use-package transpose-frame
+  :commands (transpose-frame)
+  :bind
+  (("C-x 7" . transpose-frame)))
+
+(global-prettify-symbols-mode)
+
+;; TAME POPUPS
 
 (use-package shackle) ; https://depp.brause.cc/shackle/
 
@@ -151,6 +178,8 @@
   :bind ( ("C-`"   . popper-toggle)
           ("M-`"   . popper-cycle)
           ("C-M-`" . popper-toggle-type))
+  :defer t
+  :commands (popper-mode popper-echo-mode)
   :config
   (setq popper-reference-buffers
     '("\\*Messages\\*"
@@ -160,10 +189,6 @@
        compilation-mode))
   (popper-mode +1)
   (popper-echo-mode +1)) ; For echo area hints
-
-(setopt scroll-conservatively 100)
-
-(use-package transpose-frame)
 
 (provide 'dl-interface)
 ;;; dl-interface.el ends here
