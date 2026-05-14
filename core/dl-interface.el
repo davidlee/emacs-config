@@ -74,7 +74,6 @@
   (add-to-list 'tab-bar-format 'tab-bar-format-global 'append)
 
   :config
-
   ;; Misc. UI tweaks
   (blink-cursor-mode -1)
   (pixel-scroll-precision-mode)
@@ -90,6 +89,16 @@
   ;; Make right-click do something sensible
   (when (display-graphic-p)
     (context-menu-mode))
+
+  (defun pixel-scroll-setup ()
+    (interactive)
+    (setq pixel-scroll-precision-large-scroll-height 1)
+    (setq pixel-scroll-precision-interpolation-factor 1))
+
+  (when (boundp 'pixel-scroll-precision-mode)
+    (pixel-scroll-setup)
+    (add-hook 'prog-mode-hook #'pixel-scroll-precision-mode)
+    (add-hook 'org-mode-hook #'pixel-scroll-precision-mode))
 
   ;; Modes to highlight the current line with
   (let ((hl-line-hooks '(text-mode-hook prog-mode-hook)))

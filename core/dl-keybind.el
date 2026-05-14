@@ -3,12 +3,13 @@
 ;; GUI + PGUP / PGDN -- next / prev buffer
 ;;
 
-(use-package emacs
-  :require nil
-  :custom
-  (windmove-default-keybindings '(super ctrl))
-
-  )
+(use-package windmove
+  :ensure nil
+  :config
+  (global-set-key (kbd "C-s-<left>")  #'windmove-left)
+  (global-set-key (kbd "C-s-<right>") #'windmove-right)
+  (global-set-key (kbd "C-s-<up>")    #'windmove-up)
+  (global-set-key (kbd "C-s-<down>")  #'windmove-down))
 
 (keymap-global-set "s-<prior>" 'switch-to-next-buffer)
 (keymap-global-set "s-<next>" 'switch-to-prev-buffer)

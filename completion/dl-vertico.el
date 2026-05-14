@@ -10,6 +10,10 @@
   :config
   (vertico-mode))
 
+(when (display-graphic-p)
+  (use-package vertico-posframe)
+  (vertico-posframe-mode 1))
+
 ;; Persist history over Emacs restarts. Vertico sorts by history position.
 (use-package savehist
   :init

@@ -17,19 +17,21 @@
     '(ace-window agent-shell apheleia beacon cape claude-code-ide
        combobulate consult-eglot consult-yasnippet corfu denote
        diff-hl diminish dired-preview dired-subtree diredfl dirvish
-       doom-modeline dumb-jump eaf eat editorconfig elisp-demos
-       embark-consult eros expreg git-modes go-mode goto-chg grip-mode
-       helpful jinx json-mode kind-icon magit marginalia markdown-toc
-       meow-vterm modus-themes multiple-cursors nerd-icons-completion
-       nerd-icons-dired nix-mode olivetti orderless org-roam
-       package-lint-flymake puni ready-player shut-up slack
-       spacious-padding suggest tempel treesit-auto undo-fu
-       undo-fu-session use-package vertico-prescient
-       visual-fill-column vundo which-key ws-butler yaml-mode
-       yasnippet-snippets))
+       doom-modeline dumb-jump eaf eaf-markdown-previewer eat
+       editorconfig elisp-demos embark-consult eros expreg git-modes
+       go-mode goto-chg grip-mode helpful jinx json-mode kind-icon
+       magit marginalia markdown-toc meow-vterm modus-themes
+       multiple-cursors nerd-icons-completion nerd-icons-dired
+       nix-mode olivetti orderless org-roam package-lint-flymake puni
+       ready-player shut-up slack spacious-padding suggest tempel
+       treesit-auto undo-fu undo-fu-session use-package
+       vertico-prescient visual-fill-column vundo which-key ws-butler
+       yaml-mode yasnippet-snippets))
  '(package-vc-selected-packages
-    '((eaf :url
-        "https://github.com/emacs-eaf/emacs-application-framework.git")
+    '((eaf-markdown-previewer :url
+        "https://github.com/emacs-eaf/eaf-markdown-previewer.git")
+       (eaf :url
+         "https://github.com/emacs-eaf/emacs-application-framework.git")
        (claude-code-ide :url
          "https://github.com/manzaltu/claude-code-ide.el")
        (combobulate :vc-backend Git :url

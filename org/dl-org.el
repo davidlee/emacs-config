@@ -53,7 +53,8 @@
 
 (global-set-key (kbd "C-c c") #'org-capture)
 
-
+(add-hook 'org-mode-hook #'org-modern-mode)
+(add-hook 'org-agenda-finalize-hook #'org-modern-agenda)
 ;;
 ;; Google calendar
 ;;

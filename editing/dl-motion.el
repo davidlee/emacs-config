@@ -17,7 +17,12 @@
            ("C-;"   . avy-goto-char-timer)))
 
 (use-package ace-window
+  :custom
+  (aw-scope 'frame)
+  (aw-ignore-current t)
+  (aw-backround nil)
   :bind (("M-o" . ace-window)))
+
 
 (use-package goto-chg
   :bind (("C-," . goto-last-change)

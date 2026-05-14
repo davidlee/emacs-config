@@ -71,4 +71,9 @@
   (use-package package-lint-flymake
     :hook (emacs-lisp-mode . package-lint-flymake-setup)))
 
+(use-package highlight-quoted)
+(use-package highlight-numbers)
+(use-package highlight-defined)
+
+
 (provide 'dl-elisp)

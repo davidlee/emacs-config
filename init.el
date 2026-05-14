@@ -55,6 +55,7 @@
 (require 'dl-claude)
 (require 'dl-eaf)
 (require 'dl-agent-shell)
+(require 'treemacs)
 
 ;; (require 'dl-spotify)
 ;; (require 'dl-slack)

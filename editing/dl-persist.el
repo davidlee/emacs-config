@@ -36,12 +36,12 @@
 (defun my/save-buffer-if-reasonable ()
   "Save current buffer if it is a normal modified file buffer."
   (when (and buffer-file-name
-          (buffer-modified-p)
-          (file-writable-p buffer-file-name)
-          ;; Avoid saving remote/TRAMP buffers automatically.
-          (not (file-remote-p buffer-file-name))
-          ;; Avoid saving temporary/special buffers.
-          (not (string-prefix-p " " (buffer-name))))
+             (buffer-modified-p)
+             (file-writable-p buffer-file-name)
+             ;; Avoid saving remote/TRAMP buffers automatically.
+             (not (file-remote-p buffer-file-name))
+             ;; Avoid saving temporary/special buffers.
+             (not (string-prefix-p " " (buffer-name))))
     (save-buffer)))
 
 (defun my/save-all-file-buffers ()
@@ -49,7 +49,6 @@
   (dolist (buf (buffer-list))
     (with-current-buffer buf
       (my/save-buffer-if-reasonable))))
-
 
 ;;; Save after idle time
 
@@ -60,17 +59,21 @@
   (my/save-all-file-buffers))
 
 (setq my/auto-save-idle-timer
-  (run-with-idle-timer 3 t #'my/auto-save-after-idle))
+      (run-with-idle-timer 30 t #'my/auto-save-after-idle))
 
-;;
+;; auto whitespace
+;; (add-fs-to-hook 'prog-mode-hook
+;;   (add-hook 'after-save-hook
+;;     (fn (whitespace-cleanup))))
+
 ;; Eglot - auto-format with error handling
 ;;
 
 (defun my/eglot-connected-p ()
   "Return non-nil when current buffer has a live Eglot server."
   (and (bound-and-true-p eglot--managed-mode)
-    (ignore-errors
-      (eglot-current-server))))
+       (ignore-errors
+	 (eglot-current-server))))
 
 (defun my/eglot-format-buffer-if-connected ()
   (when (my/eglot-connected-p)

@@ -15,6 +15,7 @@
 
 (use-package go-mode)
 
+(global-hl-line-mode)
 
 ;; Emacs ships with a lot of popular programming language modes. If it's not
 ;; built in, you're almost certain to find a mode for the language you're

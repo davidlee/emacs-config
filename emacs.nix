@@ -1,0 +1,1 @@
+/home/david/flakes/modules/home/emacs.nix
