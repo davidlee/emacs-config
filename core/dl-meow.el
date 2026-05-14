@@ -1,12 +1,13 @@
 ;;; dl-meow.el --- Meow modal bindings -*- lexical-binding: t; -*-
 
+(require 'dl-keymap)
+
 (defun my/find-dwim ()
   ())
 
 (use-package meow
   :config
-  :after dl-keymap
-  (setq meow-mode-state-list (append meow-mode-state-list '((vterm-mode . insert))))   
+  (setq meow-mode-state-list (append meow-mode-state-list '((vterm-mode . insert)))) 
   (meow-setup)
   (meow-global-mode 1))
 
