@@ -10,7 +10,13 @@
       tsx-ts-mode
       rust-ts-mode
       nix-mode
-      go-ts-mode) . eglot-ensure))
+      go-ts-mode
+      ruby-ts-mode
+      zig-ts-mode
+      zig-mode
+      elixir-ts-mode
+      lua-ts-mode
+      terraform-mode) . eglot-ensure))
 
   :custom
   (eglot-send-changes-idle-time 0.2)
@@ -21,12 +27,6 @@
 
 (use-package consult-eglot
   :after (consult eglot))
-
-(use-package treesit-auto
-  :custom
-  (treesit-auto-install 'prompt)
-  :config
-  (global-treesit-auto-mode))
 
 (provide 'dl-eglot)
 ;;; dl-eglot.el ends here
