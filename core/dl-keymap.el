@@ -22,6 +22,21 @@
 ;; Add new bindings with `my/bind' so each carries a which-key label and
 ;; a collision warning.
 
+(defun my/narrow-or-widen-dwim ()
+  "Widen if buffer is narrowed; otherwise narrow to region, defun, or org subtree."
+  (interactive)
+  (cond ((buffer-narrowed-p) (widen))
+    ((use-region-p) (narrow-to-region (region-beginning) (region-end)))
+    ((derived-mode-p 'org-mode) (org-narrow-to-subtree))
+    (t (narrow-to-defun))))
+
+(defun my/eglot-toggle ()
+  "Start eglot in current buffer, or shut it down if already managed."
+  (interactive)
+  (if (bound-and-true-p eglot--managed-mode)
+    (call-interactively #'eglot-shutdown)
+    (call-interactively #'eglot)))
+
 (defun my/bind (map key cmd &optional desc)
   "Bind KEY to CMD in MAP, registering DESC as which-key label.
 Warns when KEY already has a binding in MAP that differs from CMD."
@@ -109,6 +124,36 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-term-map   "+" #'my/shpool-add-current-to-restore  "+restore")
 (my/bind my-term-map   "-" #'my/shpool-remove-from-restore     "-restore")
 (my/bind my-term-map   "f" #'my/shpool-forget-session          "forget")
+
+;; Toggle map -- session knobs.
+(my/bind my-toggle-map "l" #'display-line-numbers-mode        "line-numbers")
+(my/bind my-toggle-map "L" #'global-display-line-numbers-mode "line-numbers (global)")
+(my/bind my-toggle-map "w" #'visual-line-mode                 "visual-line (soft-wrap)")
+(my/bind my-toggle-map "t" #'toggle-truncate-lines            "truncate-lines")
+(my/bind my-toggle-map "h" #'hl-line-mode                     "hl-line")
+(my/bind my-toggle-map "p" #'display-fill-column-indicator-mode "fill-column-indicator")
+(my/bind my-toggle-map "W" #'whitespace-mode                  "whitespace")
+(my/bind my-toggle-map "r" #'read-only-mode                   "read-only")
+(my/bind my-toggle-map "f" #'auto-fill-mode                   "auto-fill (hard-wrap)")
+(my/bind my-toggle-map "s" #'jinx-mode                        "spell (jinx)")
+(my/bind my-toggle-map "c" #'olivetti-mode                    "olivetti (centered)")
+(my/bind my-toggle-map "V" #'variable-pitch-mode              "variable-pitch")
+(my/bind my-toggle-map "e" #'electric-pair-mode               "electric-pair")
+(my/bind my-toggle-map "i" #'indent-tabs-mode                 "indent-tabs")
+(my/bind my-toggle-map "a" #'auto-revert-mode                 "auto-revert")
+(my/bind my-toggle-map "n" #'my/narrow-or-widen-dwim          "narrow/widen")
+(my/bind my-toggle-map "m" #'flymake-mode                     "flymake")
+(my/bind my-toggle-map "d" #'toggle-debug-on-error            "debug-on-error")
+(my/bind my-toggle-map "D" #'toggle-debug-on-quit             "debug-on-quit")
+(my/bind my-toggle-map "T" #'consult-theme                    "theme")
+(my/bind my-toggle-map "P" #'spacious-padding-mode            "spacious-padding")
+(my/bind my-toggle-map "b" #'beacon-mode                      "beacon")
+(my/bind my-toggle-map "g" #'diff-hl-mode                     "diff-hl (vcs gutter)")
+(my/bind my-toggle-map "*" #'prettify-symbols-mode            "prettify-symbols")
+(my/bind my-toggle-map ")" #'rainbow-delimiters-mode          "rainbow-delimiters")
+(my/bind my-toggle-map "R" #'rainbow-mode                     "rainbow (colors)")
+(my/bind my-toggle-map "=" #'aggressive-indent-mode           "aggressive-indent")
+(my/bind my-toggle-map "E" #'my/eglot-toggle                  "eglot")
 
 (defun meow-setup ()
   (setq meow-cheatsheet-layout meow-cheatsheet-layout-qwerty)

@@ -14,6 +14,12 @@
 (use-package rainbow-delimiters
   :hook (prog-mode . rainbow-delimiters-mode))
 
+(use-package rainbow-mode
+  :commands rainbow-mode)
+
+(use-package aggressive-indent
+  :commands aggressive-indent-mode)
+
 ;; (setq-local combobulate-checkout-path (expand-file-name "checkout/combobulate" user-emacs-directory))
 ;; (use-package combobulate
 ;;   :vc (:url "https://github.com/mickeynp/combobulate.git")

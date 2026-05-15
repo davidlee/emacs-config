@@ -16,7 +16,7 @@
   '(dl-shpool-known-sessions '(".emacs.d" "hris" "team" "claude"))
   '(my-shpool-known-sessions '("team" "flakes" "example" ".emacs.d"))
   '(package-selected-packages
-     '(ace-window agent-shell apheleia beacon cape claude-code-ide
+     '(ace-window aggressive-indent agent-shell apheleia beacon cape claude-code-ide
         combobulate consult-eglot consult-yasnippet corfu denote
         diff-hl diminish dired-preview dired-subtree diredfl dirvish
         dockerfile-mode doom-modeline dumb-jump eaf
@@ -26,7 +26,8 @@
         lambda-line lua-mode magit marginalia markdown-toc meow-vterm
         modus-themes multiple-cursors nano nano-emacs
         nerd-icons-completion nerd-icons-dired nix-mode olivetti
-        orderless org-roam package-lint-flymake puni ready-player
+        orderless org-roam package-lint-flymake puni rainbow-mode
+        ready-player
         shut-up slack spacious-padding suggest tempel terraform-mode
         treesit-auto undo-fu undo-fu-session use-package
         use-package-ensure-system-package vertico-prescient
