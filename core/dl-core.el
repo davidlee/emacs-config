@@ -1,5 +1,6 @@
 ;;; dl-core.el --- basic setup -*- lexical-binding: t; -*-
 
+;; https://github.com/rougier/nano-emacs/blob/master/nano-defaults.el
 
 (require 'package-vc)
 
@@ -11,7 +12,7 @@
   (large-file-warning-threshold 100000000)
   (load-prefer-newer t) ; new bytecode pls
   (initial-major-mode 'fundamental-mode)
-  (initial-scratch-message ";; Scratch")
+  (initial-scratch-message "")
   (bidi-paragraph-direction 'left-to-right)
 
   (sentence-end-double-space nil) ; no
@@ -38,6 +39,7 @@
   (read-buffer-completion-ignore-case t)
   (completion-ignore-case t)
   (confirm-kill-processes nil)
+  (use-short-answers t)
   ;; (ediff-window-setup-function 'ediff-setup-windows-plain)
 
   :config
@@ -82,6 +84,23 @@
 (defun load-init ()
   (interactive)
   (load-file (expand-file-name "init.el" user-emacs-directory)))
+
+;; /tmp/emacs.XXXX/ for temp files
+(defconst emacs-tmp-dir
+  (expand-file-name (format "emacs.%d" (user-uid)) temporary-file-directory))
+(setq backup-directory-alist
+  `((".*" . ,emacs-tmp-dir)))
+(setq auto-save-file-name-transforms
+  `((".*" ,emacs-tmp-dir t)))
+(setq auto-save-list-file-prefix
+  emacs-tmp-dir)
+
+(defadvice find-file (before make-directory-maybe (filename &optional wildcards) activate)
+  "Create parent directory if not exists while visiting file."
+  (unless (file-exists-p filename)
+    (let ((dir (file-name-directory filename)))
+      (unless (file-exists-p dir)
+        (make-directory dir t)))))
 
 (provide 'dl-core)
 ;;; dl-core.el ends here

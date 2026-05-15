@@ -1,4 +1,6 @@
-default:
+default: home-switch
+
+home-switch:
   cd ~/flakes && git add ~/.emacs.d . && just home-switch
 
 used:

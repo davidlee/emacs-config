@@ -1,4 +1,6 @@
 ;;; dl-keymap.el --- Keymaps & leader (early) -*- lexical-binding: t; -*-
+;; -*- byte-compile-warnings: (not unresolved free-vars) -*-
+;; -*- native-compile-warnings: (not unresolved) -*-
 
 ;; Personal command interface.
 ;;
@@ -25,10 +27,10 @@
 Warns when KEY already has a binding in MAP that differs from CMD."
   (let ((existing (lookup-key map (kbd key))))
     (when (and existing
-               (not (numberp existing))
-               (not (eq existing cmd)))
+            (not (numberp existing))
+            (not (eq existing cmd)))
       (message "my/bind: overriding %s in %S: %S -> %S"
-               key map existing cmd)))
+        key map existing cmd)))
   (define-key map (kbd key) cmd)
   (when desc
     (with-eval-after-load 'which-key

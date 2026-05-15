@@ -1,5 +1,19 @@
 ;;; dl-theme.el --- Theme settings -*- lexical-binding: t; -*-
 
+;; (use-package nano
+;;   :ensure nil
+;;   :vc (:url "https://github.com/rougier/nano-emacs.git"))
+
+(require 'nano-layout)
+(require 'nano-base-colors)
+(require 'nano-faces)
+(require 'nano-theme-light)
+(require 'nano-theme-dark)
+(require 'nano-theme)
+(require 'nano-defaults)
+(require 'nano-modeline)
+
+
 ;; (use-package modus-themes
 ;;   :custom
 ;;   (modus-themes-mode-line '(accented borderless)
@@ -29,7 +43,7 @@
 ;;   ;; - Visit <https://protesilaos.com/emacs/ef-themes#h:6585235a-5219-4f78-9dd5-6a64d87d1b6e>
 ;;   (ef-themes-take-over-modus-themes-mode 1)
 ;;   :bind
-;;   (("<f5>" . modus-themes-rotate)
+;;   (;("<f5>" . modus-themes-rotate)
 ;;     ("C-<f5>" . modus-themes-select)
 ;;     ("M-<f5>" . modus-themes-load-random))
 ;;   :config
@@ -40,9 +54,10 @@
 ;;   ;; Finally, load your theme of choice (or a random one with
 ;;   ;; `modus-themes-load-random', `modus-themes-load-random-dark',
 ;;   ;; `modus-themes-load-random-light').
-;;   (modus-themes-load-theme 'ef-summer))
-(defvar-local my--themes nil)
-(setq my--themes
+;;   ;; (modus-themes-load-theme 'ef-owl)
+;;   )
+
+(defvar my--themes
   '(doom-one doom-gruvbox doom-nord doom-material doom-ayu-dark
      doom-zenburn
      doom-laserwave doom-molokai doom-moonlight doom-dracula))

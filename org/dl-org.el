@@ -13,7 +13,7 @@
   (org-todo-keywords
     '((sequence "TODO(t)" "NEXT(n)" "WAIT(w)" "|" "DONE(d)" "CANCELLED(c)")))
   (org-tag-alist
-    '(("@work" . ?w)
+    '( ("@work" . ?w)
        ("@home" . ?h)
        ("reading" . ?r)
        ("writing" . ?W)
@@ -21,7 +21,7 @@
        ("pkm" . ?p)))
   :config
   (setq org-agenda-files
-    '("~/notes/inbox.org"
+    '( "~/notes/inbox.org"
        "~/notes/projects"
        "~/notes/journal"
        "~/notes/writing")))
@@ -73,7 +73,7 @@
     (when (= (point-max) 1)
       (insert "#+title: " (format-time-string "%Y-%m-%d %A") "\n")
       (insert "#+filetags: :journal:\n\n")
-      (insert "* Tasks\n\n* Notes\n\n* Log\n")
+      (insert "* Focus\n\n* Notes\n\n* Log\n")
       )))
 
 
@@ -94,8 +94,8 @@
 
 ;; and keybinds
 
-(global-set-key (kbd "C-c n j") #'my/daily-note)
-(global-set-key (kbd "C-c n W") #'my/weekly-note)
+(global-set-key (kbd "C-c n d") #'my/daily-note)
+(global-set-key (kbd "C-c n w") #'my/weekly-note)
 
 (provide 'dl-org)
 

@@ -6,6 +6,18 @@
   (setq pixel-scroll-precision-large-scroll-height 1)
   (setq pixel-scroll-precision-interpolation-factor 1))
 
+(defun split-and-follow-horizontally ()
+  (interactive)
+  (split-window-below)
+  (balance-windows)
+  (other-window 1))
+
+(defun split-and-follow-vertically ()
+  (interactive)
+  (split-window-right)
+  (balance-windows)
+  (other-window 1))
+
 (use-package emacs
   :ensure nil
   :custom
@@ -40,6 +52,7 @@
   (line-number-mode t)                        ; Show current line in modeline
   (column-number-mode t)                      ; Show column as well
 
+  (scroll-bar-mode nil)
   (menu-bar-mode nil)
   (tool-bar-mode nil)
 
@@ -105,31 +118,6 @@
   (let ((hl-line-hooks '(text-mode-hook prog-mode-hook)))
     (mapc (lambda (hook) (add-hook hook 'hl-line-mode)) hl-line-hooks)))
 
-;; Modeline
-(use-package doom-modeline
-  ;; :demand t
-  :defer t
-  :custom
-  (doom-modeline-height 50)
-  (doom-modeline-icon t)
-  (doom-modeline-time-clock-size 0.4)
-  (doom-modeline-spc-face-overrides
-    (list :family (face-attribute 'fixed-pitch :family)))
-  :config
-  (if (facep 'mode-line-active)
-    (set-face-attribute 'mode-line-active nil
-      :family "NerdFontMono" :height 120) ; For 29+
-    (set-face-attribute 'mode-line nil
-      :family "NerdFontMono" :height 120))
-  (set-face-attribute 'mode-line-inactive nil
-    :family "NerdFontMono" :height 120)
-
-  (doom-modeline-mode nil))
-
-(use-package telephone-line
-  :defer t
-  :config
-  (telephone-line-mode 1))
 
 (use-package spacious-padding
   :config
@@ -168,7 +156,7 @@
   :bind
   (("C-x 7" . transpose-frame)))
 
-(global-prettify-symbols-mode)
+(global-prettify-symbols-mode t)
 
 ;; TAME POPUPS
 
@@ -189,6 +177,10 @@
        compilation-mode))
   (popper-mode +1)
   (popper-echo-mode +1)) ; For echo area hints
+
+(require 'view)
+(global-set-key (kbd "C-v") 'View-scroll-half-page-forward)
+(global-set-key (kbd "M-v") 'View-scroll-half-page-backward)
 
 (provide 'dl-interface)
 ;;; dl-interface.el ends here

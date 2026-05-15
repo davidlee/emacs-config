@@ -1,5 +1,6 @@
 ;;; dl-keybind.el --- Ergonomic global chord bindings -*- lexical-binding: t; -*-
 
+
 ;; Personal command families live under C-c <letter> / SPC <letter>
 ;; (see dl-keymap.el).  This file holds bindings that don't fit a prefix:
 ;; ergonomic chord shortcuts, which-key, hydra, and runtime helpers.
@@ -20,7 +21,17 @@
 
 (global-set-key (kbd "M-/") 'hippie-expand)
 (global-set-key (kbd "M-z") 'zap-up-to-char)
+(global-set-key (kbd "C-x K") 'kill-current-buffer)
+(global-set-key (kbd "C-x C-b") 'ibuffer)
 
+(define-key comint-mode-map (kbd "C-p") #'comint-previous-input)
+(define-key comint-mode-map (kbd "C-n") #'comint-next-input)
+(define-key comint-mode-map (kbd "C-w") #'backward-kill-word)
+
+
+
+(global-set-key (kbd "C-x 2") 'split-and-follow-horizontally)
+(global-set-key (kbd "C-x 3") 'split-and-follow-vertically)
 
 ;; Hydras for repeatable, sticky subinterfaces (no defs yet).
 (use-package hydra

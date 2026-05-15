@@ -5,13 +5,12 @@
 (require 'dl-core)
 (require 'dl-backup)
 (require 'dl-interface)
-(require 'dl-theme)
 (require 'dl-font)
 (require 'dl-keymap)
-;; (require 'dl-god)
 (require 'dl-meow)
 (require 'dl-help)
 (require 'dl-prose)
+(require 'dl-theme)
 
 ;; DEV
 (require 'dl-eglot)
