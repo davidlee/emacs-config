@@ -51,6 +51,7 @@
 
 ;; Apps
 (require 'dl-term)
+(require 'dl-ghostel)
 (require 'dl-shpool)
 (require 'dl-magit)
 (require 'dl-term)

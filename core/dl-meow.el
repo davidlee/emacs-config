@@ -25,5 +25,12 @@
     (meow-mode -1)))
 
 (add-hook 'vterm-mode-hook #'my-disable-meow-in-vterm)
+
+(defun my-disable-meow-in-ghostel ()
+  (when (derived-mode-p 'ghostel-mode)
+    (meow-mode -1)))
+
+(add-hook 'ghostel-mode-hook #'my-disable-meow-in-ghostel)
+
 (provide 'dl-meow)
 ;;; dl-meow.el ends here

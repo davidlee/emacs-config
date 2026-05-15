@@ -19,9 +19,9 @@
        diff-hl diminish dired-preview dired-subtree diredfl dirvish
        dockerfile-mode doom-modeline dumb-jump eaf
        eaf-markdown-previewer eat editorconfig elisp-demos
-       elixir-ts-mode embark-consult eros expreg git-modes go-mode
-       goto-chg grip-mode helpful jinx json-mode kind-icon lua-mode
-       magit marginalia markdown-toc meow-vterm modus-themes
+       elixir-ts-mode embark-consult eros expreg ghostel git-modes
+       go-mode goto-chg grip-mode helpful jinx json-mode kind-icon
+       lua-mode magit marginalia markdown-toc meow-vterm modus-themes
        multiple-cursors nerd-icons-completion nerd-icons-dired
        nix-mode olivetti orderless org-roam package-lint-flymake puni
        ready-player shut-up slack spacious-padding suggest tempel
@@ -30,7 +30,8 @@
        visual-fill-column vundo which-key ws-butler yaml-mode
        yasnippet-snippets zig-mode))
  '(package-vc-selected-packages
-    '((inflow :url "https://github.com/eshrh/inflow.el.git")
+    '((ghostel :url "https://github.com/dakra/ghostel" :lisp-dir "lisp")
+       (inflow :url "https://github.com/eshrh/inflow.el.git")
        (eaf-markdown-previewer :url
          "https://github.com/emacs-eaf/eaf-markdown-previewer.git")
        (eaf :url
