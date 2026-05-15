@@ -11,6 +11,7 @@
   (large-file-warning-threshold 100000000)
   (load-prefer-newer t) ; new bytecode pls
   (initial-major-mode 'fundamental-mode)
+  (initial-scratch-message ";; Scratch")
   (bidi-paragraph-direction 'left-to-right)
 
   (sentence-end-double-space nil) ; no
@@ -36,6 +37,7 @@
   (read-file-name-completion-ignore-case t)
   (read-buffer-completion-ignore-case t)
   (completion-ignore-case t)
+  (confirm-kill-processes nil)
   ;; (ediff-window-setup-function 'ediff-setup-windows-plain)
 
   :config
@@ -76,6 +78,10 @@
 ;; Optional, only if you have this file:
 ;;(when (file-exists-p "/usr/share/dict/words")
 ;;  (setq ispell-alternate-dictionary "/usr/share/dict/words"))
+
+(defun load-init ()
+  (interactive)
+  (load-file (expand-file-name "init.el" user-emacs-directory)))
 
 (provide 'dl-core)
 ;;; dl-core.el ends here

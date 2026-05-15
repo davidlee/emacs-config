@@ -2,6 +2,7 @@
 (setopt dictionary-server "localhost")
 
 (use-package inflow
+  :ensure nil
   :vc (:url "https://github.com/eshrh/inflow.el.git")
   :config
   (meow-normal-define-key

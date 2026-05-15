@@ -1,45 +1,94 @@
-;;; dl-keymap.el --- Keymaps (early) -*- lexical-binding: t; -*-
+;;; dl-keymap.el --- Keymaps & leader (early) -*- lexical-binding: t; -*-
 
-;; Meow normal/motion:
-;; SPC enters keypad.
+;; Personal command interface.
 ;;
-;; Then organize command families under familiar Emacs-ish prefixes:
+;; Durable prefix: C-c <letter>.  Meow normal-state mirrors each prefix as
+;; SPC <letter> via meow-leader-define-key, so SPC f f and C-c f f both
+;; reach find-file.  Meow's built-in SPC c -> C-c translation continues
+;; to work as a fallback.
 ;;
-;; SPC f  files
-;; SPC b  buffers
-;; SPC w  windows
-;; SPC p  projects
-;; SPC s  search
-;; SPC g  git
-;; SPC o  org/open
-;; SPC h  help
-;; SPC m  mode-local / major-mode commands
+;;   C-c f / SPC f   file
+;;   C-c b / SPC b   buffer
+;;   C-c w / SPC w   window
+;;   C-c s / SPC s   search
+;;   C-c g / SPC g   git
+;;   C-c o / SPC o   org / open
+;;   C-c t / SPC t   toggle
+;;   C-c e / SPC e   eval / elisp
+;;
+;; Add new bindings with `my/bind' so each carries a which-key label and
+;; a collision warning.
 
-;; (defvar my/leader-map (make-sparse-keymap)
-;;   "My global command map.")
-(defvar-keymap my-leader-map
-  :doc "My global command map for meow"
-  :name "Global command leader keys"
-  ;; ---
-  "f" #'find-file
-  "b" #'find-buffer
-  "w" #'window-tree
-  "p" #'project-dired
-  "s" #'isearch-forward
-  "g" #'git-link
-  "o" #'org-mode
-  "h" #'help-key
-  "m" #'which-key-show-major-mode)
+(defun my/bind (map key cmd &optional desc)
+  "Bind KEY to CMD in MAP, registering DESC as which-key label.
+Warns when KEY already has a binding in MAP that differs from CMD."
+  (let ((existing (lookup-key map (kbd key))))
+    (when (and existing
+               (not (numberp existing))
+               (not (eq existing cmd)))
+      (message "my/bind: overriding %s in %S: %S -> %S"
+               key map existing cmd)))
+  (define-key map (kbd key) cmd)
+  (when desc
+    (with-eval-after-load 'which-key
+      (which-key-add-keymap-based-replacements map key desc))))
 
-;; ------
-;; C-c ->
-;; C-d :: helpful-at-point
-;;
-;;
-;;
-;;
-;;
-;; --
+;; Prefix maps -- one per command family.
+(defvar-keymap my-file-map   :name "file")
+(defvar-keymap my-buffer-map :name "buffer")
+(defvar-keymap my-window-map :name "window")
+(defvar-keymap my-search-map :name "search")
+(defvar-keymap my-git-map    :name "git")
+(defvar-keymap my-org-map    :name "org")
+(defvar-keymap my-toggle-map :name "toggle")
+(defvar-keymap my-eval-map   :name "eval")
+
+;; Bind prefix maps globally under C-c <letter>.
+(define-key global-map (kbd "C-c f") my-file-map)
+(define-key global-map (kbd "C-c b") my-buffer-map)
+(define-key global-map (kbd "C-c w") my-window-map)
+(define-key global-map (kbd "C-c s") my-search-map)
+(define-key global-map (kbd "C-c g") my-git-map)
+(define-key global-map (kbd "C-c o") my-org-map)
+(define-key global-map (kbd "C-c t") my-toggle-map)
+(define-key global-map (kbd "C-c e") my-eval-map)
+
+;; Prefix labels for which-key.
+(with-eval-after-load 'which-key
+  (which-key-add-key-based-replacements
+    "C-c f" "file"
+    "C-c b" "buffer"
+    "C-c w" "window"
+    "C-c s" "search"
+    "C-c g" "git"
+    "C-c o" "org"
+    "C-c t" "toggle"
+    "C-c e" "eval"))
+
+;; Concrete bindings -- starter set, grow as needed.
+(my/bind my-file-map   "f" #'find-file              "find-file")
+(my/bind my-file-map   "s" #'save-buffer            "save")
+(my/bind my-file-map   "S" #'write-file             "save-as")
+(my/bind my-file-map   "r" #'consult-recent-file    "recent")
+
+(my/bind my-buffer-map "b" #'consult-buffer         "switch")
+(my/bind my-buffer-map "k" #'kill-current-buffer    "kill")
+(my/bind my-buffer-map "i" #'ibuffer                "ibuffer")
+(my/bind my-buffer-map "n" #'next-buffer            "next")
+(my/bind my-buffer-map "p" #'previous-buffer        "prev")
+
+(my/bind my-window-map "<left>"  #'windmove-left        "left")
+(my/bind my-window-map "<down>"  #'windmove-down        "down")
+(my/bind my-window-map "<up>"    #'windmove-up          "up")
+(my/bind my-window-map "<right>" #'windmove-right       "right")
+(my/bind my-window-map "s"       #'split-window-below   "split-below")
+(my/bind my-window-map "v"       #'split-window-right   "split-right")
+(my/bind my-window-map "o"       #'delete-other-windows "only")
+(my/bind my-window-map "d"       #'delete-window        "delete")
+(my/bind my-window-map "="       #'balance-windows      "balance")
+
+(my/bind my-git-map    "g" #'magit-status           "status")
+(my/bind my-git-map    "l" #'git-link               "link")
 
 (defun meow-setup ()
   (setq meow-cheatsheet-layout meow-cheatsheet-layout-qwerty)
@@ -50,7 +99,7 @@
     '("<escape>" . ignore))
 
   (meow-leader-define-key
-    ;; Use SPC (0-9) for digit arguments.
+    ;; Digit arguments.
     '("1" . meow-digit-argument)
     '("2" . meow-digit-argument)
     '("3" . meow-digit-argument)
@@ -62,7 +111,16 @@
     '("9" . meow-digit-argument)
     '("0" . meow-digit-argument)
     '("/" . meow-keypad-describe-key)
-    '("?" . meow-cheatsheet))
+    '("?" . meow-cheatsheet)
+    ;; Mirror C-c <letter> prefix maps onto SPC <letter>.
+    (cons "f" my-file-map)
+    (cons "b" my-buffer-map)
+    (cons "w" my-window-map)
+    (cons "s" my-search-map)
+    (cons "g" my-git-map)
+    (cons "o" my-org-map)
+    (cons "t" my-toggle-map)
+    (cons "e" my-eval-map))
 
   (meow-normal-define-key
     '("0" . meow-expand-0)
@@ -91,7 +149,7 @@
     '("e" . meow-next-word)
     '("E" . meow-next-symbol)
     '("f" . meow-find)
-    '("F" . my/find-dwim)
+    '("F" . meow-find-expand)
     '("g" . meow-cancel-selection)
     '("G" . meow-grab)
     '("h" . meow-left)

@@ -1,5 +1,11 @@
 ;;; dl-interface.el --- UI settings -*- lexical-binding: t; -*-
 
+
+(defun my/pixel-scroll-setup ()
+  (interactive)
+  (setq pixel-scroll-precision-large-scroll-height 1)
+  (setq pixel-scroll-precision-interpolation-factor 1))
+
 (use-package emacs
   :ensure nil
   :custom
@@ -90,11 +96,6 @@
   (when (display-graphic-p)
     (context-menu-mode))
 
-  (defun my/pixel-scroll-setup ()
-    (interactive)
-    (setq pixel-scroll-precision-large-scroll-height 1)
-    (setq pixel-scroll-precision-interpolation-factor 1))
-
   (when (boundp 'pixel-scroll-precision-mode)
     (my/pixel-scroll-setup)
     (add-hook 'prog-mode-hook #'pixel-scroll-precision-mode)
@@ -155,7 +156,6 @@
 (use-package beacon
   :diminish beacon-mode
   :config
-  :defer t
   (beacon-mode 1))
 
 (setopt scroll-conservatively 100)

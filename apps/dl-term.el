@@ -48,10 +48,11 @@
 ;;
 
 (use-package vterm
-  :commands
-  vterm
+  :commands vterm
   :custom
   (vterm-kill-buffer-on-exit t)
+  :bind (:map vterm-mode-map
+              ("C-c <escape>" . vterm-send-escape))
   :config
   (setq vterm-max-scrollback 100000))
 
@@ -70,14 +71,16 @@
       (pop-to-buffer buf-name)
       (vterm buf-name))))
 
-;;
-;;
-;;
-
 (use-package vterm-toggle
   :custom
   (vterm-toggle-hide-method 'delete-window)
   (vterm-toggle-fullscreen-p nil)
+  :bind (([C-f1] . vterm-toggle)
+         ([C-f2] . vterm-toggle-cd)
+         :map vterm-mode-map
+         ([(control return)] . vterm-toggle-insert-cd)
+         ("M-n"              . vterm-toggle-forward)
+         ("M-p"              . vterm-toggle-backward))
   :init
   (add-to-list 'display-buffer-alist
     '((lambda (buffer-or-name _)
@@ -98,20 +101,6 @@
           (ignore-errors (delete-window))
           (message "VTerm closed."))))))
 
-;;
-;;
-;;
-
-(global-set-key (kbd "C-c t a") #'my/shpool)          ;; attach/create by name
-(global-set-key (kbd "C-c t p") #'my/shpool-project)  ;; project-named session
-(global-set-key (kbd "C-c t F") #'my/shpool-force)    ;; force attach/create by name
-(global-set-key (kbd "C-c t r") #'my/shpool-restore)
-(global-set-key (kbd "C-c t L") #'my/shpool-list)
-(global-set-key (kbd "C-c t d") #'my/shpool-detach-current)
-(global-set-key (kbd "C-c t k") #'my/shpool-kill-session)
-(global-set-key (kbd "C-c t +") #'my/shpool-add-current-to-restore)
-(global-set-key (kbd "C-c t -") #'my/shpool-remove-from-restore)
-(global-set-key (kbd "C-c t f") #'my/shpool-forget-session)
 
 (provide 'dl-term)
 ;;; dl-term.el ends here

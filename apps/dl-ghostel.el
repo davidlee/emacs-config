@@ -20,5 +20,7 @@
   :vc (:url "https://github.com/dakra/ghostel"
         :lisp-dir "lisp"
         :rev :newest))
+
+
 (provide 'dl-ghostel)
 ;;; dl-ghostel.el ends here
