@@ -37,6 +37,7 @@
 (require 'dl-search)
 (require 'dl-persist)
 (require 'dl-indent)
+(require 'dl-fold)
 
 ;; Org
 (require 'dl-org)

@@ -18,6 +18,7 @@
 ;;   C-c e / SPC e   eval / elisp
 ;;   C-c g / SPC G   git    (capital in Meow: SPC g is keypad C-M- prefix)
 ;;   C-c m / SPC M   term   (capital in Meow: SPC m is keypad M- prefix)
+;;   C-c z / SPC z   fold   (kirigami; routes to active backend)
 ;;
 ;; Add new bindings with `my/bind' so each carries a which-key label and
 ;; a collision warning.
@@ -61,6 +62,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (defvar-keymap my-toggle-map :name "toggle")
 (defvar-keymap my-eval-map   :name "eval")
 (defvar-keymap my-term-map   :name "term")
+(defvar-keymap my-fold-map   :name "fold")
 
 ;; Bind prefix maps globally under C-c <letter>.
 (define-key global-map (kbd "C-c f") my-file-map)
@@ -72,6 +74,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (define-key global-map (kbd "C-c t") my-toggle-map)
 (define-key global-map (kbd "C-c e") my-eval-map)
 (define-key global-map (kbd "C-c m") my-term-map)
+(define-key global-map (kbd "C-c z") my-fold-map)
 
 ;; Prefix labels for which-key.
 (with-eval-after-load 'which-key
@@ -84,7 +87,8 @@ Warns when KEY already has a binding in MAP that differs from CMD."
     "C-c o" "org"
     "C-c t" "toggle"
     "C-c e" "eval"
-    "C-c m" "term"))
+    "C-c m" "term"
+    "C-c z" "fold"))
 
 ;; Concrete bindings -- starter set, grow as needed.
 (my/bind my-file-map   "f" #'find-file              "find-file")
@@ -124,6 +128,14 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-term-map   "+" #'my/shpool-add-current-to-restore  "+restore")
 (my/bind my-term-map   "-" #'my/shpool-remove-from-restore     "-restore")
 (my/bind my-term-map   "f" #'my/shpool-forget-session          "forget")
+
+;; Fold map -- kirigami routes to active backend (outline / hs / treesit-fold).
+(my/bind my-fold-map   "o" #'kirigami-open-fold      "open")
+(my/bind my-fold-map   "O" #'kirigami-open-fold-rec  "open-rec")
+(my/bind my-fold-map   "r" #'kirigami-open-folds     "open-all")
+(my/bind my-fold-map   "c" #'kirigami-close-fold     "close")
+(my/bind my-fold-map   "m" #'kirigami-close-folds    "close-all")
+(my/bind my-fold-map   "a" #'kirigami-toggle-fold    "toggle")
 
 ;; Toggle map -- session knobs.
 (my/bind my-toggle-map "l" #'display-line-numbers-mode        "line-numbers")
@@ -190,7 +202,8 @@ Warns when KEY already has a binding in MAP that differs from CMD."
     (cons "o" my-org-map)
     (cons "t" my-toggle-map)
     (cons "e" my-eval-map)
-    (cons "M" my-term-map))
+    (cons "M" my-term-map)
+    (cons "z" my-fold-map))
 
   (meow-normal-define-key
     '("0" . meow-expand-0)

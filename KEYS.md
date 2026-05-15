@@ -21,6 +21,22 @@
 | `C-c t` | `my-toggle-map` | toggles *(empty)* |
 | `C-c e` | `my-eval-map`   | eval / elisp *(empty)* |
 | `C-c m` | `my-term-map`   | multi-vterm + shpool (Meow alias: `SPC M` — see Gotchas) |
+| `C-c z` | `my-fold-map`   | fold (kirigami dispatcher — routes to outline / hs / treesit-fold) |
+
+## Fold (`C-c z`)
+
+Vim/Evil `z`-prefix mnemonics. Bindings call into [kirigami](https://github.com/jamescherti/kirigami.el), which dispatches to whichever backend the current buffer has active (outline-minor-mode, hs-minor-mode, treesit-fold, org, ...) — so the same keys work everywhere a fold backend is on.
+
+| Key | Command | |
+|---|---|---|
+| `C-c z o` | `kirigami-open-fold`     | open fold at point |
+| `C-c z O` | `kirigami-open-fold-rec` | open recursively |
+| `C-c z r` | `kirigami-open-folds`    | open all |
+| `C-c z c` | `kirigami-close-fold`    | close fold at point |
+| `C-c z m` | `kirigami-close-folds`   | close all |
+| `C-c z a` | `kirigami-toggle-fold`   | toggle |
+
+Backend selection lives in `editing/dl-fold.el` — `outline-minor-mode` for lisp/conf/markdown/diff, `hs-minor-mode` for legacy major modes (c, js, sh, ...), `treesit-fold-mode` for the `*-ts-mode` family. No fold backend hooked in → kirigami no-ops.
 
 ## Adding a binding
 

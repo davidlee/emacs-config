@@ -1,8 +1,8 @@
 ;;; dl-font.el --- fonts -*- lexical-binding: t; -*-
 
 ;;(set-face-attribute 'default nil :font "Hack 12")
-;(set-face-attribute 'lambda-line nil :font "Hack 10")
-;(custom-set-faces)
+                                        ;(set-face-attribute 'lambda-line nil :font "Hack 10")
+                                        ;(custom-set-faces)
 ;; DejaVu Sans Mono
 ;; JetBrainsMono Nerd Font Mono
 ;; ZedMono NF
@@ -55,11 +55,11 @@
                          ;; has no `:lambda-line-*' key). Heights kept at 1.0 to
                          ;; avoid active/inactive size jumps — lambda-line owns
                          ;; vertical padding via `lambda-line-space-{top,bottom}'.
-                         :mode-line-active-family "Hack"
+                         :mode-line-active-family "Iosevka NF"
                          :mode-line-active-weight nil
                          :mode-line-active-height 1.0
 
-                         :mode-line-inactive-family "Hack"
+                         :mode-line-inactive-family "Iosevka NF"
                          :mode-line-inactive-weight nil
                          :mode-line-inactive-height 1.0
 
@@ -103,7 +103,7 @@
     (or (fontaine-restore-latest-preset) 'regular))
   (fontaine-mode 1))
 
-;(add-hook 'after-init-hook #'fontaine-mode)
+                                        ;(add-hook 'after-init-hook #'fontaine-mode)
 
 ;; (custom-set-faces
 ;;  '(meow-normal-indicator ((t (:background "#a6e3a1" :foreground "black" :weight bold))))

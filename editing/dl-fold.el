@@ -1,14 +1,18 @@
 ;;; dl-fold.el --- Folding -*- lexical-binding: t; -*-
 
+;; Universal folding frontend.  kirigami dispatches the standard
+;; open/close/toggle commands to whichever backend the current buffer
+;; uses (outline-minor-mode, hs-minor-mode, treesit-fold, org, ...),
+;; so a single C-c z prefix works across modes.  Bindings live in
+;; core/dl-keymap.el under `my-fold-map'.
 ;; https://github.com/jamescherti/kirigami.el
-(use-package kirigami)
-(global-set-key (kbd "C-c z o") 'kirigami-open-fold)     ; Open fold at point
-(global-set-key (kbd "C-c z O") 'kirigami-open-fold-rec) ; Open fold recursively
-(global-set-key (kbd "C-c z r") 'kirigami-open-folds)    ; Open all folds
-(global-set-key (kbd "C-c z c") 'kirigami-close-fold)    ; Close fold at point
-(global-set-key (kbd "C-c z m") 'kirigami-close-folds)   ; Close all folds
-(global-set-key (kbd "C-c z a") 'kirigami-toggle-fold)   ; Toggle fold at point
-
+(use-package kirigami
+  :commands (kirigami-open-fold
+              kirigami-open-fold-rec
+              kirigami-open-folds
+              kirigami-close-fold
+              kirigami-close-folds
+              kirigami-toggle-fold))
 
 (use-package outline-indent
   :commands outline-indent-minor-mode
@@ -41,68 +45,6 @@
 (add-hook 'lua-mode-hook #'hs-minor-mode)
 (add-hook 'nxml-mode-hook #'hs-minor-mode)
 (add-hook 'html-mode-hook #'hs-minor-mode) ; mhtml and html
-
-;; Intelligent code folding by using the structural understanding of the
-;; built-in tree-sitter parser. Unlike traditional folding methods that rely on
-;; regular expressions or indentation, treesit-fold uses the actual syntax tree
-;; of the code to accurately identify foldable regions such as functions,
-;; classes, comments, and documentation strings.
-;; URL: https://github.com/emacs-tree-sitter/treesit-fold
-(use-package treesit-fold
-  :commands (treesit-fold-close
-              treesit-fold-close-all
-              treesit-fold-open
-              treesit-fold-toggle
-              treesit-fold-open-all
-              treesit-fold-mode
-              global-treesit-fold-mode
-              treesit-fold-open-recursively
-              treesit-fold-line-comment-mode)
-
-  :custom
-  (treesit-fold-line-count-show t)
-  (treesit-fold-line-count-format " ▼")
-
-  :config
-  (set-face-attribute 'treesit-fold-replacement-face nil
-    :foreground "#808080"
-    :box nil
-    :weight 'bold))
-
-;; Systems and General Purpose
-(add-hook 'c-ts-mode-hook #'treesit-fold-mode)
-(add-hook 'c++-ts-mode-hook #'treesit-fold-mode)
-(add-hook 'java-ts-mode-hook #'treesit-fold-mode)
-(add-hook 'rust-ts-mode-hook #'treesit-fold-mode)
-(add-hook 'go-ts-mode-hook #'treesit-fold-mode)
-(add-hook 'ruby-ts-mode-hook #'treesit-fold-mode)
-
-;; Web and Frontend
-(add-hook 'js-ts-mode-hook #'treesit-fold-mode)
-(add-hook 'typescript-ts-mode-hook #'treesit-fold-mode)
-(add-hook 'tsx-ts-mode-hook #'treesit-fold-mode)
-(add-hook 'css-ts-mode-hook #'treesit-fold-mode)
-(add-hook 'html-ts-mode-hook #'treesit-fold-mode)
-
-;; Scripting and Infrastructure
-(add-hook 'bash-ts-mode-hook #'treesit-fold-mode)
-(add-hook 'cmake-ts-mode-hook #'treesit-fold-mode)
-(add-hook 'dockerfile-ts-mode-hook #'treesit-fold-mode)
-
-;; Data and Configuration
-(add-hook 'json-ts-mode-hook #'treesit-fold-mode)
-(add-hook 'toml-ts-mode-hook #'treesit-fold-mode)
-
-
-;; MARKDOWN - dl-markdown.el --
-;; Folding mode
-(add-hook 'markdown-mode-hook #'outline-minor-mode)
-
-;; Third-party
-;; (add-hook 'kotlin-ts-mode-hook #'treesit-fold-mode)
-;; (add-hook 'swift-ts-mode-hook #'treesit-fold-mode)
-;; (add-hook 'elixir-ts-mode-hook #'treesit-fold-mode)
-;; (add-hook 'zig-ts-mode-hook #'treesit-fold-mode)
 
 ;; Intelligent code folding by using the structural understanding of the
 ;; built-in tree-sitter parser. Unlike traditional folding methods that rely on
