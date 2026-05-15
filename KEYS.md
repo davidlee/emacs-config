@@ -84,7 +84,7 @@ Declare autoloads on the source package with `:commands`. Then bind centrally:
 
 ## Deferred
 
-- **Populate empty maps** (`my-toggle-map`, `my-search-map`, `my-org-map`, `my-eval-map`). The prefix, which-key label, and Meow mirror are all wired — just add `my/bind` lines.
+- **Populate empty maps** (`my-search-map`, `my-org-map`, `my-eval-map`). The prefix, which-key label, and Meow mirror are all wired — just add `my/bind` lines.
 - **Migrate package `:bind` clauses** into the prefix structure as you touch each file: `dl-consult.el`, `dl-embark.el`, `dl-motion.el`, `dl-search.el`, `dl-fold.el`.
 - **Hydras**. Package installed, no hydras yet. Window resize is the natural first one — bind under `C-c w` once defined.
 - **`C-c t` collision watch**. `multi-vterm` and shpool now live at `C-c m`, but the toggle map is empty — when populating it, mind the existing `C-c t C-c t` / `C-c t C-h` use-package conventions some major modes still grab.
