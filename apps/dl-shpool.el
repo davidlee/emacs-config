@@ -396,17 +396,7 @@ This does not kill the real shpool session."
 (when my-shpool-auto-restore
   (add-hook 'emacs-startup-hook #'my/shpool-restore))
 
-
-(global-set-key (kbd "C-c t a") #'my/shpool)          ;; attach/create by name
-(global-set-key (kbd "C-c t p") #'my/shpool-project)  ;; project-named session
-(global-set-key (kbd "C-c t F") #'my/shpool-force)    ;; force attach/create by name
-(global-set-key (kbd "C-c t r") #'my/shpool-restore)
-(global-set-key (kbd "C-c t L") #'my/shpool-list)
-(global-set-key (kbd "C-c t d") #'my/shpool-detach-current)
-(global-set-key (kbd "C-c t k") #'my/shpool-kill-session)
-(global-set-key (kbd "C-c t +") #'my/shpool-add-current-to-restore)
-(global-set-key (kbd "C-c t -") #'my/shpool-remove-from-restore)
-(global-set-key (kbd "C-c t f") #'my/shpool-forget-session)
+;; Key bindings for shpool live in dl-keymap.el under my-term-map (C-c m).
 
 (provide 'dl-shpool)
 ;;; dl-shpool.el ends here

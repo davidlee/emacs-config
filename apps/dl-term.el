@@ -58,10 +58,8 @@
 
 (use-package multi-vterm
   :after vterm
-  :bind
-  ( ("C-c t t" . multi-vterm)
-    ("C-c t n" . multi-vterm-next)
-    ("C-c t p" . multi-vterm-prev)))
+  :commands (multi-vterm multi-vterm-next multi-vterm-prev))
+;; Key bindings for multi-vterm live in dl-keymap.el under my-term-map (C-c m).
 
 (defun my/vterm-named (name)
   "Open or create a named (for NAME) vterm buffer."
@@ -76,11 +74,7 @@
   (vterm-toggle-hide-method 'delete-window)
   (vterm-toggle-fullscreen-p nil)
   :bind (([C-f1] . vterm-toggle)
-         ([C-f2] . vterm-toggle-cd)
-         :map vterm-mode-map
-         ([(control return)] . vterm-toggle-insert-cd)
-         ("M-n"              . vterm-toggle-forward)
-         ("M-p"              . vterm-toggle-backward))
+         ([C-f2] . vterm-toggle-cd))
   :init
   (add-to-list 'display-buffer-alist
     '((lambda (buffer-or-name _)
@@ -89,7 +83,13 @@
        (display-buffer-reuse-window display-buffer-at-bottom)
        (dedicated . t)
        (reusable-frames . visible)
-       (window-height . 0.3))))
+       (window-height . 0.3)))
+  :config
+  ;; vterm-mode-map is owned by vterm; vterm-toggle (require 'vterm)s
+  ;; at load time so the map exists by the time :config runs.
+  (define-key vterm-mode-map [(control return)] #'vterm-toggle-insert-cd)
+  (define-key vterm-mode-map (kbd "M-n")        #'vterm-toggle-forward)
+  (define-key vterm-mode-map (kbd "M-p")        #'vterm-toggle-backward))
 
 (defun vterm--kill-vterm-buffer-and-window (process event)
   "Kill buffer and window on vterm process termination."

@@ -15,6 +15,7 @@
 ;;   C-c o / SPC o   org / open
 ;;   C-c t / SPC t   toggle
 ;;   C-c e / SPC e   eval / elisp
+;;   C-c m / SPC m   term (multi-vterm + shpool)
 ;;
 ;; Add new bindings with `my/bind' so each carries a which-key label and
 ;; a collision warning.
@@ -42,6 +43,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (defvar-keymap my-org-map    :name "org")
 (defvar-keymap my-toggle-map :name "toggle")
 (defvar-keymap my-eval-map   :name "eval")
+(defvar-keymap my-term-map   :name "term")
 
 ;; Bind prefix maps globally under C-c <letter>.
 (define-key global-map (kbd "C-c f") my-file-map)
@@ -52,6 +54,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (define-key global-map (kbd "C-c o") my-org-map)
 (define-key global-map (kbd "C-c t") my-toggle-map)
 (define-key global-map (kbd "C-c e") my-eval-map)
+(define-key global-map (kbd "C-c m") my-term-map)
 
 ;; Prefix labels for which-key.
 (with-eval-after-load 'which-key
@@ -63,7 +66,8 @@ Warns when KEY already has a binding in MAP that differs from CMD."
     "C-c g" "git"
     "C-c o" "org"
     "C-c t" "toggle"
-    "C-c e" "eval"))
+    "C-c e" "eval"
+    "C-c m" "term"))
 
 ;; Concrete bindings -- starter set, grow as needed.
 (my/bind my-file-map   "f" #'find-file              "find-file")
@@ -89,6 +93,20 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 
 (my/bind my-git-map    "g" #'magit-status           "status")
 (my/bind my-git-map    "l" #'git-link               "link")
+
+(my/bind my-term-map   "t" #'multi-vterm                       "vterm")
+(my/bind my-term-map   "n" #'multi-vterm-next                  "vterm-next")
+(my/bind my-term-map   "P" #'multi-vterm-prev                  "vterm-prev")
+(my/bind my-term-map   "a" #'my/shpool                         "attach")
+(my/bind my-term-map   "p" #'my/shpool-project                 "project")
+(my/bind my-term-map   "F" #'my/shpool-force                   "force-attach")
+(my/bind my-term-map   "r" #'my/shpool-restore                 "restore")
+(my/bind my-term-map   "L" #'my/shpool-list                    "list")
+(my/bind my-term-map   "d" #'my/shpool-detach-current          "detach")
+(my/bind my-term-map   "k" #'my/shpool-kill-session            "kill-session")
+(my/bind my-term-map   "+" #'my/shpool-add-current-to-restore  "+restore")
+(my/bind my-term-map   "-" #'my/shpool-remove-from-restore     "-restore")
+(my/bind my-term-map   "f" #'my/shpool-forget-session          "forget")
 
 (defun meow-setup ()
   (setq meow-cheatsheet-layout meow-cheatsheet-layout-qwerty)
@@ -120,7 +138,8 @@ Warns when KEY already has a binding in MAP that differs from CMD."
     (cons "g" my-git-map)
     (cons "o" my-org-map)
     (cons "t" my-toggle-map)
-    (cons "e" my-eval-map))
+    (cons "e" my-eval-map)
+    (cons "m" my-term-map))
 
   (meow-normal-define-key
     '("0" . meow-expand-0)
