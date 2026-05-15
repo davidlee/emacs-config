@@ -5,7 +5,8 @@
   ;; Your init file should contain only one such instance.
   ;; If there is more than one, they won't work right.
   '(custom-safe-themes
-     '("d481904809c509641a1a1f1b1eb80b94c58c210145effc2631c1a7f2e4a2fdf4"
+     '("4d5d11bfef87416d85673947e3ca3d3d5d985ad57b02a7bb2e32beaf785a100e"
+        "d481904809c509641a1a1f1b1eb80b94c58c210145effc2631c1a7f2e4a2fdf4"
         "3613617b9953c22fe46ef2b593a2e5bc79ef3cc88770602e7e569bbd71de113b"
         "3061706fa92759264751c64950df09b285e3a2d3a9db771e99bcbb2f9b470037"
         "ff24d14f5f7d355f47d53fd016565ed128bf3af30eb7ce8cae307ee4fe7f3fd0"
@@ -14,12 +15,13 @@
         "6dcf1ca4c7432773084b9d52649ee5eb2c663131c4c06859f648dea98d9acb3e"
         default))
   '(dl-shpool-known-sessions '(".emacs.d" "hris" "team" "claude"))
+  '(global-tab-line-mode 1 nil nil "Customized with use-package emacs")
   '(my-shpool-known-sessions '("team" "flakes" "example" ".emacs.d"))
   '(package-selected-packages
-     '(ace-window aggressive-indent agent-shell apheleia beacon cape claude-code-ide
-        combobulate consult-eglot consult-yasnippet corfu denote
-        diff-hl diminish dired-preview dired-subtree diredfl dirvish
-        dockerfile-mode doom-modeline dumb-jump eaf
+     '(ace-window aggressive-indent agent-shell apheleia beacon cape
+        claude-code-ide combobulate consult-eglot consult-yasnippet
+        corfu denote diff-hl diminish dired-preview dired-subtree
+        diredfl dirvish dockerfile-mode doom-modeline dumb-jump eaf
         eaf-markdown-previewer eat editorconfig elisp-demos
         elixir-ts-mode embark-consult eros expreg ghostel git-modes
         go-mode goto-chg grip-mode helpful jinx json-mode kind-icon
@@ -27,9 +29,8 @@
         modus-themes multiple-cursors nano nano-emacs
         nerd-icons-completion nerd-icons-dired nix-mode olivetti
         orderless org-roam package-lint-flymake puni rainbow-mode
-        ready-player
-        shut-up slack spacious-padding suggest tempel terraform-mode
-        treesit-auto undo-fu undo-fu-session use-package
+        ready-player shut-up slack spacious-padding suggest tempel
+        terraform-mode treesit-auto undo-fu undo-fu-session use-package
         use-package-ensure-system-package vertico-prescient
         visual-fill-column vundo which-key ws-butler yaml-mode
         yasnippet-snippets zig-mode))

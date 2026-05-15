@@ -4,15 +4,6 @@
 ;;   :ensure nil
 ;;   :vc (:url "https://github.com/rougier/nano-emacs.git"))
 
-(require 'nano-layout)
-(require 'nano-base-colors)
-(require 'nano-faces)
-(require 'nano-theme-light)
-(require 'nano-theme-dark)
-(require 'nano-theme)
-(require 'nano-defaults)
-(require 'nano-modeline)
-
 
 ;; (use-package modus-themes
 ;;   :custom
@@ -56,6 +47,15 @@
 ;;   ;; `modus-themes-load-random-light').
 ;;   ;; (modus-themes-load-theme 'ef-owl)
 ;;   )
+
+;; (require 'nano-layout)
+;; (require 'nano-base-colors)
+;; (require 'nano-faces)
+;; (require 'nano-theme-light)
+;; (require 'nano-theme-dark)
+;; (require 'nano-theme)
+;; (require 'nano-defaults)
+;; (require 'nano-modeline)
 
 (defvar my--themes
   '(doom-one doom-gruvbox doom-nord doom-material doom-ayu-dark
@@ -102,6 +102,11 @@
   :commands solaire-global-mode
   :config
   (solaire-global-mode +1))
+
+;;(dolist (face '(mode-line mode-line-inactive))
+;;  (setf (alist-get face solaire-mode-remap-modeline) nil))
+
+;;(add-to-list 'solaire-mode-themes-to-face-swap 'doom-one)
 
 (provide 'dl-theme)
 ;;; dl-theme.el ends here
