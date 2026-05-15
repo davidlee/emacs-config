@@ -1,5 +1,5 @@
 # Keys
- gPersonal command interface for this Emacs config.
+ Personal command interface for this Emacs config.
 
 ## Mental model
 
@@ -16,11 +16,11 @@
 | `C-c b` | `my-buffer-map` | buffers |
 | `C-c w` | `my-window-map` | windows (arrow keys for direction) |
 | `C-c s` | `my-search-map` | search *(empty)* |
-| `C-c g` | `my-git-map`    | git |
+| `C-c g` | `my-git-map`    | git (Meow alias: `SPC G` — see Gotchas) |
 | `C-c o` | `my-org-map`    | org / open *(empty)* |
 | `C-c t` | `my-toggle-map` | toggles *(empty)* |
 | `C-c e` | `my-eval-map`   | eval / elisp *(empty)* |
-| `C-c m` | `my-term-map`   | multi-vterm + shpool |
+| `C-c m` | `my-term-map`   | multi-vterm + shpool (Meow alias: `SPC M` — see Gotchas) |
 
 ## Adding a binding
 
@@ -76,6 +76,7 @@ Declare autoloads on the source package with `:commands`. Then bind centrally:
 - **`:defer` / `:ensure-system-package` parse errors**. use-package keywords sit at the top level of the form. A keyword without a value, or one buried inside `:config` body, makes the parser see "keyword wants exactly one argument" or "wants a non-empty list."
 - **Nested `defun` warnings**. A `defun` inside `(use-package … :config …)` defines the function at runtime fine, but the byte-compiler doesn't promote it to "known" status — calls a few lines later warn "not known to be defined." Hoist the `defun` above the use-package form, or inline it.
 - **`my/bind` override messages**. `my/bind: overriding KEY in MAP: OLD -> NEW` in `*Messages*` means two bindings fight. Resolve at the source.
+- **Meow keypad eats `SPC g` and `SPC m`**. After `SPC`, Meow checks `meow-keypad-meta-prefix` (`m` → M-) and `meow-keypad-ctrl-meta-prefix` (`g` → C-M-) **before** consulting the leader keymap (`meow-keypad.el:485-513`). `c` and `x` are similarly reserved as the `C-c`/`C-x` dispatchers. Workaround: lowercase `C-c g`/`C-c m` work everywhere; in Meow normal state use the capital aliases `SPC G`/`SPC M` (bound in `meow-leader-define-key`) or route via `SPC c g g`.
 
 ## Layout
 

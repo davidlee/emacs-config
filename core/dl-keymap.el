@@ -11,11 +11,11 @@
 ;;   C-c b / SPC b   buffer
 ;;   C-c w / SPC w   window
 ;;   C-c s / SPC s   search
-;;   C-c g / SPC g   git
 ;;   C-c o / SPC o   org / open
 ;;   C-c t / SPC t   toggle
 ;;   C-c e / SPC e   eval / elisp
-;;   C-c m / SPC m   term (multi-vterm + shpool)
+;;   C-c g / SPC G   git    (capital in Meow: SPC g is keypad C-M- prefix)
+;;   C-c m / SPC M   term   (capital in Meow: SPC m is keypad M- prefix)
 ;;
 ;; Add new bindings with `my/bind' so each carries a which-key label and
 ;; a collision warning.
@@ -131,15 +131,19 @@ Warns when KEY already has a binding in MAP that differs from CMD."
     '("/" . meow-keypad-describe-key)
     '("?" . meow-cheatsheet)
     ;; Mirror C-c <letter> prefix maps onto SPC <letter>.
+    ;; Note: lowercase m and g are eaten by meow-keypad as the meta /
+    ;; ctrl-meta prefix dispatchers before leader-keymap is consulted,
+    ;; so git and term use capital aliases (SPC G, SPC M) in Meow.
+    ;; Lowercase C-c g / C-c m still work directly outside Meow.
     (cons "f" my-file-map)
     (cons "b" my-buffer-map)
     (cons "w" my-window-map)
     (cons "s" my-search-map)
-    (cons "g" my-git-map)
+    (cons "G" my-git-map)
     (cons "o" my-org-map)
     (cons "t" my-toggle-map)
     (cons "e" my-eval-map)
-    (cons "m" my-term-map))
+    (cons "M" my-term-map))
 
   (meow-normal-define-key
     '("0" . meow-expand-0)

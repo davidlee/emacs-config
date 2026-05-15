@@ -31,7 +31,7 @@
   :custom
   (prefix-help-command #'embark-prefix-help-command)
   (which-key-show-early-on-C-h t)
-  (which-key-idle-delay 1e6)
+  (which-key-idle-delay 0.3) ; 1e6
   (which-key-idle-secondary-delay 0.05)
   :config
   (which-key-mode))
@@ -41,7 +41,11 @@
   (let (bindings)
     (map-keymap
       (lambda (event binding)
-        (push (cons (key-description (vector event)) binding) bindings))
+        (push
+          (cons
+            (key-description (vector event))
+            binding)
+          bindings))
       keymap)
     (nreverse bindings)))
 
