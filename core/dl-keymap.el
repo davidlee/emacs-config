@@ -148,7 +148,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-toggle-map "r" #'read-only-mode                   "read-only")
 (my/bind my-toggle-map "f" #'auto-fill-mode                   "auto-fill (hard-wrap)")
 (my/bind my-toggle-map "s" #'jinx-mode                        "spell (jinx)")
-(my/bind my-toggle-map "c" #'olivetti-mode                    "olivetti (centered)")
+(my/bind my-toggle-map "c" #'my/toggle-margins                "margins (olivetti / vfc)")
 (my/bind my-toggle-map "V" #'variable-pitch-mode              "variable-pitch")
 (my/bind my-toggle-map "e" #'electric-pair-mode               "electric-pair")
 (my/bind my-toggle-map "i" #'indent-tabs-mode                 "indent-tabs")

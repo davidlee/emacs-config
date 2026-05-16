@@ -13,6 +13,60 @@ the user-mode renderer (e.g. `meow-indicator')."
       (concat (funcall lambda-line-user-mode) composed)
     composed))
 
+;; `lambda-line-compose' is margin-naive in two places:
+;;   1. lambda-line.el:639 -- uses `window-body-width' (excludes margins),
+;;      so the buffer name truncates aggressively when olivetti / vfc widen
+;;      the margins.
+;;   2. lambda-line.el:729 -- uses `:align-to right', which per Emacs's
+;;      display spec resolves to the right edge of the text area (inside
+;;      the right margin). The right segment stops short of the modeline's
+;;      actual right edge.
+;; Patch both via :around advice.
+(with-eval-after-load 'lambda-line
+  (define-advice lambda-line-compose
+      (:around (orig &rest args) margin-aware)
+    (let* ((win (or (get-buffer-window (current-buffer)) (selected-window)))
+           (rm  (or (cdr (window-margins win)) 0))
+           (result (cl-letf (((symbol-function 'window-body-width)
+                              (lambda (&optional window pixelwise)
+                                (window-total-width window pixelwise))))
+                     (apply orig args))))
+      (when (and (> rm 0) (stringp result))
+        (let ((pos 0) (len (length result)))
+          (while (< pos len)
+            (let ((disp (get-text-property pos 'display result)))
+              (when (and (consp disp)
+                         (eq (car disp) 'space)
+                         (plist-get (cdr disp) :align-to))
+                (let* ((plist (copy-sequence (cdr disp)))
+                       (expr  (plist-get plist :align-to)))
+                  (setq plist (plist-put plist :align-to `(+ ,expr ,rm)))
+                  (put-text-property pos (1+ pos)
+                                     'display (cons 'space plist)
+                                     result))))
+            (setq pos (1+ pos)))))
+      result)))
+
+;; lambda-line.el:520 -- the VC segment runs project/icon/branch together with
+;; no spacing. Override with explicit padding around the VC symbol.
+(with-eval-after-load 'lambda-line
+  (define-advice lambda-line-vc-project-branch
+      (:override () extra-spacing)
+    (let ((backend (vc-backend buffer-file-name)))
+      (concat
+       (when (and buffer-file-name vc-mode)
+         (let ((project-name (lambda-line-project-name)))
+           (unless (string= "-" project-name)
+             (concat
+              (propertize " •" 'face '(:inherit fringe))
+              (format " %s " project-name)))))
+       (when vc-mode
+         (concat
+          lambda-line-vc-symbol
+          " "
+          (substring-no-properties vc-mode
+                                   (+ (if (eq backend 'Hg) 2 3) 2))))))))
+
 (use-package lambda-line
   ;;  :ensure nil
   ;;  :vc (:url "https://github.com/Lambda-Emacs/lambda-line.git")

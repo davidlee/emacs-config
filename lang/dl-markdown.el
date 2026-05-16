@@ -17,8 +17,8 @@
   (:map markdown-mode-map
     ("C-c C-e" . markdown-do)))
 
-(use-package visual-fill-column
-  :hook ((markdown-mode org-mode text-mode) . visual-fill-column-mode))
+;; visual-fill-column moved to editing/dl-writer.el so it lives next to
+;; olivetti (they're alternative implementations of the same idea).
 
 (use-package grip-mode
   :after markdown-mode)

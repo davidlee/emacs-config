@@ -8,6 +8,7 @@
 ;; ZedMono NF
 ;; Hack
 ;; MonoLisa Nerd Font Mono
+;; Monaspace Krypton NF
 
 (use-package
   fontaine
@@ -30,22 +31,21 @@
                        (presentation :default-height 180)
                        (t
 
-                         ;; I keep all properties for didactic purposes, but most ca
-                         ;; omitted.  See the fontaine manual for the technicalities:
-                         ;; <https://protesilaos.com/emacs/fontaine>.
+
+                         ;; <https://protesilaos.com/emacs/fontaine>
                          :default-family "JetBrainsMono NF"
                          :default-weight regular
                          :default-height 100
 
-                         :fixed-pitch-family "Roboto"; falls back to :default-family
-                         :fixed-pitch-weight nil ; falls back to :default-weight
+                         :fixed-pitch-family "MonoLisa NF"
+                         :fixed-pitch-weight nil
                          :fixed-pitch-height 1.0
 
-                         :fixed-pitch-serif-family nil ; falls back to :default-family
-                         :fixed-pitch-serif-weight nil ; falls back to :default-weight
+                         :fixed-pitch-serif-family "Noto Sans Mono NF"
+                         :fixed-pitch-serif-weight nil
                          :fixed-pitch-serif-height 1.0
 
-                         :variable-pitch-family "JetBrainsMono"
+                         :variable-pitch-family "Linux Libertine O"
                          :variable-pitch-weight nil
                          :variable-pitch-height 1.0
 
@@ -55,18 +55,17 @@
                          ;; has no `:lambda-line-*' key). Heights kept at 1.0 to
                          ;; avoid active/inactive size jumps — lambda-line owns
                          ;; vertical padding via `lambda-line-space-{top,bottom}'.
-                         :mode-line-active-family "Iosevka NF"
+                         :mode-line-active-family "Hack"
                          :mode-line-active-weight nil
-                         :mode-line-active-height 1.0
+                         :mode-line-active-height 120
 
-                         :mode-line-inactive-family "Iosevka NF"
+                         :mode-line-inactive-family "Hack"
                          :mode-line-inactive-weight nil
-                         :mode-line-inactive-height 1.0
+                         :mode-line-inactive-height 120
 
-                         ;;:header-line-family "Monaspace Krypton" ; falls back to :default-family
-                         :header-line-family "Monaspace Neon NF" ; falls back to :default-family
-                         :header-line-weight nil ; falls back to :default-weight
-                         :header-line-height 140
+                         ;; :header-line-family "Monaspace Neon NF" ; falls back to :default-family
+                         ;; :header-line-weight nil ; falls back to :default-weight
+                         ;; :header-line-height 140
 
                          :line-number-family "ZedMono" ; falls back to :default-family
                          :line-number-weight nil ; falls back to :default-weight

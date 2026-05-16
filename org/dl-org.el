@@ -97,6 +97,7 @@
 (global-set-key (kbd "C-c n d") #'my/daily-note)
 (global-set-key (kbd "C-c n w") #'my/weekly-note)
 
+;; (add-hook 'org-mode-hook #'variable-pitch-mode)
 (provide 'dl-org)
 
 ;;;;;;;;;;;;;;;;
