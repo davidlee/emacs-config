@@ -1,62 +1,5 @@
 ;;; dl-theme.el --- Theme settings -*- lexical-binding: t; -*-
 
-;; (use-package nano
-;;   :ensure nil
-;;   :vc (:url "https://github.com/rougier/nano-emacs.git"))
-
-
-;; (use-package modus-themes
-;;   :custom
-;;   (modus-themes-mode-line '(accented borderless)
-;;     modus-themes-bold-constructs t
-;;     modus-themes-italic-constructs t
-;;     modus-themes-fringes 'subtle
-;;     modus-themes-tabs-accented t
-;;     modus-themes-paren-match '(bold)
-;;     ;; modus-themes-prompts '(bold intense)
-;;     ;; modus-themes-completions 'opinionated
-;;     modus-themes-org-blocks 'tinted-background
-;;     modus-themes-scale-headings t
-;;     modus-themes-region '(bg-only))
-;;   :config
-;;   (modus-themes-load-theme 'modus-vivendi)
-;;   (define-key global-map (kbd "<f5>") #'modus-themes-toggle))
-
-;; (use-package ef-themes
-;;   :custom
-;;   ;; This makes the Modus commands listed below consider only the Ef
-;;   ;; themes.  For an alternative that includes Modus and all
-;;   ;; derivative themes (like Ef), enable the
-;;   ;; `modus-themes-include-derivatives-mode' instead.  The manual of
-;;   ;; the Ef themes has a section that explains all the possibilities:
-;;   ;;
-;;   ;; - Evaluate `(info "(ef-themes) Working with other Modus themes or taking over Modus")'
-;;   ;; - Visit <https://protesilaos.com/emacs/ef-themes#h:6585235a-5219-4f78-9dd5-6a64d87d1b6e>
-;;   (ef-themes-take-over-modus-themes-mode 1)
-;;   :bind
-;;   (;("<f5>" . modus-themes-rotate)
-;;     ("C-<f5>" . modus-themes-select)
-;;     ("M-<f5>" . modus-themes-load-random))
-;;   :config
-;;   ;; All customisations here.
-;;   (setq modus-themes-mixed-fonts t)
-;;   (setq modus-themes-italic-constructs t)
-
-;;   ;; Finally, load your theme of choice (or a random one with
-;;   ;; `modus-themes-load-random', `modus-themes-load-random-dark',
-;;   ;; `modus-themes-load-random-light').
-;;   ;; (modus-themes-load-theme 'ef-owl)
-;;   )
-
-;; (require 'nano-layout)
-;; (require 'nano-base-colors)
-;; (require 'nano-faces)
-;; (require 'nano-theme-light)
-;; (require 'nano-theme-dark)
-;; (require 'nano-theme)
-;; (require 'nano-defaults)
-;; (require 'nano-modeline)
-
 (defvar my--themes
   '(doom-one doom-gruvbox doom-nord doom-material doom-ayu-dark
      doom-zenburn
@@ -98,10 +41,41 @@
 
 (global-set-key (kbd "<f5>") #'my--rotate-themes)
 
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;;   Distraction mitigation
+;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (use-package solaire-mode
   :commands solaire-global-mode
   :config
   (solaire-global-mode +1))
+
+;; Olivetti centres prose at `olivetti-body-width'. visual-fill-column does
+;; the same thing — partition mode hooks so they don't trample each other.
+(use-package olivetti
+  :hook ((text-mode org-mode markdown-mode) . olivetti-mode)
+  :custom
+  (olivetti-body-width 80)
+  ;; Default on-hook is `(visual-line-mode)`, which TOGGLES (not enables)
+  ;; visual-line-mode -- so it flips OFF in buffers where text-mode-hook
+  ;; already turned it on. Replace with an explicit enable.
+  (olivetti-mode-on-hook '((lambda () (visual-line-mode 1)))))
+
+;; (use-package visual-fill-column
+;;   :hook (prog-mode . visual-fill-column-mode))
+
+(defun my/toggle-margins ()
+  "Toggle body-width margins for the current buffer.
+Uses `visual-fill-column-mode' in `prog-mode' derivatives,
+`olivetti-mode' elsewhere."
+  (interactive)
+  (if (derived-mode-p 'prog-mode)
+    (visual-fill-column-mode 'toggle)
+    (olivetti-mode 'toggle)))
 
 ;;(dolist (face '(mode-line mode-line-inactive))
 ;;  (setf (alist-get face solaire-mode-remap-modeline) nil))

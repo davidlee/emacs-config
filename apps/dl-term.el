@@ -12,24 +12,11 @@
 
 (use-package eshell
   :init
-  (defun bedrock/setup-eshell ()
+  (defun my/setup-eshell ()
     ;; Something funny is going on with how Eshell sets up its keymaps; this is
     ;; a work-around to make C-r bound in the keymap
     (keymap-set eshell-mode-map "C-r" 'consult-history))
-  :hook ((eshell-mode . bedrock/setup-eshell)))
-
-;;
-;; ESHELL
-;;
-;; (defun eshell/sudo-open (filename)
-;;   "Open a file as root in Eshell."
-;;   (let ((qual-filename (if (string-match "^/" filename)
-;;                          filename
-;;                          (concat (expand-file-name (eshell/pwd)) "/" filename))))
-;;     (switch-to-buffer
-;;       (find-file-noselect
-;;         (concat "/sudo::" qual-filename)))))
-
+  :hook ((eshell-mode . my/setup-eshell)))
 
 (defun eshell-other-window ()
   "Create or visit an eshell buffer."
@@ -44,63 +31,44 @@
 (global-set-key (kbd "<s-C-return>") 'eshell-other-window)
 
 ;;
-;; VTERM
+;; GHOSTEL (replaces vterm / multi-vterm / vterm-toggle)
 ;;
+;; Ghostel package itself is installed in apps/dl-ghostel.el.
+;; Key bindings for ghostel live in dl-keymap.el under my-term-map (C-c m).
 
-(use-package vterm
-  :commands vterm
-  :custom
-  (vterm-kill-buffer-on-exit t)
-  :bind (:map vterm-mode-map
-              ("C-c <escape>" . vterm-send-escape))
-  :config
-  (setq vterm-max-scrollback 100000))
+(defun my/ghostel-named (name)
+  "Open or create a ghostel terminal buffer named for NAME."
+  (interactive "sGhostel name: ")
+  (let ((ghostel-buffer-name (format "*ghostel:%s*" name)))
+    (ghostel)))
 
-(use-package multi-vterm
-  :after vterm
-  :commands (multi-vterm multi-vterm-next multi-vterm-prev))
-;; Key bindings for multi-vterm live in dl-keymap.el under my-term-map (C-c m).
+(defun my/ghostel-toggle ()
+  "Pop to a ghostel buffer; bury it when already selected.
+Cycles via `ghostel-other' so repeated invocations walk the ghostel
+buffer list. Creates a new terminal if none exist."
+  (interactive)
+  (if (derived-mode-p 'ghostel-mode)
+    (bury-buffer)
+    (let ((buf (seq-find (lambda (b)
+                           (with-current-buffer b
+                             (derived-mode-p 'ghostel-mode)))
+                 (buffer-list))))
+      (if buf (pop-to-buffer buf) (ghostel)))))
 
-(defun my/vterm-named (name)
-  "Open or create a named (for NAME) vterm buffer."
-  (interactive "sVTerm name: ")
-  (let ((buf-name (format "*vterm:%s*" name)))
-    (if (get-buffer buf-name)
-      (pop-to-buffer buf-name)
-      (vterm buf-name))))
+(defun my/ghostel-here ()
+  "Open a fresh ghostel terminal at the current `default-directory'."
+  (interactive)
+  (ghostel '(4)))
 
-(use-package vterm-toggle
-  :custom
-  (vterm-toggle-hide-method 'delete-window)
-  (vterm-toggle-fullscreen-p nil)
-  :bind (([C-f1] . vterm-toggle)
-         ([C-f2] . vterm-toggle-cd))
-  :init
-  (add-to-list 'display-buffer-alist
-    '((lambda (buffer-or-name _)
-        (let ((buffer (get-buffer buffer-or-name)))
-          (equal major-mode 'vterm-mode)))
-       (display-buffer-reuse-window display-buffer-at-bottom)
-       (dedicated . t)
-       (reusable-frames . visible)
-       (window-height . 0.3)))
-  :config
-  ;; vterm-mode-map is owned by vterm; vterm-toggle (require 'vterm)s
-  ;; at load time so the map exists by the time :config runs.
-  (define-key vterm-mode-map [(control return)] #'vterm-toggle-insert-cd)
-  (define-key vterm-mode-map (kbd "M-n")        #'vterm-toggle-forward)
-  (define-key vterm-mode-map (kbd "M-p")        #'vterm-toggle-backward))
+(global-set-key [C-f1] #'my/ghostel-toggle)
+(global-set-key [C-f2] #'my/ghostel-here)
 
-(defun vterm--kill-vterm-buffer-and-window (process event)
-  "Kill buffer and window on vterm process termination."
-  (when (not (process-live-p process))
-    (let ((buf (process-buffer process)))
-      (when (buffer-live-p buf)
-        (with-current-buffer buf
-          (kill-buffer)
-          (ignore-errors (delete-window))
-          (message "VTerm closed."))))))
-
+(add-to-list 'display-buffer-alist
+  '((major-mode . ghostel-mode)
+     (display-buffer-reuse-mode-window display-buffer-at-bottom)
+     (dedicated . t)
+     (reusable-frames . visible)
+     (window-height . 0.3)))
 
 (provide 'dl-term)
 ;;; dl-term.el ends here

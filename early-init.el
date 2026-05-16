@@ -23,5 +23,7 @@
 (require 'use-package)
 (require 'package-vc)
 
+(add-to-list 'default-frame-alist '(internal-border-width . 10))
+
 (load-file "~/.emacs.d/core/dl-path.el")
 ;;; early-init.el ends here

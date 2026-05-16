@@ -1,10 +1,12 @@
 ;;; dl-shpool.el --- Shell Session Pooler -*- lexical-binding: t; -*-
 
 ;;
-;; VTERM + SHPOOL
+;; GHOSTEL + SHPOOL
 ;;
 (require 'subr-x)
 (require 'seq)
+(declare-function ghostel-exec "ghostel" (buffer program &optional args))
+(declare-function ghostel-send-string "ghostel" (string))
 
 (defgroup my-shpool nil
   "Persistent vterm sessions via shpool."
@@ -39,7 +41,7 @@ opened. Use `my/shpool-add-current-to-restore' to add sessions to it."
   "Completion metadata for shpool session names.")
 
 (defun my/shpool-buffer-name (name)
-  "Return vterm buffer name for shpool session NAME."
+  "Return ghostel buffer name for shpool session NAME."
   (format "*shpool:%s*" name))
 
 (defun my/shpool--command-output (&rest args)
@@ -221,47 +223,41 @@ Call this from Marginalia's `:config' block if the automatic
     (message "shpool command: %s" command)))
 
 (defun my/shpool--send-command (command)
-  "Send COMMAND to the current vterm and press return."
+  "Send COMMAND followed by RET to the current ghostel terminal."
   (my/shpool--log-command command)
-  (vterm-send-string command)
-  (vterm-send-return))
+  (ghostel-send-string (concat command "\r")))
 
-(defun my/shpool-attach-command (name)
-  "Return shell command to attach to shpool session NAME.
+(defun my/shpool-attach-args (name &optional force)
+  "Return argv tail for `shpool attach' on session NAME.
+With FORCE non-nil, include the `--force' flag."
+  (append '("attach")
+    (and force '("--force"))
+    (list name)))
 
-Use plain `shpool attach NAME'. The systemd socket/service handles daemon
-startup; adding daemon-specific flags here makes debugging harder."
-  (format "exec %s attach %s"
-    my-shpool-command
-    (shell-quote-argument name)))
-
-(defun my/shpool-attach-command-force (name)
-  "Return shell command to force attach to shpool session NAME."
-  (format "exec %s attach --force %s"
-    my-shpool-command
-    (shell-quote-argument name)))
-
-(defun my/shpool--open (name command-fn)
-  "Open or create vterm buffer NAME using COMMAND-FN to build attach command."
+(defun my/shpool--open (name &optional force)
+  "Open or create ghostel buffer for shpool session NAME.
+With FORCE non-nil, force-attach via `shpool attach --force'."
   (unless (and name (not (string-empty-p name)))
     (user-error "Empty shpool session name"))
   (my/shpool--remember-session name)
-  (let ((buf-name (my/shpool-buffer-name name)))
-    (if (get-buffer buf-name)
-      (pop-to-buffer buf-name)
-      (vterm buf-name)
-      (with-current-buffer buf-name
-        (my/shpool--send-command (funcall command-fn name))))))
+  (let* ((buf-name (my/shpool-buffer-name name))
+          (existing (get-buffer buf-name)))
+    (if (and existing (process-live-p (get-buffer-process existing)))
+      (pop-to-buffer existing)
+      (let ((buf (or existing (get-buffer-create buf-name))))
+        (pop-to-buffer buf)
+        (ghostel-exec buf my-shpool-command
+          (my/shpool-attach-args name force))))))
 
 (defun my/shpool (name)
-  "Open or create a vterm attached to persistent shpool session NAME."
+  "Open or create a ghostel terminal attached to persistent shpool session NAME."
   (interactive (list (my/shpool-read-session-name)))
-  (my/shpool--open name #'my/shpool-attach-command))
+  (my/shpool--open name))
 
 (defun my/shpool-force (name)
-  "Open or create a vterm force-attached to persistent shpool session NAME."
+  "Open or create a ghostel terminal force-attached to persistent shpool session NAME."
   (interactive (list (my/shpool-read-session-name)))
-  (my/shpool--open name #'my/shpool-attach-command-force))
+  (my/shpool--open name t))
 
 (defun my/shpool-project ()
   "Open a project-named persistent shpool session."
@@ -281,13 +277,13 @@ startup; adding daemon-specific flags here makes debugging harder."
     (user-error "Current buffer is not a shpool buffer")))
 
 (defun my/shpool-rename-buffer ()
-  "Rename current shpool vterm buffer.
+  "Rename current shpool ghostel buffer.
 
 This does not rename the underlying shpool session. It only changes the
 Emacs buffer name."
   (interactive)
-  (unless (derived-mode-p 'vterm-mode)
-    (user-error "Current buffer is not a vterm buffer"))
+  (unless (derived-mode-p 'ghostel-mode)
+    (user-error "Current buffer is not a ghostel buffer"))
   (rename-buffer
     (my/shpool-buffer-name
       (my/shpool-read-session-name "Rename buffer to shpool session"))
@@ -324,12 +320,12 @@ Emacs buffer name."
   (message "Removed %s from shpool restore sessions" name))
 
 (defun my/shpool-detach-current ()
-  "Detach current shpool session and kill its vterm buffer.
+  "Detach current shpool session and kill its ghostel buffer.
 
 This does not kill the persistent shpool session."
   (interactive)
   (let ((name (my/shpool-current-session-name)))
-    (when (derived-mode-p 'vterm-mode)
+    (when (derived-mode-p 'ghostel-mode)
       (my/shpool--send-command
         (format "%s detach %s"
           my-shpool-command
@@ -347,8 +343,8 @@ This does not kill the persistent shpool session."
     (user-error "Empty shpool session name"))
   (when (yes-or-no-p (format "Kill persistent shpool session %S? " name))
     (let ((output (my/shpool--command-output "kill" name)))
-      (when-let ((vterm-buf (get-buffer (my/shpool-buffer-name name))))
-        (kill-buffer vterm-buf))
+      (when-let ((buf (get-buffer (my/shpool-buffer-name name))))
+        (kill-buffer buf))
       (my/shpool--forget-session name)
       (if (string-empty-p output)
         (message "Killed shpool session: %s" name)

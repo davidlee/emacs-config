@@ -29,10 +29,9 @@
                          :default-height 150)
 
                        (presentation :default-height 180)
+
+                       ;; <https://protesilaos.com/emacs/fontaine>
                        (t
-
-
-                         ;; <https://protesilaos.com/emacs/fontaine>
                          :default-family "JetBrainsMono NF"
                          :default-weight regular
                          :default-height 100
@@ -63,9 +62,9 @@
                          :mode-line-inactive-weight nil
                          :mode-line-inactive-height 120
 
-                         ;; :header-line-family "Monaspace Neon NF" ; falls back to :default-family
-                         ;; :header-line-weight nil ; falls back to :default-weight
-                         ;; :header-line-height 140
+                         :header-line-family "Hack" ; falls back to :default-family
+                         :header-line-weight nil ; falls back to :default-weight
+                         :header-line-height 120
 
                          :line-number-family "ZedMono" ; falls back to :default-family
                          :line-number-weight nil ; falls back to :default-weight
@@ -102,15 +101,6 @@
     (or (fontaine-restore-latest-preset) 'regular))
   (fontaine-mode 1))
 
-                                        ;(add-hook 'after-init-hook #'fontaine-mode)
-
-;; (custom-set-faces
-;;  '(meow-normal-indicator ((t (:background "#a6e3a1" :foreground "black" :weight bold))))
-;;  '(meow-insert-indicator ((t (:background "#f38ba8" :foreground "black" :weight bold))))
-;;  '(meow-motion-indicator ((t (:background "#89b4fa" :foreground "black" :weight bold))))
-;;  '(meow-keypad-indicator ((t (:background "#f9e2af" :foreground "black" :weight bold))))
-;;  '(meow-beacon-indicator ((t (:background "#cba6f7" :foreground "black" :weight bold)))))
 
 (provide 'dl-font)
-;; (set-face-attribute 'default nil :font "JetBrainsMono Nerd Font Mono" :height 115)
 ;;; dl-font.el ends here

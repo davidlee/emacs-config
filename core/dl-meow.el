@@ -13,6 +13,24 @@ Re-applied after theme load so rotating themes can't clobber them."
     (set-face-attribute face nil
                         :background bg :foreground "black" :weight 'bold)))
 
+(defface dl-meow-indicator-inactive
+  '((t (:background "#45475a" :foreground "#7f849c" :weight bold)))
+  "Face for the meow state indicator in inactive modelines.")
+
+(defun dl-meow-indicator ()
+  "Wrap `meow-indicator', greying it out in inactive modelines.
+Mode-line `:eval' forms run with `selected-window' bound to the window
+being drawn; lambda-line caches the truly active one in
+`lambda-line--selected-window'. Mismatch ⇒ inactive."
+  (let ((s (meow-indicator)))
+    (if (and (stringp s)
+             (not (string-empty-p s))
+             (boundp 'lambda-line--selected-window)
+             (not (eq (selected-window) lambda-line--selected-window)))
+        (propertize (substring-no-properties s)
+                    'face 'dl-meow-indicator-inactive)
+      s)))
+
 (use-package meow
   :config
   (setq meow-mode-state-list

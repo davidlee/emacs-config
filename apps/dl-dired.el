@@ -1,40 +1,28 @@
-;;; dl-dired.el --- Dired -*- lexical-binding: t; -*-
+;;; dl-dired.el --- Dired core -*- lexical-binding: t; -*-
 
-;;; -*- lexical-binding: t; -*-
+;; Dired is the base file manager. Dirvish (see dl-dirvish.el) provides
+;; the UI; Yazi / Broot wrappers live alongside it. Bindings for the
+;; whole stack live in core/dl-keymap.el under my-file-map (C-c f).
 
-(use-package dired-preview
+(use-package dired
+  :ensure nil
+  :commands (dired dired-jump)
   :custom
-  (setq dired-preview-delay 0.1)
+  (dired-kill-when-opening-new-dired-buffer t)
+  (dired-recursive-copies 'always)
+  (dired-recursive-deletes 'top)
+  (delete-by-moving-to-trash t)
+  (dired-listing-switches
+    "-l --almost-all --human-readable --group-directories-first --no-group")
   :config
-  (dired-preview-global-mode 1))
+  ;; Lets `dirvish-side' auto-close its window when opening a file.
+  (put 'dired-find-alternate-file 'disabled nil))
 
-(use-package ready-player
-  :config
-  (ready-player-mode +1))
-
-(provide 'dl-dired)
-
-(use-package dired-sidebar
-  :bind (("C-x C-n" . dired-sidebar-toggle-sidebar))
-  :commands
-  (dired-sidebar-toggle-sidebar)
-  :init
-  (add-hook 'dired-sidebar-mode-hook
-    (lambda ()
-      (unless (file-remote-p default-directory)
-        (auto-revert-mode))))
-  :config
-  (push 'toggle-window-split dired-sidebar-toggle-hidden-commands)
-  (push 'rotate-windows dired-sidebar-toggle-hidden-commands)
-
-  (setq dired-sidebar-subtree-line-prefix "__")
-  (setq dired-sidebar-theme 'vscode)
-  (setq dired-sidebar-use-term-integration t)
-  (setq dired-sidebar-use-custom-font t))
+(use-package diredfl
+  :hook (dired-mode . diredfl-mode))
 
 (use-package nerd-icons :defer t)
-(use-package nerd-icons-dired
-  :commands (nerd-icons-dired-mode))
-(setq dired-sidebar-theme 'nerd-icons)
+(use-package ready-player :config (ready-player-mode +1))
 
+(provide 'dl-dired)
 ;;; dl-dired.el ends here

@@ -33,8 +33,7 @@
   ;; open large directory (over 20000 files) asynchronously with `fd' command
   (setq dirvish-large-directory-threshold 20000)
   :bind ; Bind `dirvish-fd|dirvish-side|dirvish-dwim' as you see fit
-  (("C-c f" . dirvish-dwim)
-    :map dirvish-mode-map               ; Dirvish inherits `dired-mode-map'
+  ((:map dirvish-mode-map               ; Dirvish inherits `dired-mode-map'
     (";"   . dired-up-directory)        ; So you can adjust `dired' bindings here
     ("?"   . dirvish-dispatch)          ; [?] a helpful cheatsheet
     ("a"   . dirvish-setup-menu)        ; [a]ttributes settings:`t' toggles mtime, `f' toggles fullframe, etc.
