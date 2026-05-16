@@ -30,30 +30,37 @@
 (global-set-key (kbd "C-c c") #'org-capture)
 (global-set-key (kbd "C-c l") #'org-store-link)
 
-;; Capture bodies use `(function (lambda () (string-join '(...) "\n")))'
-;; so each line of the resulting template reads as its own list entry —
-;; easier to scan than one long string of `\n'-separated chunks.
+;; Capture-body helpers.  Each builder returns a 0-arg function that
+;; assembles the body lazily, so templates read one line per list entry
+;; instead of a single string speckled with `\n'.
+
+(defun my/capture-body (&rest lines)
+  "Return a 0-arg fn that joins LINES with newlines into a capture body."
+  (lambda () (string-join lines "\n")))
+
+(defun my/capture-entry (heading &rest body-lines)
+  "Like `my/capture-body' but wraps HEADING with a standard properties drawer.
+Result:
+  HEADING
+  :PROPERTIES:
+  :CREATED: %U
+  :END:
+  BODY-LINES..."
+  (apply #'my/capture-body
+    heading
+    ":PROPERTIES:"
+    ":CREATED: %U"
+    ":END:"
+    body-lines))
 
 (setq org-capture-templates
   `(("i" "Inbox" entry
       (file "~/notes/inbox.org")
-      (function (lambda ()
-                  (string-join
-                    '("* TODO %?"
-                       ":PROPERTIES:"
-                       ":CREATED: %U"
-                       ":END:")
-                    "\n"))))
+      (function ,(my/capture-entry "* TODO %?")))
 
      ("f" "Fleeting note" entry
        (file "~/notes/inbox.org")
-       (function (lambda ()
-                   (string-join
-                     '("* %?"
-                        ":PROPERTIES:"
-                        ":CREATED: %U"
-                        ":END:")
-                     "\n"))))
+       (function ,(my/capture-entry "* %?")))
 
      ("j" "Journal entry" entry
        (file+datetree "~/notes/journal/log.org")
@@ -61,49 +68,33 @@
 
      ("P" "Project task" entry
        (file "~/notes/inbox.org")
-       (function (lambda ()
-                   (string-join
-                     '("* TODO %?"
-                        ":PROPERTIES:"
-                        ":CREATED: %U"
-                        ":END:"
-                        ":project:")
-                     "\n"))))
+       (function ,(my/capture-entry "* TODO %?" ":project:")))
 
      ("r" "Reading note" entry
        (file "~/notes/inbox.org")
-       (function (lambda ()
-                   (string-join
-                     '("* Reading: %?"
-                        ":PROPERTIES:"
-                        ":CREATED: %U"
-                        ":END:")
-                     "\n"))))
+       (function ,(my/capture-entry "* Reading: %?")))
 
+     ;; these last two are for https://github.com/sprig/org-capture-extension
      ("p" "Protocol" entry
        (file+headline ,(expand-file-name "protocol.org" org-directory) "Inbox")
-       (function (lambda ()
-                   (string-join
-                     '("* %^{Title|%:description}"
-                        "Source: %:link"
-                        "Captured: %U"
-                        ""
-                        "#+BEGIN_QUOTE"
-                        "%i"
-                        "#+END_QUOTE"
-                        ""
-                        "%?%(progn (setq my/org-capture-delete-frame-on-finalize t) \"\")")
-                     "\n")))
+       (function ,(my/capture-body
+                    "* %^{Title|%:description}"
+                    "Source: %:link"
+                    "Captured: %U"
+                    ""
+                    "#+BEGIN_QUOTE"
+                    "%i"
+                    "#+END_QUOTE"
+                    ""
+                    "%?%(progn (setq my/org-capture-delete-frame-on-finalize t) \"\")"))
        :empty-lines 1)
 
      ("L" "Protocol Link" entry
        (file+headline ,(expand-file-name "protocol.org" org-directory) "Inbox")
-       (function (lambda ()
-                   (string-join
-                     '("* %? [[%:link][%(my/sanitize-link-description \"%:description\")]]"
-                        "Captured: %U"
-                        "%(progn (setq my/org-capture-delete-frame-on-finalize t) \"\")")
-                     "\n")))
+       (function ,(my/capture-body
+                    "* %? [[%:link][%(my/sanitize-link-description \"%:description\")]]"
+                    "Captured: %U"
+                    "%(progn (setq my/org-capture-delete-frame-on-finalize t) \"\")"))
        :empty-lines 1)))
 
 ;; Org-protocol helpers — sanitizing link descriptions and auto-closing
@@ -113,8 +104,7 @@
   "Replace [ and ] in S with ( and ).
 Page titles can contain square brackets (ArXiv is the canonical
 offender), which break `[[link][description]]'."
-  (replace-regexp-in-string
-    "\\]" ")"
+  (replace-regexp-in-string   "\\]" ")"
     (replace-regexp-in-string "\\[" "(" s)))
 
 (defvar my/org-capture-delete-frame-on-finalize nil
@@ -136,31 +126,6 @@ in the main frame are safe.")
 ;; finalize advice covers refile too; only kill needs separate wiring.
 (advice-add 'org-capture-finalize :after #'my/org-capture-delete-client-frame)
 (advice-add 'org-capture-kill     :after #'my/org-capture-delete-client-frame)
-
-;; (add-hook 'org-mode-hook
-;;   (lambda ()
-;;     (add-to-list 'org-capture-templates
-;;       ;; The template follows
-;;       '("capture"
-;;          "Capture (Org Protocol)"
-;;          entry
-;;          (file "protocol.org")
-;;          (function (lambda ()
-;;                      (string-join
-;;                        '("* %:description"
-;;                           ":PROPERTIES:"
-;;                           ":CREATED: %U"
-;;                           ":END:"
-;;                           "%:annotation"
-;;                           "%i"
-;;                           ""
-;;                           "%?")
-;;                        "\n")))
-;;          :prepend t
-;;          :empty-lines 1)
-;;       ;; End template
-;;       )))
-
 
 (global-set-key (kbd "C-c c") #'org-capture)
 
