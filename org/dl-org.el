@@ -58,6 +58,28 @@
   (add-hook 'org-mode-hook #'org-modern-mode)
   (add-hook 'org-agenda-finalize-hook #'org-modern-agenda))
 
+;; style hax
+(use-package org-bullets)
+
+(setq org-startup-indented t
+  org-bullets-bullet-list '(" ") ;; no bullets, needs org-bullets package
+  org-ellipsis "  " ;; folding symbol
+  org-pretty-entities t
+  org-hide-emphasis-markers t
+  ;; show actually italicized text instead of /italicized text/
+  org-agenda-block-separator ""
+  org-fontify-whole-heading-line t
+  org-fontify-done-headline t
+  org-fontify-quote-and-verse-blocks t)
+
+;; fiddle spacing
+(add-hook 'org-mode-hook
+  (lambda () (progn
+               (setq left-margin-width 2)
+               (setq right-margin-width 2)
+               ;; (setq header-line-format " ")
+               (hl-line-mode nil)
+               (set-window-buffer nil (current-buffer)))))
 ;;
 ;; custom functions for periodic notes
 ;;
@@ -75,8 +97,6 @@
       (insert "#+filetags: :journal:\n\n")
       (insert "* Focus\n\n* Notes\n\n* Log\n")
       )))
-
-
 
 (defun my/weekly-note ()
   "Open this week's plain Org weekly note."

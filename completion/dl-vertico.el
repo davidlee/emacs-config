@@ -12,9 +12,9 @@
   :config
   (vertico-mode))
 
-(when (display-graphic-p)
-  (use-package vertico-posframe)
-  (vertico-posframe-mode 1))
+;; (when (display-graphic-p)
+;;   (use-package vertico-posframe)
+;;   (vertico-posframe-mode nil))
 
 ;; Persist history over Emacs restarts. Vertico sorts by history position.
 (use-package savehist
@@ -37,7 +37,7 @@
   (minibuffer-prompt-properties
     '(read-only t cursor-intangible t face minibuffer-prompt)))
 
-(keymap-set vertico-map "M-?" #'minibuffer-completion-help)
+(keymap-set vertico-map "M-?"   #'minibuffer-completion-help)
 (keymap-set vertico-map "M-RET" #'minibuffer-force-complete-and-exit)
 (keymap-set vertico-map "M-TAB" #'minibuffer-complete)
 

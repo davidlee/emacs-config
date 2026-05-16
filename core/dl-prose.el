@@ -39,7 +39,7 @@
 ;; `jinx-mode' (C-c t s), or `my/jinx-global-mode' (C-c t S) which
 ;; scopes a globalized toggle to `my/jinx-global-modes' only.
 (use-package jinx
-  :bind (("C-;"   . jinx-correct)
+  :bind (("C-:"   . jinx-correct)
           ("M-$"   . jinx-correct)
           ("C-M-$" . jinx-languages))
   :custom

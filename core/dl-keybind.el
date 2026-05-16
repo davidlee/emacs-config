@@ -28,8 +28,6 @@
 (define-key comint-mode-map (kbd "C-n") #'comint-next-input)
 (define-key comint-mode-map (kbd "C-w") #'backward-kill-word)
 
-
-
 (global-set-key (kbd "C-x 2") 'split-and-follow-horizontally)
 (global-set-key (kbd "C-x 3") 'split-and-follow-vertically)
 

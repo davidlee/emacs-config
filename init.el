@@ -64,7 +64,8 @@
 (require 'dl-keybind)
 ;; (require 'dl-spotify)
 ;; (require 'dl-slack)
-;; (require 'dl-dirvish)
+(require 'dl-dired)
+(require 'dl-dirvish)
 
 ;; elisp: util
 (require 'dl-insert-elisp-header)

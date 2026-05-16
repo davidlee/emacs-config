@@ -73,16 +73,15 @@
   (display-time-format "%a %F %T")
   (display-time-interval 1)
 
-  ;; Show the tab-bar as soon as tab-bar functions are invoked
-  (tab-bar-show 1)
-  (display-line-numbers-width 3) ; min width
+  (display-line-numbers-width 5) ; min width
 
   (global-prettify-symbols-mode t)
 
   ;; TAB BAR
-
-  (tab-bar-mode 1)
-  (global-tab-line-mode 1)
+  ;; Show the tab-bar as soon as tab-bar functions are invoked
+  (tab-bar-show nil)
+  (tab-bar-mode nil)
+  (global-tab-line-mode nil)
   (winner-mode 1)
 
   :init
@@ -136,10 +135,6 @@
   :config
   (nerd-icons-completion-mode)
   (add-hook 'marginalia-mode-hook #'nerd-icons-completion-marginalia-setup))
-
-(use-package nerd-icons-dired
-  :defer t
-  :hook (dired-mode . nerd-icons-dired-mode))
 
 (use-package beacon
   :diminish beacon-mode

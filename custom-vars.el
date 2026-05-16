@@ -5,7 +5,8 @@
   ;; Your init file should contain only one such instance.
   ;; If there is more than one, they won't work right.
   '(custom-safe-themes
-     '("4d5d11bfef87416d85673947e3ca3d3d5d985ad57b02a7bb2e32beaf785a100e"
+     '("088cd6f894494ac3d4ff67b794467c2aa1e3713453805b93a8bcb2d72a0d1b53"
+        "4d5d11bfef87416d85673947e3ca3d3d5d985ad57b02a7bb2e32beaf785a100e"
         "d481904809c509641a1a1f1b1eb80b94c58c210145effc2631c1a7f2e4a2fdf4"
         "3613617b9953c22fe46ef2b593a2e5bc79ef3cc88770602e7e569bbd71de113b"
         "3061706fa92759264751c64950df09b285e3a2d3a9db771e99bcbb2f9b470037"
@@ -15,7 +16,6 @@
         "6dcf1ca4c7432773084b9d52649ee5eb2c663131c4c06859f648dea98d9acb3e"
         default))
   '(dl-shpool-known-sessions '(".emacs.d" "hris" "team" "claude"))
-  '(global-tab-line-mode 1 nil nil "Customized with use-package emacs")
   '(my-shpool-known-sessions '("team" "flakes" "example" ".emacs.d"))
   '(package-selected-packages
      '(ace-window aggressive-indent agent-shell apheleia beacon cape
@@ -32,8 +32,7 @@
         ready-player shut-up slack spacious-padding suggest tempel
         terraform-mode treesit-auto undo-fu undo-fu-session use-package
         use-package-ensure-system-package vertico-prescient
-        visual-fill-column vundo which-key ws-butler yaml-mode
-        yasnippet-snippets zig-mode))
+        visual-fill-column vundo which-key ws-butler yaml-mode zig-mode))
   '(package-vc-selected-packages
      '((lambda-line :url "https://github.com/Lambda-Emacs/lambda-line.git")
         (nano :url "https://github.com/rougier/nano-emacs.git")
@@ -56,6 +55,5 @@
   ;; If you edit it by hand, you could mess it up, so be careful.
   ;; Your init file should contain only one such instance.
   ;; If there is more than one, they won't work right.
-
   )
-(put 'scroll-left 'disabled nil)
+;; (put 'scroll-left 'disabled nil)

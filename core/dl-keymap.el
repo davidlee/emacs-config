@@ -76,6 +76,11 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (define-key global-map (kbd "C-c m") my-term-map)
 (define-key global-map (kbd "C-c z") my-fold-map)
 
+;; Universal Emacs muscle memory for dired-jump; C-x C-n repurposed
+;; from the dropped dired-sidebar binding to dirvish-side.
+(global-set-key (kbd "C-x C-j") #'dired-jump)
+(global-set-key (kbd "C-x C-n") #'dirvish-side)
+
 ;; Prefix labels for which-key.
 (with-eval-after-load 'which-key
   (which-key-add-key-based-replacements
@@ -95,6 +100,13 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-file-map   "s" #'save-buffer            "save")
 (my/bind my-file-map   "S" #'write-file             "save-as")
 (my/bind my-file-map   "r" #'consult-recent-file    "recent")
+(my/bind my-file-map   "d" #'dired-jump             "dired-jump")
+(my/bind my-file-map   "D" #'dirvish                "dirvish")
+(my/bind my-file-map   "t" #'dirvish-side           "dirvish-side (tree)")
+(my/bind my-file-map   "F" #'project-find-file      "project-find-file")
+(my/bind my-file-map   "p" #'project-switch-project "project-switch")
+(my/bind my-file-map   "y" #'my/yazi-here           "yazi")
+(my/bind my-file-map   "b" #'my/broot-here          "broot")
 
 (my/bind my-buffer-map "b" #'consult-buffer         "switch")
 (my/bind my-buffer-map "k" #'kill-current-buffer    "kill")
@@ -161,7 +173,10 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-toggle-map "D" #'toggle-debug-on-quit             "debug-on-quit")
 (my/bind my-toggle-map "T" #'consult-theme                    "theme")
 (my/bind my-toggle-map "P" #'spacious-padding-mode            "spacious-padding")
-(my/bind my-toggle-map "b" #'beacon-mode                      "beacon")
+;;(my/bind my-toggle-map "B" #'beacon-mode                      "beacon")
+
+(my/bind my-toggle-map "B" #'tab-line-mode                    "tab-line")
+(my/bind my-toggle-map "B" #'global-tab-line-mode             "global tab-line")
 (my/bind my-toggle-map "g" #'diff-hl-mode                     "diff-hl (vcs gutter)")
 (my/bind my-toggle-map "*" #'prettify-symbols-mode            "prettify-symbols")
 (my/bind my-toggle-map ")" #'rainbow-delimiters-mode          "rainbow-delimiters")

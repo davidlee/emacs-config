@@ -2,7 +2,7 @@
 
 (defvar my--themes
   '(doom-one doom-gruvbox doom-nord doom-material doom-ayu-dark
-     doom-zenburn
+     doom-zenburn doom-one-light doom-one doom-acario-light
      doom-laserwave doom-molokai doom-moonlight doom-dracula))
 
 (defvar my--current-theme-index -1

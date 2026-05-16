@@ -94,12 +94,6 @@
 ;; (add-hook 'before-save-hook #'my/eglot-format-buffer-if-connected)
 ;; (add-hook 'before-save-hook #'my/eglot-organize-imports-if-connected)
 
-(use-package recentf
-  :init
-  (recentf-mode 1)
-  :custom
-  (recentf-max-saved-items 200))
-
 (use-package saveplace
   :init
   (save-place-mode 1))

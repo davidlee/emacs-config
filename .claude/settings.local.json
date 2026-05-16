@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(emacs -Q --batch -L core/ -L editing/ -f batch-byte-compile core/dl-keymap.el editing/dl-multi-edit.el)"
+      "Bash(emacs -Q --batch -L core/ -L editing/ -f batch-byte-compile core/dl-keymap.el editing/dl-multi-edit.el)",
+      "Bash(rg *)"
     ]
   }
 }

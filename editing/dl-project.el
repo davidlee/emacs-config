@@ -52,10 +52,5 @@
 (use-package diredfl
   :hook (dired-mode . diredfl-mode))
 
-(use-package dired-subtree
-  :after dired
-  :bind (:map dired-mode-map
-          ("TAB" . dired-subtree-toggle)))
-
 (provide 'dl-project)
 ;;; dl-project.el ends here
