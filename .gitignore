@@ -21,6 +21,7 @@ oauth2.*
 /var
 /undo-fu-session
 /projects
+/dirvish
 
 .\#*
 
