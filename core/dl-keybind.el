@@ -37,9 +37,18 @@
 (global-set-key (kbd "C--") #'text-scale-decrease)
 (global-set-key (kbd "C-0") #'text-scale-adjust)
 
+(require 'dl-global-text-scale)
+(global-set-key (kbd "C-M-=") #'my/global-text-scale-increase)
+(global-set-key (kbd "C-M-+") #'my/global-text-scale-increase)
+(global-set-key (kbd "C-M--") #'my/global-text-scale-increase)
+(global-set-key (kbd "C-S-0") #'my/global-text-scale-reset)
+
+
 (global-unset-key (kbd "C-z"))
 (global-set-key (kbd "C-z")   'undo-fu-only-undo)
 (global-set-key (kbd "C-S-z") 'undo-fu-only-redo)
+
+(global-set-key (kbd "C-S-g") #'exit-minibuffer)
 
 ;; Hydras for repeatable, sticky subinterfaces (no defs yet).
 (use-package hydra

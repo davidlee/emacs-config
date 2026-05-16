@@ -47,7 +47,8 @@
   (load custom-file 'noerror 'nomessage)
 
   :init
-  (server-start)) ; emacsclient
+  (server-start)
+  (require 'org-protocol)) ; emacsclient
 
 ;; Show the help buffer after startup
 ;; (add-hook 'after-init-hook 'help-quick))

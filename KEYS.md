@@ -3,7 +3,7 @@
 
 ## Mental model
 
-- **Leader**: `C-c <letter>` is the durable prefix. In Meow normal state, `SPC <letter>` mirrors it. `C-c f f` and `SPC f f` both reach `find-file`.
+- **Leader**: `C-c <letter>` is the durable prefix. In Meow normal state, `SPC <letter>` and `h <letter>` both mirror it. `C-c f f`, `SPC f f`, and `h f f` all reach `find-file`. `h` is bound directly to `mode-specific-map` (the C-c keymap), so lowercase `g` / `m` work without the capital-letter workaround the `SPC` leader needs.
 - **Editing vs. commands**: Meow normal state stays editing-focused (motions, selection, operators). Commands live under the leader.
 - **Single source of truth**: prefix maps, the `my/bind` helper, the Meow leader mirror, and which-key prefix labels all live in `core/dl-keymap.el`. Package files declare commands (`:commands`) and own their mode-local maps (`:bind (:map foo-mode-map …)` in `:config`).
 - **Discoverability**: `C-h` after a prefix triggers `embark-prefix-help-command`. `describe-keymap RET my-file-map RET` lists a map. `SPC ?` runs `meow-cheatsheet`. `which-key-idle-delay` is currently off — set it to `0.5` if you want auto-popups.
@@ -16,6 +16,7 @@
 | `C-c b` | `my-buffer-map` | buffers |
 | `C-c w` | `my-window-map` | windows (arrow keys for direction) |
 | `C-c s` | `my-search-map` | search *(empty)* |
+| `C-c j` | `my-session-map` | easysession (save/load/rename/...) |
 | `C-c g` | `my-git-map`    | git (Meow alias: `SPC G` — see Gotchas) |
 | `C-c o` | `my-org-map`    | org / open *(empty)* |
 | `C-c t` | `my-toggle-map` | toggles *(empty)* |

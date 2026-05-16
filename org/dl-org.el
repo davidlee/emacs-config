@@ -30,26 +30,137 @@
 (global-set-key (kbd "C-c c") #'org-capture)
 (global-set-key (kbd "C-c l") #'org-store-link)
 
+;; Capture bodies use `(function (lambda () (string-join '(...) "\n")))'
+;; so each line of the resulting template reads as its own list entry —
+;; easier to scan than one long string of `\n'-separated chunks.
+
 (setq org-capture-templates
   `(("i" "Inbox" entry
       (file "~/notes/inbox.org")
-      "* TODO %?\n:PROPERTIES:\n:CREATED: %U\n:END:\n")
+      (function (lambda ()
+                  (string-join
+                    '("* TODO %?"
+                       ":PROPERTIES:"
+                       ":CREATED: %U"
+                       ":END:")
+                    "\n"))))
 
      ("f" "Fleeting note" entry
        (file "~/notes/inbox.org")
-       "* %?\n:PROPERTIES:\n:CREATED: %U\n:END:\n")
+       (function (lambda ()
+                   (string-join
+                     '("* %?"
+                        ":PROPERTIES:"
+                        ":CREATED: %U"
+                        ":END:")
+                     "\n"))))
 
      ("j" "Journal entry" entry
        (file+datetree "~/notes/journal/log.org")
        "* %U %?\n")
 
-     ("p" "Project task" entry
+     ("P" "Project task" entry
        (file "~/notes/inbox.org")
-       "* TODO %?\n:PROPERTIES:\n:CREATED: %U\n:END:\n:project:\n")
+       (function (lambda ()
+                   (string-join
+                     '("* TODO %?"
+                        ":PROPERTIES:"
+                        ":CREATED: %U"
+                        ":END:"
+                        ":project:")
+                     "\n"))))
 
      ("r" "Reading note" entry
        (file "~/notes/inbox.org")
-       "* Reading: %?\n:PROPERTIES:\n:CREATED: %U\n:END:\n")))
+       (function (lambda ()
+                   (string-join
+                     '("* Reading: %?"
+                        ":PROPERTIES:"
+                        ":CREATED: %U"
+                        ":END:")
+                     "\n"))))
+
+     ("p" "Protocol" entry
+       (file+headline ,(expand-file-name "protocol.org" org-directory) "Inbox")
+       (function (lambda ()
+                   (string-join
+                     '("* %^{Title|%:description}"
+                        "Source: %:link"
+                        "Captured: %U"
+                        ""
+                        "#+BEGIN_QUOTE"
+                        "%i"
+                        "#+END_QUOTE"
+                        ""
+                        "%?%(progn (setq my/org-capture-delete-frame-on-finalize t) \"\")")
+                     "\n")))
+       :empty-lines 1)
+
+     ("L" "Protocol Link" entry
+       (file+headline ,(expand-file-name "protocol.org" org-directory) "Inbox")
+       (function (lambda ()
+                   (string-join
+                     '("* %? [[%:link][%(my/sanitize-link-description \"%:description\")]]"
+                        "Captured: %U"
+                        "%(progn (setq my/org-capture-delete-frame-on-finalize t) \"\")")
+                     "\n")))
+       :empty-lines 1)))
+
+;; Org-protocol helpers — sanitizing link descriptions and auto-closing
+;; the emacsclient-spawned frame after the browser-driven capture finishes.
+
+(defun my/sanitize-link-description (s)
+  "Replace [ and ] in S with ( and ).
+Page titles can contain square brackets (ArXiv is the canonical
+offender), which break `[[link][description]]'."
+  (replace-regexp-in-string
+    "\\]" ")"
+    (replace-regexp-in-string "\\[" "(" s)))
+
+(defvar my/org-capture-delete-frame-on-finalize nil
+  "When non-nil, delete the current frame after the next capture finishes.
+Set by Protocol templates so the emacsclient-spawned frame goes away
+when the user finalizes or aborts.  Guarded to no-op unless the frame
+was actually created by emacsclient, so local `\\[org-capture]' invocations
+in the main frame are safe.")
+
+(defun my/org-capture-delete-client-frame (&rest _)
+  "Delete current frame iff a capture template asked for it."
+  (when (and my/org-capture-delete-frame-on-finalize
+          (frame-parameter nil 'client)
+          (cdr (frame-list)))         ; never delete the last frame
+    (setq my/org-capture-delete-frame-on-finalize nil)
+    (delete-frame)))
+
+;; `org-capture-refile' calls `org-capture-finalize' internally, so the
+;; finalize advice covers refile too; only kill needs separate wiring.
+(advice-add 'org-capture-finalize :after #'my/org-capture-delete-client-frame)
+(advice-add 'org-capture-kill     :after #'my/org-capture-delete-client-frame)
+
+;; (add-hook 'org-mode-hook
+;;   (lambda ()
+;;     (add-to-list 'org-capture-templates
+;;       ;; The template follows
+;;       '("capture"
+;;          "Capture (Org Protocol)"
+;;          entry
+;;          (file "protocol.org")
+;;          (function (lambda ()
+;;                      (string-join
+;;                        '("* %:description"
+;;                           ":PROPERTIES:"
+;;                           ":CREATED: %U"
+;;                           ":END:"
+;;                           "%:annotation"
+;;                           "%i"
+;;                           ""
+;;                           "%?")
+;;                        "\n")))
+;;          :prepend t
+;;          :empty-lines 1)
+;;       ;; End template
+;;       )))
+
 
 (global-set-key (kbd "C-c c") #'org-capture)
 

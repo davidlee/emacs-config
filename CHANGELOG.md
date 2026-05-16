@@ -2,6 +2,71 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-16 — org-protocol capture from Firefox
+
+Wired up [sprig/org-capture-extension](https://github.com/sprig/org-capture-extension)
+end-to-end. Three bugs found en route:
+
+- **Desktop handler used `%F` (files) instead of `%u` (URL)**, so the
+  Emacs-provided `emacsclient.desktop` silently dropped the
+  `org-protocol://` URI and created a blank frame. New
+  `~/.local/share/applications/org-protocol.desktop` (tracked via the
+  sparse `~/` worktree) handles the scheme with `%u`, `--create-frame`,
+  `--no-wait`.
+- **`(concat org-directory "protocol.org")`** produced
+  `~/notesprotocol.org`. Replaced with `expand-file-name`.
+- **Duplicate template key `p`**: "Project task" shadowed "Protocol"
+  (assoc returns first match). Renamed Project task to `P`.
+
+Templates corrected to use the org-protocol plist keys (`%:link`,
+`%:description`) instead of `%u` (which is the inactive timestamp, not
+the URL) and `%c` (clipboard pollution).
+
+Two improvements from the sprig README, with safety tweaks:
+
+- **`my/sanitize-link-description`** replaces `[` `]` in the `L`
+  template's description so ArXiv-style titles don't break the
+  `[[link][desc]]` syntax.
+- **Auto-close the emacsclient frame** after `org-capture-finalize` /
+  `org-capture-kill`.  Uses a boolean flag set by the template (cleaner
+  than sprig's counter) and guards with `(frame-parameter nil 'client)`
+  + `(cdr (frame-list))` so manual `C-c c p` from the main frame is
+  safe and the last frame is never deleted.  Refile is covered by the
+  finalize advice — refile calls finalize internally.
+
+**Touched:** `org/dl-org.el`, `~/.local/share/applications/org-protocol.desktop`.
+
+## 2026-05-16 — session leader + meow `h` as C-c, autosave hook fix
+
+Two related cleanups around the leader system.
+
+**`my-session-map` (`C-c j` / `SPC j` / `h j`).** Easysession's defaults
+were `C-c s*`, which `define-key` silently descended into `my-search-map`
+(squatting in the search namespace). Moved them onto their own prefix
+with which-key labels and meow leader mirror, via `my/bind`:
+
+```
+C-c j s   save           C-c j r   rename
+C-c j l   load           C-c j R   reset
+C-c j L   load+geometry  C-c j u   unload
+                         C-c j d   delete
+```
+
+**Meow normal `h` → `mode-specific-map`.** Bound `h` directly to the C-c
+keymap, so `h f f`, `h j s` etc. work from normal state as a third path
+alongside `C-c` and `SPC`. Bonus over `SPC`: lowercase `g` / `m` work
+without the capital workaround (no meow-keypad in the way). Dropped
+`meow-left` — home-row arrows live on a layer.
+
+**Autosave bug.** `(add-hook 'after-focus-change-function …)` was wrong
+— that variable holds a single function (`#'ignore` advised by
+`blink-cursor--rescan-frames`), not a hook list. `add-hook` cons'd the
+function onto the existing advised form, producing an uncallable list and
+spamming `Invalid function:` on every focus event. Replaced with
+`add-function :after`, arity-tolerant via a `&rest _` wrapper.
+
+**Touched:** `core/dl-keymap.el`, `editing/dl-persist.el`, `KEYS.md`.
+
 ## 2026-05-16 — file manager: dired/dirvish + yazi/broot wrappers
 
 Consolidated the file-management stack on Dired + Dirvish, with Yazi and

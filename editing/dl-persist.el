@@ -22,14 +22,7 @@
   :demand t ;; on startup
 
   :config
-  ;; Key mappings
-  (global-set-key (kbd "C-c sl") #'easysession-switch-to) ; Load session
-  (global-set-key (kbd "C-c ss") #'easysession-save) ; Save session
-  (global-set-key (kbd "C-c sL") #'easysession-switch-to-and-restore-geometry)
-  (global-set-key (kbd "C-c sr") #'easysession-rename)
-  (global-set-key (kbd "C-c sR") #'easysession-reset)
-  (global-set-key (kbd "C-c su") #'easysession-unload)
-  (global-set-key (kbd "C-c sd") #'easysession-delete)
+  ;; Keybindings live in core/dl-keymap.el under my-session-map (C-c j).
 
   ;; Save every 10 minutes
   (setq easysession-save-interval (* 10 60))
@@ -128,7 +121,8 @@
 ;; Autosave Aggressively
 ;; Save visited files on buffer/window/frame focus loss.
 (add-hook 'buffer-list-update-hook #'my/save-buffer-on-focus-change)
-(add-hook 'after-focus-change-function #'my/save-all-file-buffers)
+(add-function :after after-focus-change-function
+              (lambda (&rest _) (my/save-all-file-buffers)))
 
 ;; --------------------------------------------------------------------------------
 ;; Eglot
