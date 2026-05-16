@@ -24,6 +24,7 @@
   :demand t
   :custom
   (compile-angel-verbose nil)
+  (native-comp-async-report-warnings-errors 'silent)
   :config
   (add-hook 'emacs-lisp-mode-hook #'compile-angel-on-save-local-mode)
 
@@ -32,6 +33,8 @@
 
   ;; (compile-angel-on-load-mode 1))
   (compile-angel-on-save-mode 1))
+
+
 
 (provide 'dl-compile)
 ;;; dl-compile.el ends here

@@ -44,7 +44,9 @@
           ("C-M-$" . jinx-languages))
   :custom
   (jinx-camel-modes '(prog-mode))
-  (jinx-delay 0.01))
+  (jinx-delay 0.01)
+  :config
+  (global-jinx-mode -1))
 
 (defvar my/jinx-global-modes '(prog-mode text-mode org-mode)
   "Parent modes for `my/jinx-global-mode'; derived modes are included.")

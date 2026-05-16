@@ -56,7 +56,9 @@
   (menu-bar-mode nil)
   (tool-bar-mode nil)
 
-  (x-underline-at-descent-line nil)           ; Prettier underlines
+  (underline-minimum-offset 3)
+  (x-use-underline-position-properties nil)
+  (x-underline-at-descent-line t)            ; Prettier underlines
   (switch-to-buffer-obey-display-actions t)   ; Make switching buffers more consistent
 
   (show-trailing-whitespace nil)
@@ -73,7 +75,7 @@
   (display-time-format "%a %F %T")
   (display-time-interval 1)
 
-  (display-line-numbers-width 5) ; min width
+  (display-line-numbers-width 3)
 
   (global-prettify-symbols-mode t)
 

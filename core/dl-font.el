@@ -77,20 +77,38 @@
   (my/set-face-font 'mode-line 'modeline :height 140 :weight 'semibold)
   (my/set-face-font 'mode-line-inactive 'modeline :height 140 :weight 'regular))
 
+(define-minor-mode my/gutter-padding-mode
+  "Add a little space between gutter and buffer text."
+  :init-value nil
+  :lighter nil
+  (setq left-margin-width (if my/gutter-padding-mode 1 0))
+  (set-window-buffer nil (current-buffer)))
+
+(add-hook 'prog-mode-hook #'my/gutter-padding-mode)
+(add-hook 'text-mode-hook #'my/gutter-padding-mode)
+
 (defun my/apply-line-number-faces ()
-  "Keep line number faces metrically identical."
+  "Apply stable line-number faces."
   (let ((family (my/font-role 'line-number)))
     (set-face-attribute 'line-number nil
       :family family
       :height 1.0
-      :weight 'regular
-      :slant 'normal)
+      :weight 'regular)
     (set-face-attribute 'line-number-current-line nil
       :inherit 'line-number
       :family family
       :height 1.0
-      :weight 'regular
-      :slant 'normal)))
+      :weight 'regular)))
+
+(defun my/apply-org-faces ()
+  (interactive)
+  (my/set-face-font 'org-document-title 'org-heading :height 160 :weight 'bold)
+  (my/set-face-font 'org-level-1 'org-heading :height 140 :weight 'bold)
+  (my/set-face-font 'org-level-2 'org-heading :height 125 :weight 'semibold)
+  (my/set-face-font 'org-level-3 'org-heading :height 115 :weight 'regular)
+  (my/set-face-font 'org-block 'org-code :height 100)
+  (my/set-face-font 'org-code 'org-code :height 100)
+  (my/set-face-font 'org-verbatim 'org-code :height 100))
 
 (defun my/apply-ui-faces ()
   "Apply font roles to core UI faces."
@@ -138,17 +156,6 @@
 
     (my/apply-line-number-faces)))
 
-
-(defun my/apply-org-faces ()
-  (interactive)
-  (my/set-face-font 'org-document-title 'org-heading :height 160 :weight 'bold)
-  (my/set-face-font 'org-level-1 'org-heading :height 140 :weight 'bold)
-  (my/set-face-font 'org-level-2 'org-heading :height 125 :weight 'semibold)
-  (my/set-face-font 'org-level-3 'org-heading :height 115 :weight 'regular)
-  (my/set-face-font 'org-block 'org-code :height 100)
-  (my/set-face-font 'org-code 'org-code :height 100)
-  (my/set-face-font 'org-verbatim 'org-code :height 100))
-
 (defvar my/font-default-height 105
   "Base font height for the default face.")
 
@@ -183,5 +190,16 @@
 (with-eval-after-load 'lambda-line
   (my/apply-lambda-line-faces))
 
+;; Diagnostic underlines — straight lines, muted hues. Wave style is noisy.
+(with-eval-after-load 'flymake
+  (set-face-attribute 'flymake-error   nil :underline '(:style line :color "#b87575"))
+  (set-face-attribute 'flymake-warning nil :underline '(:style line :color "#b89060"))
+  (set-face-attribute 'flymake-note    nil :underline '(:style line :color "#6a8caf")))
+
+(with-eval-after-load 'jinx
+  ;; Grey, recedes — misspellings hint, not shout.
+  (set-face-attribute 'jinx-misspelled nil :underline '(:style line :color "#7a7a7a")))
+
 (provide 'dl-font)
 ;;; dl-font.el ends here
+

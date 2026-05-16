@@ -24,6 +24,9 @@
 (require 'package-vc)
 
 (add-to-list 'default-frame-alist '(internal-border-width . 10))
+(setq underline-minimum-offset 3)
+(setq x-use-underline-position-properties nil)
+(setq x-underline-at-descent-line t)            ; Prettier underlines
 
 (load-file "~/.emacs.d/core/dl-path.el")
 ;;; early-init.el ends here

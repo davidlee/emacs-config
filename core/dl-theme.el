@@ -5,6 +5,9 @@
      doom-zenburn doom-one-light doom-one doom-acario-light
      doom-laserwave doom-molokai doom-moonlight doom-dracula))
 
+(defvar my--theme-shortlist
+  '())
+
 (defvar my--current-theme-index -1
   "Index of the currently selected theme in `my--themes'.")
 

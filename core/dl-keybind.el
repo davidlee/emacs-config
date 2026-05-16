@@ -31,6 +31,16 @@
 (global-set-key (kbd "C-x 2") 'split-and-follow-horizontally)
 (global-set-key (kbd "C-x 3") 'split-and-follow-vertically)
 
+;; Buffer-local text scaling, equivalent in spirit to C-scrollwheel.
+(global-set-key (kbd "C-=") #'text-scale-increase)
+(global-set-key (kbd "C-+") #'text-scale-increase)
+(global-set-key (kbd "C--") #'text-scale-decrease)
+(global-set-key (kbd "C-0") #'text-scale-adjust)
+
+(global-unset-key (kbd "C-z"))
+(global-set-key (kbd "C-z")   'undo-fu-only-undo)
+(global-set-key (kbd "C-S-z") 'undo-fu-only-redo)
+
 ;; Hydras for repeatable, sticky subinterfaces (no defs yet).
 (use-package hydra
   :commands defhydra)

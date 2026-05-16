@@ -4,14 +4,15 @@
 (require 'dl-compile)
 (require 'dl-core)
 (require 'dl-backup)
-(require 'dl-interface)
+(require 'dl-persist)
 (require 'dl-keymap)
+(require 'dl-theme)
+(require 'dl-font)
+(require 'dl-interface)
+(require 'dl-prose)
+(require 'dl-modeline)
 (require 'dl-meow)
 (require 'dl-help)
-(require 'dl-prose)
-(require 'dl-theme)
-(require 'dl-modeline)
-(require 'dl-font)
 
 ;; DEV
 (require 'dl-eglot)
@@ -35,7 +36,7 @@
 (require 'dl-snippets)
 (require 'dl-motion)
 (require 'dl-search)
-(require 'dl-persist)
+
 (require 'dl-indent)
 (require 'dl-fold)
 
