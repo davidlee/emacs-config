@@ -47,6 +47,7 @@
 (require 'dl-diagram)
 (require 'dl-indent)
 (require 'dl-fold)
+(require 'dl-crux)
 
 ;; Org
 (require 'dl-org)
