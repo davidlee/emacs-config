@@ -1,37 +1,57 @@
-;;; dl-denote-journal.el --- Daily / weekly journal note builders -*- lexical-binding: t; -*-
+;;; dl-denote-journal.el --- Daily / weekly journal notes (Denote-named) -*- lexical-binding: t; -*-
+
+;; Roll-own journal helpers: denote 4.1.3 ships without the
+;; `denote-journal' submodule (it was split off in 4.x).  These functions
+;; produce filenames in the Denote convention so they sort and search
+;; alongside everything else under `dl-notes-root'.
+;;
+;; Daily:  journal/YYYYMMDDT000000--YYYY-MM-DD-<weekday>__journal.org
+;; Weekly: weekly/<monday-id>--YYYY-w<NN>__weekly_journal.org
 
 (require 'dl-notes-paths)
 
-;; NOTE: Phase 1 kept the simple-name format while paths moved to
-;; journal/ and weekly/.  Phase 3 of the notes-system plan replaces
-;; these with Denote-named equivalents (likely via denote-journal-extras
-;; if available in the emacs-overlay, else a rolled-own variant).
+(defun my/journal--iso-monday (time)
+  "Return TIME shifted back to the Monday of its ISO week."
+  (let ((dow (string-to-number (format-time-string "%u" time))))
+    (time-subtract time (days-to-time (1- dow)))))
 
-(defun my/daily-note ()
-  "Open today's plain Org daily note."
+(defun my/journal-note ()
+  "Open or create today's Denote-named daily journal note."
   (interactive)
-  (let ((file (expand-file-name
-                (format-time-string "%Y-%m-%d.org")
+  (let* ((now (current-time))
+         (id   (format-time-string "%Y%m%dT000000" now))
+         (slug (downcase (format-time-string "%Y-%m-%d-%A" now)))
+         (file (expand-file-name
+                (format "%s--%s__journal.org" id slug)
                 dl-notes-journal-dir)))
     (find-file file)
     (when (= (point-max) 1)
-      (insert "#+title: " (format-time-string "%Y-%m-%d %A") "\n")
-      (insert "#+filetags: :journal:\n\n")
+      (insert "#+title:    " (format-time-string "%Y-%m-%d %A" now) "\n")
+      (insert "#+filetags: :journal:\n")
+      (insert "#+date:     " (format-time-string "[%Y-%m-%d %a]" now) "\n\n")
       (insert "* Focus\n\n* Notes\n\n* Log\n"))))
 
 (defun my/weekly-note ()
-  "Open this week's plain Org weekly note."
+  "Open or create this week's Denote-named weekly journal note.
+Identifier is anchored on the ISO-week Monday, so the file sorts to the
+start of its week regardless of which day the note is first opened."
   (interactive)
-  (let ((file (expand-file-name
-                (format-time-string "%G-W%V.org")
+  (let* ((monday (my/journal--iso-monday (current-time)))
+         (id     (format-time-string "%Y%m%dT000000" monday))
+         (slug   (downcase (format-time-string "%Y-w%V" monday)))
+         (file (expand-file-name
+                (format "%s--%s__weekly_journal.org" id slug)
                 dl-notes-weekly-dir)))
     (find-file file)
     (when (= (point-max) 1)
-      (insert "#+title: " (format-time-string "Week %G-W%V") "\n")
-      (insert "#+filetags: :journal:weekly:\n\n")
+      (insert "#+title:    " (format-time-string "Week %G-W%V" monday) "\n")
+      (insert "#+filetags: :weekly:journal:\n")
+      (insert "#+date:     " (format-time-string "[%Y-%m-%d %a]" monday) "\n\n")
       (insert "* Review\n\n* Projects\n\n* Notes promoted\n\n* Next week\n"))))
 
-(global-set-key (kbd "C-c n d") #'my/daily-note)
+;; Retire the Phase 1/2 `C-c n d` daily binding in favour of `C-c n j`.
+(define-key global-map (kbd "C-c n d") nil)
+(global-set-key (kbd "C-c n j") #'my/journal-note)
 (global-set-key (kbd "C-c n w") #'my/weekly-note)
 
 (provide 'dl-denote-journal)

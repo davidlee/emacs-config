@@ -2,6 +2,62 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-17 — notes system overhaul, Phase 3 (Denote-named journaling) + org-modern fix
+
+**Journaling moves to Denote naming.** `dl-denote-journal.el` rewritten:
+
+- `my/journal-note` (new name; replaces `my/daily-note`) →
+  `journal/YYYYMMDDT000000--YYYY-MM-DD-<weekday>__journal.org`. Today
+  resolves to `20260517T000000--2026-05-17-sunday__journal.org`,
+  matching the 5 migrated files from Phase 1.
+- `my/weekly-note` (kept the name) → `weekly/<monday-id>--YYYY-w<NN>__weekly_journal.org`.
+  Identifier anchors on the ISO-week Monday, so the file sorts to the
+  start of its week regardless of which day it's first opened. Today
+  resolves to `20260511T000000--2026-w20__weekly_journal.org`.
+- New helper `my/journal--iso-monday` shifts a time back to its ISO
+  Monday using `%u` (1=Mon … 7=Sun).
+- Templates set `#+title:`, `#+filetags:`, `#+date:` on first-open;
+  body skeletons unchanged from before.
+
+**Keybind rebind** (per the agreed Phase 4 keymap):
+
+- `C-c n d` (was `my/daily-note`) — unbound via
+  `(define-key global-map ... nil)`.
+- `C-c n j` → `my/journal-note` (new).
+- `C-c n w` → `my/weekly-note` (unchanged).
+
+Roll-own rather than upstream: denote 4.1.3 in the Nix overlay ships
+without the `denote-journal` submodule (split off in 4.x and not yet
+packaged here). The roll-own is ~40 lines and lets us keep the exact
+filename convention the migrated files use (`T000000` + weekday-in-slug).
+
+The Phase 2 `j` capture template (datetree in `journal/log.org`) is
+left in place — different ergonomic shape (quick fragment append vs.
+full-page operational log). Retire later if it goes unused.
+
+**org-modern fix** (longstanding no-op, flagged in Phase 2):
+
+```elisp
+;; was:
+(use-package org-modern
+  :after
+  (add-hook 'org-mode-hook #'org-modern-mode)
+  (add-hook 'org-agenda-finalize-hook #'org-modern-agenda))
+
+;; now:
+(use-package org-modern
+  :hook ((org-mode            . org-modern-mode)
+         (org-agenda-finalize . org-modern-agenda)))
+```
+
+`:after` takes a package list, so the two `add-hook` forms were being
+parsed as package names and silently dropped — `org-modern-mode` was
+never actually attached to `org-mode-hook`. Now it auto-enables on
+every Org buffer (no more manual toggle).
+
+**Touched:** `org/dl-denote-journal.el` (rewrite), `org/dl-org.el`
+(org-modern hooks).
+
 ## 2026-05-17 — notes system overhaul, Phase 2 (module decomposition)
 
 Pure refactor: split `org/dl-org.el` into focused modules. No behaviour

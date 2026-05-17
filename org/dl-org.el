@@ -28,9 +28,8 @@
        ("pkm" . ?p))))
 
 (use-package org-modern
-  :after
-  (add-hook 'org-mode-hook #'org-modern-mode)
-  (add-hook 'org-agenda-finalize-hook #'org-modern-agenda))
+  :hook ((org-mode            . org-modern-mode)
+         (org-agenda-finalize . org-modern-agenda)))
 
 ;; style hax
 (use-package org-bullets)
