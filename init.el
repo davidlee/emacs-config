@@ -43,7 +43,11 @@
 
 ;; Org
 (require 'dl-org)
+(require 'dl-org-capture)
+(require 'dl-org-agenda)
+(require 'dl-org-links)
 (require 'dl-denote)
+(require 'dl-denote-journal)
 (require 'dl-org-roam)
 
 ;; Language support

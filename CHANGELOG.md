@@ -2,6 +2,66 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-17 — notes system overhaul, Phase 2 (module decomposition)
+
+Pure refactor: split `org/dl-org.el` into focused modules. No behaviour
+change — every binding, template, advice, and var resolves the same as
+before.
+
+**New modules** (all under `org/`, all tracked via git so the Nix flake
+parser picks them up):
+
+- `dl-org-capture.el` — capture templates (7: `i/f/j/P/r/p/L`),
+  `my/capture-body`, `my/capture-entry`, `my/sanitize-link-description`,
+  `my/org-capture-delete-client-frame` + the
+  `my/org-capture-delete-frame-on-finalize` flag, advice on
+  `org-capture-finalize`/`kill`, and the `C-c c` global binding.
+- `dl-org-agenda.el` — `org-agenda-files` (now derived from
+  `dl-notes-*` constants), `C-c a` global binding. Custom agenda
+  commands land here in Phase 5.
+- `dl-org-links.el` — `C-c l` (`org-store-link`). Home for the Phase 4
+  consolidated `C-c n l/i/o/g` link namespace.
+- `dl-denote-journal.el` — `my/daily-note`, `my/weekly-note`, and their
+  `C-c n d/w` bindings. Home for the Phase 3 Denote-named rewrite.
+
+**Slimmed `dl-org.el`**: keeps org defaults (directory, todo keywords,
+tag-alist, log-done, return-follows-link, speed-commands), org-modern
+and org-bullets styling, and the mode-hook spacing tweak. Everything
+else moved out.
+
+**init.el load order** (in section `;; Org`):
+
+```
+(require 'dl-org)
+(require 'dl-org-capture)
+(require 'dl-org-agenda)
+(require 'dl-org-links)
+(require 'dl-denote)
+(require 'dl-denote-journal)
+(require 'dl-org-roam)
+```
+
+**Modules deferred** rather than created empty (per "no half-finished
+implementations"):
+
+- `dl-denote-templates.el` — class constructors (`my/denote-new-project`
+  etc). Phase 3/4 when they have content.
+- `dl-org-ql.el` / `dl-citar.el` — Phase 5, when the packages land.
+- `dl-review.el` — Phase 6.
+- `dl-writing.el` — `core/dl-prose.el` already covers prose/spelling
+  cleanly; the plan's `dl-writing.el` is redundant with what exists.
+  Keeping `dl-prose.el` where it is.
+
+**Known pre-existing bug** (left untouched, flagged for later):
+`org-modern`'s `use-package` block uses `:after` followed by `add-hook`
+calls — `:after` takes a package list, not body forms, so the hooks
+never get added. `org-modern-mode` is currently not actually enabled on
+`org-mode-hook`. Fix: change `:after` to `:config` (or `:hook`). Not
+part of Phase 2's "no behaviour change" promise.
+
+**Touched:** `init.el`, `org/dl-org.el` (slimmed), 4 new modules under
+`org/`.
+
 ## 2026-05-17 — notes system overhaul, Phase 1 (paths + dirs + TODO)
 
 First slice of the notes-system overhaul plan
