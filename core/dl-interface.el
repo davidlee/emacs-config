@@ -101,9 +101,9 @@
     (add-hook 'prog-mode-hook #'pixel-scroll-precision-mode)
     (add-hook 'org-mode-hook #'pixel-scroll-precision-mode))
 
-  ;; Modes to highlight the current line with
-  (let ((hl-line-hooks '(text-mode-hook prog-mode-hook)))
-    (mapc (lambda (hook) (add-hook hook 'hl-line-mode)) hl-line-hooks)))
+  ;; Highlight the current line in code and prose buffers.
+  (dolist (hook '(text-mode-hook prog-mode-hook))
+    (add-hook hook #'hl-line-mode)))
 
 
 (use-package spacious-padding

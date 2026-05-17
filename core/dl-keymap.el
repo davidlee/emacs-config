@@ -133,6 +133,8 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-file-map   "t" #'dirvish-side           "dirvish-side (tree)")
 (my/bind my-file-map   "y" #'my/yazi-here           "yazi")
 (my/bind my-file-map   "b" #'my/broot-here          "broot")
+(my/bind my-file-map   "K" #'my/delete-current-buffer-file "delete file + buffer")
+(my/bind my-file-map   "M" #'my/move-file           "move file")
 ;; Project family lives at C-c p — see `my-project-map' below.
 
 (my/bind my-buffer-map "b" #'consult-buffer         "switch")
@@ -140,6 +142,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-buffer-map "i" #'ibuffer                "ibuffer")
 (my/bind my-buffer-map "n" #'my/next-user-buffer    "next (skip *…* / dired)")
 (my/bind my-buffer-map "p" #'my/previous-user-buffer "prev (skip *…* / dired)")
+(my/bind my-buffer-map "t" #'my/tmp-buffer          "tmp buffer (same mode)")
 
 (declare-function hydra-window-resize/body "dl-keybind")
 (my/bind my-window-map "<left>"  #'windmove-left        "left")
@@ -157,6 +160,8 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-window-map "f"       #'transpose-frame           "transpose h ⇄ v")
 (my/bind my-window-map "c"       #'my/rotate-windows         "cycle (rotate)")
 (my/bind my-window-map "C"       #'my/rotate-windows-backward "cycle back")
+(my/bind my-window-map "x"       #'my/window-exchange-buffer  "exchange buffer (ace)")
+(my/bind my-window-map "P"       #'my/toggle-window-dedicated "pin (dedicated)")
 
 (my/bind my-git-map    "g" #'magit-status           "status")
 (my/bind my-git-map    "l" #'git-link               "link")
@@ -201,6 +206,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-jump-map    "c" #'avy-goto-char-timer    "char (timer)")
 (my/bind my-jump-map    "2" #'avy-goto-char-2        "2-char")
 (my/bind my-jump-map    "w" #'avy-goto-word-1        "word")
+(my/bind my-jump-map    "p" #'my/forward-or-backward-sexp "match paren")
 
 ;; Eval map — scope ladder over Elisp.  Lowercase reads, uppercase prints.
 (my/bind my-eval-map    "e" #'eval-last-sexp              "last sexp")

@@ -16,7 +16,6 @@
        "6dcf1ca4c7432773084b9d52649ee5eb2c663131c4c06859f648dea98d9acb3e"
        default))
  '(dl-shpool-known-sessions '(".emacs.d" "hris" "team" "claude"))
- '(my-shpool-known-sessions '("team" "flakes" "example" ".emacs.d"))
  '(package-selected-packages
     '(ace-window agent-shell aggressive-indent apheleia beacon cape
        claude-code-ide combobulate consult-eglot consult-yasnippet

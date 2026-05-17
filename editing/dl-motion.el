@@ -38,4 +38,13 @@
 ;; SELECTION
 (use-package expand-region)
 
+;; vim-style `%' — jump to the matching paren when adjacent to one.
+(defun my/forward-or-backward-sexp (&optional arg)
+  "Jump to the matching parenthesis when point is adjacent to one."
+  (interactive "^p")
+  (cond ((looking-at "\\s(")     (forward-sexp arg))
+        ((looking-back "\\s)" 1) (backward-sexp arg))
+        ((looking-at "\\s)")     (forward-char) (backward-sexp arg))
+        ((looking-back "\\s(" 1) (backward-char) (forward-sexp arg))))
+
 (provide 'dl-motion)

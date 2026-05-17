@@ -85,5 +85,6 @@
 (require 'dl-insert-elisp-header)
 (require 'dl-buffer-management)
 (require 'dl-window)
+(require 'dl-file-ops)
 
 ;;; init.el ends here

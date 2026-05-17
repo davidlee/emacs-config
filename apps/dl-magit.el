@@ -13,11 +13,14 @@
 
 (use-package transient)
 
-;; get diff mode for commits
+(defun my/git-commit-disable-ws-butler ()
+  "Keep trailing whitespace in commit-message buffers as the user typed it."
+  (ws-butler-mode -1))
+
 (use-package git-commit
   :ensure nil
   :mode ("/COMMIT_EDITMSG\\'" . git-commit-mode)
-  :hook (git-commit-mode . (lambda () (ws-butler-mode -1))))
+  :hook (git-commit-mode . my/git-commit-disable-ws-butler))
 
 (setq ediff-diff-options "")
 (setq ediff-custom-diff-options "-u")

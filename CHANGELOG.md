@@ -2,6 +2,135 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-17 — tier-2 lambda-emacs cherry-picks
+
+Seven small commands lifted from lambda-emacs, cleaned up, slotted into
+existing family maps:
+
+- `my/toggle-window-dedicated` (`C-c w P`) — pin selected window to its
+  buffer. Lambda's version had a `(let (window …))` typo that left
+  `window` nil; rewritten against `selected-window`.
+- `my/window-exchange-buffer` (`C-c w x`) — swap two windows' buffers
+  via `ace-window`, focus stays put. Uses the already-installed
+  `ace-window` (`editing/dl-motion.el`).
+- `my/delete-current-buffer-file` (`C-c f K`) — delete file on disk +
+  kill buffer (confirm). Lambda fell back to `ido-kill-buffer`;
+  replaced with `kill-current-buffer` since ido isn't in play.
+- `my/move-file` (`C-c f M`) — `write-file` then delete the old.
+- `my/tmp-buffer` (`C-c b t`) — timestamped throwaway in the *current*
+  major mode (lambda's version silently dropped to fundamental-mode
+  despite the docstring).
+- `my/unfill-paragraph` (`M-Q`) — Stefan Monnier's inverse of
+  `fill-paragraph`, in `core/dl-prose.el`.
+- `my/forward-or-backward-sexp` (`C-c j p`) — vim `%` style match-paren
+  jump, in `editing/dl-motion.el`.
+
+New file `lisp/dl-file-ops.el` for the two file commands (loaded from
+`init.el`). Window / buffer / motion / prose commands appended to
+existing module files. Bindings centralised in `core/dl-keymap.el`
+under `my/bind`; KEYS.md updated for `f`, `b`, `w`, `j` sections.
+
+Skipped from the candidate list: `lem-jump-in-buffer` (redundant —
+`C-c o h` and `C-c s o` already cover it cleanly).
+
+## 2026-05-17 — modernize last `defadvice`
+
+`core/dl-core.el` — the pre-2.0 `defadvice` form on `find-file`
+(`make-directory-maybe`) rewritten as a named defun
+`dl-core--make-parent-directory-maybe` plus `(advice-add 'find-file
+:before ...)`.  Behaviour-preserving; the latent
+`(file-exists-p nil)` edge case (when `file-name-directory` returns
+nil) is preserved as in the original.
+
+## 2026-05-17 — naming policy + migration
+
+Naming convention written into `AGENTS.md` (between "The four traps"
+and "Common debugging commands"):
+
+- `dl-MODULE` for file/`provide` symbols.
+- `dl-MODULE-name` for module's public internals; `dl-MODULE--name` for
+  private (defcustoms always module-owned).
+- `my/name` for personal commands and their helper/variable families
+  (`my/` propagates through the helper cluster even when the helpers
+  live in a `dl-MODULE` file — role beats file).
+- Grandfathered: `my-X-map` keymaps (`my/bind` + meow leader-mirror
+  discover by this name) and `meow-setup` (meow docs require that
+  exact function name).
+
+Migration in two single-file passes:
+
+- **`apps/dl-shpool.el`** — `my-shpool` defgroup and 5 defcustoms
+  (`-command`, `-known-sessions`, `-restore-sessions`, `-auto-restore`,
+  `-debug`) renamed to `dl-shpool-*`, plus all ~55 internal references
+  (`replace_all`).  Orphan customize entry
+  `(my-shpool-known-sessions ...)` removed from `custom-vars.el`.  A
+  `(dl-shpool-known-sessions ...)` entry was already present under the
+  target name; its value (`".emacs.d" "hris" "team" "claude"`) becomes
+  the canonical saved list.  Two names from the old entry (`"flakes"`,
+  `"example"`) dropped — re-add via M-x customize if you still use
+  them; the cache auto-grows otherwise.
+- **`lang/dl-nix.el`** — 5 `dl-nix/X` slash-prefix names renamed to
+  `dl-nix-X` (`-flake`, `-nixos-host`, `-home-user`, `-nixd-config`,
+  `-set-workspace-config`), plus internal references.  No customize
+  state to migrate.
+
+After this pass the codebase is policy-compliant.  `rg "my-shpool|dl-nix/"`
+returns empty.
+
+## 2026-05-17 — polish: named hooks, fold consolidation, shpool/interface tidy
+
+Low-leverage polish from the review:
+
+- **`apps/dl-magit.el`** — the anonymous lambda on `git-commit-mode-hook`
+  (`(lambda () (ws-butler-mode -1))`) extracted to
+  `my/git-commit-disable-ws-butler`.  Named hooks survive
+  `.emacs.desktop` restore more cleanly and are easier to remove.
+- **`editing/dl-fold.el`** — 36 bare `add-hook` calls (5 for
+  `outline-minor-mode`, 15 for `hs-minor-mode`, 16 for
+  `treesit-fold-mode`) consolidated into three `use-package` blocks
+  with `:hook` lists (`outline`, `hideshow` — both built-in with
+  `:ensure nil` — and `treesit-fold`).  ~50 lines down to ~25.
+  Language-group structure preserved as inline comments inside the
+  `:hook` argument.  The four commented-out kotlin/swift/elixir/zig
+  hooks dropped; a one-line comment notes how to re-add.
+- **`apps/dl-shpool.el`** — `my/shpool-attach-args` renamed to
+  `my/shpool--attach-args` (`--` private prefix matches the rest of
+  the file's namespace; only caller is `my/shpool--open`).
+- **`core/dl-interface.el`** — `(mapc (lambda (hook) (add-hook ...)) ...)`
+  over a `let`-bound hook list rewritten as a `dolist`.  Same effect,
+  half the line count, no closure overhead.
+
+The audit's claim about redundant `customize-save-variable` calls in
+`dl-shpool.el` (lines 298–303 and 317–319) was wrong — re-reading both
+functions, `my/shpool-add-current-to-restore` adds to *both*
+`restore-sessions` and `known-sessions` so saving both is correct, and
+`my/shpool-remove-from-restore` only touches `restore-sessions` and
+only saves `restore-sessions`.  No change.
+
+The note about `(use-package hydra :demand t)` in `core/dl-keybind.el`
+being the only `:demand` in the file is informational only — it has to
+be eager because downstream files (`dl-keymap.el`) reference the
+`hydra-…/body' entry points generated by `defhydra`.
+
+## 2026-05-17 — face scatter cleanup: all attrs in dl-faces.el
+
+The two remaining face strays from the review's §7 ("face customization
+belongs in dl-faces") moved.  Verified with rg: no `set-face-attribute`
+/ `face-spec-set` / `custom-set-faces` / `:custom-face` outside
+`core/dl-faces.el` (and the auto-generated `custom-vars.el`).
+
+- `core/dl-meow.el` — the `dl-meow--apply-indicator-faces` defun, its
+  call from meow's `:config`, and the `enable-theme-functions` add-hook
+  all gone.  Replaced in `core/dl-faces.el` by `my/apply-meow-indicator-faces`
+  (renamed for `my/apply-X-faces` consistency) under a
+  `(with-eval-after-load 'meow ...)` block that does the call + hook
+  wiring once meow loads.  `defface dl-meow-indicator-inactive` and
+  `dl-meow-indicator` stay in dl-meow — those are package scaffolding
+  (face *definition* + modeline helper), not customization.
+- `editing/dl-fold.el` — the `set-face-attribute 'treesit-fold-replacement-face`
+  block from treesit-fold's `:config` moved to a
+  `(with-eval-after-load 'treesit-fold ...)` block in dl-faces.
+
 ## 2026-05-17 — visual layer: dl-font → dl-faces, dl-interface slimmed
 
 Two questions the audit raised about `core/dl-font.el` and `core/dl-interface.el`:

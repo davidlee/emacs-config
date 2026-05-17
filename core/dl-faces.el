@@ -197,6 +197,27 @@ Variadic to fit `enable-theme-functions', which passes the theme."
   ;; Grey, recedes — misspellings hint, not shout.
   (set-face-attribute 'jinx-misspelled nil :underline '(:style line :color "#7a7a7a")))
 
+(defun my/apply-meow-indicator-faces (&rest _)
+  "Paint meow state indicators as coloured blocks.
+Re-applied after theme load so rotating themes can't clobber them."
+  (pcase-dolist (`(,face ,bg) '((meow-normal-indicator "#a6e3a1")
+                                (meow-insert-indicator "#f38ba8")
+                                (meow-motion-indicator "#89b4fa")
+                                (meow-keypad-indicator "#f9e2af")
+                                (meow-beacon-indicator "#cba6f7")))
+    (set-face-attribute face nil
+                        :background bg :foreground "black" :weight 'bold)))
+
+(with-eval-after-load 'meow
+  (my/apply-meow-indicator-faces)
+  (add-hook 'enable-theme-functions #'my/apply-meow-indicator-faces))
+
+(with-eval-after-load 'treesit-fold
+  (set-face-attribute 'treesit-fold-replacement-face nil
+    :foreground "#808080"
+    :box nil
+    :weight 'bold))
+
 ;; Apply at startup; re-apply on theme rotation so font/face attrs
 ;; survive `<f5>' (themes reset every face they touch).
 (my/apply-fonts)

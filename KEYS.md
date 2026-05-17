@@ -296,6 +296,7 @@ this map is the discoverable surface.
 | `C-c j c` | `avy-goto-char-timer`  | char (timer) |
 | `C-c j 2` | `avy-goto-char-2`      | 2-char (rescued from `C-'`, now `embark-dwim`) |
 | `C-c j w` | `avy-goto-word-1`      | word |
+| `C-c j p` | `my/forward-or-backward-sexp` | match paren (vim `%`) |
 
 `C-,` (was `goto-last-change`) and `C-'` (was `avy-goto-char-2`) were
 reassigned to `embark-act` / `embark-dwim`. `C-.` still gives you
@@ -331,6 +332,8 @@ prints/inserts into the buffer.
 | `C-c f t` | `dirvish-side`        | dirvish (side tree) |
 | `C-c f y` | `my/yazi-here`        | yazi |
 | `C-c f b` | `my/broot-here`       | broot |
+| `C-c f K` | `my/delete-current-buffer-file` | delete file on disk + kill buffer (confirm) |
+| `C-c f M` | `my/move-file`        | write to new path, delete old |
 
 Project-scoped file commands live at `C-c p` — see [Project](#project-c-c-p).
 Globals: `C-x C-j` dired-jump, `C-x C-n` dirvish-side.
@@ -344,6 +347,7 @@ Globals: `C-x C-j` dired-jump, `C-x C-n` dirvish-side.
 | `C-c b i` | `ibuffer`                  | ibuffer |
 | `C-c b n` | `my/next-user-buffer`      | next (skips `*…*` and dired) |
 | `C-c b p` | `my/previous-user-buffer`  | prev (skips `*…*` and dired) |
+| `C-c b t` | `my/tmp-buffer`            | timestamped throwaway, same major mode |
 
 `my/user-buffer-p` in `lisp/dl-buffer-management.el` is the filter.
 Meow leader also mirrors `SPC [` / `SPC ]` for flick-style cycling.
@@ -369,6 +373,8 @@ Direction keys are arrow keys, not h/j/k/l — see [Layout](#layout).
 | `C-c w f`       | `transpose-frame`           | swap horizontal ⇄ vertical splits (whole frame) |
 | `C-c w c`       | `my/rotate-windows`         | cycle buffers forward through non-dedicated windows |
 | `C-c w C`       | `my/rotate-windows-backward` | cycle buffers backward |
+| `C-c w x`       | `my/window-exchange-buffer`  | swap two windows' buffers via ace-window (focus stays) |
+| `C-c w P`       | `my/toggle-window-dedicated` | pin (dedicate) selected window to its buffer |
 | `C-c w r`       | `hydra-window-resize/body`   | resize hydra (sticky `←/→` width, `↑/↓` height, `=` balance, `q` quit) |
 
 `transpose-frame` is also bound chord-style at `C-x 7` (see

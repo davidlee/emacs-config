@@ -96,12 +96,14 @@
 (setq auto-save-list-file-prefix
   emacs-tmp-dir)
 
-(defadvice find-file (before make-directory-maybe (filename &optional wildcards) activate)
-  "Create parent directory if not exists while visiting file."
+(defun dl-core--make-parent-directory-maybe (filename &optional _wildcards)
+  "Create parent directory of FILENAME if it doesn't exist."
   (unless (file-exists-p filename)
     (let ((dir (file-name-directory filename)))
       (unless (file-exists-p dir)
         (make-directory dir t)))))
+
+(advice-add 'find-file :before #'dl-core--make-parent-directory-maybe)
 
 (provide 'dl-core)
 ;;; dl-core.el ends here

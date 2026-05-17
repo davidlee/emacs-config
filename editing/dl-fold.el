@@ -19,39 +19,25 @@
   :custom
   (outline-indent-ellipsis " ▼"))
 
-(add-hook 'emacs-lisp-mode-hook #'outline-minor-mode)
-(add-hook 'lisp-interaction-mode-hook #'hs-minor-mode) ; scratch
-(add-hook 'lisp-mode-hook #'outline-minor-mode)
-(add-hook 'conf-mode-hook #'outline-minor-mode)
-(add-hook 'markdown-mode-hook #'outline-minor-mode)
-(add-hook 'diff-mode-hook #'outline-minor-mode)
+;; outline-minor-mode for lispy / config / docs majors.
+(use-package outline
+  :ensure nil
+  :hook ((emacs-lisp-mode lisp-mode conf-mode markdown-mode diff-mode)
+         . outline-minor-mode))
 
-;; Systems and General Purpose
-(add-hook 'c-mode-hook #'hs-minor-mode)
-(add-hook 'c++-mode-hook #'hs-minor-mode)
-(add-hook 'java-mode-hook #'hs-minor-mode)
-(add-hook 'rust-mode-hook #'hs-minor-mode)
-(add-hook 'go-mode-hook #'hs-minor-mode)
-(add-hook 'ruby-mode-hook #'hs-minor-mode)
+;; hs-minor-mode for classic (non-treesit) major modes.
+(use-package hideshow
+  :ensure nil
+  :hook ((lisp-interaction-mode                                   ; scratch
+          c-mode c++-mode java-mode rust-mode go-mode ruby-mode   ; systems
+          js-mode typescript-mode css-mode                        ; web
+          sh-mode json-mode lua-mode nxml-mode html-mode)         ; scripting / data
+         . hs-minor-mode))
 
-;; Web and Frontend
-(add-hook 'js-mode-hook #'hs-minor-mode)
-(add-hook 'typescript-mode-hook #'hs-minor-mode)
-(add-hook 'css-mode-hook #'hs-minor-mode)
-
-;; Scripting, Data, and Infrastructure
-(add-hook 'sh-mode-hook #'hs-minor-mode) ; for bash/shell scripts
-(add-hook 'json-mode-hook #'hs-minor-mode)
-(add-hook 'lua-mode-hook #'hs-minor-mode)
-(add-hook 'nxml-mode-hook #'hs-minor-mode)
-(add-hook 'html-mode-hook #'hs-minor-mode) ; mhtml and html
-
-;; Intelligent code folding by using the structural understanding of the
-;; built-in tree-sitter parser. Unlike traditional folding methods that rely on
-;; regular expressions or indentation, treesit-fold uses the actual syntax tree
-;; of the code to accurately identify foldable regions such as functions,
-;; classes, comments, and documentation strings.
+;; treesit-fold uses the tree-sitter syntax tree for accurate
+;; structural folding (functions, classes, comments, docstrings).
 ;; URL: https://github.com/emacs-tree-sitter/treesit-fold
+;; treesit-fold-replacement-face attrs live in `core/dl-faces.el'.
 (use-package treesit-fold
   :commands (treesit-fold-close
               treesit-fold-close-all
@@ -62,46 +48,19 @@
               global-treesit-fold-mode
               treesit-fold-open-recursively
               treesit-fold-line-comment-mode)
-
   :custom
   (treesit-fold-line-count-show t)
   (treesit-fold-line-count-format " ▼")
+  :hook ((c-ts-mode c++-ts-mode java-ts-mode                    ; systems
+          rust-ts-mode go-ts-mode ruby-ts-mode
+          js-ts-mode typescript-ts-mode tsx-ts-mode             ; web
+          css-ts-mode html-ts-mode
+          bash-ts-mode cmake-ts-mode dockerfile-ts-mode         ; scripting / infra
+          json-ts-mode toml-ts-mode)                            ; data
+         . treesit-fold-mode))
 
-  :config
-  (set-face-attribute 'treesit-fold-replacement-face nil
-    :foreground "#808080"
-    :box nil
-    :weight 'bold))
-
-;; Systems and General Purpose
-(add-hook 'c-ts-mode-hook #'treesit-fold-mode)
-(add-hook 'c++-ts-mode-hook #'treesit-fold-mode)
-(add-hook 'java-ts-mode-hook #'treesit-fold-mode)
-(add-hook 'rust-ts-mode-hook #'treesit-fold-mode)
-(add-hook 'go-ts-mode-hook #'treesit-fold-mode)
-(add-hook 'ruby-ts-mode-hook #'treesit-fold-mode)
-
-;; Web and Frontend
-(add-hook 'js-ts-mode-hook #'treesit-fold-mode)
-(add-hook 'typescript-ts-mode-hook #'treesit-fold-mode)
-(add-hook 'tsx-ts-mode-hook #'treesit-fold-mode)
-(add-hook 'css-ts-mode-hook #'treesit-fold-mode)
-(add-hook 'html-ts-mode-hook #'treesit-fold-mode)
-
-;; Scripting and Infrastructure
-(add-hook 'bash-ts-mode-hook #'treesit-fold-mode)
-(add-hook 'cmake-ts-mode-hook #'treesit-fold-mode)
-(add-hook 'dockerfile-ts-mode-hook #'treesit-fold-mode)
-
-;; Data and Configuration
-(add-hook 'json-ts-mode-hook #'treesit-fold-mode)
-(add-hook 'toml-ts-mode-hook #'treesit-fold-mode)
-
-;; Third-party
-;; (add-hook 'kotlin-ts-mode-hook #'treesit-fold-mode)
-;; (add-hook 'swift-ts-mode-hook #'treesit-fold-mode)
-;; (add-hook 'elixir-ts-mode-hook #'treesit-fold-mode)
-;; (add-hook 'zig-ts-mode-hook #'treesit-fold-mode)
+;; Drop-in extras (kotlin, swift, elixir, zig) — add to the :hook list
+;; above if/when you adopt those modes.
 
 (provide 'dl-fold)
 ;;; dl-fold.el ends here

@@ -70,5 +70,22 @@
       (with-current-buffer buf
         (when (bound-and-true-p jinx-mode) (jinx-mode -1))))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;;   Fill / unfill
+;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Stefan Monnier's inverse of `fill-paragraph': collapse a paragraph
+;; onto a single line.  Bound to M-Q to mirror M-q.
+(defun my/unfill-paragraph (&optional region)
+  "Collapse a multi-line paragraph (or REGION) into a single line."
+  (interactive (progn (barf-if-buffer-read-only) '(t)))
+  (let ((fill-column (point-max))
+        (emacs-lisp-docstring-fill-column t))
+    (fill-paragraph nil region)))
+
+(global-set-key (kbd "M-Q") #'my/unfill-paragraph)
+
 (provide 'dl-prose)
 ;;; dl-prose.el ends here

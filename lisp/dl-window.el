@@ -50,5 +50,24 @@
   (interactive "p")
   (my/rotate-windows (- count)))
 
+(defun my/toggle-window-dedicated ()
+  "Toggle whether the selected window is dedicated to its buffer."
+  (interactive)
+  (let* ((win (selected-window))
+         (dedicated (not (window-dedicated-p win))))
+    (set-window-dedicated-p win dedicated)
+    (message "Window %s dedicated to %s"
+             (if dedicated "is" "is no longer")
+             (buffer-name (window-buffer win)))))
+
+(declare-function ace-swap-window "ace-window")
+(declare-function aw-flip-window "ace-window")
+
+(defun my/window-exchange-buffer ()
+  "Swap buffers between two windows via `ace-window', keep focus here."
+  (interactive)
+  (ace-swap-window)
+  (aw-flip-window))
+
 (provide 'dl-window)
 ;;; dl-window.el ends here

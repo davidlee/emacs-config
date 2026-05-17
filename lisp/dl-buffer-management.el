@@ -37,5 +37,13 @@ Buffers whose name starts with `*' and dired buffers are excluded."
       (previous-buffer)
       (setq i (1+ i)))))
 
+(defun my/tmp-buffer ()
+  "Create a timestamped scratch buffer in the current major mode."
+  (interactive)
+  (let ((mode major-mode)
+        (name (format-time-string "tmp-%Y%m%dT%H%M%S")))
+    (switch-to-buffer (get-buffer-create name))
+    (funcall mode)))
+
 (provide 'dl-buffer-management)
 ;;; dl-buffer-management.el ends here
