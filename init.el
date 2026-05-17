@@ -28,6 +28,7 @@
 (require 'dl-prescient)  ; frequency sorting
 (require 'dl-embark)     ; actions on search results
 (require 'dl-consult)    ; Search/navigation commands
+(require 'dl-consult-notes) ; per-class notes sources
 (require 'dl-corfu)      ; in-buffer completions
 
 ;; Editing
@@ -49,6 +50,8 @@
 (require 'dl-denote)
 (require 'dl-denote-templates)
 (require 'dl-denote-journal)
+(require 'dl-org-ql)
+(require 'dl-review)
 (require 'dl-org-roam)
 
 ;; Language support

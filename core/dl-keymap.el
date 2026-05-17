@@ -145,6 +145,9 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-git-map    "g" #'magit-status           "status")
 (my/bind my-git-map    "l" #'git-link               "link")
 
+;; Org map -- in-buffer org navigation via consult-org (bundled with consult).
+(my/bind my-org-map    "h" #'consult-org-heading    "heading")
+
 ;; Notes (C-c n …) — see plan §4b in ~/.claude/plans/yes-use-dl-for-staged-quiche.md.
 ;; Sub-prefixes for new-by-class / manage / review live below.
 ;;
@@ -184,6 +187,13 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-notes-manage-map "R" #'denote-rename-file-using-front-matter  "rename (front-matter)")
 (my/bind my-notes-manage-map "k" #'denote-rename-file-keywords            "edit keywords")
 (my/bind my-notes-manage-map "t" #'denote-rename-file-title               "retitle")
+
+(my/bind my-notes-review-map "i" #'my/review-inbox                  "inbox")
+(my/bind my-notes-review-map "I" #'my/review-intake                 "intake (dired)")
+(my/bind my-notes-review-map "w" #'my/review-weekly                 "weekly + waiting")
+(my/bind my-notes-review-map "s" #'my/review-stale                  "stale waiting")
+(my/bind my-notes-review-map "r" #'my/review-references-retained    "refs: raw")
+(my/bind my-notes-review-map "u" #'my/review-references-untrusted   "refs: untrusted")
 
 ;; Session map -- easysession.  Package is :demand t so symbols resolve
 ;; by call time even though we bind here at startup.

@@ -2,6 +2,122 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-17 — notes system overhaul, Phase 6 (review module)
+
+Phase 6: `org/dl-review.el` lands with six review commands wired
+under the `C-c n v …` sub-prefix that Phase 4 stubbed out. Two
+shapes:
+
+- **Navigational** — open the buffer you want for a review pass.
+- **Reporting** — surface items matching a review predicate, via
+  `org-ql` for Org files or `consult-ripgrep` for the mixed
+  `references/` formats (.org / .md / .pdf / .html).
+
+```
+C-c n v i   my/review-inbox                 open inbox + jump to first TODO
+C-c n v I   my/review-intake                dired intake/, sorted newest first
+C-c n v w   my/review-weekly                open weekly note + side window of WAITING items
+C-c n v s   my/review-stale                 org-ql: WAITING items untouched > my/review-stale-days (7 default)
+C-c n v r   my/review-references-retained   ripgrep: references with `status: raw`
+C-c n v u   my/review-references-untrusted  ripgrep: `:untrusted:` tag or `trust: unreviewed`
+```
+
+**Stale-WAITING predicate.** Approximation: a WAITING item is stale
+if no timestamp (active or inactive) in its subtree falls within the
+last `my/review-stale-days` (defvar, default 7). Captured as
+`(and (todo "WAITING") (not (ts :from CUTOFF)))`. Not exact — true
+"time in WAITING" requires walking LOGBOOK state-change entries — but
+the timestamp-of-anything-recent approximation is honest enough for
+weekly triage. The user can flip the defvar to tighten.
+
+**References review uses ripgrep, not org-ql.** `references/` is
+explicitly multi-format per the plan (LLM markdowns, PDFs, web
+clippings, .org files). Both `v r` and `v u` use `consult-ripgrep`
+against the literal metadata strings (`status: raw`,
+`trust: unreviewed`, `:untrusted:`) so any format with those flags
+shows up. Current matches: zero — the 2 existing LLM .md references
+predate the Phase 1 metadata convention and haven't been tagged.
+Tagging them is a content-level task (Phase 7-ish), unblocked but
+not done.
+
+**`my/review--notes-files`** picks the query universe:
+`inbox.org`, `projects/`, `areas/`, `sources/`, `slips/`,
+`journal/`, `weekly/`. References excluded — they're not authored
+content. Intake also excluded — it's an object dump, not Org.
+
+**Touched:** `org/dl-review.el` (NEW; `git add`-ed so the flake
+parser sees it), `core/dl-keymap.el` (six binds under
+`my-notes-review-map`), `init.el` (`require 'dl-review`).
+
+Phase 7 (root-note triage; promote the 6 root-level Denote notes
+into class subdirs; tag the 2 LLM .md references for review) is the
+last config-related slice — and it's mostly content work, not
+Emacs-config work.
+
+## 2026-05-17 — notes system overhaul, Phase 5 (org-ql + consult-notes + consult-org)
+
+Phase 5 of the notes overhaul: install the new retrieval tools and
+wire them to the existing Phase 4 keybinds. Concrete saved-search and
+review commands continue to defer to Phase 6 (`dl-review.el`).
+
+**New modules:**
+
+- `org/dl-org-ql.el` — installs `org-ql`. `C-c n q` (`org-ql-find`)
+  bound in Phase 4 now resolves. The dashboards/queries mentioned in
+  the plan land in Phase 6 alongside the review commands — they're
+  the same body of work (`my/notes-stale-items`, weekly review etc.
+  are all `org-ql` queries).
+- `completion/dl-consult-notes.el` — installs `consult-notes` with
+  per-class file-dir sources backed by `dl-notes-*-dir` constants:
+
+  ```
+  Journal     j    Slips       S    Areas       a
+  Weekly      w    References  r    Sources     s
+  Projects    p    Indexes     i
+  ```
+
+  Narrow keys are typed at the consult prompt to scope to one class
+  (e.g. `j SPC` for journal only). `consult-notes-denote-mode` is
+  enabled on top so bare Denote-named files at `dl-notes-root` (the 6
+  root-level notes pending Phase 7 triage) are still picked up.
+
+**`consult-org-heading` binding** (consult bundles `consult-org`):
+
+- `C-c o h` (`my-org-map "h"`) — in-buffer outline search. Lives in
+  `core/dl-keymap.el` so it inherits the meow leader mirror
+  (`SPC o h`).
+
+**citar skipped.** Plan §5 says "only if a bibliography exists. Skip
+otherwise." `rg -l 'citar|bibliography'` against `~/notes` returned
+nothing meaningful — no `.bib` files, no `bibliography:` org-cite
+front matter. Adding `citar` now would be speculative. The Phase 2
+"deferred module" `org/dl-citar.el` stays unborn until there's
+content to back it.
+
+**Nix install verified.** Both packages landed in the new
+`emacs-packages-deps` derivation under:
+
+```
+share/emacs/site-lisp/elpa/{org-ql-20250421.133, consult-notes-20260222.1928}
+```
+
+(Plus transitive deps `org-super-agenda`, `peg`, `ts`.) `consult-org`
+needs no install — bundled with `consult`.
+
+**Note for the running session.** The currently-running Emacs is
+still backed by the *old* wrapper's elpa cache, so a restart is
+needed to load `org-ql` / `consult-notes` from the proper path
+on init. In the meantime, the live-eval workflow used to verify
+phase 5 added the new elpa subdirs to `load-path` ad-hoc; that's
+session-local and goes away on restart, which is the right shape.
+
+**Touched:** `org/dl-org-ql.el` (NEW), `completion/dl-consult-notes.el`
+(NEW), `core/dl-keymap.el` (consult-org-heading bind), `init.el`
+(two requires).
+
+Phase 6 (review workflow — `dl-review.el` with inbox/intake/weekly
+sweeps and stale-item queries) and Phase 7 (root-note triage) remain.
+
 ## 2026-05-17 — notes system overhaul, Phase 4 (capture pipeline + `C-c n …` consolidation)
 
 Phase 4 of the notes overhaul (plan
