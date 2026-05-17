@@ -68,9 +68,9 @@
 
   ;; TAB BAR
   ;; Show the tab-bar as soon as tab-bar functions are invoked
-  (tab-bar-show nil)
-  (tab-bar-mode nil)
-  (global-tab-line-mode nil)
+  (tab-bar-show t)
+  (tab-bar-mode t)
+  (global-tab-line-mode t)
 
   :init
   (display-time-mode)

@@ -74,7 +74,8 @@ the user-mode renderer (e.g. `meow-indicator')."
 
   ;; (lambda-line-icon-time t) ;; requires ClockFace font (see below)
   ;;(lambda-line-clockface-update-fontset "ClockFace") ;; set clock icon
-  (lambda-line-position 'top) ;; Set position of status-line
+
+  ;; (lambda-line-position 'top) ;; Set position of status-line
   (lambda-line-abbrev t) ;; abbreviate major modes
   (lambda-line-hspace "  ")  ;; add some cushion
   (lambda-line-prefix t) ;; use a prefix symbol
