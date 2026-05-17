@@ -7,6 +7,7 @@
 (require 'dl-backup)
 (require 'dl-persist)
 (require 'dl-keymap)
+(require 'dl-policy-lint)
 (require 'dl-theme)
 (require 'dl-font)
 (require 'dl-interface)
@@ -79,6 +80,8 @@
 
 ;; elisp: util
 (require 'dl-insert-elisp-header)
+(require 'dl-buffer-management)
+(require 'dl-window)
 
 ;; (set-face-attribute 'default nil :font "JetBrains Mono" :height 115)
 ;; (set-face-attribute 'default nil :font "JetBrainsMono Nerd Font Mono" :height 115)

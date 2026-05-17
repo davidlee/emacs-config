@@ -2,6 +2,124 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-17 — lambda-emacs lifts: meow polish, user-buffer cycling, window helpers
+
+Three groups picked from `./lambda-emacs/` and `./meow.local.el`.
+
+- **Meow `:custom` block + magit cooperation** (`core/dl-meow.el`).
+  Added `meow-use-cursor-position-hack`, `meow-use-clipboard`,
+  `meow-goto-line-function = consult-goto-line`,
+  `meow--kbd-delete-char = <deletechar>`, `<…>` registered as the
+  `a` thing.  `magit-status-mode` / `magit-log-mode` now enter normal
+  state; `magit-mode-hook` unsets `j` / `k` so magit's native nav
+  beats meow shadowing.  `meow-mode-state-list` entries unified on
+  `add-to-list`.
+- **User-buffer cycling** (`lisp/dl-buffer-management.el`).
+  `my/user-buffer-p` filters `*…*` and dired buffers;
+  `my/next-user-buffer` / `my/previous-user-buffer` skip past them.
+  Bound at `C-c b n` / `C-c b p` (replacing raw next/previous-buffer)
+  and mirrored to Meow leader `SPC [` / `SPC ]` for flick cycling.
+  File header fixed (`.le` → `.el`); added `(require
+  'dl-buffer-management)` to `init.el` (was unloaded — F9
+  `toggle-maximize-buffer` was dead code).
+- **Window helpers** (`lisp/dl-window.el` — new).
+  - `C-c w s` / `w v` now `split-and-follow-{horizontally,vertically}`
+    (existing defuns in `core/dl-interface.el`, previously unbound) —
+    split and move point into the new pane.
+  - `C-c w S` / `w V` keep the raw `split-window-{below,right}` for
+    when you want focus to stay put.
+  - `C-c w f` → `my/toggle-window-split` (flip 2-window layout 90°).
+  - `C-c w c` / `w C` → `my/rotate-windows[-backward]` (cycle buffers
+    around non-dedicated windows).  `w r` is taken by the resize
+    hydra, so rotate landed on `c` (cycle).
+
+Deferred avenue documented in `KEYS.md`: nil-out
+`meow-keypad-{meta,ctrl-meta,literal}-prefix` + `-start-keys` to
+release `SPC g` / `SPC m` (currently aliased to `SPC G` / `SPC M`).
+Not adopted — would lose Meow's `SPC c …` / `SPC x …` keypad
+dispatchers and the literal-input escape.
+
+**Touched:** `core/dl-meow.el`, `core/dl-keymap.el`,
+`lisp/dl-buffer-management.el`, `lisp/dl-window.el` (new), `init.el`,
+`KEYS.md`.
+
+## 2026-05-17 — window-resize hydra (first defhydra)
+
+`hydra-window-resize` lands at `C-c w r`.  Sticky modal: arrow keys
+grow/shrink the selected window in the matching direction (`<right>`
+wider, `<up>` taller, etc.), `=` balances, `q` exits.
+
+Hydra was previously deferred (`use-package hydra :commands defhydra`)
+with no actual hydras defined; promoted to `:demand t` so `defhydra`
+is in scope when `dl-keymap.el` references the `…/body` entry point.
+`declare-function` placeholder added in `dl-keymap.el` to silence the
+byte-compiler "not known to be defined" warning during cold compile.
+
+**Touched:** `core/dl-keybind.el`, `core/dl-keymap.el`, `KEYS.md`.
+
+## 2026-05-17 — Policy lint + ready-player squatter
+
+The deferred-sweep audit (entry below) cleared all `C-c <letter>`
+Policy violations in tracked `.el` files, but uncovered one foreign-
+package squatter the previous audits had missed.  A small lint keeps
+it from coming back.
+
+- **`ready-player` was silently owning `C-c m`.**  `ready-player-mode`
+  installs a "Ready Player" keymap globally on activation, clobbering
+  `my-term-map` after `dl-keymap.el` had bound it.  No `my/bind`
+  warning fired because the install bypasses `my/bind`.  Fix:
+  `(setq ready-player-set-global-bindings nil)` via `:custom` in
+  `apps/dl-dired.el`.  Term family restored at `C-c m`.
+- **`core/dl-policy-lint.el` — new.**  Walks `mode-specific-map` and
+  reports any single-letter binding whose value isn't a `my-*-map`
+  family map or a Policy-reserved singleton (`C-c a/c/l`).
+  - `M-x my-policy-lint` pops `*Policy Lint*` with offending key +
+    binding + reason (`foreign-map` / `foreign-command`).
+  - Silent startup check via `emacs-startup-hook`: logs a single
+    `*Messages*` line iff violations exist; never opens a buffer.
+  - Catches what `my/bind`'s collision warning can't — foreign
+    packages binding `C-c <letter>` from their own `:config`.
+
+Required: a one-line `(require 'dl-policy-lint)` after
+`(require 'dl-keymap)` in `init.el`.  Family allowlist
+(`my-policy-lint-family-maps`) needs updating when a new tier-1
+prefix lands.
+
+**Touched:** `core/dl-policy-lint.el` (new), `core/dl-keymap.el`
+(unchanged for lint), `apps/dl-dired.el`, `init.el`, `KEYS.md`.
+
+## 2026-05-17 — keymap policy deferred sweep
+
+Cleared the four remaining Policy stragglers from the previous audit.
+After this pass, no `C-c <letter>` global bindings live outside
+`core/dl-keymap.el`.
+
+- **`C-c s q` / `s Q` — visual-regexp.**  `vr/query-replace` and
+  `vr/replace` lifted out of `editing/dl-search.el` into the central
+  search map.  Lowercase = interactive (common), uppercase = one-shot
+  replace (less common).  Isearch chords `C-r` / `C-s` stay in
+  `dl-search.el` (they shadow Emacs globals, not personal keys).
+- **`C-c n r …` — roam compartment.**  Six org-roam bindings squatting
+  on tier-1 `C-c r` moved into a `my-roam-map` sub-prefix under notes.
+  Reflects Phase-1 reality: roam stays wired (db autosync, capture
+  templates) but isn't the primary navigator.  If/when promoted back
+  to a daily tool, lift out of the compartment.
+- **`apps/dl-slack.el` global bindings deleted.**  Module currently
+  uninstalled (`init.el:76`); the `C-c S …` family would have squatted
+  on tier-1 `S` the moment slack returned.  Mode-local maps
+  (`slack-mode-map` etc.) retained — those are package-owned.  Header
+  comment in the file flags the next-time refactor requirement.
+- **Doc rot trims.**  `(global-set-key (kbd "C-c h") …)` comment in
+  `lisp/dl-insert-elisp-header.el` removed (`C-c h` is Policy-banned
+  as the modal gateway).  Dead commented combobulate `use-package`
+  block in `editing/dl-multi-edit.el` deleted (`combobulate-key-prefix
+  "C-c o"` reference was stale; `C-c o` is now the Org map).
+
+**Touched:** `core/dl-keymap.el`, `editing/dl-search.el`,
+`org/dl-org-roam.el`, `apps/dl-slack.el`,
+`lisp/dl-insert-elisp-header.el`, `editing/dl-multi-edit.el`,
+`KEYS.md`.
+
 ## 2026-05-17 — keymap audit fixes
 
 Audit pass against the freshly-Policy-ied keymap surfaced four real

@@ -13,4 +13,6 @@ provide the user with choices, exposing important tradeoffs.
 
 don't assume. ask questions to clarify. perform bounded exploration where necessary to frame the right questions.
 
-when implementation is successful / committed, update @CHANGELOG.md with concise notes.
+when implementation is successful / committed, update CHANGELOG.md with concise notes.
+
+note: CHANGELOG.md is large, sip it.

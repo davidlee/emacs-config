@@ -37,15 +37,12 @@
            "refs/%<%Y%m%dT%H%M%S>--${slug}__reference.org"
            "#+title: ${title}\n#+filetags: :reference:\n")
          :unnarrowed t)))
-  :bind
-  (( "C-c r f" . org-roam-node-find)
-    ("C-c r i" . org-roam-node-insert)
-    ("C-c r b" . org-roam-buffer-toggle)
-    ("C-c r c" . org-roam-capture)
-    ("C-c r s" . org-roam-db-sync))
+  ;; Bindings live in `my-roam-map' at `C-c n r' via `core/dl-keymap.el'.
+  :commands ( org-roam-node-find org-roam-node-insert
+              org-roam-buffer-toggle org-roam-capture
+              org-roam-db-sync org-roam-graph)
   :config
   (require 'org-roam-graph)
-  (global-set-key (kbd "C-c r g") #'org-roam-graph)
   (org-roam-db-autosync-mode 1))
 
 (provide 'dl-org-roam)

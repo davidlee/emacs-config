@@ -54,7 +54,6 @@ When called interactively, prompt for DESCRIPTION if the header is absent."
           (insert "\n"))
         (insert
           (format ";;; %s ends here\n" file))))))
-;; (global-set-key (kbd "C-c h") #'my/insert-elisp-header-footer-if-missing)
 
 (provide 'dl-insert-elisp-header)
 ;;; dl-insert-elisp-header.el ends here

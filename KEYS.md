@@ -45,6 +45,15 @@
    top-level family, because `h` is already the modal gateway into the
    `C-c` command space.
 
+## Policy lint
+
+`core/dl-policy-lint.el` enforces the rules above. It scans `mode-specific-map` for single-letter bindings and flags anything that isn't either a `my-*-map` family map or one of the reserved singletons.
+
+- `M-x my-policy-lint` — pops `*Policy Lint*` with each offending key, its binding, and the reason (`foreign-map` / `foreign-command`).
+- Silent startup check — runs from `emacs-startup-hook`; logs a single line to `*Messages*` iff violations exist, never opens a buffer.
+
+The lint catches what `my/bind`'s collision warning can't: foreign packages that grab `C-c <letter>` from their own `:config` (the case-in-chief is `ready-player-mode` clobbering `C-c m`, fixed via `(setq ready-player-set-global-bindings nil)` in `apps/dl-dired.el`). Keep `my-policy-lint-family-maps` in sync when adding a new tier-1 prefix.
+
 ## Prefix index
 
 | Prefix | Map | Purpose |
@@ -109,6 +118,7 @@ Four sub-prefixes under `C-c n`:
 | `C-c n g` | `org-mark-ring-goto`                | go back |
 | `C-c n b` | `denote-backlinks`                  | backlinks |
 | `C-c n q` | `org-ql-find`                       | org-ql query dispatcher |
+| `C-c n r` | `my-roam-map`                       | roam compartment (see [Roam](#c-c-n-r--roam)) |
 
 ### `C-c n N` — new-by-class
 
@@ -177,6 +187,19 @@ Mirrors the personal review set, scoped to work files / dirs.
 | `C-c n W v r` | `my/review-work-references-retained`  | ripgrep work refs `status: raw` |
 | `C-c n W v u` | `my/review-work-references-untrusted` | ripgrep work refs untrusted |
 
+### `C-c n r` — roam
+
+Org-roam stays wired (db autosync + capture) but isn't the primary navigator. Bindings were lifted out of `dl-org-roam.el` to clear tier-1 `C-c r`; nothing else in the config currently calls them.
+
+| Key | Command | |
+|---|---|---|
+| `C-c n r f` | `org-roam-node-find`     | find node |
+| `C-c n r i` | `org-roam-node-insert`   | insert link to node |
+| `C-c n r b` | `org-roam-buffer-toggle` | backlinks/refs side window |
+| `C-c n r c` | `org-roam-capture`       | roam capture |
+| `C-c n r s` | `org-roam-db-sync`       | re-sync DB |
+| `C-c n r g` | `org-roam-graph`         | graph view |
+
 ### Agenda scope (`C-c a`)
 
 | Key | What |
@@ -228,6 +251,8 @@ live in `completion/dl-consult.el`.
 | `C-c s m` | `consult-mark`                    | buffer mark ring |
 | `C-c s M` | `consult-global-mark`             | global mark ring |
 | `C-c s g` | `rg-menu`                         | rg.el transient dispatcher |
+| `C-c s q` | `vr/query-replace`                | visual-regexp query-replace (interactive) |
+| `C-c s Q` | `vr/replace`                      | visual-regexp replace (one-shot) |
 
 Non-prefix globals (Emacs-native escape hatches, configured in
 `dl-consult.el`): `M-y` yank-pop, `M-g g` goto-line, `M-s r`
@@ -314,12 +339,14 @@ Globals: `C-x C-j` dired-jump, `C-x C-n` dirvish-side.
 
 | Key | Command | |
 |---|---|---|
-| `C-c b b` | `consult-buffer`      | switch |
-| `C-c b k` | `kill-current-buffer` | kill |
-| `C-c b i` | `ibuffer`             | ibuffer |
-| `C-c b n` | `next-buffer`         | next |
-| `C-c b p` | `previous-buffer`     | previous |
+| `C-c b b` | `consult-buffer`           | switch |
+| `C-c b k` | `kill-current-buffer`      | kill |
+| `C-c b i` | `ibuffer`                  | ibuffer |
+| `C-c b n` | `my/next-user-buffer`      | next (skips `*…*` and dired) |
+| `C-c b p` | `my/previous-user-buffer`  | prev (skips `*…*` and dired) |
 
+`my/user-buffer-p` in `lisp/dl-buffer-management.el` is the filter.
+Meow leader also mirrors `SPC [` / `SPC ]` for flick-style cycling.
 Global: `C-x b` → `consult-buffer` (in `dl-consult.el`).
 
 ## Window (`C-c w`)
@@ -332,11 +359,20 @@ Direction keys are arrow keys, not h/j/k/l — see [Layout](#layout).
 | `C-c w <down>`  | `windmove-down`        | focus down |
 | `C-c w <up>`    | `windmove-up`          | focus up |
 | `C-c w <right>` | `windmove-right`       | focus right |
-| `C-c w s`       | `split-window-below`   | split below |
-| `C-c w v`       | `split-window-right`   | split right |
+| `C-c w s`       | `split-and-follow-horizontally` | split below + focus new pane |
+| `C-c w v`       | `split-and-follow-vertically`   | split right + focus new pane |
+| `C-c w S`       | `split-window-below`   | split below (no focus) |
+| `C-c w V`       | `split-window-right`   | split right (no focus) |
 | `C-c w o`       | `delete-other-windows` | keep only this window |
 | `C-c w d`       | `delete-window`        | delete |
 | `C-c w =`       | `balance-windows`      | balance |
+| `C-c w f`       | `my/toggle-window-split`    | flip 2-window layout horizontal ⇄ vertical |
+| `C-c w c`       | `my/rotate-windows`         | cycle buffers forward through non-dedicated windows |
+| `C-c w C`       | `my/rotate-windows-backward` | cycle buffers backward |
+| `C-c w r`       | `hydra-window-resize/body`   | resize hydra (sticky `←/→` width, `↑/↓` height, `=` balance, `q` quit) |
+
+Split-and-follow lives in `core/dl-interface.el`; flip + rotate live in
+`lisp/dl-window.el`.
 
 ## Git (`C-c g`)
 
@@ -472,7 +508,25 @@ Declare autoloads on the source package with `:commands`. Then bind centrally:
 
 ## Deferred
 
-- **`dl-search.el` visual-regexp**. `C-c q r` / `C-c q q` is the last `C-c <letter>` Policy violation outside the central map. Either lift into `my-search-map` (`s Q` for query-replace?) or declare `my-vr-map` if the family grows. The other previously-listed files (`dl-consult.el`, `dl-embark.el`, `dl-motion.el`, `dl-fold.el`) are migrated — the chord-based bindings remaining in `dl-embark.el` and `dl-motion.el` are explicit Policy-compatible escape hatches, not squatters.
-- **Hydras**. Package autoloaded (`use-package hydra :commands defhydra` in `core/dl-keybind.el`), no hydras defined yet. Window resize is the natural first one — bind under `C-c w` once defined.
+- **More hydras**. `hydra-window-resize` (at `C-c w r`) is the first
+  defhydra; the package is now loaded eagerly in `core/dl-keybind.el`.
+  Future candidates: zoom (`text-scale-adjust`), error navigation
+  (`flymake-goto-{next,prev}-error`), and outline traversal.
+- **`C-c k` config kit**. The reserved `k` letter is earmarked for a
+  Nix-aware config kit (open `~/flakes/modules/home/emacs.nix`,
+  `home-manager switch`, etc.) — see `AGENTS.md` for the integration
+  traps before designing this.
+- **Nil-out meow keypad prefixes**. Setting
+  `meow-keypad-meta-prefix nil`, `meow-keypad-ctrl-meta-prefix nil`,
+  `meow-keypad-literal-prefix nil`, and `meow-keypad-start-keys nil`
+  would release `SPC g` / `SPC m` (currently aliased to `SPC G` /
+  `SPC M`) and let lowercase mirrors of every `C-c <letter>` family
+  work uniformly under `SPC`. Cost: loses Meow's built-in
+  `SPC c …` / `SPC x …` → `C-c …` / `C-x …` keypad dispatchers, and
+  `SPC` becomes purely a leader with no literal-input escape.
+  Revisit if keypad mode goes unused and the alias inconsistency
+  keeps biting — see `Gotchas` entry above and lambda-emacs's
+  `meow.local.el` for the precedent.
 - **`C-c t` collision watch**. The toggle map is well-populated now, but mind the `C-c t C-c t` / `C-c t C-h` use-package conventions some major modes still grab when adding new toggles.
 - **Reserved letters**. `d` (diagnostics) and `k` (config / "kit") are kept free for future tier-1 families per the [Policy](#policy) budget. Don't grab them for one-off binds.
+- **Slack re-enable**. `apps/dl-slack.el` is currently uninstalled (`init.el:76` commented). If/when it returns, the global `C-c S …` family must be lifted into `core/dl-keymap.el` under a sub-prefix — see the header comment in `dl-slack.el`.

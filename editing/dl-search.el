@@ -6,13 +6,14 @@
 (use-package rg
   :commands (rg rg-menu rg-dwim))
 
+;; Global `vr/query-replace' / `vr/replace' live in `my-search-map'
+;; (`C-c s q' / `C-c s Q') via `core/dl-keymap.el'.  Isearch chords stay
+;; here because they shadow the Emacs isearch globals, not personal keys.
 (use-package visual-regexp-steroids
+  :commands (vr/replace vr/query-replace)
   :bind
-  ( ("C-c q r" . vr/replace)
-    ("C-c q q" . vr/query-replace)
-    ("C-r"     . vr/isearch-backward)
-    ("C-s"     . vr/isearch-forward)
-    ))
+  (("C-r" . vr/isearch-backward)
+    ("C-s" . vr/isearch-forward)))
 
 (use-package deadgrep)
 (global-set-key (kbd "<f3>") #'deadgrep)

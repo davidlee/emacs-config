@@ -22,7 +22,11 @@
   :hook (dired-mode . diredfl-mode))
 
 (use-package nerd-icons :defer t)
-(use-package ready-player :config (ready-player-mode +1))
+(use-package ready-player
+  ;; Opt out of the package's global `C-c m' keymap install; the term
+  ;; family owns that prefix via `my-term-map' in `core/dl-keymap.el'.
+  :custom (ready-player-set-global-bindings nil)
+  :config (ready-player-mode +1))
 
 (provide 'dl-dired)
 ;;; dl-dired.el ends here

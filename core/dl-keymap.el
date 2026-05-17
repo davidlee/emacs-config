@@ -73,6 +73,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (defvar-keymap my-notes-review-map      :name "notes:review")
 (defvar-keymap my-notes-work-map        :name "notes:work")
 (defvar-keymap my-notes-work-review-map :name "notes:work:review")
+(defvar-keymap my-roam-map              :name "roam")
 (defvar-keymap my-org-map         :name "org")
 (defvar-keymap my-toggle-map      :name "toggle")
 (defvar-keymap my-eval-map        :name "eval")
@@ -115,6 +116,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
     "C-c n v"   "notes:review"
     "C-c n W"   "notes:work"
     "C-c n W v" "notes:work:review"
+    "C-c n r"   "roam"
     "C-c o"   "org"
     "C-c t"   "toggle"
     "C-c e"   "eval"
@@ -136,18 +138,25 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-buffer-map "b" #'consult-buffer         "switch")
 (my/bind my-buffer-map "k" #'kill-current-buffer    "kill")
 (my/bind my-buffer-map "i" #'ibuffer                "ibuffer")
-(my/bind my-buffer-map "n" #'next-buffer            "next")
-(my/bind my-buffer-map "p" #'previous-buffer        "prev")
+(my/bind my-buffer-map "n" #'my/next-user-buffer    "next (skip *…* / dired)")
+(my/bind my-buffer-map "p" #'my/previous-user-buffer "prev (skip *…* / dired)")
 
+(declare-function hydra-window-resize/body "dl-keybind")
 (my/bind my-window-map "<left>"  #'windmove-left        "left")
 (my/bind my-window-map "<down>"  #'windmove-down        "down")
 (my/bind my-window-map "<up>"    #'windmove-up          "up")
 (my/bind my-window-map "<right>" #'windmove-right       "right")
-(my/bind my-window-map "s"       #'split-window-below   "split-below")
-(my/bind my-window-map "v"       #'split-window-right   "split-right")
+(my/bind my-window-map "s"       #'split-and-follow-horizontally "split-below (+focus)")
+(my/bind my-window-map "v"       #'split-and-follow-vertically   "split-right (+focus)")
+(my/bind my-window-map "S"       #'split-window-below   "split-below (no focus)")
+(my/bind my-window-map "V"       #'split-window-right   "split-right (no focus)")
 (my/bind my-window-map "o"       #'delete-other-windows "only")
 (my/bind my-window-map "d"       #'delete-window        "delete")
 (my/bind my-window-map "="       #'balance-windows      "balance")
+(my/bind my-window-map "r"       #'hydra-window-resize/body  "resize (hydra)")
+(my/bind my-window-map "f"       #'my/toggle-window-split    "flip h/v")
+(my/bind my-window-map "c"       #'my/rotate-windows         "cycle (rotate)")
+(my/bind my-window-map "C"       #'my/rotate-windows-backward "cycle back")
 
 (my/bind my-git-map    "g" #'magit-status           "status")
 (my/bind my-git-map    "l" #'git-link               "link")
@@ -183,6 +192,8 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-search-map  "m" #'consult-mark                       "mark ring")
 (my/bind my-search-map  "M" #'consult-global-mark                "global mark ring")
 (my/bind my-search-map  "g" #'rg-menu                            "rg menu")
+(my/bind my-search-map  "q" #'vr/query-replace                   "vr query-replace")
+(my/bind my-search-map  "Q" #'vr/replace                         "vr replace")
 
 ;; Jump map — avy family.  Chord bindings `C-:'/`C-;' live in
 ;; `editing/dl-motion.el' as fast escape hatches.
@@ -225,6 +236,12 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (declare-function consult-notes                     "consult-notes")
 (declare-function consult-notes-search-in-all-notes "consult-notes")
 (declare-function org-ql-find                       "org-ql-find")
+(declare-function org-roam-node-find       "org-roam-node")
+(declare-function org-roam-node-insert     "org-roam-node")
+(declare-function org-roam-buffer-toggle   "org-roam-mode")
+(declare-function org-roam-capture         "org-roam-capture")
+(declare-function org-roam-db-sync         "org-roam-db")
+(declare-function org-roam-graph           "org-roam-graph")
 (my/bind my-notes-map "N" my-notes-new-map    "new-by-class")
 (my/bind my-notes-map "m" my-notes-manage-map "manage")
 (my/bind my-notes-map "v" my-notes-review-map "review")
@@ -290,6 +307,16 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-notes-work-review-map "r" #'my/review-work-references-retained  "refs: raw")
 (my/bind my-notes-work-review-map "u" #'my/review-work-references-untrusted "refs: untrusted")
 
+;; Roam compartment — `C-c n r …'.  Kept wired but not the primary
+;; navigator; lifted out of `dl-org-roam.el' to clear tier-1 `C-c r'.
+(my/bind my-notes-map  "r" my-roam-map               "roam")
+(my/bind my-roam-map   "f" #'org-roam-node-find      "find node")
+(my/bind my-roam-map   "i" #'org-roam-node-insert    "insert link")
+(my/bind my-roam-map   "b" #'org-roam-buffer-toggle  "buffer toggle")
+(my/bind my-roam-map   "c" #'org-roam-capture        "capture")
+(my/bind my-roam-map   "s" #'org-roam-db-sync        "db sync")
+(my/bind my-roam-map   "g" #'org-roam-graph          "graph")
+
 (my/bind my-term-map   "t" #'ghostel                           "ghostel")
 (my/bind my-term-map   "T" #'my/ghostel-here                   "ghostel (new, here)")
 (my/bind my-term-map   "o" #'ghostel-project                   "ghostel (project)")
@@ -352,8 +379,8 @@ Warns when KEY already has a binding in MAP that differs from CMD."
     '("j" . meow-next)
     '("k" . meow-prev)
     '("<escape>" . ignore)
-;;    '("s-[" . lem-previous-user-buffer)
-;;    '("s-]" . lem-next-user-buffer)
+;;    '("s-[" . my/previous-user-buffer)
+;;    '("s-]" . my/next-user-buffer)
     '("s-{" . tab-bar-switch-to-prev-tab)
     '("s-}" . tab-bar-switch-to-next-tab))
 
@@ -371,6 +398,9 @@ Warns when KEY already has a binding in MAP that differs from CMD."
     '("0" . meow-digit-argument)
     '("/" . meow-keypad-describe-key)
     '("?" . meow-cheatsheet)
+    ;; Flick-style user-buffer cycling.
+    '("[" . my/previous-user-buffer)
+    '("]" . my/next-user-buffer)
     ;; Mirror C-c <letter> prefix maps onto SPC <letter>.
     ;; Note: lowercase m and g are eaten by meow-keypad as the meta /
     ;; ctrl-meta prefix dispatchers before leader-keymap is consulted,

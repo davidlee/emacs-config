@@ -50,9 +50,21 @@
 
 (global-set-key (kbd "C-S-g") #'exit-minibuffer)
 
-;; Hydras for repeatable, sticky subinterfaces (no defs yet).
+;; Hydras for repeatable, sticky subinterfaces.  Eagerly loaded so
+;; `defhydra' is in scope when downstream files (`dl-keymap.el')
+;; reference the generated `…/body' entry points.
 (use-package hydra
-  :commands defhydra)
+  :demand t
+  :config
+  (defhydra hydra-window-resize (:hint nil)
+    "
+Window resize: _<left>_/_<right>_ width  _<up>_/_<down>_ height  _=_ balance  _q_ quit"
+    ("<left>"  shrink-window-horizontally)
+    ("<right>" enlarge-window-horizontally)
+    ("<up>"    enlarge-window)
+    ("<down>"  shrink-window)
+    ("="       balance-windows)
+    ("q"       nil :exit t)))
 
 (use-package which-key
   :ensure nil

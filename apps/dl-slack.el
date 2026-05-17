@@ -7,24 +7,14 @@
   :init
   (setq alert-default-style 'notifier))
 
+;; Re-enabling slack: do NOT restore the old `C-c S …' global bindings
+;; here.  Per Policy (`KEYS.md'), tier-1 letters are owned by the central
+;; keymap.  Lift the slack verbs into a `my-slack-map' in
+;; `core/dl-keymap.el' under a sub-prefix (e.g. `C-c a s' or `C-c n S')
+;; and bind via `my/bind'.  Mode-local maps below are package-owned and
+;; remain here.
 (use-package slack
-  :bind (("C-c S K" . slack-stop)
-          ("C-c S c" . slack-select-rooms)
-          ("C-c S u" . slack-select-unread-rooms)
-          ("C-c S U" . slack-user-select)
-          ("C-c S s" . slack-search-from-messages)
-          ("C-c S J" . slack-jump-to-browser)
-          ("C-c S j" . slack-jump-to-app)
-          ("C-c S e" . slack-insert-emoji)
-          ("C-c S E" . slack-message-edit)
-          ("C-c S r" . slack-message-add-reaction)
-          ("C-c S t" . slack-thread-show-or-create)
-          ("C-c S g" . slack-message-redisplay)
-          ("C-c S G" . slack-conversations-list-update-quick)
-          ("C-c S q" . slack-quote-and-reply)
-          ("C-c S Q" . slack-quote-and-reply-with-link)
-
-          (:map slack-mode-map
+  :bind ((:map slack-mode-map
             ("@" . slack-message-embed-mention)
             ("#" . slack-message-embed-channel))
 
