@@ -2,6 +2,89 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-17 — visual layer: dl-font → dl-faces, dl-interface slimmed
+
+Two questions the audit raised about `core/dl-font.el` and `core/dl-interface.el`:
+**(a)** the file named "fonts" was actually the universal face-customization
+hub (font roles + every `set-face-attribute` in the codebase); **(b)**
+dl-interface had become a kitchen sink (startup chrome + global modes
++ window helpers + popup tamers + scroll-key overrides, all in one
+file).  Resolved both.
+
+**`dl-font.el` → `dl-faces.el`** — `git mv` rename; `provide`/`require`
+and file header updated.  `init.el:12` follows.  The file's content is
+unchanged structurally, just better-named.
+
+**`my/apply-fonts` now fires at startup and on theme rotation.** It was
+defined but never called at the top level — fonts were coming from
+whatever the theme set, and manual `M-x my/apply-fonts` was the only
+path to your role/height/weight customizations.  Added a top-level
+`(my/apply-fonts)` plus `(add-hook 'enable-theme-functions
+#'my/apply-fonts)`.  Function signature now `(&rest _)` so it slots
+directly onto the hook (same shape as `dl-meow--apply-indicator-faces`,
+the only other face-applier with a theme-reload hook).
+
+**`dl-interface.el` split (approach A from the design pass)**:
+
+- `split-and-follow-horizontally` / `split-and-follow-vertically`,
+  `(use-package transpose-frame ...)`, and `(winner-mode 1)` moved to
+  `lisp/dl-window.el` where the rest of the window helpers live.  The
+  stale comment at the top of dl-window pointing back to dl-interface
+  is updated.
+- `(use-package shackle ...)` and `(use-package popper ...)` extracted
+  to new `core/dl-popups.el`.  Sibling of dl-interface; required in
+  init.el right after it.
+- `(global-set-key (kbd "C-v") ...)` / `M-v` (the View-half-page
+  overrides) and the `(require 'view)` they need moved to
+  `core/dl-keybind.el` next to the other ergonomic chord bindings.
+
+After the split dl-interface owns just chrome + frame + global display
+modes + per-mode hooks + the remaining package wrappers
+(`spacious-padding`, `diminish`, `nerd-icons` + `nerd-icons-completion`,
+`beacon`, `breadcrumb`) — coherent.
+
+**Incidentals along the way**:
+
+- Typo `(use-short-anwswers t)` in dl-interface's `:custom` removed
+  (set a phantom variable; the correctly-spelled `use-short-answers`
+  is already in `dl-core.el`).
+- Duplicate top-level `(global-prettify-symbols-mode t)` removed; the
+  `:custom` line earlier in the same use-package block already enables
+  it.
+
+**Touched:** `init.el`, `core/dl-faces.el` (renamed from `dl-font.el`),
+`core/dl-popups.el` (new), `core/dl-interface.el`, `core/dl-keybind.el`,
+`lisp/dl-window.el`.  `home-manager switch` required (new file).
+
+## 2026-05-17 — quality review: trivial fixes + lazy-loading + eglot consolidation
+
+Sweep audit (`REVIEW.md` for the full report).
+
+**Trivial fixes** — `init.el` duplicate `(require 'dl-term)` removed; 4 dead commented `set-face-attribute` / `set-frame-font` lines deleted. Save-time bug closed in `editing/dl-persist.el`: `my/eglot-format-buffer-if-connected` was wired both buffer-local (via `my/eglot-on-save-setup`) and globally on `before-save-hook`, firing twice in eglot buffers — global add removed. Orphan `<f9>` binding next to `toggle-maximize-buffer` in `lisp/dl-buffer-management.el` removed; same binding already lives in `core/dl-keybind.el`. Duplicate `with-eval-after-load 'org` face block in `core/dl-font.el` removed — `my/apply-fonts` already calls `my/apply-org-faces`. `completion/dl-vertico.el` file header said `dl-orderless.el`; fixed. Redundant `(use-package savehist :init (savehist-mode))` in `dl-vertico.el` dropped — `dl-completion.el` enables savehist earlier in init order.
+
+**Lazy-loading** — `org/dl-org.el`: `use-package org` now defers via `:mode "\\.org\\'"`; the bare top-level `(setq ...)` block (which duplicated `org-startup-indented` and `org-hide-emphasis-markers` already in `:custom`) folded into `:custom`. `org-bullets-bullet-list` moved into `org-bullets`' own `:custom` and the package now defers via `:hook (org-mode . org-bullets-mode)`. The anonymous margin/hl-line lambda in `org-mode-hook` extracted to `my/org-setup-margins` (named hooks survive `.emacs.desktop` restore more cleanly).
+
+`apps/dl-eaf.el`: `:demand t` removed from all four packages. `eaf` itself now declares `:commands (eaf-open eaf-open-browser eaf-open-pdf-viewer eaf-open-image-viewer)`; the apps keep `:after eaf` so load order is preserved when an entry command pulls eaf in. Largest single startup-time win in this pass.
+
+**Eglot consolidation** — `my/eglot-connected-p`, `my/eglot-format-buffer-if-connected`, `my/eglot-organize-imports-if-connected`, and `my/eglot-on-save-setup` moved from `editing/dl-persist.el` to `dev/dl-eglot.el`. `editing/dl-persist.el` is now strictly *session* persistence (file revert + autosave + undo-fu). The organize-imports hook was previously global on `before-save-hook` (firing on every save, no-op outside eglot buffers); it now installs buffer-local via `my/eglot-on-save-setup`, mirroring the format-buffer pattern. `lang/dl-nix.el`: the eager `(use-package eglot :config (add-to-list 'eglot-server-programs ...))` (which pulled eglot at startup) replaced with `with-eval-after-load 'eglot`; nixd registration now waits until eglot actually loads.
+
+**Use-package dedup** — Four duplicate `use-package` forms removed:
+
+- `(use-package dired ...)` in `apps/dl-dirvish.el` deleted; identical settings already in `apps/dl-dired.el`.
+- `(use-package diredfl ...)` in `editing/dl-project.el` deleted; canonical home is `apps/dl-dired.el`.
+- `(use-package markdown-mode ...)` in `lang/dl-lang-common.el` deleted; its `visual-line-mode` hook lifted into the existing form in `lang/dl-markdown.el`.
+- `(use-package nerd-icons :defer t)` in `apps/dl-dired.el` deleted; canonical home is `core/dl-interface.el` (which also configures `nerd-icons-completion`).
+
+**Overlapping `(use-package emacs ...)` blocks** — The block in `completion/dl-vertico.el` was a pure duplicate: `context-menu-mode` was already enabled in `core/dl-interface.el:111`, and `enable-recursive-minibuffers` / `read-extended-command-predicate` were already in `completion/dl-completion.el`. The one genuinely cross-cutting setting, `minibuffer-prompt-properties` (locks cursor out of the prompt — applies beyond vertico), lifted into `dl-completion.el`. Block removed.
+
+`editing/dl-project.el`'s `(use-package emacs ...)` block had nothing to do with projects: `major-mode-remap-alist` (treesitter remap) moved to `dev/dl-treesit.el` next to `treesit-auto`; the remaining `:hook ((prog-mode . electric-pair-mode))` collapsed to a top-level `add-hook`. Block removed.
+
+**Buglet** — `completion/dl-completion.el` had `(keymap-set minibuffer-mode-map "TAB" 'minibuffer-complete)` inside its `:custom` block, where the form was treated as `(VAR=keymap-set VALUE=minibuffer-mode-map ...)` and never actually bound TAB. Moved into a proper `:bind (:map minibuffer-mode-map ...)` clause.
+
+After this pass, the seven remaining `(use-package emacs ...)` blocks each own a coherent domain: `dl-core` (defaults), `dl-backup` (backup), `dl-interface` (UI), `dl-persist` (auto-revert + history), `dl-completion` (minibuffer + completion), `dl-elisp` (elisp-mode), and the new minimal one in `dl-eaf` / N-A. No emacs-block lives in `dl-project` or `dl-vertico` anymore.
+
+**Touched:** `init.el`, `core/dl-font.el`, `completion/dl-completion.el`, `completion/dl-vertico.el`, `editing/dl-persist.el`, `editing/dl-project.el`, `lisp/dl-buffer-management.el`, `lang/dl-markdown.el`, `lang/dl-lang-common.el`, `lang/dl-nix.el`, `org/dl-org.el`, `apps/dl-eaf.el`, `apps/dl-dired.el`, `apps/dl-dirvish.el`, `dev/dl-eglot.el`, `dev/dl-treesit.el`, `REVIEW.md` (new).
+
 ## 2026-05-17 — lambda-emacs lifts: meow polish, user-buffer cycling, window helpers
 
 Three groups picked from `./lambda-emacs/` and `./meow.local.el`.

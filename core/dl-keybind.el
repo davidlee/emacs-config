@@ -31,6 +31,11 @@
 (global-set-key (kbd "C-x 2") 'split-and-follow-horizontally)
 (global-set-key (kbd "C-x 3") 'split-and-follow-vertically)
 
+;; Half-page scroll on the View bindings (emacs muscle-memory override).
+(require 'view)
+(global-set-key (kbd "C-v") #'View-scroll-half-page-forward)
+(global-set-key (kbd "M-v") #'View-scroll-half-page-backward)
+
 ;; Buffer-local text scaling, equivalent in spirit to C-scrollwheel.
 (global-set-key (kbd "C-=") #'text-scale-increase)
 (global-set-key (kbd "C-+") #'text-scale-increase)

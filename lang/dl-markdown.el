@@ -13,6 +13,7 @@
   :mode (("\\.markdown\\'" . markdown-mode)
           ("\\.md\\'" . markdown-mode)
           ("README\\.md\\'" . gfm-mode))
+  :hook (markdown-mode . visual-line-mode)
   :bind
   (:map markdown-mode-map
     ("C-c C-e" . markdown-do)))

@@ -9,8 +9,9 @@
 (require 'dl-keymap)
 (require 'dl-policy-lint)
 (require 'dl-theme)
-(require 'dl-font)
+(require 'dl-faces)
 (require 'dl-interface)
+(require 'dl-popups)
 (require 'dl-prose)
 (require 'dl-modeline)
 (require 'dl-meow)
@@ -39,7 +40,11 @@
 (require 'dl-snippets)
 (require 'dl-motion)
 (require 'dl-search)
-
+(require 'dl-dwim)
+(require 'dl-comment)
+(require 'dl-select)
+(require 'dl-iedit)
+(require 'dl-diagram)
 (require 'dl-indent)
 (require 'dl-fold)
 
@@ -54,6 +59,7 @@
 (require 'dl-org-ql)
 (require 'dl-review)
 (require 'dl-org-roam)
+;; (require 'dl-org-gcal) -- not yet working
 
 ;; Language support
 (require 'dl-elisp)
@@ -66,15 +72,12 @@
 (require 'dl-ghostel)
 (require 'dl-shpool)
 (require 'dl-magit)
-(require 'dl-term)
 (require 'dl-claude)
 (require 'dl-eaf)
 (require 'dl-agent-shell)
-(require 'treemacs)
+(require 'dl-smudge)
 
 (require 'dl-keybind)
-;; (require 'dl-spotify)
-;; (require 'dl-slack)
 (require 'dl-dired)
 (require 'dl-dirvish)
 
@@ -82,10 +85,5 @@
 (require 'dl-insert-elisp-header)
 (require 'dl-buffer-management)
 (require 'dl-window)
-
-;; (set-face-attribute 'default nil :font "JetBrains Mono" :height 115)
-;; (set-face-attribute 'default nil :font "JetBrainsMono Nerd Font Mono" :height 115)
-;; (set-frame-font "Iosevka Nerd Font Mono-12" nil t)
-;; (set-frame-font "Fira Mono-12" nil t)
 
 ;;; init.el ends here

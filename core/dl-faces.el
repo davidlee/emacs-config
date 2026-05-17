@@ -1,4 +1,9 @@
-;;; dl-font.el --- fonts -*- lexical-binding: t; -*-
+;;; dl-faces.el --- font roles + universal face customization -*- lexical-binding: t; -*-
+
+;; Single home for face customization in this config: font roles,
+;; per-face attrs, line-numbers, mode-line, org headings, flymake /
+;; jinx underlines.  Other files don't set face attributes —
+;; everything funnels through here.
 
 (defvar my/known-fonts
 
@@ -159,8 +164,9 @@
 (defvar my/font-default-height 105
   "Base font height for the default face.")
 
-(defun my/apply-fonts ()
-  "Apply all font role assignments."
+(defun my/apply-fonts (&rest _)
+  "Apply all font role assignments and per-face attrs.
+Variadic to fit `enable-theme-functions', which passes the theme."
   (interactive)
   (set-face-attribute 'default nil
     :family (my/font-role 'mono)
@@ -177,15 +183,6 @@
 
   (my/apply-ui-faces)
   (my/apply-org-faces))
-;; Org.
-(with-eval-after-load 'org
-  (my/set-face-font 'org-document-title 'org-heading :height 160 :weight 'bold)
-  (my/set-face-font 'org-level-1 'org-heading :height 140 :weight 'bold)
-  (my/set-face-font 'org-level-2 'org-heading :height 125 :weight 'semibold)
-  (my/set-face-font 'org-level-3 'org-heading :height 115 :weight 'regular)
-  (my/set-face-font 'org-block 'org-code :height 100)
-  (my/set-face-font 'org-code 'org-code :height 100)
-  (my/set-face-font 'org-verbatim 'org-code :height 100))
 
 (with-eval-after-load 'lambda-line
   (my/apply-lambda-line-faces))
@@ -200,6 +197,11 @@
   ;; Grey, recedes — misspellings hint, not shout.
   (set-face-attribute 'jinx-misspelled nil :underline '(:style line :color "#7a7a7a")))
 
-(provide 'dl-font)
-;;; dl-font.el ends here
+;; Apply at startup; re-apply on theme rotation so font/face attrs
+;; survive `<f5>' (themes reset every face they touch).
+(my/apply-fonts)
+(add-hook 'enable-theme-functions #'my/apply-fonts)
+
+(provide 'dl-faces)
+;;; dl-faces.el ends here
 

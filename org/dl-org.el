@@ -8,6 +8,7 @@
 
 (use-package org
   :ensure nil
+  :mode ("\\.org\\'" . org-mode)
   :custom
   (org-directory dl-notes-root)
   (org-default-notes-file dl-notes-inbox-file)
@@ -16,6 +17,12 @@
   (org-return-follows-link t)
   (org-use-speed-commands t)
   (org-log-done 'time)
+  (org-ellipsis "  ")
+  (org-pretty-entities t)
+  (org-agenda-block-separator "")
+  (org-fontify-whole-heading-line t)
+  (org-fontify-done-headline t)
+  (org-fontify-quote-and-verse-blocks t)
   (org-todo-keywords
     '((sequence "TODO(t)" "NEXT(n)" "STARTED(s)" "WAITING(w@/!)"
                 "|" "DONE(d!)" "CANCELED(c@)" "MOVED(m@)")))
@@ -31,28 +38,19 @@
   :hook ((org-mode            . org-modern-mode)
          (org-agenda-finalize . org-modern-agenda)))
 
-;; style hax
-(use-package org-bullets)
+(use-package org-bullets
+  :hook (org-mode . org-bullets-mode)
+  :custom
+  (org-bullets-bullet-list '(" ")))
 
-(setq org-startup-indented t
-  org-bullets-bullet-list '(" ") ;; no bullets, needs org-bullets package
-  org-ellipsis "  " ;; folding symbol
-  org-pretty-entities t
-  org-hide-emphasis-markers t
-  ;; show actually italicized text instead of /italicized text/
-  org-agenda-block-separator ""
-  org-fontify-whole-heading-line t
-  org-fontify-done-headline t
-  org-fontify-quote-and-verse-blocks t)
+(defun my/org-setup-margins ()
+  "Buffer-local margin + hl-line tweaks for org buffers."
+  (setq left-margin-width 2
+        right-margin-width 2)
+  (hl-line-mode -1)
+  (set-window-buffer nil (current-buffer)))
 
-;; fiddle spacing
-(add-hook 'org-mode-hook
-  (lambda () (progn
-               (setq left-margin-width 2)
-               (setq right-margin-width 2)
-               ;; (setq header-line-format " ")
-               (hl-line-mode nil)
-               (set-window-buffer nil (current-buffer)))))
+(add-hook 'org-mode-hook #'my/org-setup-margins)
 
 ;; (add-hook 'org-mode-hook #'variable-pitch-mode)
 (provide 'dl-org)

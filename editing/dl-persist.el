@@ -128,40 +128,6 @@
   (lambda (&rest _) (my/save-all-file-buffers)))
 
 ;; --------------------------------------------------------------------------------
-;; Eglot
-;;
-
-;; auto whitespace
-;; (add-fs-to-hook 'prog-mode-hook
-;;   (add-hook 'after-save-hook
-;;     (fn (whitespace-cleanup))))
-
-;; Eglot - auto-format with error handling
-;;
-
-(defun my/eglot-connected-p ()
-  "Return non-nil when current buffer has a live Eglot server."
-  (and (bound-and-true-p eglot--managed-mode)
-    (ignore-errors
-	    (eglot-current-server))))
-
-(defun my/eglot-format-buffer-if-connected ()
-  (when (my/eglot-connected-p)
-    (eglot-format-buffer)))
-
-(defun my/eglot-organize-imports-if-connected ()
-  (when (my/eglot-connected-p)
-    (eglot-code-action-organize-imports)))
-
-(defun my/eglot-on-save-setup ()
-  (add-hook 'before-save-hook #'my/eglot-format-buffer-if-connected nil t))
-
-(add-hook 'eglot-managed-mode-hook #'my/eglot-on-save-setup)
-
-(add-hook 'before-save-hook #'my/eglot-format-buffer-if-connected)
-(add-hook 'before-save-hook #'my/eglot-organize-imports-if-connected)
-
-;; --------------------------------------------------------------------------------
 ;; Undo / Redo
 ;;
 (use-package undo-fu)

@@ -8,6 +8,10 @@
   ;; Allow commands in minibuffer prompts.
   (enable-recursive-minibuffers t)
 
+  ;; Lock cursor out of the minibuffer prompt itself.
+  (minibuffer-prompt-properties
+    '(read-only t cursor-intangible t face minibuffer-prompt))
+
   ;; TAB complete else indent
   (tab-always-indent 'complete)
 
@@ -39,8 +43,9 @@
   (completion-auto-wrap t)
   (completion-auto-help 'lazy) ; or 'lazy
 
-  ;; TAB acts more like how it does in the shell
-  (keymap-set minibuffer-mode-map "TAB" 'minibuffer-complete))
+  ;; TAB acts more like how it does in the shell.
+  :bind (:map minibuffer-mode-map
+          ("TAB" . minibuffer-complete)))
 
 ;; Persist minibuffer history.
 (use-package savehist

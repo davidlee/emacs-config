@@ -9,9 +9,6 @@
       (window-configuration-to-register :maximize)
       (delete-other-windows))))
 
-;; Bind it to a key (example: F9)
-(global-set-key (kbd "<f9>") 'toggle-maximize-buffer)
-
 ;;;; User-buffer cycling
 ;; Skip *foo* and dired buffers when stepping through `buffer-list'.
 ;; Adapted from ergoemacs / lambda-emacs `lem-user-buffer-q'.

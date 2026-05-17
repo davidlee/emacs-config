@@ -6,6 +6,7 @@ tramp
 oauth2.*
 *.plstore
 .org-generic-*
+.claude/settings.local.json
 
 .emacs.desktop
 .emacs.desktop.lock

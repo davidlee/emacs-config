@@ -1,23 +1,8 @@
 ;;; dl-project.el --- projects / QOL  -*- lexical-binding: t; -*-
 ;;; Commentary: none
 
-(use-package emacs
-  :config
-  ;; Treesitter config
-
-  ;; Tell Emacs to prefer the treesitter mode You'll want to run the
-  ;; command `M-x treesit-install-language-grammar' before editing.
-  (setq major-mode-remap-alist
-    '((yaml-mode . yaml-ts-mode)
-       (bash-mode . bash-ts-mode)
-       (js2-mode . js-ts-mode)
-       (typescript-mode . typescript-ts-mode)
-       (json-mode . json-ts-mode)
-       (css-mode . css-ts-mode)
-       (python-mode . python-ts-mode)))
-  :hook
-  ;; Auto parenthesis matching
-  ((prog-mode . electric-pair-mode)))
+;; Auto parenthesis matching in code buffers.
+(add-hook 'prog-mode-hook #'electric-pair-mode)
 
 (use-package project
   :ensure nil
@@ -74,10 +59,6 @@
   ;; If you want to advice the commands in `otpp-override-commands`
   ;; to be run in the current's tab (so, current project's) root directory
   (otpp-override-mode 1))
-
-;;
-(use-package diredfl
-  :hook (dired-mode . diredfl-mode))
 
 (provide 'dl-project)
 ;;; dl-project.el ends here

@@ -6,18 +6,6 @@
   (setq pixel-scroll-precision-large-scroll-height 1)
   (setq pixel-scroll-precision-interpolation-factor 1))
 
-(defun split-and-follow-horizontally ()
-  (interactive)
-  (split-window-below)
-  (balance-windows)
-  (other-window 1))
-
-(defun split-and-follow-vertically ()
-  (interactive)
-  (split-window-right)
-  (balance-windows)
-  (other-window 1))
-
 (use-package emacs
   :ensure nil
   :custom
@@ -29,7 +17,6 @@
 
   (tooltip-use-echo-area t)
 
-  (use-short-anwswers t)
   (use-file-dialog nil)
 
   (use-dialog-box nil)
@@ -84,7 +71,6 @@
   (tab-bar-show nil)
   (tab-bar-mode nil)
   (global-tab-line-mode nil)
-  (winner-mode 1)
 
   :init
   (display-time-mode)
@@ -147,37 +133,6 @@
 
 (use-package breadcrumb
   :defer t)
-
-(use-package transpose-frame
-  :commands (transpose-frame)
-  :bind
-  (("C-x 7" . transpose-frame)))
-
-(global-prettify-symbols-mode t)
-
-;; TAME POPUPS
-
-(use-package shackle) ; https://depp.brause.cc/shackle/
-
-(use-package popper
-  :bind ( ("C-`"   . popper-toggle)
-          ("M-`"   . popper-cycle)
-          ("C-M-`" . popper-toggle-type))
-  :defer t
-  :commands (popper-mode popper-echo-mode)
-  :config
-  (setq popper-reference-buffers
-    '("\\*Messages\\*"
-       "Output\\*$"
-       "\\*Async Shell Command\\*"
-       help-mode
-       compilation-mode))
-  (popper-mode +1)
-  (popper-echo-mode +1)) ; For echo area hints
-
-(require 'view)
-(global-set-key (kbd "C-v") 'View-scroll-half-page-forward)
-(global-set-key (kbd "M-v") 'View-scroll-half-page-backward)
 
 (provide 'dl-interface)
 ;;; dl-interface.el ends here

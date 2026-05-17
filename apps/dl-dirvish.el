@@ -1,11 +1,6 @@
 ;;; dl-dirvish.el --- Dirvish + yazi/broot wrappers -*- lexical-binding: t; -*-
-(use-package dired
-  :config
-  (setq dired-listing-switches
-    "-l --almost-all --human-readable --group-directories-first --no-group")
-  ;; this command is useful when you want to close the window of `dirvish-side'
-  ;; automatically when opening a file
-  (put 'dired-find-alternate-file 'disabled nil))
+
+;; `dired' core config lives in `apps/dl-dired.el'.
 
 (use-package dirvish
   :init

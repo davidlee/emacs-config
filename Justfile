@@ -8,3 +8,7 @@ used:
 
 clean:
   @find ~/.emacs.d -name '*.elc' -delete
+
+wc:
+  @find ~/.emacs.d/{core,lisp,dev,lang,editing,completion,apps,org} -name '*.el' | xargs wc -l ;
+

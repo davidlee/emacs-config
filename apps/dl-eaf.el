@@ -8,25 +8,26 @@
 
 (use-package eaf
   :ensure nil
-  :demand t)
+  :commands (eaf-open
+             eaf-open-browser
+             eaf-open-pdf-viewer
+             eaf-open-image-viewer))
 
 (use-package eaf-browser
   :ensure nil
-  :demand t
   :after eaf)
 
 (use-package eaf-pdf-viewer
   :ensure nil
-  :demand t
   :after eaf)
 
 (use-package eaf-image-viewer
   :ensure nil
-  :demand t
   :after eaf)
 
 (use-package eaf-markdown-previewer
   :ensure nil
+  :after eaf
   :vc (:url "https://github.com/emacs-eaf/eaf-markdown-previewer.git"))
 
 (provide 'dl-eaf)

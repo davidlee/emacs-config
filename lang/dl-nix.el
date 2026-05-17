@@ -49,8 +49,7 @@ type-check attribute paths under `config.*' and offer documentation."
   :ensure nix-mode
   :commands (nix-repl))
 
-(use-package eglot
-  :config
+(with-eval-after-load 'eglot
   (add-to-list 'eglot-server-programs
                '(nix-mode . ("nixd"))))
 

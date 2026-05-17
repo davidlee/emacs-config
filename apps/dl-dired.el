@@ -21,7 +21,6 @@
 (use-package diredfl
   :hook (dired-mode . diredfl-mode))
 
-(use-package nerd-icons :defer t)
 (use-package ready-player
   ;; Opt out of the package's global `C-c m' keymap install; the term
   ;; family owns that prefix via `my-term-map' in `core/dl-keymap.el'.
