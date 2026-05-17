@@ -10,7 +10,8 @@
   (denote-known-keywords
     '("pkm" "writing" "reading" "project" "area" "source" "slip"
        "reference" "index" "journal" "weekly" "emacs"
-       "idea" "draft" "meeting"))
+       "idea" "draft" "meeting" "person" "work"
+       "work-relevant" "work-adjacent" "management" "technical-leadership"))
   (denote-infer-keywords t)
   (denote-sort-keywords t)
   (denote-file-type 'org)

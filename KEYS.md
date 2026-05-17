@@ -46,12 +46,14 @@ Notes corpus is `~/notes/`. **Architecture, classes, capture pipeline,
 metadata conventions, deferred work all live in `NOTES.md`** — this
 section is the keymap only.
 
-Three sub-prefixes under `C-c n`:
+Four sub-prefixes under `C-c n`:
 
 - `C-c n N` — new-by-class constructors (`my/denote-new-*`, drops file
   in the matching subdir + tags it)
 - `C-c n m` — manage / mutate existing notes (rename, edit keywords)
 - `C-c n v` — review surfaces (`my/review-*`)
+- `C-c n W` — work compartment (constructors directly under `W`,
+  review under `W v`)
 
 ### Top-level
 
@@ -102,6 +104,49 @@ Three sub-prefixes under `C-c n`:
 | `C-c n v s` | `my/review-stale`                  | WAITING items with no timestamp in `my/review-stale-days` (7) |
 | `C-c n v r` | `my/review-references-retained`    | ripgrep `references/` for `status: raw` |
 | `C-c n v u` | `my/review-references-untrusted`   | ripgrep `references/` for `:untrusted:` / `trust: unreviewed` |
+
+### `C-c n W` — work compartment
+
+Constructors live directly under `W` (not duplicated into `C-c n N`); review surfaces under `W v`.
+
+| Key | Command | |
+|---|---|---|
+| `C-c n W h` | open `work.org` (dashboard) | |
+| `C-c n W i` | open `work/inbox.org`       | |
+| `C-c n W I` | dired `work/intake/`        | newest first |
+| `C-c n W j` | `my/work-journal-note`      | today's work journal |
+| `C-c n W w` | `my/work-weekly-note`       | this week's work weekly |
+| `C-c n W q` | `my/work-org-ql-find`       | org-ql over work files |
+| `C-c n W p` | `my/denote-new-work-project`   | `:work:project:` → `work/projects/` |
+| `C-c n W a` | `my/denote-new-work-area`      | `:work:area:`    → `work/areas/` |
+| `C-c n W m` | `my/denote-new-work-meeting`   | `:work:meeting:` → `work/meetings/` |
+| `C-c n W P` | `my/denote-new-work-person`    | `:work:person:`  → `work/people/` |
+| `C-c n W s` | `my/denote-new-work-source`    | `:work:source:`  → `work/sources/` |
+| `C-c n W S` | `my/denote-new-work-slip`      | `:work:slip:`    → `work/slips/` |
+| `C-c n W r` | `my/denote-new-work-reference` | `:work:reference:` → `work/references/` |
+| `C-c n W x` | `my/denote-new-work-index`     | `:work:index:`   → `work/indexes/` |
+
+### `C-c n W v` — work review
+
+Mirrors the personal review set, scoped to work files / dirs.
+
+| Key | Command | |
+|---|---|---|
+| `C-c n W v i` | `my/review-work-inbox`                | `work/inbox.org` at first TODO |
+| `C-c n W v I` | `my/review-work-intake`               | dired `work/intake/` |
+| `C-c n W v w` | `my/review-work-weekly`               | work weekly + WAITING side window |
+| `C-c n W v s` | `my/review-work-stale`                | work WAITING > stale-days |
+| `C-c n W v r` | `my/review-work-references-retained`  | ripgrep work refs `status: raw` |
+| `C-c n W v u` | `my/review-work-references-untrusted` | ripgrep work refs untrusted |
+
+### Agenda scope (`C-c a`)
+
+| Key | What |
+|---|---|
+| `C-c a a` | default dispatcher (combined union — every operational file) |
+| `C-c a p` | personal-only agenda (inbox + journal + weekly + projects) |
+| `C-c a w` | work-only agenda (work inbox + journal + weekly + projects + meetings + people) |
+| `C-c a c` | combined agenda (explicit form of `a`) |
 
 ### Other org binds (`C-c o`)
 

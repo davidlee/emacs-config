@@ -65,10 +65,12 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (defvar-keymap my-search-map      :name "search")
                                         ;(defvar-keymap my-session-map :name "session")
 (defvar-keymap my-git-map         :name "git")
-(defvar-keymap my-notes-map        :name "notes")
-(defvar-keymap my-notes-new-map    :name "notes:new")
-(defvar-keymap my-notes-manage-map :name "notes:manage")
-(defvar-keymap my-notes-review-map :name "notes:review")
+(defvar-keymap my-notes-map             :name "notes")
+(defvar-keymap my-notes-new-map         :name "notes:new")
+(defvar-keymap my-notes-manage-map      :name "notes:manage")
+(defvar-keymap my-notes-review-map      :name "notes:review")
+(defvar-keymap my-notes-work-map        :name "notes:work")
+(defvar-keymap my-notes-work-review-map :name "notes:work:review")
 (defvar-keymap my-org-map         :name "org")
 (defvar-keymap my-toggle-map      :name "toggle")
 (defvar-keymap my-eval-map        :name "eval")
@@ -104,9 +106,11 @@ Warns when KEY already has a binding in MAP that differs from CMD."
     "C-c j"   "session"
     "C-c g"   "git"
     "C-c n"   "notes"
-    "C-c n N" "notes:new"
-    "C-c n m" "notes:manage"
-    "C-c n v" "notes:review"
+    "C-c n N"   "notes:new"
+    "C-c n m"   "notes:manage"
+    "C-c n v"   "notes:review"
+    "C-c n W"   "notes:work"
+    "C-c n W v" "notes:work:review"
     "C-c o"   "org"
     "C-c t"   "toggle"
     "C-c e"   "eval"
@@ -194,6 +198,34 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-notes-review-map "s" #'my/review-stale                  "stale waiting")
 (my/bind my-notes-review-map "r" #'my/review-references-retained    "refs: raw")
 (my/bind my-notes-review-map "u" #'my/review-references-untrusted   "refs: untrusted")
+
+;; Work compartment — `C-c n W …'.  Constructors live directly under `W',
+;; reviews under `W v', so personal namespaces stay clean.
+(my/bind my-notes-map      "W" my-notes-work-map        "work")
+(my/bind my-notes-work-map "v" my-notes-work-review-map "review")
+
+(my/bind my-notes-work-map "h" (lambda () (interactive) (find-file dl-notes-work-file))       "open work.org")
+(my/bind my-notes-work-map "i" (lambda () (interactive) (find-file dl-notes-work-inbox-file)) "work inbox")
+(my/bind my-notes-work-map "I" (lambda () (interactive) (dired dl-notes-work-intake-dir))    "work intake")
+(my/bind my-notes-work-map "j" #'my/work-journal-note  "work journal")
+(my/bind my-notes-work-map "w" #'my/work-weekly-note   "work weekly")
+(my/bind my-notes-work-map "q" #'my/work-org-ql-find   "work query")
+
+(my/bind my-notes-work-map "p" #'my/denote-new-work-project   "new work project")
+(my/bind my-notes-work-map "a" #'my/denote-new-work-area      "new work area")
+(my/bind my-notes-work-map "m" #'my/denote-new-work-meeting   "new work meeting")
+(my/bind my-notes-work-map "P" #'my/denote-new-work-person    "new work person")
+(my/bind my-notes-work-map "s" #'my/denote-new-work-source    "new work source")
+(my/bind my-notes-work-map "S" #'my/denote-new-work-slip      "new work slip")
+(my/bind my-notes-work-map "r" #'my/denote-new-work-reference "new work reference")
+(my/bind my-notes-work-map "x" #'my/denote-new-work-index     "new work index")
+
+(my/bind my-notes-work-review-map "i" #'my/review-work-inbox                "inbox")
+(my/bind my-notes-work-review-map "I" #'my/review-work-intake               "intake")
+(my/bind my-notes-work-review-map "w" #'my/review-work-weekly               "weekly + waiting")
+(my/bind my-notes-work-review-map "s" #'my/review-work-stale                "stale waiting")
+(my/bind my-notes-work-review-map "r" #'my/review-work-references-retained  "refs: raw")
+(my/bind my-notes-work-review-map "u" #'my/review-work-references-untrusted "refs: untrusted")
 
 ;; Session map -- easysession.  Package is :demand t so symbols resolve
 ;; by call time even though we bind here at startup.

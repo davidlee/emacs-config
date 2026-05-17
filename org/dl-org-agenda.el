@@ -1,12 +1,88 @@
 ;;; dl-org-agenda.el --- Org agenda files and commands -*- lexical-binding: t; -*-
 
+;; Three agenda scopes — personal, work, combined — selected per
+;; invocation via `org-agenda-custom-commands' rather than by mutating
+;; `org-agenda-files'.  Boundary is by directory custody, not tag.
+;;
+;;   C-c a a   default dispatcher (combined union)
+;;   C-c a p   personal-only
+;;   C-c a w   work-only
+;;   C-c a c   combined (explicit)
+;;
+;; `org-agenda-files' is set to the combined union at load time so the
+;; default `C-c a a' dispatcher and any third-party code that consults
+;; the variable see every operational file.
+;;
+;; Cross-boundary: personal notes tagged `:work-relevant:' are *not*
+;; pulled into the work scope automatically — opt in by appending a
+;; filtered file list to `my/org-agenda-work-files' when that pattern
+;; earns its keep.
+;;
+;; Excluded by design (mirrors the existing personal exclusion):
+;;   areas/, indexes/, references/, sources/, slips/, archive/,
+;;   attachments/, intake/  (and their work/ counterparts)
+
 (require 'dl-notes-paths)
 
-(setq org-agenda-files
-  (list dl-notes-inbox-file
-        dl-notes-projects-dir
-        dl-notes-journal-dir
-        dl-notes-weekly-dir))
+(defvar my/org-agenda-personal-files nil
+  "Operational personal Org files for agenda commands.
+Recomputed by `my/org-agenda-refresh-files'.")
+
+(defvar my/org-agenda-work-files nil
+  "Operational work Org files for agenda commands.
+Recomputed by `my/org-agenda-refresh-files'.")
+
+(defvar my/org-agenda-combined-files nil
+  "Union of personal + work agenda files.
+Recomputed by `my/org-agenda-refresh-files'.")
+
+(defun my/org-agenda-refresh-files ()
+  "Recompute agenda file lists from the notes corpus.
+Call after adding new notes if you don't want to wait for the next
+restart.  Idempotent."
+  (interactive)
+  (cl-flet ((orgs (dir) (and (file-directory-p dir)
+                             (directory-files-recursively dir "\\.org\\'"))))
+    (setq my/org-agenda-personal-files
+          (append (list dl-notes-inbox-file)
+                  (orgs dl-notes-journal-dir)
+                  (orgs dl-notes-weekly-dir)
+                  (orgs dl-notes-projects-dir)))
+    (setq my/org-agenda-work-files
+          (append (list dl-notes-work-inbox-file)
+                  (orgs dl-notes-work-journal-dir)
+                  (orgs dl-notes-work-weekly-dir)
+                  (orgs dl-notes-work-projects-dir)
+                  (orgs dl-notes-work-meetings-dir)
+                  (orgs dl-notes-work-people-dir)))
+    (setq my/org-agenda-combined-files
+          (append my/org-agenda-personal-files
+                  my/org-agenda-work-files))
+    (setq org-agenda-files my/org-agenda-combined-files)))
+
+(my/org-agenda-refresh-files)
+
+(setq org-agenda-custom-commands
+  '(("p" "Personal agenda"
+      ((agenda "")
+        (todo "NEXT")
+        (todo "STARTED")
+        (todo "WAITING"))
+      ((org-agenda-files my/org-agenda-personal-files)))
+
+     ("w" "Work agenda"
+       ((agenda "")
+         (todo "NEXT")
+         (todo "STARTED")
+         (todo "WAITING"))
+       ((org-agenda-files my/org-agenda-work-files)))
+
+     ("c" "Combined agenda"
+       ((agenda "")
+         (todo "NEXT")
+         (todo "STARTED")
+         (todo "WAITING"))
+       ((org-agenda-files my/org-agenda-combined-files)))))
 
 (global-set-key (kbd "C-c a") #'org-agenda)
 

@@ -2,6 +2,131 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-17 — work compartment in `~/notes`
+
+First-class work compartment under `~/notes/work/`, mirroring the
+existing class taxonomy plus two work-native classes (`meetings/`,
+`people/`).  `work.org` reroled from a sparse log into the curated
+dashboard described in `work.local.md`; the pre-change contents are
+preserved verbatim at `work/archive/legacy-work.org`.
+
+**Filesystem (notes repo).** New subtree:
+
+```
+work/
+  inbox.org             :work:inbox:
+  intake/  journal/  weekly/  meetings/  people/
+  projects/  areas/  sources/  references/  slips/  indexes/
+  attachments/  archive/
+  archive/legacy-work.org   ← verbatim copy of pre-change work.org
+```
+
+`work.org` itself is now the dashboard (priorities, commitments,
+waiting-on, deadlines, active projects, people, meetings, daily +
+weekly work review checklists, entry-point links) with
+`#+filetags: :work:index:`.  Single commit in the notes repo.
+
+**Path module.** `core/dl-notes-paths.el` extended with 16 work
+constants (`dl-notes-work-file`, `dl-notes-work-dir`, then per-class
+subdir constants for `inbox`, `intake`, `journal`, `weekly`,
+`meetings`, `people`, `projects`, `areas`, `sources`, `references`,
+`slips`, `indexes`, `attachments`, `archive`).  New `my/notes-ensure-dirs`
+creates any missing personal or work directories at load time (and
+on-demand) — a fresh clone is self-bootstrapping.
+
+**Constructors.** `my/denote--new` now accepts a class string *or* a
+list of class strings; work constructors prepend two keywords (`work`
++ class), so a meeting note ends up
+`work/meetings/<id>--<slug>__work_meeting_<extras>.org` with
+`:work:meeting:` in `#+filetags:`.  Eight new constructors land:
+`my/denote-new-work-{project,area,source,slip,reference,index,
+meeting,person}`.  `denote-known-keywords` extended with `meeting`,
+`person`, `work`, and the cross-boundary tags `work-relevant`,
+`work-adjacent`, `management`, `technical-leadership`.
+
+**Journal/weekly.** `org/dl-denote-journal.el` refactored: the file-
+name builder, skeleton builder, and `ensure-file` helper now take dir
+/ suffix / tags arguments.  Personal `my/journal-note`, `my/weekly-note`,
+`my/journal--ensure-today` continue to work unchanged; new
+`my/work-journal-note`, `my/work-weekly-note`, and
+`my/work-journal--ensure-today` write to `work/journal/` and
+`work/weekly/` with `__work_journal.org` / `__work_weekly_journal.org`
+suffixes and `:work:journal:` / `:work:weekly:journal:` tags.
+
+**Capture.** Nested `("w" "Work")` group with six children:
+
+```
+w i  Work inbox        work/inbox.org           * TODO …                :work:
+w j  Work journal      today's work journal     * %U %?                 under * Log
+w t  Work task         work/inbox.org           * TODO %?               :work:task:
+w m  Work meeting      work/inbox.org           * %? :work:meeting:     + ATTENDEES/DATE drawer
+w p  Work person       work/inbox.org           * %? :work:person:      + WHO drawer
+w r  Work reference    work/inbox.org           * %? :work:reference:   + URL/AUTHOR/DATE/LICENSE/TRUST drawer
+```
+
+Same shape as the existing `s/S/r` source/slip/reference pipeline:
+fast capture into `work/inbox.org`; durable promotion via the work
+constructors.  `w j` uses `my/work-journal--ensure-today` as the
+capture target so the file is created with skeleton on first touch
+of the day.
+
+**Agenda.** Three scopes via `org-agenda-custom-commands` rather than
+modal `org-agenda-files` mutation:
+
+```
+C-c a a   default dispatcher (combined union — the new default)
+C-c a p   personal-only
+C-c a w   work-only
+C-c a c   combined (explicit)
+```
+
+`my/org-agenda-refresh-files` walks personal + work scopes with
+`directory-files-recursively` and stores three lists
+(`my/org-agenda-{personal,work,combined}-files`).  Custom commands
+bind `org-agenda-files` to the appropriate list per invocation —
+boundary by directory custody, not tag.  Crossover via `:work-relevant:`
+deferred; appending a filtered list to `my/org-agenda-work-files` is
+the one-line extension when that pattern materialises.
+
+Excluded by design (mirrors the existing personal exclusion):
+`areas/`, `indexes/`, `references/`, `sources/`, `slips/`, `archive/`,
+`attachments/`, `intake/` and their work counterparts.
+
+**Review.** Six work commands mirror the personal set 1:1, factored
+through small private helpers (`my/review--open-inbox`,
+`my/review--dired-newest`, `my/review--weekly-with-waiting`,
+`my/review--stale-cutoff`):
+
+```
+my/review-work-inbox
+my/review-work-intake
+my/review-work-weekly
+my/review-work-stale
+my/review-work-references-retained
+my/review-work-references-untrusted
+```
+
+Plus `my/work-org-ql-find` — work-scoped wrapper around `org-ql-find`
+bound to `C-c n W q`.
+
+**Keymap.** `C-c n W` is a fourth notes sub-prefix alongside
+`N / m / v`.  Constructors live directly under `W` (so personal
+constructors at `C-c n N …` aren't overloaded); reviews under `W v`.
+Eighteen new binds total.  `SPC n W …` works automatically through
+the existing `my-notes-map` Meow leader mirror — `W` is not in the
+keypad reserved set (`g`, `m`, `c`, `x`).
+
+**Touched:** `core/dl-notes-paths.el`, `org/dl-denote.el`,
+`org/dl-denote-templates.el`, `org/dl-denote-journal.el`,
+`org/dl-org-capture.el`, `org/dl-org-agenda.el`, `org/dl-review.el`,
+`core/dl-keymap.el`, `NOTES.md`, `KEYS.md`.  Notes repo: `work.org`,
+`work/inbox.org`, `work/archive/legacy-work.org`.  No new requires in
+`init.el` — all extensions live in modules already loaded.
+
+Deferred: cross-boundary `:work-relevant:` agenda inclusion; work
+deadlines / people-followups / active-projects review surfaces
+(add when friction earns them).
+
 ## 2026-05-17 — notes system overhaul, Phase 7 (root-note triage)
 
 Content-level work in `~/notes/`. No Emacs-config changes — just

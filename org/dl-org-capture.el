@@ -67,6 +67,54 @@ Result:
                     ":TRUST:"
                     ":END:")))
 
+     ;; Work compartment — fast capture lands in work/inbox.org.
+     ;; Durable promotion goes through `my/denote-new-work-*'.
+     ("w" "Work")
+
+     ("wi" "Work inbox" entry
+       (file ,dl-notes-work-inbox-file)
+       (function ,(my/capture-entry "* TODO %? :work:")))
+
+     ("wj" "Work journal (today)" entry
+       (file+olp my/work-journal--ensure-today "Log")
+       "* %U %?")
+
+     ("wt" "Work task" entry
+       (file ,dl-notes-work-inbox-file)
+       (function ,(my/capture-entry "* TODO %? :work:task:")))
+
+     ("wm" "Work meeting intake" entry
+       (file ,dl-notes-work-inbox-file)
+       (function ,(my/capture-body
+                    "* %? :work:meeting:"
+                    ":PROPERTIES:"
+                    ":CREATED: %U"
+                    ":ATTENDEES:"
+                    ":DATE:"
+                    ":END:")))
+
+     ("wp" "Work person intake" entry
+       (file ,dl-notes-work-inbox-file)
+       (function ,(my/capture-body
+                    "* %? :work:person:"
+                    ":PROPERTIES:"
+                    ":CREATED: %U"
+                    ":WHO:"
+                    ":END:")))
+
+     ("wr" "Work reference intake" entry
+       (file ,dl-notes-work-inbox-file)
+       (function ,(my/capture-body
+                    "* %? :work:reference:"
+                    ":PROPERTIES:"
+                    ":CREATED: %U"
+                    ":URL:"
+                    ":AUTHOR:"
+                    ":DATE:"
+                    ":LICENSE:"
+                    ":TRUST:"
+                    ":END:")))
+
      ;; these last two are for https://github.com/sprig/org-capture-extension
      ("p" "Protocol" entry
        (file+headline ,(my/notes-path "protocol.org") "Inbox")
