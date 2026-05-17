@@ -10,7 +10,11 @@ Three groups picked from `./lambda-emacs/` and `./meow.local.el`.
   Added `meow-use-cursor-position-hack`, `meow-use-clipboard`,
   `meow-goto-line-function = consult-goto-line`,
   `meow--kbd-delete-char = <deletechar>`, `<…>` registered as the
-  `a` thing.  `meow-mode-state-list` entries unified on `add-to-list`.
+  `a` thing.  Terminal-disable hook renamed
+  `my-disable-meow-in-terminal` → `dl-meow--disable-in-terminals`
+  to match file convention; vterm `meow-mode-state-list` entry
+  dropped (the hook does `(meow-mode -1)` which supersedes the
+  state-list lookup and removes the indicator/cursor too).
   Lambda's magit cooperation block (put magit in normal state, unset
   `j`/`k`) was tried and reverted: forcing meow normal state in magit
   made meow's minor-mode keymap shadow magit's single-letter bindings

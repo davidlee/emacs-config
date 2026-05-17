@@ -40,18 +40,20 @@ being drawn; lambda-line caches the truly active one in
   (setq meow--kbd-delete-char "<deletechar>")
   (meow-thing-register 'angle '(regexp "<" ">") '(regexp "<" ">"))
   (add-to-list 'meow-char-thing-table '(?a . angle))
-  (add-to-list 'meow-mode-state-list '(vterm-mode . insert))
   (meow-setup)
   (meow-global-mode 1)
   (dl-meow--apply-indicator-faces)
   (add-hook 'enable-theme-functions #'dl-meow--apply-indicator-faces))
 
-(defun my-disable-meow-in-terminal ()
+;; Terminals: disable meow entirely (cleaner than `insert' state — also
+;; removes the indicator / cursor face).  `derived-mode-p' catches any
+;; subclass of vterm-mode / ghostel-mode too.
+(defun dl-meow--disable-in-terminals ()
   (when (or (derived-mode-p 'vterm-mode) (derived-mode-p 'ghostel-mode))
     (meow-mode -1)))
 
-(add-hook 'ghostel-mode-hook #'my-disable-meow-in-terminal)
-(add-hook 'vterm-mode-hook   #'my-disable-meow-in-terminal)
+(add-hook 'ghostel-mode-hook #'dl-meow--disable-in-terminals)
+(add-hook 'vterm-mode-hook   #'dl-meow--disable-in-terminals)
 
 (provide 'dl-meow)
 ;;; dl-meow.el ends here
