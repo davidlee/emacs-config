@@ -11,5 +11,11 @@
 (use-package org-ql
   :commands (org-ql-find org-ql-search org-ql-view))
 
+(defun my/org-ql-find-here ()
+  "Run `org-ql-find' against the current buffer only.
+File-scoped counterpart to corpus-wide `org-ql-find' bound at C-c n q."
+  (interactive)
+  (org-ql-find (list (current-buffer))))
+
 (provide 'dl-org-ql)
 ;;; dl-org-ql.el ends here

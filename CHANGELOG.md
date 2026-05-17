@@ -2,6 +2,65 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-17 — keymap policy + tier-1 families fleshed out
+
+Written keybinding policy in `KEYS.md` (three-tier grammar — family
+prefix at `C-c <letter>`, lower/upper variants within a family,
+capital sub-prefixes for compartments), four previously-thin/empty
+maps populated, project promoted to a parallel family.
+
+**`C-c p` — project (new tier-1 family).**  Letters mirror
+`project.el`'s `C-x p <letter>` defaults so muscle memory between the
+two prefixes is identical.  `p p / f / b / k / d / D / c / r / g /
+v / e / s / !`.  `C-c f F` (was `project-find-file`) and `C-c f p`
+(was `project-switch-project`) retired — the file family is files
+again.
+
+**`C-c s` — search (scope ladder).**  Lowercase narrows, uppercase
+widens.  `s s` line / `s S` line-multi; `s r` ripgrep (project) /
+`s R` ripgrep (prompt dir); `s i` imenu (buffer) / `s I` imenu
+(project); `s o` outline; `s d` find filenames; `s m` / `s M`
+mark-ring / global-mark-ring; `s .` line-at-symbol.  Existing `C-c s
+…` `:bind` block in `completion/dl-consult.el` retired; the letter
+set rotated (`s g/f/l` → `s r/d/s`) for ladder consistency.  Two
+helpers (`my/consult-line-symbol-at-point`,
+`my/consult-ripgrep-prompt-dir`) live in `dl-consult.el`.
+
+**`C-c e` — eval.**  Lowercase reads to minibuffer; uppercase
+prints/inserts.  `e e` / `E` last sexp (read / print); `e f` defun;
+`e r` region; `e b` buffer; `e i` ielm; `e s` scratch; `e x`
+eval-expression; `e m` pp-macroexpand.
+
+**`C-c o` — org (re-scoped).**  Cross-buffer entry points only —
+in-buffer Org commands stay at Org's own `C-c C-<x>` (mode-specific
+space, Org owns it).  `o h` heading (buffer) / `o H` heading
+(agenda); `o j` clock-goto / `o i` clock-in-last / `o O` clock-out;
+`o r` refile; `o q` `my/org-ql-find-here` (file-scoped, complementing
+corpus-scoped `n q`); `o b` switchb; `o L` insert-link-global.  New
+wrapper `my/org-ql-find-here` in `org/dl-org-ql.el`.
+
+**Disabled session map retired.**  `C-c j` / `my-session-map` and
+its commented easysession binds removed from `core/dl-keymap.el`;
+which-key label dropped; meow leader entry dropped.  Easysession can
+reclaim `j` (or land elsewhere) if it returns.
+
+**`KEYS.md` overhaul.**  New `## Policy` section codifies the
+three-tier grammar (Tier 1 family / Tier 2 variant / Tier 3
+compartment) with the reserved-letters note (`C-c h` avoided because
+`h` is the modal gateway).  Prefix index updated (drop `j`, add
+`p`, retag `s`/`e`/`o`).  Full content sections added for
+`C-c o / s / p / e`.  Three stale claims fixed: `which-key-idle-delay`
+is `0.3`, not `1e6 (off)`; "empty maps" deferred-item retired; "re-enable
+session map" deferred-item retired.
+
+**Touched:** `core/dl-keymap.el`, `completion/dl-consult.el`,
+`org/dl-org-ql.el`, `KEYS.md`.
+
+Deferred (unchanged): hydras (window-resize is the natural first);
+remaining `:bind` migrations into the prefix structure (`dl-embark`,
+`dl-motion`, `dl-search`, `dl-fold`); `C-c d` (diagnostics) and
+`C-c k` (config) reserved per the Policy budget.
+
 ## 2026-05-17 — work compartment in `~/notes`
 
 First-class work compartment under `~/notes/work/`, mirroring the

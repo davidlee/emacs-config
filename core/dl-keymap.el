@@ -12,12 +12,12 @@
 ;;   C-c f / SPC f   file
 ;;   C-c b / SPC b   buffer
 ;;   C-c w / SPC w   window
-;;   C-c s / SPC s   search
-;;   C-c j / SPC j   session (easysession) -- DISABLED
-;;   C-c n / SPC n   notes  (sub-prefixes: N=new-by-class, m=manage, v=review)
-;;   C-c o / SPC o   org / open
+;;   C-c s / SPC s   search   (scope ladder: lower=narrower, upper=wider)
+;;   C-c p / SPC p   project  (project.el-aligned letters)
+;;   C-c n / SPC n   notes    (sub-prefixes: N=new, m=manage, v=review, W=work)
+;;   C-c o / SPC o   org      (cross-buffer entry points only)
 ;;   C-c t / SPC t   toggle
-;;   C-c e / SPC e   eval / elisp
+;;   C-c e / SPC e   eval
 ;;   C-c g / SPC G   git    (capital in Meow: SPC g is keypad C-M- prefix)
 ;;   C-c m / SPC M   term   (capital in Meow: SPC m is keypad M- prefix)
 ;;   C-c z / SPC z   fold   (kirigami; routes to active backend)
@@ -63,7 +63,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (defvar-keymap my-buffer-map      :name "buffer")
 (defvar-keymap my-window-map      :name "window")
 (defvar-keymap my-search-map      :name "search")
-                                        ;(defvar-keymap my-session-map :name "session")
+(defvar-keymap my-project-map     :name "project")
 (defvar-keymap my-git-map         :name "git")
 (defvar-keymap my-notes-map             :name "notes")
 (defvar-keymap my-notes-new-map         :name "notes:new")
@@ -82,7 +82,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (define-key global-map (kbd "C-c b") my-buffer-map)
 (define-key global-map (kbd "C-c w") my-window-map)
 (define-key global-map (kbd "C-c s") my-search-map)
-                                        ;(define-key global-map (kbd "C-c j") my-session-map)
+(define-key global-map (kbd "C-c p") my-project-map)
 (define-key global-map (kbd "C-c g") my-git-map)
 (define-key global-map (kbd "C-c n") my-notes-map)
 (define-key global-map (kbd "C-c o") my-org-map)
@@ -103,7 +103,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
     "C-c b"   "buffer"
     "C-c w"   "window"
     "C-c s"   "search"
-    "C-c j"   "session"
+    "C-c p"   "project"
     "C-c g"   "git"
     "C-c n"   "notes"
     "C-c n N"   "notes:new"
@@ -125,10 +125,9 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-file-map   "d" #'dired-jump             "dired-jump")
 (my/bind my-file-map   "D" #'dirvish                "dirvish")
 (my/bind my-file-map   "t" #'dirvish-side           "dirvish-side (tree)")
-(my/bind my-file-map   "F" #'project-find-file      "project-find-file")
-(my/bind my-file-map   "p" #'project-switch-project "project-switch")
 (my/bind my-file-map   "y" #'my/yazi-here           "yazi")
 (my/bind my-file-map   "b" #'my/broot-here          "broot")
+;; Project family lives at C-c p — see `my-project-map' below.
 
 (my/bind my-buffer-map "b" #'consult-buffer         "switch")
 (my/bind my-buffer-map "k" #'kill-current-buffer    "kill")
@@ -149,8 +148,60 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-git-map    "g" #'magit-status           "status")
 (my/bind my-git-map    "l" #'git-link               "link")
 
-;; Org map -- in-buffer org navigation via consult-org (bundled with consult).
-(my/bind my-org-map    "h" #'consult-org-heading    "heading")
+;; Project family — parallel to C-c f, project.el-aligned letters so
+;; muscle memory survives between C-x p and C-c p.
+(my/bind my-project-map "p" #'project-switch-project          "switch project")
+(my/bind my-project-map "f" #'project-find-file               "find file")
+(my/bind my-project-map "b" #'project-switch-to-buffer        "switch buffer")
+(my/bind my-project-map "k" #'project-kill-buffers            "kill buffers")
+(my/bind my-project-map "d" #'project-dired                   "dired")
+(my/bind my-project-map "D" #'project-find-dir                "find dir")
+(my/bind my-project-map "c" #'project-compile                 "compile")
+(my/bind my-project-map "r" #'project-query-replace-regexp    "query-replace")
+(my/bind my-project-map "g" #'project-find-regexp             "grep (xref)")
+(my/bind my-project-map "v" #'project-vc-dir                  "vc-dir")
+(my/bind my-project-map "e" #'project-eshell                  "eshell")
+(my/bind my-project-map "s" #'project-shell                   "shell")
+(my/bind my-project-map "!" #'project-shell-command           "shell-command")
+
+;; Search map — scope ladder.  Lowercase narrows, uppercase widens.
+;; Helpers `my/consult-line-symbol-at-point' /
+;; `my/consult-ripgrep-prompt-dir' live in `completion/dl-consult.el'.
+(my/bind my-search-map  "s" #'consult-line                       "line (buffer)")
+(my/bind my-search-map  "S" #'consult-line-multi                 "line (buffers)")
+(my/bind my-search-map  "." #'my/consult-line-symbol-at-point    "line @ symbol")
+(my/bind my-search-map  "o" #'consult-outline                    "outline")
+(my/bind my-search-map  "i" #'consult-imenu                      "imenu")
+(my/bind my-search-map  "I" #'consult-imenu-multi                "imenu (project)")
+(my/bind my-search-map  "r" #'consult-ripgrep                    "ripgrep (project)")
+(my/bind my-search-map  "R" #'my/consult-ripgrep-prompt-dir      "ripgrep (dir prompt)")
+(my/bind my-search-map  "d" #'consult-find                       "find filenames")
+(my/bind my-search-map  "m" #'consult-mark                       "mark ring")
+(my/bind my-search-map  "M" #'consult-global-mark                "global mark ring")
+
+;; Eval map — scope ladder over Elisp.  Lowercase reads, uppercase prints.
+(my/bind my-eval-map    "e" #'eval-last-sexp              "last sexp")
+(my/bind my-eval-map    "E" #'eval-print-last-sexp        "last sexp + insert")
+(my/bind my-eval-map    "f" #'eval-defun                  "defun")
+(my/bind my-eval-map    "r" #'eval-region                 "region")
+(my/bind my-eval-map    "b" #'eval-buffer                 "buffer")
+(my/bind my-eval-map    "i" #'ielm                        "ielm")
+(my/bind my-eval-map    "s" #'scratch-buffer              "scratch")
+(my/bind my-eval-map    "x" #'eval-expression             "expression (M-:)")
+(my/bind my-eval-map    "m" #'pp-macroexpand-last-sexp    "macroexpand")
+
+;; Org map — cross-buffer entry points only.  In-buffer Org commands stay
+;; at Org's own `C-c C-<x>' (mode-specific space, Org owns it).
+(my/bind my-org-map     "h" #'consult-org-heading         "heading (buffer)")
+(my/bind my-org-map     "H" (lambda () (interactive)
+                              (consult-org-heading nil (org-agenda-files))) "heading (agenda)")
+(my/bind my-org-map     "j" #'org-clock-goto              "clock goto")
+(my/bind my-org-map     "i" #'org-clock-in-last           "clock-in last")
+(my/bind my-org-map     "O" #'org-clock-out               "clock-out")
+(my/bind my-org-map     "r" #'org-refile                  "refile")
+(my/bind my-org-map     "q" #'my/org-ql-find-here         "org-ql (here)")
+(my/bind my-org-map     "b" #'org-switchb                 "switch org buffer")
+(my/bind my-org-map     "L" #'org-insert-link-global      "insert link (global)")
 
 ;; Notes (C-c n …) — see plan §4b in ~/.claude/plans/yes-use-dl-for-staged-quiche.md.
 ;; Sub-prefixes for new-by-class / manage / review live below.
@@ -227,16 +278,6 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-notes-work-review-map "r" #'my/review-work-references-retained  "refs: raw")
 (my/bind my-notes-work-review-map "u" #'my/review-work-references-untrusted "refs: untrusted")
 
-;; Session map -- easysession.  Package is :demand t so symbols resolve
-;; by call time even though we bind here at startup.
-;; (my/bind my-session-map "s" #'easysession-save                          "save")
-;; (my/bind my-session-map "l" #'easysession-switch-to                     "load")
-;; (my/bind my-session-map "L" #'easysession-switch-to-and-restore-geometry "load+geometry")
-;; (my/bind my-session-map "r" #'easysession-rename                        "rename")
-;; (my/bind my-session-map "R" #'easysession-reset                         "reset")
-;; (my/bind my-session-map "u" #'easysession-unload                        "unload")
-;; (my/bind my-session-map "d" #'easysession-delete                        "delete")
-
 (my/bind my-term-map   "t" #'ghostel                           "ghostel")
 (my/bind my-term-map   "T" #'my/ghostel-here                   "ghostel (new, here)")
 (my/bind my-term-map   "o" #'ghostel-project                   "ghostel (project)")
@@ -300,7 +341,11 @@ Warns when KEY already has a binding in MAP that differs from CMD."
   (meow-motion-define-key
     '("j" . meow-next)
     '("k" . meow-prev)
-    '("<escape>" . ignore))
+    '("<escape>" . ignore)
+;;    '("s-[" . lem-previous-user-buffer)
+;;    '("s-]" . lem-next-user-buffer)
+    '("s-{" . tab-bar-switch-to-prev-tab)
+    '("s-}" . tab-bar-switch-to-next-tab))
 
   (meow-leader-define-key
     ;; Digit arguments.
@@ -325,7 +370,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
     (cons "b" my-buffer-map)
     (cons "w" my-window-map)
     (cons "s" my-search-map)
-    ;; (cons "j" my-session-map)
+    (cons "p" my-project-map)
     (cons "G" my-git-map)
     (cons "n" my-notes-map)
     (cons "o" my-org-map)

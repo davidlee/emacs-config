@@ -6,24 +6,61 @@
 - **Leader**: `C-c <letter>` is the durable prefix. In Meow normal state, `SPC <letter>` and `h <letter>` both mirror it. `C-c f f`, `SPC f f`, and `h f f` all reach `find-file`. `h` is bound directly to `mode-specific-map` (the C-c keymap), so lowercase `g` / `m` work without the capital-letter workaround the `SPC` leader needs.
 - **Editing vs. commands**: Meow normal state stays editing-focused (motions, selection, operators). Commands live under the leader.
 - **Single source of truth**: prefix maps, the `my/bind` helper, the Meow leader mirror, and which-key prefix labels all live in `core/dl-keymap.el`. Package files declare commands (`:commands`) and own their mode-local maps (`:bind (:map foo-mode-map …)` in `:config`).
-- **Discoverability**: `C-h` after a prefix triggers `embark-prefix-help-command`. `describe-keymap RET my-file-map RET` lists a map. `SPC ?` runs `meow-cheatsheet`. `which-key-idle-delay` is currently off — set it to `0.5` if you want auto-popups.
+- **Discoverability**: `C-h` after a prefix triggers `embark-prefix-help-command`. `describe-keymap RET my-file-map RET` lists a map. `SPC ?` runs `meow-cheatsheet`. `which-key-idle-delay` is `0.3` (see `core/dl-keybind.el`); auto-popups fire after a third of a second of hesitation.
+
+## Policy
+
+1. **Personal global namespace.** Personal global bindings live under
+   `C-c <letter>`, uppercase or lowercase. This is the Emacs
+   user-reserved namespace. `C-c C-…`, `C-c <digit>`, and
+   `C-c <punct>`/`C-c <symbol>` spaces are reserved by convention for
+   major/minor modes and must not be used for personal global families.
+   `C-c` is the durable source of truth. Modal leaders such as `SPC` and
+   `h` in Meow may mirror the same maps but do not define a separate
+   command grammar.
+
+2. **Family prefixes.** A top-level `C-c <letter>` binding is a command
+   family. One letter means one family. Adding a new top-level family
+   is a budget decision; prefer extending an existing family or creating
+   a coherent compartment.
+
+3. **Lowercase and uppercase variants.** Inside a family, lowercase
+   keys are common actions; uppercase keys are heavier, wider, or
+   adjacent variants of the same mnemonic. Examples: `f f` find /
+   `f S` save-as; `s s` search current scope / `s S` search wider scope.
+
+4. **Uppercase compartments.** An uppercase key may open a compartment
+   sub-prefix when it represents a real sub-domain with its own
+   internal grammar. Compartments are not overflow buckets. Example:
+   `n W` = work-note compartment, mirroring note verbs inside a work
+   scope.
+
+5. **Package-local bindings.** Mode-local and package-local bindings
+   stay with their package configuration. The central keymap owns
+   global entry points and cross-package command families, not every
+   command exposed by every mode.
+
+6. **Reserved local conventions.** Preserved: `C-c a` org-agenda,
+   `C-c c` org-capture, `C-c l` org-store-link. Avoided: `C-c h` as a
+   top-level family, because `h` is already the modal gateway into the
+   `C-c` command space.
 
 ## Prefix index
 
 | Prefix | Map | Purpose |
 |---|---|---|
-| `C-c f` | `my-file-map`   | files |
-| `C-c b` | `my-buffer-map` | buffers |
-| `C-c w` | `my-window-map` | windows (arrow keys for direction) |
-| `C-c s` | `my-search-map` | search *(empty)* |
-| `C-c j` | `my-session-map` | easysession (currently disabled in `dl-keymap.el`) |
-| `C-c g` | `my-git-map`    | git (Meow alias: `SPC G` — see Gotchas) |
-| `C-c n` | `my-notes-map`  | notes (3 sub-prefixes: `N` new-by-class, `m` manage, `v` review). See [Notes](#notes-c-c-n) and `NOTES.md`. |
-| `C-c o` | `my-org-map`    | org / open (only `h` → `consult-org-heading` so far) |
-| `C-c t` | `my-toggle-map` | toggles *(empty)* |
-| `C-c e` | `my-eval-map`   | eval / elisp *(empty)* |
-| `C-c m` | `my-term-map`   | ghostel + shpool (Meow alias: `SPC M` — see Gotchas) |
-| `C-c z` | `my-fold-map`   | fold (kirigami dispatcher — routes to outline / hs / treesit-fold) |
+| `C-c f` | `my-file-map`    | files |
+| `C-c b` | `my-buffer-map`  | buffers |
+| `C-c w` | `my-window-map`  | windows (arrow keys for direction) |
+| `C-c s` | `my-search-map`  | search (scope ladder — see [Search](#search-c-c-s)) |
+| `C-c p` | `my-project-map` | project (project.el-aligned) |
+| `C-c g` | `my-git-map`     | git (Meow alias: `SPC G` — see Gotchas) |
+| `C-c n` | `my-notes-map`   | notes (sub-prefixes: `N` new, `m` manage, `v` review, `W` work). See [Notes](#notes-c-c-n) and `NOTES.md`. |
+| `C-c o` | `my-org-map`     | org — cross-buffer entry points (clocking, refile, heading jump). In-buffer ops stay at Org's `C-c C-<x>`. |
+| `C-c t` | `my-toggle-map`  | toggles |
+| `C-c e` | `my-eval-map`    | eval / elisp (scope ladder over Elisp) |
+| `C-c m` | `my-term-map`    | ghostel + shpool (Meow alias: `SPC M` — see Gotchas) |
+| `C-c z` | `my-fold-map`    | fold (kirigami dispatcher — routes to outline / hs / treesit-fold) |
 
 ## Fold (`C-c z`)
 
@@ -148,15 +185,89 @@ Mirrors the personal review set, scoped to work files / dirs.
 | `C-c a w` | work-only agenda (work inbox + journal + weekly + projects + meetings + people) |
 | `C-c a c` | combined agenda (explicit form of `a`) |
 
-### Other org binds (`C-c o`)
+## Org (`C-c o`)
+
+Cross-buffer entry points only. In-buffer Org commands (narrow,
+schedule, TODO state, table ops, export) stay at Org's own
+`C-c C-<x>` — Org owns the mode-specific space.
 
 | Key | Command | |
 |---|---|---|
-| `C-c o h` | `consult-org-heading` | in-buffer outline search (consult bundles consult-org) |
+| `C-c o h` | `consult-org-heading` | heading jump in current buffer |
+| `C-c o H` | `consult-org-heading` over `org-agenda-files` | heading jump across corpus |
+| `C-c o j` | `org-clock-goto` | jump to active clock |
+| `C-c o i` | `org-clock-in-last` | resume last clock |
+| `C-c o O` | `org-clock-out` | close clock |
+| `C-c o r` | `org-refile` | refile current heading |
+| `C-c o q` | `my/org-ql-find-here` | org-ql over current buffer (file-scoped; `C-c n q` is corpus-scoped) |
+| `C-c o b` | `org-switchb` | switch between open Org buffers |
+| `C-c o L` | `org-insert-link-global` | insert a stored link from anywhere |
 
 Global Org short forms (kept for muscle memory): `C-c c` capture, `C-c
 l` store-link, `C-c a` agenda. The `C-c n c` / `C-c n l` namespaced
 forms are aliases for discoverability.
+
+## Search (`C-c s`)
+
+Scope ladder. Lowercase narrows; uppercase widens. Helpers
+(`my/consult-line-symbol-at-point`, `my/consult-ripgrep-prompt-dir`)
+live in `completion/dl-consult.el`.
+
+| Key | Command | Scope |
+|---|---|---|
+| `C-c s s` | `consult-line`                    | current buffer |
+| `C-c s S` | `consult-line-multi`              | all open buffers |
+| `C-c s .` | `my/consult-line-symbol-at-point` | symbol-at-point in current buffer |
+| `C-c s o` | `consult-outline`                 | buffer outline |
+| `C-c s i` | `consult-imenu`                   | buffer symbols |
+| `C-c s I` | `consult-imenu-multi`             | project symbols |
+| `C-c s r` | `consult-ripgrep`                 | project root |
+| `C-c s R` | `my/consult-ripgrep-prompt-dir`   | arbitrary directory |
+| `C-c s d` | `consult-find`                    | filenames under project |
+| `C-c s m` | `consult-mark`                    | buffer mark ring |
+| `C-c s M` | `consult-global-mark`             | global mark ring |
+
+Non-prefix globals (Emacs-native escape hatches, configured in
+`dl-consult.el`): `M-y` yank-pop, `M-g g` goto-line, `M-s r`
+ripgrep, `C-x b` switch-buffer.
+
+## Project (`C-c p`)
+
+Parallel family. Letters mirror `project.el`'s own `C-x p <letter>`
+defaults so muscle memory between the two prefixes is identical.
+
+| Key | Command | |
+|---|---|---|
+| `C-c p p` | `project-switch-project`       | switch project |
+| `C-c p f` | `project-find-file`            | find file |
+| `C-c p b` | `project-switch-to-buffer`     | switch buffer |
+| `C-c p k` | `project-kill-buffers`         | kill all project buffers |
+| `C-c p d` | `project-dired`                | dired at root |
+| `C-c p D` | `project-find-dir`             | find directory |
+| `C-c p c` | `project-compile`              | compile |
+| `C-c p r` | `project-query-replace-regexp` | query-replace across project |
+| `C-c p g` | `project-find-regexp`          | grep (xref-based) — complements `s r` |
+| `C-c p v` | `project-vc-dir`               | vc-dir |
+| `C-c p e` | `project-eshell`               | eshell at root |
+| `C-c p s` | `project-shell`                | shell at root |
+| `C-c p !` | `project-shell-command`        | one-shot shell command |
+
+## Eval (`C-c e`)
+
+Scope ladder over Elisp. Lowercase reads to the minibuffer; uppercase
+prints/inserts into the buffer.
+
+| Key | Command | |
+|---|---|---|
+| `C-c e e` | `eval-last-sexp`           | last sexp |
+| `C-c e E` | `eval-print-last-sexp`     | last sexp + insert result |
+| `C-c e f` | `eval-defun`               | enclosing defun |
+| `C-c e r` | `eval-region`              | region |
+| `C-c e b` | `eval-buffer`              | buffer |
+| `C-c e i` | `ielm`                     | Elisp REPL |
+| `C-c e s` | `scratch-buffer`           | jump to `*scratch*` |
+| `C-c e x` | `eval-expression`          | one-shot expression (alias of `M-:`) |
+| `C-c e m` | `pp-macroexpand-last-sexp` | macroexpand at point |
 
 ## Adding a binding
 
@@ -220,9 +331,7 @@ Declare autoloads on the source package with `:commands`. Then bind centrally:
 
 ## Deferred
 
-- **Populate empty maps** (`my-search-map`, `my-eval-map`, `my-toggle-map` partial). The prefix, which-key label, and Meow mirror are all wired — just add `my/bind` lines. `my-org-map` now holds `consult-org-heading`; `my-notes-map` is fully populated (see [Notes](#notes-c-c-n)).
-- **Re-enable session map**. `my-session-map` (`C-c j`) and its easysession binds are commented out in `dl-keymap.el`. Uncomment if the easysession workflow is back in play, otherwise drop the which-key label too.
-- **Migrate package `:bind` clauses** into the prefix structure as you touch each file: `dl-consult.el`, `dl-embark.el`, `dl-motion.el`, `dl-search.el`, `dl-fold.el`.
-- **Hydras**. Package installed, no hydras yet. Window resize is the natural first one — bind under `C-c w` once defined.
-- **`C-c t` collision watch**. `multi-vterm` and shpool now live at `C-c m`, but the toggle map is empty — when populating it, mind the existing `C-c t C-c t` / `C-c t C-h` use-package conventions some major modes still grab.
-- **`which-key-idle-delay`**. Currently `1e6` (off). Drop to `0.5` if you want exploration popups.
+- **Migrate package `:bind` clauses** into the prefix structure as you touch each file: `dl-embark.el`, `dl-motion.el`, `dl-search.el`, `dl-fold.el`. (`dl-consult.el` done — its `C-c s …` block now lives centrally.)
+- **Hydras**. Package autoloaded (`use-package hydra :commands defhydra` in `core/dl-keybind.el`), no hydras defined yet. Window resize is the natural first one — bind under `C-c w` once defined.
+- **`C-c t` collision watch**. The toggle map is well-populated now, but mind the `C-c t C-c t` / `C-c t C-h` use-package conventions some major modes still grab when adding new toggles.
+- **Reserved letters**. `d` (diagnostics) and `k` (config / "kit") are kept free for future tier-1 families per the [Policy](#policy) budget. Don't grab them for one-off binds.
