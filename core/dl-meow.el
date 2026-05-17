@@ -31,11 +31,6 @@ being drawn; lambda-line caches the truly active one in
                     'face 'dl-meow-indicator-inactive)
       s)))
 
-(defun dl-meow--magit-unbind-jk ()
-  "Free magit's `j' / `k' from meow normal-state shadowing."
-  (local-unset-key (kbd "j"))
-  (local-unset-key (kbd "k")))
-
 (use-package meow
   :custom
   (meow-use-cursor-position-hack t)
@@ -45,10 +40,7 @@ being drawn; lambda-line caches the truly active one in
   (setq meow--kbd-delete-char "<deletechar>")
   (meow-thing-register 'angle '(regexp "<" ">") '(regexp "<" ">"))
   (add-to-list 'meow-char-thing-table '(?a . angle))
-  (add-to-list 'meow-mode-state-list '(vterm-mode        . insert))
-  (add-to-list 'meow-mode-state-list '(magit-status-mode . normal))
-  (add-to-list 'meow-mode-state-list '(magit-log-mode    . normal))
-  (add-hook 'magit-mode-hook #'dl-meow--magit-unbind-jk)
+  (add-to-list 'meow-mode-state-list '(vterm-mode . insert))
   (meow-setup)
   (meow-global-mode 1)
   (dl-meow--apply-indicator-faces)

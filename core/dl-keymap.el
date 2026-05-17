@@ -154,7 +154,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-window-map "d"       #'delete-window        "delete")
 (my/bind my-window-map "="       #'balance-windows      "balance")
 (my/bind my-window-map "r"       #'hydra-window-resize/body  "resize (hydra)")
-(my/bind my-window-map "f"       #'my/toggle-window-split    "flip h/v")
+(my/bind my-window-map "f"       #'transpose-frame           "transpose h ⇄ v")
 (my/bind my-window-map "c"       #'my/rotate-windows         "cycle (rotate)")
 (my/bind my-window-map "C"       #'my/rotate-windows-backward "cycle back")
 

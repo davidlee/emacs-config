@@ -6,14 +6,17 @@ Notable changes to this Emacs config. Loosely dated; not versioned.
 
 Three groups picked from `./lambda-emacs/` and `./meow.local.el`.
 
-- **Meow `:custom` block + magit cooperation** (`core/dl-meow.el`).
+- **Meow `:custom` block** (`core/dl-meow.el`).
   Added `meow-use-cursor-position-hack`, `meow-use-clipboard`,
   `meow-goto-line-function = consult-goto-line`,
   `meow--kbd-delete-char = <deletechar>`, `<…>` registered as the
-  `a` thing.  `magit-status-mode` / `magit-log-mode` now enter normal
-  state; `magit-mode-hook` unsets `j` / `k` so magit's native nav
-  beats meow shadowing.  `meow-mode-state-list` entries unified on
-  `add-to-list`.
+  `a` thing.  `meow-mode-state-list` entries unified on `add-to-list`.
+  Lambda's magit cooperation block (put magit in normal state, unset
+  `j`/`k`) was tried and reverted: forcing meow normal state in magit
+  made meow's minor-mode keymap shadow magit's single-letter bindings
+  (`s`, `c`, `l`, …); the `j`/`k` unset only frees those two.
+  Correct shape if revisited is the vterm/ghostel pattern (disable
+  meow entirely in `magit-mode` buffers).
 - **User-buffer cycling** (`lisp/dl-buffer-management.el`).
   `my/user-buffer-p` filters `*…*` and dired buffers;
   `my/next-user-buffer` / `my/previous-user-buffer` skip past them.
@@ -28,10 +31,15 @@ Three groups picked from `./lambda-emacs/` and `./meow.local.el`.
     split and move point into the new pane.
   - `C-c w S` / `w V` keep the raw `split-window-{below,right}` for
     when you want focus to stay put.
-  - `C-c w f` → `my/toggle-window-split` (flip 2-window layout 90°).
+  - `C-c w f` → `transpose-frame` (swap horizontal ⇄ vertical splits
+    across the whole frame).  The transpose-frame package was already
+    declared in `core/dl-interface.el` and bound at `C-x 7`; `w f`
+    is the leader-friendly alias.  Strictly more general than the
+    2-window-only flip I almost wrote — caught before merging.
   - `C-c w c` / `w C` → `my/rotate-windows[-backward]` (cycle buffers
-    around non-dedicated windows).  `w r` is taken by the resize
-    hydra, so rotate landed on `c` (cycle).
+    around non-dedicated windows; distinct from transpose, which
+    rotates the layout).  `w r` is taken by the resize hydra, so
+    rotate landed on `c` (cycle).
 
 Deferred avenue documented in `KEYS.md`: nil-out
 `meow-keypad-{meta,ctrl-meta,literal}-prefix` + `-start-keys` to

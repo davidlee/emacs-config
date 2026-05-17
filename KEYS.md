@@ -366,13 +366,14 @@ Direction keys are arrow keys, not h/j/k/l — see [Layout](#layout).
 | `C-c w o`       | `delete-other-windows` | keep only this window |
 | `C-c w d`       | `delete-window`        | delete |
 | `C-c w =`       | `balance-windows`      | balance |
-| `C-c w f`       | `my/toggle-window-split`    | flip 2-window layout horizontal ⇄ vertical |
+| `C-c w f`       | `transpose-frame`           | swap horizontal ⇄ vertical splits (whole frame) |
 | `C-c w c`       | `my/rotate-windows`         | cycle buffers forward through non-dedicated windows |
 | `C-c w C`       | `my/rotate-windows-backward` | cycle buffers backward |
 | `C-c w r`       | `hydra-window-resize/body`   | resize hydra (sticky `←/→` width, `↑/↓` height, `=` balance, `q` quit) |
 
-Split-and-follow lives in `core/dl-interface.el`; flip + rotate live in
-`lisp/dl-window.el`.
+`transpose-frame` is also bound chord-style at `C-x 7` (see
+`core/dl-interface.el`). Split-and-follow lives in
+`core/dl-interface.el`; rotate-windows live in `lisp/dl-window.el`.
 
 ## Git (`C-c g`)
 
