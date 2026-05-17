@@ -150,7 +150,11 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 ;;
 ;; Phase 5 commands (`consult-notes', `org-ql') aren't installed yet —
 ;; binding by symbol is fine, the void-function error surfaces only if
-;; pressed before Phase 5 lands.
+;; pressed before Phase 5 lands.  `declare-function' silences the
+;; byte-compiler "not known to be defined" warnings until then.
+(declare-function consult-notes                     "consult-notes")
+(declare-function consult-notes-search-in-all-notes "consult-notes")
+(declare-function org-ql-find                       "org-ql-find")
 (my/bind my-notes-map "N" my-notes-new-map    "new-by-class")
 (my/bind my-notes-map "m" my-notes-manage-map "manage")
 (my/bind my-notes-map "v" my-notes-review-map "review")
@@ -178,8 +182,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 
 (my/bind my-notes-manage-map "r" #'denote-rename-file                     "rename")
 (my/bind my-notes-manage-map "R" #'denote-rename-file-using-front-matter  "rename (front-matter)")
-(my/bind my-notes-manage-map "k" #'denote-keywords-add                    "keywords add")
-(my/bind my-notes-manage-map "K" #'denote-keywords-remove                 "keywords remove")
+(my/bind my-notes-manage-map "k" #'denote-rename-file-keywords            "edit keywords")
 (my/bind my-notes-manage-map "t" #'denote-rename-file-title               "retitle")
 
 ;; Session map -- easysession.  Package is :demand t so symbols resolve

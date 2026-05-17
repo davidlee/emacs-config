@@ -71,14 +71,21 @@ C-c n i   denote-link                          C-c n N w   weekly
 C-c n o   org-open-at-point-global
 C-c n g   org-mark-ring-goto                   C-c n m r   denote-rename-file
 C-c n b   denote-backlinks                     C-c n m R   …-using-front-matter
-C-c n q   org-ql-find               (Ph5)     C-c n m k   denote-keywords-add
-                                               C-c n m K   denote-keywords-remove
-C-c n v   (review prefix — commands Ph6)       C-c n m t   denote-rename-file-title
+C-c n q   org-ql-find               (Ph5)     C-c n m k   denote-rename-file-keywords
+                                               C-c n m t   denote-rename-file-title
+C-c n v   (review prefix — commands Ph6)
 ```
 
 Phase-5 bindings (`f / s / q`) are wired to symbols that aren't yet
 installed; the void-function error only surfaces if pressed before
-Phase 5 lands. Cheaper than stubbing them out twice.
+Phase 5 lands. Cheaper than stubbing them out twice — `declare-function`
+forms at the top of `dl-keymap.el` keep the byte-compiler quiet.
+
+Plan §4b had split keyword edits into `m k` (add) and `m K` (remove),
+but denote 3.x collapsed those into a single editor
+(`denote-rename-file-keywords`) that prepopulates the existing list and
+lets the user add or remove inline. Collapsed the bindings to match:
+`m k` only, `m K` unbound.
 
 **Migrations from previous bindings**:
 
