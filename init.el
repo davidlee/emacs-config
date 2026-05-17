@@ -47,6 +47,7 @@
 (require 'dl-org-agenda)
 (require 'dl-org-links)
 (require 'dl-denote)
+(require 'dl-denote-templates)
 (require 'dl-denote-journal)
 (require 'dl-org-roam)
 

@@ -25,26 +25,47 @@ Result:
     ":END:"
     body-lines))
 
+;; Templates align with the promotion pipeline described in
+;; ../notes-plan: capture lands in inbox.org tagged with a class hint
+;; (`:source:' / `:slip:' / `:reference:'), triage refiles it into the
+;; class subdir as a Denote note (use `C-c n N <class>' for new-from-blank).
+;; Journal entries land in today's Denote-named journal file under `* Log'.
+
 (setq org-capture-templates
-  `(("i" "Inbox" entry
+  `(("c" "Inbox text" entry
       (file ,dl-notes-inbox-file)
       (function ,(my/capture-entry "* TODO %?")))
 
-     ("f" "Fleeting note" entry
-       (file ,dl-notes-inbox-file)
-       (function ,(my/capture-entry "* %?")))
+     ("j" "Journal (today)" entry
+       (file+olp my/journal--ensure-today "Log")
+       "* %U %?")
 
-     ("j" "Journal entry" entry
-       (file+datetree ,(my/notes-path "journal" "log.org"))
-       "* %U %?\n")
-
-     ("P" "Project task" entry
+     ("s" "Source intake" entry
        (file ,dl-notes-inbox-file)
-       (function ,(my/capture-entry "* TODO %?" ":project:")))
+       (function ,(my/capture-body
+                    "* %? :source:"
+                    ":PROPERTIES:"
+                    ":CREATED: %U"
+                    ":URL:"
+                    ":AUTHOR:"
+                    ":END:")))
 
-     ("r" "Reading note" entry
+     ("S" "Slip intake" entry
        (file ,dl-notes-inbox-file)
-       (function ,(my/capture-entry "* Reading: %?")))
+       (function ,(my/capture-entry "* %? :slip:")))
+
+     ("r" "Reference intake" entry
+       (file ,dl-notes-inbox-file)
+       (function ,(my/capture-body
+                    "* %? :reference:"
+                    ":PROPERTIES:"
+                    ":CREATED: %U"
+                    ":URL:"
+                    ":AUTHOR:"
+                    ":DATE:"
+                    ":LICENSE:"
+                    ":TRUST:"
+                    ":END:")))
 
      ;; these last two are for https://github.com/sprig/org-capture-extension
      ("p" "Protocol" entry

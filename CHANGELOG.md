@@ -2,6 +2,108 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-17 — notes system overhaul, Phase 4 (capture pipeline + `C-c n …` consolidation)
+
+Phase 4 of the notes overhaul (plan
+`~/.claude/plans/yes-use-dl-for-staged-quiche.md`). Two slices: capture
+templates aligned with the promotion pipeline, and a single
+`C-c n …` namespace with three sub-prefixes.
+
+**New module: `org/dl-denote-templates.el`** — class constructors that
+wrap `denote` per class. Each prompts for title + extra keywords, then
+calls `denote` with the class tag prepended and the right subdir:
+
+```
+my/denote-new-project    -> projects/    :project:
+my/denote-new-area       -> areas/       :area:
+my/denote-new-source     -> sources/     :source:
+my/denote-new-slip       -> slips/       :slip:
+my/denote-new-reference  -> references/  :reference:
+my/denote-new-index      -> indexes/     :index:
+```
+
+Class is encoded twice — by file location *and* by the leading keyword
+— so downstream filters (org-ql, consult-notes, agenda regex) can pick
+either signal.
+
+**Capture rework (`org/dl-org-capture.el`).** Old template letters
+`i / f / P / r` were replaced with a pipeline-aligned set; old `j`
+datetree (`journal/log.org`) was retired in favour of appending into
+today's Denote-named journal file:
+
+```
+c   Inbox text        -> inbox.org   * TODO …
+j   Journal (today)   -> today's denote journal, under * Log
+s   Source intake     -> inbox.org   * … :source:    + URL/AUTHOR drawer
+S   Slip intake       -> inbox.org   * … :slip:
+r   Reference intake  -> inbox.org   * … :reference: + URL/AUTHOR/DATE/LICENSE/TRUST drawer
+p   Protocol          unchanged (sprig/org-capture-extension)
+L   Protocol Link     unchanged
+```
+
+The `j` target uses a new helper `my/journal--ensure-today` in
+`dl-denote-journal.el`, which creates today's file with the skeleton if
+absent so capture has somewhere to land before the user has hit
+`C-c n j` for the day. The helper is shared with `my/journal-note`
+itself (extracted alongside `my/journal--today-file` and
+`my/journal--today-skeleton`).
+
+Dropped templates: `i` (renamed to `c`), `f` (use `c` and delete the
+TODO marker, or `denote`/class constructors), `P` (use `C-c n N p`),
+old `r` "Reading note" (repurposed for reference intake). The
+`f` file-intake template the plan flagged as optional is not yet
+written — intake-dir workflow is content-level (Phase 7).
+
+**Keymap consolidation (`core/dl-keymap.el`).** Single `my-notes-map`
+at `C-c n` (mirrored as `SPC n` via mode-specific-map = meow leader),
+with three sub-prefixes (`my-notes-new-map`, `my-notes-manage-map`,
+`my-notes-review-map`). Full table:
+
+```
+C-c n c   org-capture                          C-c n N p   new project
+C-c n j   my/journal-note                      C-c n N a   new area
+C-c n w   my/weekly-note                       C-c n N s   new source
+C-c n n   denote                               C-c n N S   new slip
+C-c n f   consult-notes              (Ph5)     C-c n N r   new reference
+C-c n s   consult-notes-search…     (Ph5)     C-c n N i   new index
+C-c n l   org-store-link                       C-c n N j   journal today
+C-c n i   denote-link                          C-c n N w   weekly
+C-c n o   org-open-at-point-global
+C-c n g   org-mark-ring-goto                   C-c n m r   denote-rename-file
+C-c n b   denote-backlinks                     C-c n m R   …-using-front-matter
+C-c n q   org-ql-find               (Ph5)     C-c n m k   denote-keywords-add
+                                               C-c n m K   denote-keywords-remove
+C-c n v   (review prefix — commands Ph6)       C-c n m t   denote-rename-file-title
+```
+
+Phase-5 bindings (`f / s / q`) are wired to symbols that aren't yet
+installed; the void-function error only surfaces if pressed before
+Phase 5 lands. Cheaper than stubbing them out twice.
+
+**Migrations from previous bindings**:
+
+- `C-c n n / l / b / r / R` (`:bind` block in `dl-denote.el`) → moved to
+  `my-notes-map` (`n` denote, `i` denote-link [was `l`], `b` backlinks,
+  `m r` rename, `m R` front-matter rename). The `dl-denote.el` `:bind`
+  block was removed.
+- `C-c n j / w` (`global-set-key` in `dl-denote-journal.el`) → moved to
+  `my-notes-map`. The redundant `(define-key … "C-c n d" nil)` retire-
+  binding is gone too — `C-c n d` simply isn't defined anymore.
+
+**Denote known-keywords extended** to include the full class set
+(`area`, `slip`, `index`, `weekly`) so completion at the keyword prompt
+suggests them.
+
+**Touched:** `org/dl-denote-templates.el` (NEW — `git add`-ed so the
+flake parser sees it), `org/dl-org-capture.el` (template rewrite),
+`org/dl-denote-journal.el` (factored helpers; binds moved out),
+`org/dl-denote.el` (binds moved out; known-keywords extended),
+`core/dl-keymap.el` (notes map + sub-prefixes + meow leader mirror),
+`init.el` (`require 'dl-denote-templates`).
+
+Phases 5-7 (org-ql / consult-notes / citar; review workflow; root-note
+triage) remain.
+
 ## 2026-05-17 — notes system overhaul, Phase 3 (Denote-named journaling) + org-modern fix
 
 **Journaling moves to Denote naming.** `dl-denote-journal.el` rewritten:

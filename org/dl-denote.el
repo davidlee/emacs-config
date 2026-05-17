@@ -2,22 +2,19 @@
 
 (require 'dl-notes-paths)
 
+;; Bindings live in `core/dl-keymap.el' under the consolidated `C-c n …'
+;; map (`my-notes-map' + sub-prefixes).  Keep this module to settings only.
 (use-package denote
   :custom
   (denote-directory dl-notes-root)
   (denote-known-keywords
-    '("pkm" "writing" "reading" "project" "journal" "emacs"
-       "idea" "reference" "source" "draft" "meeting"))
+    '("pkm" "writing" "reading" "project" "area" "source" "slip"
+       "reference" "index" "journal" "weekly" "emacs"
+       "idea" "draft" "meeting"))
   (denote-infer-keywords t)
   (denote-sort-keywords t)
   (denote-file-type 'org)
-  (denote-prompts '(title keywords))
-  :bind
-  (("C-c n n" . denote)
-    ("C-c n l" . denote-link)
-    ("C-c n b" . denote-backlinks)
-    ("C-c n r" . denote-rename-file)
-    ("C-c n R" . denote-rename-file-using-front-matter)))
+  (denote-prompts '(title keywords)))
 
 
 (provide 'dl-denote)

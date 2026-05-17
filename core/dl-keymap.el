@@ -14,6 +14,7 @@
 ;;   C-c w / SPC w   window
 ;;   C-c s / SPC s   search
 ;;   C-c j / SPC j   session (easysession) -- DISABLED
+;;   C-c n / SPC n   notes  (sub-prefixes: N=new-by-class, m=manage, v=review)
 ;;   C-c o / SPC o   org / open
 ;;   C-c t / SPC t   toggle
 ;;   C-c e / SPC e   eval / elisp
@@ -58,17 +59,21 @@ Warns when KEY already has a binding in MAP that differs from CMD."
       (which-key-add-keymap-based-replacements map key desc))))
 
 ;; Prefix maps -- one per command family.
-(defvar-keymap my-file-map   :name "file")
-(defvar-keymap my-buffer-map :name "buffer")
-(defvar-keymap my-window-map :name "window")
-(defvar-keymap my-search-map :name "search")
+(defvar-keymap my-file-map        :name "file")
+(defvar-keymap my-buffer-map      :name "buffer")
+(defvar-keymap my-window-map      :name "window")
+(defvar-keymap my-search-map      :name "search")
                                         ;(defvar-keymap my-session-map :name "session")
-(defvar-keymap my-git-map    :name "git")
-(defvar-keymap my-org-map    :name "org")
-(defvar-keymap my-toggle-map :name "toggle")
-(defvar-keymap my-eval-map   :name "eval")
-(defvar-keymap my-term-map   :name "term")
-(defvar-keymap my-fold-map   :name "fold")
+(defvar-keymap my-git-map         :name "git")
+(defvar-keymap my-notes-map        :name "notes")
+(defvar-keymap my-notes-new-map    :name "notes:new")
+(defvar-keymap my-notes-manage-map :name "notes:manage")
+(defvar-keymap my-notes-review-map :name "notes:review")
+(defvar-keymap my-org-map         :name "org")
+(defvar-keymap my-toggle-map      :name "toggle")
+(defvar-keymap my-eval-map        :name "eval")
+(defvar-keymap my-term-map        :name "term")
+(defvar-keymap my-fold-map        :name "fold")
 
 ;; Bind prefix maps globally under C-c <letter>.
 (define-key global-map (kbd "C-c f") my-file-map)
@@ -77,6 +82,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (define-key global-map (kbd "C-c s") my-search-map)
                                         ;(define-key global-map (kbd "C-c j") my-session-map)
 (define-key global-map (kbd "C-c g") my-git-map)
+(define-key global-map (kbd "C-c n") my-notes-map)
 (define-key global-map (kbd "C-c o") my-org-map)
 (define-key global-map (kbd "C-c t") my-toggle-map)
 (define-key global-map (kbd "C-c e") my-eval-map)
@@ -91,17 +97,21 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 ;; Prefix labels for which-key.
 (with-eval-after-load 'which-key
   (which-key-add-key-based-replacements
-    "C-c f" "file"
-    "C-c b" "buffer"
-    "C-c w" "window"
-    "C-c s" "search"
-    "C-c j" "session"
-    "C-c g" "git"
-    "C-c o" "org"
-    "C-c t" "toggle"
-    "C-c e" "eval"
-    "C-c m" "term"
-    "C-c z" "fold"))
+    "C-c f"   "file"
+    "C-c b"   "buffer"
+    "C-c w"   "window"
+    "C-c s"   "search"
+    "C-c j"   "session"
+    "C-c g"   "git"
+    "C-c n"   "notes"
+    "C-c n N" "notes:new"
+    "C-c n m" "notes:manage"
+    "C-c n v" "notes:review"
+    "C-c o"   "org"
+    "C-c t"   "toggle"
+    "C-c e"   "eval"
+    "C-c m"   "term"
+    "C-c z"   "fold"))
 
 ;; Concrete bindings -- starter set, grow as needed.
 (my/bind my-file-map   "f" #'find-file              "find-file")
@@ -134,6 +144,43 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 
 (my/bind my-git-map    "g" #'magit-status           "status")
 (my/bind my-git-map    "l" #'git-link               "link")
+
+;; Notes (C-c n …) — see plan §4b in ~/.claude/plans/yes-use-dl-for-staged-quiche.md.
+;; Sub-prefixes for new-by-class / manage / review live below.
+;;
+;; Phase 5 commands (`consult-notes', `org-ql') aren't installed yet —
+;; binding by symbol is fine, the void-function error surfaces only if
+;; pressed before Phase 5 lands.
+(my/bind my-notes-map "N" my-notes-new-map    "new-by-class")
+(my/bind my-notes-map "m" my-notes-manage-map "manage")
+(my/bind my-notes-map "v" my-notes-review-map "review")
+(my/bind my-notes-map "c" #'org-capture                       "capture")
+(my/bind my-notes-map "j" #'my/journal-note                   "journal today")
+(my/bind my-notes-map "w" #'my/weekly-note                    "weekly")
+(my/bind my-notes-map "n" #'denote                            "new note")
+(my/bind my-notes-map "f" #'consult-notes                     "find note (Phase 5)")
+(my/bind my-notes-map "s" #'consult-notes-search-in-all-notes "search notes (Phase 5)")
+(my/bind my-notes-map "l" #'org-store-link                    "store link")
+(my/bind my-notes-map "i" #'denote-link                       "insert link")
+(my/bind my-notes-map "o" #'org-open-at-point-global          "open link")
+(my/bind my-notes-map "g" #'org-mark-ring-goto                "go back")
+(my/bind my-notes-map "b" #'denote-backlinks                  "backlinks")
+(my/bind my-notes-map "q" #'org-ql-find                       "ql find (Phase 5)")
+
+(my/bind my-notes-new-map "p" #'my/denote-new-project    "project")
+(my/bind my-notes-new-map "a" #'my/denote-new-area       "area")
+(my/bind my-notes-new-map "s" #'my/denote-new-source     "source")
+(my/bind my-notes-new-map "S" #'my/denote-new-slip       "slip")
+(my/bind my-notes-new-map "r" #'my/denote-new-reference  "reference")
+(my/bind my-notes-new-map "i" #'my/denote-new-index      "index")
+(my/bind my-notes-new-map "j" #'my/journal-note          "journal today")
+(my/bind my-notes-new-map "w" #'my/weekly-note           "weekly")
+
+(my/bind my-notes-manage-map "r" #'denote-rename-file                     "rename")
+(my/bind my-notes-manage-map "R" #'denote-rename-file-using-front-matter  "rename (front-matter)")
+(my/bind my-notes-manage-map "k" #'denote-keywords-add                    "keywords add")
+(my/bind my-notes-manage-map "K" #'denote-keywords-remove                 "keywords remove")
+(my/bind my-notes-manage-map "t" #'denote-rename-file-title               "retitle")
 
 ;; Session map -- easysession.  Package is :demand t so symbols resolve
 ;; by call time even though we bind here at startup.
@@ -235,6 +282,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
     (cons "s" my-search-map)
     ;; (cons "j" my-session-map)
     (cons "G" my-git-map)
+    (cons "n" my-notes-map)
     (cons "o" my-org-map)
     (cons "t" my-toggle-map)
     (cons "e" my-eval-map)

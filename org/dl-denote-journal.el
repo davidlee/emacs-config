@@ -15,21 +15,41 @@
   (let ((dow (string-to-number (format-time-string "%u" time))))
     (time-subtract time (days-to-time (1- dow)))))
 
+(defun my/journal--today-file ()
+  "Return today's Denote-named journal file path (does not create the file)."
+  (let* ((now  (current-time))
+         (id   (format-time-string "%Y%m%dT000000" now))
+         (slug (downcase (format-time-string "%Y-%m-%d-%A" now))))
+    (expand-file-name
+     (format "%s--%s__journal.org" id slug)
+     dl-notes-journal-dir)))
+
+(defun my/journal--today-skeleton ()
+  "Return the skeleton string for a newly-created daily journal file."
+  (let ((now (current-time)))
+    (concat "#+title:    " (format-time-string "%Y-%m-%d %A" now) "\n"
+            "#+filetags: :journal:\n"
+            "#+date:     " (format-time-string "[%Y-%m-%d %a]" now) "\n\n"
+            "* Focus\n\n* Notes\n\n* Log\n")))
+
+(defun my/journal--ensure-today ()
+  "Ensure today's Denote journal file exists with the skeleton; return its path.
+Used as the dynamic file target for the `j' capture template so a capture
+can land in today's file even when it's the first touch of the day."
+  (let ((file (my/journal--today-file)))
+    (unless (file-exists-p file)
+      (with-temp-buffer
+        (insert (my/journal--today-skeleton))
+        (write-region (point-min) (point-max) file)))
+    file))
+
 (defun my/journal-note ()
   "Open or create today's Denote-named daily journal note."
   (interactive)
-  (let* ((now (current-time))
-         (id   (format-time-string "%Y%m%dT000000" now))
-         (slug (downcase (format-time-string "%Y-%m-%d-%A" now)))
-         (file (expand-file-name
-                (format "%s--%s__journal.org" id slug)
-                dl-notes-journal-dir)))
+  (let ((file (my/journal--today-file)))
     (find-file file)
     (when (= (point-max) 1)
-      (insert "#+title:    " (format-time-string "%Y-%m-%d %A" now) "\n")
-      (insert "#+filetags: :journal:\n")
-      (insert "#+date:     " (format-time-string "[%Y-%m-%d %a]" now) "\n\n")
-      (insert "* Focus\n\n* Notes\n\n* Log\n"))))
+      (insert (my/journal--today-skeleton)))))
 
 (defun my/weekly-note ()
   "Open or create this week's Denote-named weekly journal note.
@@ -49,10 +69,8 @@ start of its week regardless of which day the note is first opened."
       (insert "#+date:     " (format-time-string "[%Y-%m-%d %a]" monday) "\n\n")
       (insert "* Review\n\n* Projects\n\n* Notes promoted\n\n* Next week\n"))))
 
-;; Retire the Phase 1/2 `C-c n d` daily binding in favour of `C-c n j`.
-(define-key global-map (kbd "C-c n d") nil)
-(global-set-key (kbd "C-c n j") #'my/journal-note)
-(global-set-key (kbd "C-c n w") #'my/weekly-note)
+;; Bindings (`C-c n j', `C-c n w', `C-c n N j', `C-c n N w') live in
+;; `core/dl-keymap.el' under `my-notes-map' / `my-notes-new-map'.
 
 (provide 'dl-denote-journal)
 ;;; dl-denote-journal.el ends here
