@@ -293,6 +293,123 @@ prints/inserts into the buffer.
 | `C-c e x` | `eval-expression`          | one-shot expression (alias of `M-:`) |
 | `C-c e m` | `pp-macroexpand-last-sexp` | macroexpand at point |
 
+## File (`C-c f`)
+
+| Key | Command | |
+|---|---|---|
+| `C-c f f` | `find-file`           | open file |
+| `C-c f s` | `save-buffer`         | save |
+| `C-c f S` | `write-file`          | save-as |
+| `C-c f r` | `consult-recent-file` | recent file |
+| `C-c f d` | `dired-jump`          | dired here |
+| `C-c f D` | `dirvish`             | dirvish |
+| `C-c f t` | `dirvish-side`        | dirvish (side tree) |
+| `C-c f y` | `my/yazi-here`        | yazi |
+| `C-c f b` | `my/broot-here`       | broot |
+
+Project-scoped file commands live at `C-c p` — see [Project](#project-c-c-p).
+Globals: `C-x C-j` dired-jump, `C-x C-n` dirvish-side.
+
+## Buffer (`C-c b`)
+
+| Key | Command | |
+|---|---|---|
+| `C-c b b` | `consult-buffer`      | switch |
+| `C-c b k` | `kill-current-buffer` | kill |
+| `C-c b i` | `ibuffer`             | ibuffer |
+| `C-c b n` | `next-buffer`         | next |
+| `C-c b p` | `previous-buffer`     | previous |
+
+Global: `C-x b` → `consult-buffer` (in `dl-consult.el`).
+
+## Window (`C-c w`)
+
+Direction keys are arrow keys, not h/j/k/l — see [Layout](#layout).
+
+| Key | Command | |
+|---|---|---|
+| `C-c w <left>`  | `windmove-left`        | focus left |
+| `C-c w <down>`  | `windmove-down`        | focus down |
+| `C-c w <up>`    | `windmove-up`          | focus up |
+| `C-c w <right>` | `windmove-right`       | focus right |
+| `C-c w s`       | `split-window-below`   | split below |
+| `C-c w v`       | `split-window-right`   | split right |
+| `C-c w o`       | `delete-other-windows` | keep only this window |
+| `C-c w d`       | `delete-window`        | delete |
+| `C-c w =`       | `balance-windows`      | balance |
+
+## Git (`C-c g`)
+
+`SPC g` is eaten by `meow-keypad` (C-M- dispatcher) — use `SPC G` as
+the leader alias. `C-c g` always works.
+
+| Key | Command | |
+|---|---|---|
+| `C-c g g` | `magit-status` | status |
+| `C-c g l` | `git-link`     | shareable URL to current line |
+
+## Term (`C-c m`)
+
+[ghostel](https://github.com/dakra/ghostel) terminals plus shpool
+session manager (`apps/dl-shpool.el`). `SPC m` is eaten by
+`meow-keypad` (M- dispatcher) — use `SPC M` as the leader alias.
+
+| Key | Command | |
+|---|---|---|
+| `C-c m t` | `ghostel`                  | switch / create ghostel |
+| `C-c m T` | `my/ghostel-here`          | new ghostel in `default-directory` |
+| `C-c m o` | `ghostel-project`          | new ghostel at project root |
+| `C-c m n` | `ghostel-other`            | next ghostel buffer |
+| `C-c m a` | `my/shpool`                | attach shpool session |
+| `C-c m p` | `my/shpool-project`        | attach project session |
+| `C-c m F` | `my/shpool-force`          | force-attach (steal) |
+| `C-c m r` | `my/shpool-restore`        | restore session set |
+| `C-c m L` | `my/shpool-list`           | list sessions |
+| `C-c m d` | `my/shpool-detach-current` | detach |
+| `C-c m k` | `my/shpool-kill-session`   | kill session |
+| `C-c m +` | `my/shpool-add-current-to-restore` | add to restore set |
+| `C-c m -` | `my/shpool-remove-from-restore`    | remove from restore set |
+| `C-c m f` | `my/shpool-forget-session` | forget session |
+
+## Toggle (`C-c t`)
+
+Session knobs — display modes, editor behaviors, debug switches.
+Lowercase/uppercase pairs follow the [Policy](#policy) variant rule:
+`l`/`L`, `s`/`S`, `B`/`G`, `d`/`D` are buffer/global or scope variants.
+
+| Key | Command | |
+|---|---|---|
+| `C-c t l` | `display-line-numbers-mode`         | line numbers (buffer) |
+| `C-c t L` | `global-display-line-numbers-mode`  | line numbers (global) |
+| `C-c t w` | `visual-line-mode`                  | visual-line (soft-wrap) |
+| `C-c t t` | `toggle-truncate-lines`             | truncate-lines |
+| `C-c t h` | `hl-line-mode`                      | highlight current line |
+| `C-c t p` | `display-fill-column-indicator-mode` | fill-column indicator |
+| `C-c t W` | `whitespace-mode`                   | whitespace marks |
+| `C-c t r` | `read-only-mode`                    | read-only |
+| `C-c t f` | `auto-fill-mode`                    | auto-fill (hard-wrap) |
+| `C-c t s` | `jinx-mode`                         | spellcheck (buffer) |
+| `C-c t S` | `my/jinx-global-mode`               | spellcheck (prog/text/org) |
+| `C-c t c` | `my/toggle-margins`                 | margins (olivetti / vfc) |
+| `C-c t V` | `variable-pitch-mode`               | variable-pitch font |
+| `C-c t e` | `electric-pair-mode`                | electric-pair |
+| `C-c t i` | `indent-tabs-mode`                  | tabs vs. spaces |
+| `C-c t a` | `auto-revert-mode`                  | auto-revert |
+| `C-c t n` | `my/narrow-or-widen-dwim`           | narrow / widen (region/defun/subtree) |
+| `C-c t m` | `flymake-mode`                      | flymake |
+| `C-c t d` | `toggle-debug-on-error`             | debug-on-error |
+| `C-c t D` | `toggle-debug-on-quit`              | debug-on-quit |
+| `C-c t T` | `consult-theme`                     | theme picker |
+| `C-c t P` | `spacious-padding-mode`             | spacious padding |
+| `C-c t B` | `tab-line-mode`                     | tab-line (buffer) |
+| `C-c t G` | `global-tab-line-mode`              | tab-line (global) |
+| `C-c t g` | `diff-hl-mode`                      | diff-hl (vcs gutter) |
+| `C-c t *` | `prettify-symbols-mode`             | prettify symbols |
+| `C-c t )` | `rainbow-delimiters-mode`           | rainbow delimiters |
+| `C-c t R` | `rainbow-mode`                      | rainbow (color literals) |
+| `C-c t =` | `aggressive-indent-mode`            | aggressive-indent |
+| `C-c t E` | `my/eglot-toggle`                   | eglot start/shutdown |
+
 ## Adding a binding
 
 ### To an existing prefix map
@@ -355,7 +472,7 @@ Declare autoloads on the source package with `:commands`. Then bind centrally:
 
 ## Deferred
 
-- **Migrate package `:bind` clauses** into the prefix structure as you touch each file: `dl-embark.el`, `dl-motion.el`, `dl-search.el`, `dl-fold.el`. (`dl-consult.el` done — its `C-c s …` block now lives centrally.)
+- **`dl-search.el` visual-regexp**. `C-c q r` / `C-c q q` is the last `C-c <letter>` Policy violation outside the central map. Either lift into `my-search-map` (`s Q` for query-replace?) or declare `my-vr-map` if the family grows. The other previously-listed files (`dl-consult.el`, `dl-embark.el`, `dl-motion.el`, `dl-fold.el`) are migrated — the chord-based bindings remaining in `dl-embark.el` and `dl-motion.el` are explicit Policy-compatible escape hatches, not squatters.
 - **Hydras**. Package autoloaded (`use-package hydra :commands defhydra` in `core/dl-keybind.el`), no hydras defined yet. Window resize is the natural first one — bind under `C-c w` once defined.
 - **`C-c t` collision watch**. The toggle map is well-populated now, but mind the `C-c t C-c t` / `C-c t C-h` use-package conventions some major modes still grab when adding new toggles.
 - **Reserved letters**. `d` (diagnostics) and `k` (config / "kit") are kept free for future tier-1 families per the [Policy](#policy) budget. Don't grab them for one-off binds.
