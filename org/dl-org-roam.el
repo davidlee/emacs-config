@@ -2,11 +2,13 @@
 
 ;; https://github.com/BardofSprites/denote-roam/blob/master/denote-roam.el
 
+(require 'dl-notes-paths)
+
 ;; Org-roam
 (use-package org-roam
   :after org
   :custom
-  (org-roam-directory (file-truename org-directory))
+  (org-roam-directory (file-truename dl-notes-root))
   (org-roam-db-location
     (expand-file-name ".org-roam.db" org-roam-directory))
 

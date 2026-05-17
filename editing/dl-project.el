@@ -49,6 +49,33 @@
   (add-hook 'project-find-functions #'my/project-try-local -100))
 
 
+;;
+;;
+;;
+
+(use-package project-x
+  :ensure nil
+  :vc (:url "https://github.com/vmargb/project-x.git")
+  :after project
+  :config
+  (setq project-x-local-identifier
+    '(".project" ".project.el" "flake.nix" "package.json" "go.mod" "Cargo.toml"))
+  (setq project-x-save-interval 600)
+  (project-x-mode 1))
+
+
+(use-package otpp
+  :ensure nil
+  :vc (:url "https://github.com/abougouffa/one-tab-per-project.git")
+  :after project
+  :config
+  ;; Enable `otpp-mode` globally
+  (otpp-mode 1)
+  ;; If you want to advice the commands in `otpp-override-commands`
+  ;; to be run in the current's tab (so, current project's) root directory
+  (otpp-override-mode 1))
+
+;;
 (use-package diredfl
   :hook (dired-mode . diredfl-mode))
 

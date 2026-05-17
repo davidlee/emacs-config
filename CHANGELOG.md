@@ -2,6 +2,69 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-17 — notes system overhaul, Phase 1 (paths + dirs + TODO)
+
+First slice of the notes-system overhaul plan
+(`~/.claude/plans/yes-use-dl-for-staged-quiche.md`). No new packages, no
+module decomposition — just the substrate.
+
+**Filesystem.** `~/notes` was a symlink to `~/tasks/00_inbox/`; promoted
+in place: `rm` the symlink, `mv ~/tasks/00_inbox ~/notes`. Reorganised
+inside the new real `~/notes/`:
+
+- Created `intake/ journal/ weekly/ projects/ areas/ sources/ slips/
+  indexes/ references/ attachments/ archive/`.
+- `_archived/` → `archive/`, `assets/` → `attachments/`, `context/` →
+  `references/` (the two LLM research markdowns land here; will need
+  `:reference:llm:untrusted:` tags on review per the plan).
+- 5 daily files in `2026/YYYY-MM-DD.org` → renamed to Denote-style
+  `YYYYMMDDT000000--yyyy-mm-dd-weekday__journal.org` under `journal/`.
+- Deleted empty placeholders (`indices/`, `notes/`, `refs/`, `writing/`)
+  whose names don't match the new vocab. `projects/` was already
+  on-name; kept.
+- 6 root-level Denote notes left at root — homing into class subdirs is
+  Phase 7 triage (content, not config).
+- `.git/`, `.gitignore`, `.org-roam.db` preserved via the bulk dir
+  move. Corpus history intact.
+- `~/tasks/{10_daily, 20_weekly, 30_projects, 40_areas, 50_notes,
+  90_archive}` left untouched — legacy parking, separate triage.
+
+**New module: `core/dl-notes-paths.el`.** Single source of truth for
+notes paths. Defines `dl-notes-root`, `dl-notes-inbox-file`, and
+per-class dir constants (`dl-notes-{intake,journal,weekly,projects,
+areas,sources,slips,indexes,references,attachments,archive}-dir`), plus
+`my/notes-path` for joining segments under root. Required early in
+`init.el` (after `dl-core`).
+
+**Downstream rewires** (replace string literals with constants):
+
+- `org/dl-org.el`: `org-directory`, `org-default-notes-file`,
+  `org-agenda-files`, all capture-template file paths, and
+  `my/daily-note`/`my/weekly-note` now derive from `dl-notes-*`. Daily
+  and weekly point at the new `journal/`/`weekly/` dirs but keep the
+  simple `YYYY-MM-DD.org` / `YYYY-WNN.org` naming for now — Denote-named
+  rewrite is Phase 3. Agenda dropped the (gone) `writing/` and added
+  `weekly/`. Duplicate `(global-set-key "C-c c" #'org-capture)` (had
+  shadowed itself at L130) removed.
+- `org/dl-denote.el`: `denote-directory` → `dl-notes-root`.
+- `org/dl-org-roam.el`: `org-roam-directory` → `(file-truename
+  dl-notes-root)`. Roam stays wired but unused (separate
+  acceleration layer per the plan; not the primary navigator).
+
+**TODO state expansion.** Old: `TODO NEXT WAIT | DONE CANCELLED`. New:
+`TODO NEXT STARTED WAITING(w@/!) | DONE(d!) CANCELED(c@) MOVED(m@)`.
+Logging triggers added (`!` for done, `@` for waiting/canceled/moved).
+One existing match (`work.org:5` had `** WAIT`) swept via `sed` to
+`WAITING`. `CANCELLED` → `CANCELED` rename had no matches.
+
+**Touched:** `core/dl-notes-paths.el` (new — tracked via git so the Nix
+flake parser sees it), `init.el`, `org/dl-org.el`, `org/dl-denote.el`,
+`org/dl-org-roam.el`, plus the filesystem migration outside the repo.
+
+Phases 2-7 (module decomposition, Denote-based journaling, capture
+template rework + keymap consolidation, org-ql/consult-notes/citar,
+review workflow, root-note triage) remain.
+
 ## 2026-05-16 — org-protocol capture from Firefox
 
 Wired up [sprig/org-capture-extension](https://github.com/sprig/org-capture-extension)

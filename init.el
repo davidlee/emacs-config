@@ -3,6 +3,7 @@
 ;; CORE
 (require 'dl-compile)
 (require 'dl-core)
+(require 'dl-notes-paths)
 (require 'dl-backup)
 (require 'dl-persist)
 (require 'dl-keymap)

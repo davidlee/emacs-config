@@ -13,6 +13,11 @@ oauth2.*
 *.eld
 *.elc
 
+*.local
+*.local.*
+
+/easysession
+/elfeed
 /history
 /places
 /recentf
@@ -22,6 +27,7 @@ oauth2.*
 /undo-fu-session
 /projects
 /dirvish
+project-window-list
 
 .\#*
 

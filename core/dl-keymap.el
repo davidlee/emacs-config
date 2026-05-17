@@ -13,7 +13,7 @@
 ;;   C-c b / SPC b   buffer
 ;;   C-c w / SPC w   window
 ;;   C-c s / SPC s   search
-;;   C-c j / SPC j   session (easysession)
+;;   C-c j / SPC j   session (easysession) -- DISABLED
 ;;   C-c o / SPC o   org / open
 ;;   C-c t / SPC t   toggle
 ;;   C-c e / SPC e   eval / elisp
@@ -62,7 +62,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (defvar-keymap my-buffer-map :name "buffer")
 (defvar-keymap my-window-map :name "window")
 (defvar-keymap my-search-map :name "search")
-(defvar-keymap my-session-map :name "session")
+                                        ;(defvar-keymap my-session-map :name "session")
 (defvar-keymap my-git-map    :name "git")
 (defvar-keymap my-org-map    :name "org")
 (defvar-keymap my-toggle-map :name "toggle")
@@ -75,7 +75,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (define-key global-map (kbd "C-c b") my-buffer-map)
 (define-key global-map (kbd "C-c w") my-window-map)
 (define-key global-map (kbd "C-c s") my-search-map)
-(define-key global-map (kbd "C-c j") my-session-map)
+                                        ;(define-key global-map (kbd "C-c j") my-session-map)
 (define-key global-map (kbd "C-c g") my-git-map)
 (define-key global-map (kbd "C-c o") my-org-map)
 (define-key global-map (kbd "C-c t") my-toggle-map)
@@ -137,13 +137,13 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 
 ;; Session map -- easysession.  Package is :demand t so symbols resolve
 ;; by call time even though we bind here at startup.
-(my/bind my-session-map "s" #'easysession-save                          "save")
-(my/bind my-session-map "l" #'easysession-switch-to                     "load")
-(my/bind my-session-map "L" #'easysession-switch-to-and-restore-geometry "load+geometry")
-(my/bind my-session-map "r" #'easysession-rename                        "rename")
-(my/bind my-session-map "R" #'easysession-reset                         "reset")
-(my/bind my-session-map "u" #'easysession-unload                        "unload")
-(my/bind my-session-map "d" #'easysession-delete                        "delete")
+;; (my/bind my-session-map "s" #'easysession-save                          "save")
+;; (my/bind my-session-map "l" #'easysession-switch-to                     "load")
+;; (my/bind my-session-map "L" #'easysession-switch-to-and-restore-geometry "load+geometry")
+;; (my/bind my-session-map "r" #'easysession-rename                        "rename")
+;; (my/bind my-session-map "R" #'easysession-reset                         "reset")
+;; (my/bind my-session-map "u" #'easysession-unload                        "unload")
+;; (my/bind my-session-map "d" #'easysession-delete                        "delete")
 
 (my/bind my-term-map   "t" #'ghostel                           "ghostel")
 (my/bind my-term-map   "T" #'my/ghostel-here                   "ghostel (new, here)")
@@ -233,7 +233,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
     (cons "b" my-buffer-map)
     (cons "w" my-window-map)
     (cons "s" my-search-map)
-    (cons "j" my-session-map)
+    ;; (cons "j" my-session-map)
     (cons "G" my-git-map)
     (cons "o" my-org-map)
     (cons "t" my-toggle-map)

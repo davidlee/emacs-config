@@ -1,17 +1,20 @@
-;;; ddl-org.el --- ORG  -*- lexical-binding: t; -*-
+;;; dl-org.el --- ORG  -*- lexical-binding: t; -*-
+
+(require 'dl-notes-paths)
 
 (use-package org
   :ensure nil
   :custom
-  (org-directory "~/notes")
-  (org-default-notes-file "~/notes/inbox.org")
+  (org-directory dl-notes-root)
+  (org-default-notes-file dl-notes-inbox-file)
   (org-startup-indented t)
   (org-hide-emphasis-markers t)
   (org-return-follows-link t)
   (org-use-speed-commands t)
   (org-log-done 'time)
   (org-todo-keywords
-    '((sequence "TODO(t)" "NEXT(n)" "WAIT(w)" "|" "DONE(d)" "CANCELLED(c)")))
+    '((sequence "TODO(t)" "NEXT(n)" "STARTED(s)" "WAITING(w@/!)"
+                "|" "DONE(d!)" "CANCELED(c@)" "MOVED(m@)")))
   (org-tag-alist
     '( ("@work" . ?w)
        ("@home" . ?h)
@@ -21,10 +24,10 @@
        ("pkm" . ?p)))
   :config
   (setq org-agenda-files
-    '( "~/notes/inbox.org"
-       "~/notes/projects"
-       "~/notes/journal"
-       "~/notes/writing")))
+    (list dl-notes-inbox-file
+          dl-notes-projects-dir
+          dl-notes-journal-dir
+          dl-notes-weekly-dir)))
 
 (global-set-key (kbd "C-c a") #'org-agenda)
 (global-set-key (kbd "C-c c") #'org-capture)
@@ -55,28 +58,28 @@ Result:
 
 (setq org-capture-templates
   `(("i" "Inbox" entry
-      (file "~/notes/inbox.org")
+      (file ,dl-notes-inbox-file)
       (function ,(my/capture-entry "* TODO %?")))
 
      ("f" "Fleeting note" entry
-       (file "~/notes/inbox.org")
+       (file ,dl-notes-inbox-file)
        (function ,(my/capture-entry "* %?")))
 
      ("j" "Journal entry" entry
-       (file+datetree "~/notes/journal/log.org")
+       (file+datetree ,(my/notes-path "journal" "log.org"))
        "* %U %?\n")
 
      ("P" "Project task" entry
-       (file "~/notes/inbox.org")
+       (file ,dl-notes-inbox-file)
        (function ,(my/capture-entry "* TODO %?" ":project:")))
 
      ("r" "Reading note" entry
-       (file "~/notes/inbox.org")
+       (file ,dl-notes-inbox-file)
        (function ,(my/capture-entry "* Reading: %?")))
 
      ;; these last two are for https://github.com/sprig/org-capture-extension
      ("p" "Protocol" entry
-       (file+headline ,(expand-file-name "protocol.org" org-directory) "Inbox")
+       (file+headline ,(my/notes-path "protocol.org") "Inbox")
        (function ,(my/capture-body
                     "* %^{Title|%:description}"
                     "Source: %:link"
@@ -90,7 +93,7 @@ Result:
        :empty-lines 1)
 
      ("L" "Protocol Link" entry
-       (file+headline ,(expand-file-name "protocol.org" org-directory) "Inbox")
+       (file+headline ,(my/notes-path "protocol.org") "Inbox")
        (function ,(my/capture-body
                     "* %? [[%:link][%(my/sanitize-link-description \"%:description\")]]"
                     "Captured: %U"
@@ -127,8 +130,6 @@ in the main frame are safe.")
 (advice-add 'org-capture-finalize :after #'my/org-capture-delete-client-frame)
 (advice-add 'org-capture-kill     :after #'my/org-capture-delete-client-frame)
 
-(global-set-key (kbd "C-c c") #'org-capture)
-
 (use-package org-modern
   :after
   (add-hook 'org-mode-hook #'org-modern-mode)
@@ -159,29 +160,27 @@ in the main frame are safe.")
 ;;
 ;; custom functions for periodic notes
 ;;
+;; NOTE: Phase 1 keeps the simple-name format and just points at the new
+;; dirs (journal/, weekly/).  Phase 3 replaces these with Denote-named
+;; equivalents — see plans/yes-use-dl-for-staged-quiche.md.
 (defun my/daily-note ()
   "Open today's plain Org daily note."
   (interactive)
-  (let* ((dir (expand-file-name "2026" org-directory))
-          (file (expand-file-name
-                  (format-time-string "%Y-%m-%d.org")
-                  dir)))
-    (make-directory dir t)
+  (let ((file (expand-file-name
+                (format-time-string "%Y-%m-%d.org")
+                dl-notes-journal-dir)))
     (find-file file)
     (when (= (point-max) 1)
       (insert "#+title: " (format-time-string "%Y-%m-%d %A") "\n")
       (insert "#+filetags: :journal:\n\n")
-      (insert "* Focus\n\n* Notes\n\n* Log\n")
-      )))
+      (insert "* Focus\n\n* Notes\n\n* Log\n"))))
 
 (defun my/weekly-note ()
   "Open this week's plain Org weekly note."
   (interactive)
-  (let* ((dir (expand-file-name "2026" org-directory))
-          (file (expand-file-name
-                  (format-time-string "%G-W%V.org")
-                  dir)))
-    (make-directory dir t)
+  (let ((file (expand-file-name
+                (format-time-string "%G-W%V.org")
+                dl-notes-weekly-dir)))
     (find-file file)
     (when (= (point-max) 1)
       (insert "#+title: " (format-time-string "Week %G-W%V") "\n")

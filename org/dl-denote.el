@@ -1,8 +1,10 @@
 ;;; dl-denote.el --- DENOTE config -*- lexical-binding: t; -*-
 
+(require 'dl-notes-paths)
+
 (use-package denote
   :custom
-  (denote-directory (expand-file-name "~/notes"))
+  (denote-directory dl-notes-root)
   (denote-known-keywords
     '("pkm" "writing" "reading" "project" "journal" "emacs"
        "idea" "reference" "source" "draft" "meeting"))

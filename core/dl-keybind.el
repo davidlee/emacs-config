@@ -88,5 +88,10 @@
 ;;   M-x which-key-show-keymap
 ;;   M-x where-is
 
+(require 'dl-buffer-management)
+;; Bind it to a key (example: F9)
+(global-set-key (kbd "<f9>") 'toggle-maximize-buffer)
+
+
 (provide 'dl-keybind)
 ;;; dl-keybind.el ends here
