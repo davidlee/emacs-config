@@ -1,5 +1,7 @@
 ;;; dl-faces.el --- font roles + universal face customization -*- lexical-binding: t; -*-
 
+(require 'cl-lib)
+
 ;; Single home for face customization in this config: font roles,
 ;; per-face attrs, line-numbers, mode-line, org headings, flymake /
 ;; jinx underlines.  Other files don't set face attributes —
@@ -105,15 +107,32 @@
       :height 1.0
       :weight 'regular)))
 
+(defvar my/org-face-styles
+  '((org-document-title :role org-heading :height 1.6  :weight bold)
+    (org-level-1        :role org-heading :height 1.4  :weight bold)
+    (org-level-2        :role org-heading :height 1.25 :weight semibold)
+    (org-level-3        :role org-heading :height 1.15 :weight regular)
+    (org-level-4        :role org-heading :height 1.1  :weight regular)
+    (org-level-5        :role org-heading :height 1.05 :weight regular)
+    (org-level-6        :role org-heading :height 1.0  :weight regular)
+    (org-level-7        :role org-heading :height 1.0  :weight regular)
+    (org-level-8        :role org-heading :height 1.0  :weight regular)
+    (org-block          :role org-code    :height 1.0)
+    (org-code           :role org-code    :height 1.0)
+    (org-verbatim       :role org-code    :height 1.0))
+  "Per-face style for org. Each entry: (FACE :role ROLE [ATTRS...]).
+Heights must be floats so they multiply through `default' and scale
+with `text-scale-adjust' (C-mousewheel).  Edit and call
+`my/apply-org-faces' to re-apply.")
+
 (defun my/apply-org-faces ()
+  "Apply `my/org-face-styles' to org faces."
   (interactive)
-  (my/set-face-font 'org-document-title 'org-heading :height 160 :weight 'bold)
-  (my/set-face-font 'org-level-1 'org-heading :height 140 :weight 'bold)
-  (my/set-face-font 'org-level-2 'org-heading :height 125 :weight 'semibold)
-  (my/set-face-font 'org-level-3 'org-heading :height 115 :weight 'regular)
-  (my/set-face-font 'org-block 'org-code :height 100)
-  (my/set-face-font 'org-code 'org-code :height 100)
-  (my/set-face-font 'org-verbatim 'org-code :height 100))
+  (pcase-dolist (`(,face . ,plist) my/org-face-styles)
+    (let ((role (plist-get plist :role))
+          (attrs (copy-sequence plist)))
+      (cl-remf attrs :role)
+      (apply #'my/set-face-font face role attrs))))
 
 (defun my/apply-ui-faces ()
   "Apply font roles to core UI faces."

@@ -44,6 +44,20 @@
 
 (global-set-key (kbd "<f5>") #'my--rotate-themes)
 
+;; New frames inherit `default-frame-alist' bg/fg before the theme
+;; paints them — leaves a black flash (or worse, a permanently black
+;; frame in some daemons).  Sync the alist to the active theme after
+;; each load so subsequent frames open in the right colours.
+(defun my/sync-frame-colors-to-theme (&rest _)
+  "Copy current `default' face bg/fg into `default-frame-alist'."
+  (let ((bg (face-background 'default nil t))
+        (fg (face-foreground 'default nil t)))
+    (when bg (setf (alist-get 'background-color default-frame-alist) bg))
+    (when fg (setf (alist-get 'foreground-color default-frame-alist) fg))))
+
+(add-hook 'enable-theme-functions #'my/sync-frame-colors-to-theme)
+(my/sync-frame-colors-to-theme)
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

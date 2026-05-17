@@ -2,6 +2,17 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-18 — org faces scale with text-scale; new-frame bg syncs to theme
+
+`core/dl-faces.el` — org heading/code faces moved to float `:height`
+multipliers and table-driven via new `my/org-face-styles` (levels 1-8 +
+title + block/code/verbatim). C-mousewheel / `text-scale-adjust` now
+scales them since float heights chain through `default`. `core/dl-theme.el`
+— `my/sync-frame-colors-to-theme` on `enable-theme-functions` copies
+current `default` bg/fg into `default-frame-alist`, so frames opened
+after the bootstrap no longer inherit the `#000000` anti-flash colour
+from `dl-interface.el`.
+
 ## 2026-05-17 — tier-2 lambda-emacs cherry-picks
 
 Seven small commands lifted from lambda-emacs, cleaned up, slotted into
