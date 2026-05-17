@@ -14,6 +14,7 @@
 ;;   C-c w / SPC w   window
 ;;   C-c s / SPC s   search   (scope ladder: lower=narrower, upper=wider)
 ;;   C-c p / SPC p   project  (project.el-aligned letters)
+;;   C-c j / SPC j   jump     (avy family)
 ;;   C-c n / SPC n   notes    (sub-prefixes: N=new, m=manage, v=review, W=work)
 ;;   C-c o / SPC o   org      (cross-buffer entry points only)
 ;;   C-c t / SPC t   toggle
@@ -64,6 +65,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (defvar-keymap my-window-map      :name "window")
 (defvar-keymap my-search-map      :name "search")
 (defvar-keymap my-project-map     :name "project")
+(defvar-keymap my-jump-map        :name "jump")
 (defvar-keymap my-git-map         :name "git")
 (defvar-keymap my-notes-map             :name "notes")
 (defvar-keymap my-notes-new-map         :name "notes:new")
@@ -83,6 +85,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (define-key global-map (kbd "C-c w") my-window-map)
 (define-key global-map (kbd "C-c s") my-search-map)
 (define-key global-map (kbd "C-c p") my-project-map)
+(define-key global-map (kbd "C-c j") my-jump-map)
 (define-key global-map (kbd "C-c g") my-git-map)
 (define-key global-map (kbd "C-c n") my-notes-map)
 (define-key global-map (kbd "C-c o") my-org-map)
@@ -104,6 +107,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
     "C-c w"   "window"
     "C-c s"   "search"
     "C-c p"   "project"
+    "C-c j"   "jump"
     "C-c g"   "git"
     "C-c n"   "notes"
     "C-c n N"   "notes:new"
@@ -178,6 +182,14 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-search-map  "d" #'consult-find                       "find filenames")
 (my/bind my-search-map  "m" #'consult-mark                       "mark ring")
 (my/bind my-search-map  "M" #'consult-global-mark                "global mark ring")
+(my/bind my-search-map  "g" #'rg-menu                            "rg menu")
+
+;; Jump map — avy family.  Chord bindings `C-:'/`C-;' live in
+;; `editing/dl-motion.el' as fast escape hatches.
+(my/bind my-jump-map    "j" #'avy-goto-line          "line")
+(my/bind my-jump-map    "c" #'avy-goto-char-timer    "char (timer)")
+(my/bind my-jump-map    "2" #'avy-goto-char-2        "2-char")
+(my/bind my-jump-map    "w" #'avy-goto-word-1        "word")
 
 ;; Eval map — scope ladder over Elisp.  Lowercase reads, uppercase prints.
 (my/bind my-eval-map    "e" #'eval-last-sexp              "last sexp")
@@ -324,10 +336,8 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-toggle-map "D" #'toggle-debug-on-quit             "debug-on-quit")
 (my/bind my-toggle-map "T" #'consult-theme                    "theme")
 (my/bind my-toggle-map "P" #'spacious-padding-mode            "spacious-padding")
-;;(my/bind my-toggle-map "B" #'beacon-mode                      "beacon")
-
-(my/bind my-toggle-map "B" #'tab-line-mode                    "tab-line")
-(my/bind my-toggle-map "B" #'global-tab-line-mode             "global tab-line")
+(my/bind my-toggle-map "B" #'tab-line-mode                    "tab-line (buffer)")
+(my/bind my-toggle-map "G" #'global-tab-line-mode             "tab-line (global)")
 (my/bind my-toggle-map "g" #'diff-hl-mode                     "diff-hl (vcs gutter)")
 (my/bind my-toggle-map "*" #'prettify-symbols-mode            "prettify-symbols")
 (my/bind my-toggle-map ")" #'rainbow-delimiters-mode          "rainbow-delimiters")
@@ -371,6 +381,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
     (cons "w" my-window-map)
     (cons "s" my-search-map)
     (cons "p" my-project-map)
+    (cons "j" my-jump-map)
     (cons "G" my-git-map)
     (cons "n" my-notes-map)
     (cons "o" my-org-map)

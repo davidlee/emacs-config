@@ -54,6 +54,7 @@
 | `C-c w` | `my-window-map`  | windows (arrow keys for direction) |
 | `C-c s` | `my-search-map`  | search (scope ladder — see [Search](#search-c-c-s)) |
 | `C-c p` | `my-project-map` | project (project.el-aligned) |
+| `C-c j` | `my-jump-map`    | jump (avy family; chord escape hatches `C-:` / `C-;` in `dl-motion.el`) |
 | `C-c g` | `my-git-map`     | git (Meow alias: `SPC G` — see Gotchas) |
 | `C-c n` | `my-notes-map`   | notes (sub-prefixes: `N` new, `m` manage, `v` review, `W` work). See [Notes](#notes-c-c-n) and `NOTES.md`. |
 | `C-c o` | `my-org-map`     | org — cross-buffer entry points (clocking, refile, heading jump). In-buffer ops stay at Org's `C-c C-<x>`. |
@@ -226,10 +227,16 @@ live in `completion/dl-consult.el`.
 | `C-c s d` | `consult-find`                    | filenames under project |
 | `C-c s m` | `consult-mark`                    | buffer mark ring |
 | `C-c s M` | `consult-global-mark`             | global mark ring |
+| `C-c s g` | `rg-menu`                         | rg.el transient dispatcher |
 
 Non-prefix globals (Emacs-native escape hatches, configured in
 `dl-consult.el`): `M-y` yank-pop, `M-g g` goto-line, `M-s r`
 ripgrep, `C-x b` switch-buffer.
+
+`rg-enable-default-bindings` was retired in `dl-search.el` — it
+clobbered `C-c s` with `rg-global-map` and broke the family map.
+`rg-menu` is the dispatcher; the common path is `consult-ripgrep`
+at `s r` / `s R` / `M-s r`.
 
 ## Project (`C-c p`)
 
@@ -251,6 +258,23 @@ defaults so muscle memory between the two prefixes is identical.
 | `C-c p e` | `project-eshell`               | eshell at root |
 | `C-c p s` | `project-shell`                | shell at root |
 | `C-c p !` | `project-shell-command`        | one-shot shell command |
+
+## Jump (`C-c j`)
+
+avy family. The chord bindings in `editing/dl-motion.el` (`C-:`
+`avy-goto-char`, `C-;` `avy-goto-char-timer`) are the fast paths;
+this map is the discoverable surface.
+
+| Key | Command | |
+|---|---|---|
+| `C-c j j` | `avy-goto-line`        | line |
+| `C-c j c` | `avy-goto-char-timer`  | char (timer) |
+| `C-c j 2` | `avy-goto-char-2`      | 2-char (rescued from `C-'`, now `embark-dwim`) |
+| `C-c j w` | `avy-goto-word-1`      | word |
+
+`C-,` (was `goto-last-change`) and `C-'` (was `avy-goto-char-2`) were
+reassigned to `embark-act` / `embark-dwim`. `C-.` still gives you
+`goto-last-change-reverse`; rebind forward elsewhere if you miss it.
 
 ## Eval (`C-c e`)
 

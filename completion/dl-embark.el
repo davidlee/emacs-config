@@ -10,8 +10,12 @@
   (vertico-multiform-mode)
   (add-to-list 'vertico-multiform-categories '(embark-keybinding grid))
 
-  :bind (("C-c a"  . embark-act) ; C-. ?
-          ("C-;"   . embark-dwim)
+  ;; `C-,' and `C-'' previously held `goto-last-change' (goto-chg) and
+  ;; `avy-goto-char-2' in `dl-motion.el'; those bindings retired so
+  ;; embark's two primary verbs have working keys.  `C-c a' is
+  ;; reserved for `org-agenda' per Policy.
+  :bind (("C-,"   . embark-act)
+          ("C-'"  . embark-dwim)
           ("C-h B" . embark-bindings))
   :init
   ;; Add the option to run embark when using avy

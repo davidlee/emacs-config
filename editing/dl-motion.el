@@ -7,14 +7,15 @@
   :config
   (add-hook 'xref-backend-functions #'dumb-jump-xref-activate))
 
-;;(use-package avy
-;;  :bind (("M-j" . avy-goto-char-timer)))
-
+;; avy: chord bindings here are escape hatches; the family map lives
+;; centrally at `C-c j' (`my-jump-map') in `core/dl-keymap.el'.
+;; `C-'' previously held `avy-goto-char-2' but was reassigned to
+;; `embark-dwim' — the 2-char variant lives at `C-c j 2' now.
 (use-package avy
-  :bind  ( ("C-:"   . avy-goto-char)
-           ("C-'"   . avy-goto-char-2)
-           ("C-c j" . avy-goto-line)
-           ("C-;"   . avy-goto-char-timer)))
+  :commands (avy-goto-char avy-goto-char-2 avy-goto-char-timer
+              avy-goto-line avy-goto-word-1)
+  :bind (("C-:" . avy-goto-char)
+          ("C-;" . avy-goto-char-timer)))
 
 (use-package ace-window
   :custom
@@ -24,9 +25,11 @@
   :bind (("M-o" . ace-window)))
 
 
+;; `C-,' previously held `goto-last-change' but was reassigned to
+;; `embark-act'.  Reverse direction still at `C-.'; rebind forward
+;; here if you miss it.
 (use-package goto-chg
-  :bind (("C-," . goto-last-change)
-          ("C-." . goto-last-change-reverse)))
+  :bind (("C-." . goto-last-change-reverse)))
 
 
 (use-package git-link) ; https://github.com/sshaw/git-link

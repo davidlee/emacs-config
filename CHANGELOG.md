@@ -2,6 +2,51 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-17 — keymap audit fixes
+
+Audit pass against the freshly-Policy-ied keymap surfaced four real
+bugs and one Policy violation; all addressed.
+
+**Critical: `C-c s` was unreachable.** `dl-search.el` called
+`(rg-enable-default-bindings)`, which does
+`(global-set-key (kbd "C-c s") rg-global-map)` — silently replacing
+`my-search-map` (whose 11 scope-ladder bindings I'd just centralised)
+with rg.el's transient menu. Verified against the live session:
+`C-c s` resolved to `rg-menu`; `C-c s s`/`s p` etc. were unbound.
+Fix: drop `rg-enable-default-bindings`; expose `rg-menu` at `C-c s g`
+in the central map. `consult-ripgrep` remains the common path at
+`s r` / `s R` / `M-s r`.
+
+**`C-c t B` double-bound.** `tab-line-mode` shadowed by
+`global-tab-line-mode` (last-write-wins; `my/bind` collision warning
+fired silently to `*Messages*` on every startup). Fix: `t B` =
+buffer-local `tab-line-mode`, `t G` = `global-tab-line-mode`,
+mirroring the existing `l`/`L` line-numbers pattern.
+
+**Embark had no working keys.** `C-c a embark-act` was overwritten by
+`org-agenda` (correct per Policy clause 6); `C-;  embark-dwim` was
+overwritten by `dl-motion.el`'s `avy-goto-char-timer`. Both embark
+verbs were silently dead. Fix: `C-, embark-act` and `C-' embark-dwim`.
+Displaces `goto-last-change` and `avy-goto-char-2` from those chords.
+`goto-last-change-reverse` stays at `C-.`; `avy-goto-char-2` rescued
+to `C-c j 2`.
+
+**`C-c j` Policy violation.** `dl-motion.el` had
+`("C-c j" . avy-goto-line)` — a single binding squatting on a
+top-level family letter from outside `dl-keymap.el`. Fix: new
+`my-jump-map` at `C-c j` declared centrally (`j j` line, `j c` char
+timer, `j 2` 2-char, `j w` word). Chord bindings `C-:` / `C-;` in
+`dl-motion.el` retained as escape hatches.
+
+**Touched:** `core/dl-keymap.el`, `completion/dl-embark.el`,
+`editing/dl-motion.el`, `editing/dl-search.el`, `KEYS.md`.
+
+Deferred (Policy violations not swept this pass): `C-c q r` /
+`C-c q q` visual-regexp in `dl-search.el` (not lifted central);
+`C-c r …` org-roam (CHANGELOG previously flagged as "wired but
+unused" — candidate for deletion next pass); `C-c S …` slack (the
+whole module is currently disabled at `init.el:76`).
+
 ## 2026-05-17 — keymap policy + tier-1 families fleshed out
 
 Written keybinding policy in `KEYS.md` (three-tier grammar — family

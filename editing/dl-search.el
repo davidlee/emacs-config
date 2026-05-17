@@ -1,8 +1,10 @@
 ;;; dl-search.el --- Search -*- lexical-binding: t; -*-
 
+;; `rg-menu' lives at `C-c s g' via `my-search-map' in
+;; `core/dl-keymap.el'.  `rg-enable-default-bindings' would clobber
+;; `C-c s' with `rg-global-map' and break the family map; don't.
 (use-package rg
-  :config
-  (rg-enable-default-bindings)) ; https://github.com/dajva/rg.el
+  :commands (rg rg-menu rg-dwim))
 
 (use-package visual-regexp-steroids
   :bind
