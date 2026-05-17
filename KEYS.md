@@ -16,12 +16,13 @@
 | `C-c b` | `my-buffer-map` | buffers |
 | `C-c w` | `my-window-map` | windows (arrow keys for direction) |
 | `C-c s` | `my-search-map` | search *(empty)* |
-| `C-c j` | `my-session-map` | easysession (save/load/rename/...) |
+| `C-c j` | `my-session-map` | easysession (currently disabled in `dl-keymap.el`) |
 | `C-c g` | `my-git-map`    | git (Meow alias: `SPC G` — see Gotchas) |
-| `C-c o` | `my-org-map`    | org / open *(empty)* |
+| `C-c n` | `my-notes-map`  | notes (3 sub-prefixes: `N` new-by-class, `m` manage, `v` review). See [Notes](#notes-c-c-n) and `NOTES.md`. |
+| `C-c o` | `my-org-map`    | org / open (only `h` → `consult-org-heading` so far) |
 | `C-c t` | `my-toggle-map` | toggles *(empty)* |
 | `C-c e` | `my-eval-map`   | eval / elisp *(empty)* |
-| `C-c m` | `my-term-map`   | multi-vterm + shpool (Meow alias: `SPC M` — see Gotchas) |
+| `C-c m` | `my-term-map`   | ghostel + shpool (Meow alias: `SPC M` — see Gotchas) |
 | `C-c z` | `my-fold-map`   | fold (kirigami dispatcher — routes to outline / hs / treesit-fold) |
 
 ## Fold (`C-c z`)
@@ -38,6 +39,79 @@ Vim/Evil `z`-prefix mnemonics. Bindings call into [kirigami](https://github.com/
 | `C-c z a` | `kirigami-toggle-fold`   | toggle |
 
 Backend selection lives in `editing/dl-fold.el` — `outline-minor-mode` for lisp/conf/markdown/diff, `hs-minor-mode` for legacy major modes (c, js, sh, ...), `treesit-fold-mode` for the `*-ts-mode` family. No fold backend hooked in → kirigami no-ops.
+
+## Notes (`C-c n`)
+
+Notes corpus is `~/notes/`. **Architecture, classes, capture pipeline,
+metadata conventions, deferred work all live in `NOTES.md`** — this
+section is the keymap only.
+
+Three sub-prefixes under `C-c n`:
+
+- `C-c n N` — new-by-class constructors (`my/denote-new-*`, drops file
+  in the matching subdir + tags it)
+- `C-c n m` — manage / mutate existing notes (rename, edit keywords)
+- `C-c n v` — review surfaces (`my/review-*`)
+
+### Top-level
+
+| Key | Command | |
+|---|---|---|
+| `C-c n c` | `org-capture`                       | capture (templates: `c j s S r p L`) |
+| `C-c n j` | `my/journal-note`                   | open today's Denote-named journal |
+| `C-c n w` | `my/weekly-note`                    | open this week's weekly journal (ISO week) |
+| `C-c n n` | `denote`                            | new note (plain — prompts for class via keywords) |
+| `C-c n f` | `consult-notes`                     | find note (narrow keys: `j w p a s S r i`) |
+| `C-c n s` | `consult-notes-search-in-all-notes` | search across notes |
+| `C-c n l` | `org-store-link`                    | store link |
+| `C-c n i` | `denote-link`                       | insert link |
+| `C-c n o` | `org-open-at-point-global`          | open link |
+| `C-c n g` | `org-mark-ring-goto`                | go back |
+| `C-c n b` | `denote-backlinks`                  | backlinks |
+| `C-c n q` | `org-ql-find`                       | org-ql query dispatcher |
+
+### `C-c n N` — new-by-class
+
+| Key | Command | Subdir | Class tag |
+|---|---|---|---|
+| `C-c n N p` | `my/denote-new-project`   | `projects/`   | `:project:` |
+| `C-c n N a` | `my/denote-new-area`      | `areas/`      | `:area:` |
+| `C-c n N s` | `my/denote-new-source`    | `sources/`    | `:source:` |
+| `C-c n N S` | `my/denote-new-slip`      | `slips/`      | `:slip:` |
+| `C-c n N r` | `my/denote-new-reference` | `references/` | `:reference:` |
+| `C-c n N i` | `my/denote-new-index`     | `indexes/`    | `:index:` |
+| `C-c n N j` | `my/journal-note`         | `journal/`    | `:journal:` |
+| `C-c n N w` | `my/weekly-note`          | `weekly/`     | `:weekly:` |
+
+### `C-c n m` — manage
+
+| Key | Command | |
+|---|---|---|
+| `C-c n m r` | `denote-rename-file`                    | rename file (prompts) |
+| `C-c n m R` | `denote-rename-file-using-front-matter` | rename from `#+title:` / `#+filetags:` |
+| `C-c n m k` | `denote-rename-file-keywords`           | edit keyword set (add + remove in one prompt) |
+| `C-c n m t` | `denote-rename-file-title`              | retitle (filename slug + `#+title:`) |
+
+### `C-c n v` — review
+
+| Key | Command | What it surfaces |
+|---|---|---|
+| `C-c n v i` | `my/review-inbox`                  | `inbox.org`, point at first TODO |
+| `C-c n v I` | `my/review-intake`                 | Dired `intake/`, newest first |
+| `C-c n v w` | `my/review-weekly`                 | weekly note + side-window of WAITING items |
+| `C-c n v s` | `my/review-stale`                  | WAITING items with no timestamp in `my/review-stale-days` (7) |
+| `C-c n v r` | `my/review-references-retained`    | ripgrep `references/` for `status: raw` |
+| `C-c n v u` | `my/review-references-untrusted`   | ripgrep `references/` for `:untrusted:` / `trust: unreviewed` |
+
+### Other org binds (`C-c o`)
+
+| Key | Command | |
+|---|---|---|
+| `C-c o h` | `consult-org-heading` | in-buffer outline search (consult bundles consult-org) |
+
+Global Org short forms (kept for muscle memory): `C-c c` capture, `C-c
+l` store-link, `C-c a` agenda. The `C-c n c` / `C-c n l` namespaced
+forms are aliases for discoverability.
 
 ## Adding a binding
 
@@ -101,7 +175,8 @@ Declare autoloads on the source package with `:commands`. Then bind centrally:
 
 ## Deferred
 
-- **Populate empty maps** (`my-search-map`, `my-org-map`, `my-eval-map`). The prefix, which-key label, and Meow mirror are all wired — just add `my/bind` lines.
+- **Populate empty maps** (`my-search-map`, `my-eval-map`, `my-toggle-map` partial). The prefix, which-key label, and Meow mirror are all wired — just add `my/bind` lines. `my-org-map` now holds `consult-org-heading`; `my-notes-map` is fully populated (see [Notes](#notes-c-c-n)).
+- **Re-enable session map**. `my-session-map` (`C-c j`) and its easysession binds are commented out in `dl-keymap.el`. Uncomment if the easysession workflow is back in play, otherwise drop the which-key label too.
 - **Migrate package `:bind` clauses** into the prefix structure as you touch each file: `dl-consult.el`, `dl-embark.el`, `dl-motion.el`, `dl-search.el`, `dl-fold.el`.
 - **Hydras**. Package installed, no hydras yet. Window resize is the natural first one — bind under `C-c w` once defined.
 - **`C-c t` collision watch**. `multi-vterm` and shpool now live at `C-c m`, but the toggle map is empty — when populating it, mind the existing `C-c t C-c t` / `C-c t C-h` use-package conventions some major modes still grab.

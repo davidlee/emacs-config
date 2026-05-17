@@ -2,6 +2,66 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-17 — notes system overhaul, Phase 7 (root-note triage)
+
+Content-level work in `~/notes/`. No Emacs-config changes — just
+re-homing the 6 root-level Denote notes left after Phase 1 into class
+subdirs, and adding the reference metadata block to the 2 LLM-era
+markdowns so the Phase 6 review queries start surfacing them.
+
+**Re-homing.** Six `git mv`s, history preserved. Classification:
+
+| Note | New dir | Signal |
+|---|---|---|
+| `substrate__emacs_idea_project_tech.org` | `projects/` | `:project:` tag in filename |
+| `emacs-note-system__emacs_org_project_tech.org` | `projects/` | `:project:` tag in filename |
+| `ricing-emacs__emacs_oss_tech.org` | `projects/` | content: TODO/NEXT list of emacs packages = active workstream |
+| `risk-governance-glossary__…` | `indexes/` | content: glossary ≡ index per plan |
+| `proficiency-with-emacs__emacs_org_pkm_tech.org` | `areas/` | content: topic map for ongoing emacs learning |
+| `orchestration__ai_design_dev_tech.org` | `areas/` | content: standing principles in a domain |
+
+The plan said all 6 had explicit class tags. Only 2 actually did; the
+rest were classified from content. No external file-path-based links
+existed (only the files' own `#+identifier:` lines reference them) so
+no link surgery was needed. Denote-id-based links would survive a
+move regardless.
+
+Note for `ricing-emacs` in `projects/`: agenda now pulls in its
+TODO/NEXT items (`dl-notes-projects-dir` is in `org-agenda-files`).
+That's the intended shape of project-tier notes; if any item should
+not be agenda-visible, change its keyword.
+
+**Reference metadata.** Both Markdown references in `references/`
+gained the metadata block the Phase 1 plan specified
+(`status: raw`, `trust: unreviewed`, `captured-at:`). Each updated
+its `tags:` list to start with `reference`. The plan said both were
+LLM-generated; only one actually is:
+
+- `pkm-research-report__pkm_research_slop.md` — LLM-generated (has
+  ChatGPT/Claude `citeturn…` citation markers). Tags now include
+  `reference, llm, untrusted`; `source: llm-generation` added.
+- `how-a-researcher-uses-denote__emacs_pkm_web.md` — human-written
+  blog post from lambdaland.org. Tags include `reference, web`;
+  `source-url: https://lambdaland.org/posts/2025-07-11_research_notes/`
+  added; trust still `unreviewed` until reviewed.
+
+**Verification.** Both Phase 6 review queries now match:
+`my/review-references-retained` (ripgrep `status: raw`) → 2 hits.
+`my/review-references-untrusted` (ripgrep `untrusted` /
+`trust: unreviewed`) → 2 hits.
+
+**Out of scope:** `~/tasks/{10_daily, 20_weekly, 30_projects,
+50_notes}` legacy markdown (per plan: "out of scope for the Emacs
+config but flagged"). Single-format `archive/`, `attachments/`,
+`intake/` triage is also a content task and will happen as captures
+roll through.
+
+That closes the planned overhaul. Phases 1-7 done; everything left is
+either content (triaging incoming captures) or downstream
+elaborations (more `dl-review` queries, more capture templates as
+they earn their keep, eventual `dl-citar.el` if a bibliography ever
+materializes).
+
 ## 2026-05-17 — notes system overhaul, Phase 6 (review module)
 
 Phase 6: `org/dl-review.el` lands with six review commands wired
