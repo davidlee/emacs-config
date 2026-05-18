@@ -1,15 +1,59 @@
 # SATAN — Local Agent Runtime
 
-Living document.  Counterpart: `SATAN.local.md` (design brief, frozen).
-This file captures what is built, how it runs, where it lives, the
-gotchas, and the open threads.  Update on every meaningful change.
+Living document. Covers both governing architecture and current
+operational state. Update on every meaningful change.
+
+Companion: `CHANGELOG.md` (dated, narrative log of what landed).
+
+## One-sentence summary
+
+SATAN is a local, Emacs-mediated, org-backed, harness-agnostic agent
+runtime whose model-facing mind lives in `~/notes/satan`, whose
+authority is constrained by a broker-enforced tool membrane, and whose
+evolution should remain text-first, auditable, proposal-driven, and
+deliberately narrow.
+
+## Purpose
+
+SATAN is a local, text-first agent runtime for personal orchestration.
+Not a chatbot, not a general-purpose automation daemon, not an
+autonomous shell with a personality. A constrained local system that
+periodically reads selected personal context, reasons over it through a
+model/harness, and produces bounded, inspectable effects through a
+trusted broker.
+
+SATAN exists to help maintain alignment between stated intentions,
+daily behaviour, notes and memories, projects and obligations,
+recurring patterns, and local tools/workflows.
+
+Design priority: **safe, inspectable, evolvable agency** — not maximum
+agency.
+
+## Core thesis
+
+SATAN's identity is not any particular model, harness, editor, or CLI.
+It is defined by its durable local "DNA":
+
+```text
+ROM prompt
++ self-authored memory
++ permission model
++ jail/runtime constraints
++ tool/action protocol
++ invocation schedule
++ audit trail
+```
+
+Models are interchangeable. Harnesses are interchangeable. The broker
+may evolve. The identity and governance rules should remain coherent
+across those changes.
 
 ## Status
 
 | Phase | Status | Notes |
 |---|---|---|
 | 1 — broker + JSONL + fake harness | ✅ | landed 2026-05-19 |
-| 2A — real LLM harness (OpenRouter) | ✅ | landed 2026-05-19 |
+| 2A — real LLM harness (OpenRouter) | ✅ | landed 2026-05-19, smoke-tested live |
 | 2B — `notify.send` tool | ✅ | landed 2026-05-19 |
 | 2C — `memory.add_candidate` tool | ✅ | landed 2026-05-19, raw `find-file` review |
 | 2D — `self-edit` mode | ✅ | landed 2026-05-19, SATAN-only scope |
@@ -18,10 +62,10 @@ gotchas, and the open threads.  Update on every meaningful change.
 
 `M-x my/satan-run RET morning` writes a SATAN-owned block into today's
 daily note and a full audit bundle under `~/notes/satan/runs/<run-id>/`.
-`motd` writes `~/notes/satan/motd.txt`.  `self-edit` stages proposals
+`motd` writes `~/notes/satan/motd.txt`. `self-edit` stages proposals
 under `~/notes/satan/proposals/` — nothing auto-applies.
 
-Tests: 24/24 unit ert + 8/8 python unittest + 1/1 integration ert.
+Tests: 31/31 unit ert + 8/8 python unittest + 1/1 integration ert.
 
 ## Quickstart
 
@@ -42,6 +86,293 @@ emacsclient --eval '(dl-satan-audit-verify-run "/home/david/notes/satan/runs/<RU
 The wrapper script `~/.emacs.d/satan/bin/satan-run <mode>` invokes
 `emacsclient --eval` and is what the systemd units call.
 
+## Architectural center of gravity
+
+```text
+systemd / manual invocation
+        ↓
+Emacs broker            (trusted authority)
+        ↓
+jailed harness/model    (untrusted reasoning)
+        ↓
+JSONL protocol          (membrane)
+        ↓
+broker-owned tools and output handlers
+        ↓
+org/denote/bough/local surfaces
+```
+
+Emacs is the trusted local broker. Org/Denote are the canonical
+personal text substrate. `bough` is a graph/cache/metadata/index layer
+around that substrate, not the primary owner of reality. The model is
+a reasoning engine, not trusted with direct authority.
+
+## Conceptual layers
+
+### Invocation
+Defines when and why SATAN runs (morning, evening, MOTD, weekly review,
+manual self-edit). Explicit, scheduled, inspectable, boring. SATAN does
+not decide for itself when to wake up except through mechanisms the
+user has explicitly installed.
+
+### Broker
+Trusted authority. Owns mode resolution, context assembly,
+prompt/memory loading, permission profile selection, process
+lifecycle, JSONL handling, tool dispatch, action validation, output
+handling, audit logging. The broker enforces policy; the model
+proposes.
+
+### Harness adapter
+Talks to a model or model-running environment (OpenRouter, gptel,
+pi.dev, zerostack, local model runner, fake test harness).
+Replaceable. Translates between the SATAN protocol and the
+harness-specific interface. No adapter should become the canonical
+definition of SATAN behaviour.
+
+### Model
+Performs reasoning. Receives model-facing prompts, relevant memory,
+selected context, tool manifest, output contract. Emits tool calls,
+logs, final structured output. Must not receive ambient authority;
+can only request named capabilities through the broker.
+
+### Tool
+Broker-owned capability. Not "whatever shell command the model wants."
+Named, validated operation with risk level, capability requirement,
+argument schema, mode allowlist, implementation handler, model-facing
+description. The description is advisory; the broker-side handler and
+policy are authoritative.
+
+### Output
+Final model output is not automatically trusted. The output handler
+validates, classifies, and routes requested effects: apply low-risk
+owned writes; stage proposals; reject invalid actions; record failures;
+notify locally if permitted; update audit artifacts. Mode-specific.
+
+### State
+Local, text-first, inspectable. ROM prompt fragments, mode prompts,
+tool descriptions, memory, proposals, run logs, owned daily-note
+blocks, MOTD/status surfaces. Favour files the user can read, diff,
+grep, review, and version.
+
+## Ownership: mind vs mechanism
+
+**Invariant.** All model-facing behavioural text lives under
+`~/notes/satan`. Dotfiles may define mechanisms, validators, handlers,
+and capability checks, but must not be the canonical source for
+prompts, tool descriptions, behavioural instructions, examples, or
+model-facing policy.
+
+```text
+Dotfiles contain mechanism.
+~/notes/satan contains mind.
+```
+
+| Concern | Owner |
+|---|---|
+| ROM/system prompt, mode prompts | `~/notes/satan/prompts/<mode>.txt` |
+| shared system scaffold | `~/notes/satan/system/scaffold.txt` |
+| per-tool description (model-facing) | `~/notes/satan/tools/<tool-name>.md` |
+| `satan.final` description (synthetic terminal tool) | `~/notes/satan/tools/satan.final.md` |
+| examples / few-shot snippets, style instructions, memory policy | `~/notes/satan/` |
+| candidate and confirmed memories, staged proposals | `~/notes/satan/{memory,proposals}/` |
+| tool name / risk / schema / capability / handler | elisp tool-spec (`dl-satan-tools-*.el`) |
+| mode allowlist / harness / jail / timeouts / budgets | elisp mode-spec (`dl-satan-mode.el`) |
+| JSONL protocol, validation, dispatch, audit, jailing | elisp (`dl-satan-*.el`) |
+
+The broker assembles `manifest.json` by joining the two halves: each
+allowed tool's full OpenAI-tools JSON Schema is built from the elisp
+schema (mechanism) plus the notes-owned description (mind). The harness
+consumes `manifest["tools"]` verbatim — it holds no canonical
+descriptions of its own. Missing notes-side files signal at run-start
+rather than degrading silently.
+
+Rule of thumb: if changing the text could change what the model
+chooses to do, it belongs in `~/notes/satan`.
+
+## Source of truth
+
+- **Canonical personal substrate**: org/denote notes. SATAN may read
+  broadly through selected context assemblers, but writes only to
+  explicit owned regions or staged artifacts.
+- **Derived operational layer**: `bough` may cache, index, relate,
+  enrich, or project org/denote state. Treat as reconstructable unless
+  explicitly promoted. Operationally useful, not canonical.
+- **SATAN-owned state**: lives under `~/notes/satan` — memory,
+  proposals, run summaries, prompt material, owned output surfaces.
+
+## Read broadly, write narrowly
+
+Safety depends on asymmetric access. SATAN may read selected personal
+context broadly, subject to mode and privacy policy. It may write only
+through narrow broker-controlled surfaces: SATAN-owned org blocks,
+SATAN memory/candidate files, SATAN proposal files, SATAN MOTD/status
+files, local notifications, other explicitly registered low-risk
+surfaces. All other effects should be staged as proposals.
+
+## Proposal-first agency
+
+Prefer proposals over direct mutation. Direct writes are appropriate
+only when:
+
+- target surface is owned by SATAN
+- operation is low risk
+- mode permits auto-application
+- action validates against the tool/action contract
+- audit log records it
+
+Higher-risk actions stage. Examples requiring proposal or explicit
+review: self-editing ROM/prompt/tool behaviour; expanding write scope;
+changing capability policy; destructive edits; outbound communications
+beyond local notification; code changes; bough structural mutation;
+calendar/email/chat actions; loading generated elisp.
+
+Central pattern:
+
+```text
+observe → infer → propose → validate → apply or stage → audit
+```
+
+## Self-modification governance
+
+Self-editing is allowed but constrained. SATAN may propose changes to
+prompts, tool descriptions, memory policy, style, mode behaviour,
+future tools, local documentation.
+
+SATAN must not silently apply changes to: ROM prompt, tool
+implementations, permission model, jail profile, self-edit scope,
+executable code.
+
+Self-edit proposals include: target, rationale, expected effect, risk,
+rollback path where applicable, diff or concrete replacement text.
+Generated code is never auto-loaded merely because SATAN wrote it.
+
+## Harness and model agnosticism
+
+Core protocol stays stable and simple enough that multiple adapters
+can implement it. The broker should not depend on one provider's
+tool-call format, one model's JSON behaviour, one CLI's terminal
+transcript conventions, or one frontend's prompt assembly model.
+
+Preferred boundary:
+
+```text
+broker writes manifest/context/prompt bundle
+harness reads bundle
+harness emits JSONL protocol messages
+broker validates and responds
+```
+
+Harness-specific conventions belong in adapters, not in SATAN's
+conceptual core.
+
+## Protocol governance
+
+Boring on purpose: newline-delimited JSON; explicit message types; no
+transcript scraping; no free-text command parsing; structured tool
+calls, results, finals; auditable transcript; strict validation at the
+broker boundary.
+
+The protocol is a membrane between untrusted reasoning and trusted
+local action. Optimise for: debuggability, testability, portability,
+crash recovery, explicit failure states, replayable audit logs.
+
+## Permission governance
+
+Capability-based. A mode grants capabilities; a tool requires
+capabilities; an action is allowed only if the mode, tool, risk
+policy, and validator all agree. Avoid vague categories like "trusted
+model" or "safe prompt." Use explicit capabilities: read context,
+write owned daily block, write MOTD, stage proposal, add candidate
+memory, send local notification, query bough, propose self-edit. The
+model is never the authority on whether an action is safe.
+
+## Memory governance
+
+Inspectable and revisable. Lifecycle:
+
+```text
+observation → candidate memory → reviewed memory → confirmed / rejected / expired
+```
+
+Include provenance where possible. A memory should not become permanent
+merely because the model inferred it once. Important classes:
+preference, behavioural pattern, standing constraint, project fact,
+operating principle, rejected inference, stale/expired belief. Memory
+helps SATAN behave consistently without becoming an opaque personality
+accretion.
+
+## Outbound communication governance
+
+Start local and narrow. Permitted low-risk surfaces: desktop
+notification, MOTD/status text, SATAN-owned daily-note block, proposal
+file, memory candidate file. Higher-impact outbound (email, chat,
+calendar mutation, issue/PR comments, public posting, external API
+mutation) requires explicit review. SATAN does not become socially or
+operationally active by accident.
+
+## Jail and runtime governance
+
+Least privilege. The jail exposes only: prepared input bundle; allowed
+scratch/output paths; necessary model-provider network access if
+applicable; controlled environment variables. It does not expose:
+arbitrary home directory, secrets, SSH keys, browser profile, mail,
+full note tree with write access, database credentials, unrestricted
+shell authority. If the model needs access to something sensitive, it
+requests a broker tool.
+
+## Audit governance
+
+Every run is explainable after the fact. A run answers:
+
+- Which mode ran?
+- What prompt material was used?
+- What memory was visible?
+- What context was visible?
+- Which harness and model executed?
+- Which tools were available?
+- Which tool calls were requested?
+- Which tool calls were allowed or denied?
+- What final output was produced?
+- Which actions were applied, staged, rejected, or failed?
+- What errors occurred?
+
+Auditability is a core feature, not debug scaffolding.
+
+## Evolution principles
+
+When extending SATAN, prefer changes that preserve or strengthen these
+properties:
+
+1. **Local first** — durable state remains local and inspectable.
+2. **Text first** — behaviour and memory visible as text where practical.
+3. **Broker enforced** — enforcement in the trusted broker, not in prompt wording.
+4. **Harness agnostic** — new runtimes plug in behind the protocol.
+5. **Proposal first** — risky actions are staged before applied.
+6. **Read broad, write narrow** — write surfaces stay explicit and small.
+7. **Self-edit cautiously** — reflexive behaviour produces reviewable proposals, not silent mutation.
+8. **No ambient authority** — models/harnesses never inherit broad host access by default.
+9. **Make drift visible** — behaviour/prompt/memory/permission changes auditable.
+10. **Small useful loops beat grand autonomy** — a good daily block beats a half-trusted general agent.
+
+## Architectural smells
+
+Warning signs (not always forbidden, but require explicit
+justification):
+
+- prompts or tool descriptions hardcoded in dotfiles
+- harness-specific logic leaking into the broker
+- model-visible behaviour changing without notes-repo diffs
+- new tools with broad shell/file/database access
+- terminal transcript scraping as protocol
+- generated code auto-loaded without review
+- self-edit scope expanding before review UX matures
+- memories accumulating without confirmation/rejection
+- noisy notifications with low utility
+- bough becoming canonical by accident
+- audit artifacts missing or incomplete
+- model-declared risk accepted as authoritative
+- convenience bypasses around capability checks
+
 ## File map
 
 ### Emacs (`~/.emacs.d/satan/`)
@@ -50,20 +381,20 @@ The wrapper script `~/.emacs.d/satan/bin/satan-run <mode>` invokes
 |---|---|
 | `dl-satan.el` | Aggregator + `my/satan-run`. |
 | `dl-satan-mode.el` | Mode registry; modes `morning`, `motd`, `self-edit`. |
-| `dl-satan-tools.el` | Tool registry, dispatch, schema validator. |
+| `dl-satan-tools.el` | Tool registry, dispatch, schema validator, JSON-Schema builder (from notes descriptions). |
 | `dl-satan-tools-org.el` | Handlers: `org.read_context`, `org.update_owned_block`, `proposal.stage`. |
 | `dl-satan-tools-notify.el` | `notify.send` (D-Bus). |
 | `dl-satan-tools-memory.el` | `memory.add_candidate`; `my/satan-memory-candidates`. |
-| `dl-satan-context.el` | Per-mode bundle assembly (incl. `dl-satan-context-self-edit`). |
+| `dl-satan-context.el` | Per-mode bundle assembly; strict `--read-required`; scaffold assembly. |
 | `dl-satan-output.el` | Mode output handlers (`morning`, `motd`, `self-edit`). |
 | `dl-satan-block.el` | Owned-block find/replace. |
 | `dl-satan-jsonl.el` | Line-buffered filter + writer + `dl-satan-jsonl-prepare`. |
 | `dl-satan-audit.el` | Append-only artifact writer + 6-predicate verifier. |
-| `dl-satan-broker.el` | `make-process` driver: sentinel, timeout, direnv, op:// resolution, env pass. |
+| `dl-satan-broker.el` | `make-process` driver: sentinel, timeout, direnv, op:// resolution, env pass; `--build-manifest`. |
 | `bin/satan-run` | Shell wrapper (`emacsclient --eval`). |
 | `harness/gptel_harness.py` | OpenAI-compatible chat-completions driver; `Provider` ABC + `OpenRouterProvider`. |
 | `harness/test_gptel_harness.py` | 8 stdlib unittest cases, no network. |
-| `test/dl-satan-test.el` | 24 unit ert. |
+| `test/dl-satan-test.el` | 31 unit ert. |
 | `test/dl-satan-integration-test.el` | 1 e2e ert (skips unless `SATAN_TEST_JAIL_BIN` set). |
 
 ### Wiring
@@ -73,10 +404,10 @@ The wrapper script `~/.emacs.d/satan/bin/satan-run <mode>` invokes
 - `~/flakes/modules/home/emacs.nix` — `"satan"` in `configDirs`.
 - `~/.emacs.d/flake.nix` — `satanFakeHarness`, `satanGptelHarness`,
   `satanJailOptions`, `satanGptelJailOptions`,
-  `satan-jailed-fake-harness`, `satan-jailed-gptel-harness`.  Devshell
+  `satan-jailed-fake-harness`, `satan-jailed-gptel-harness`. Devshell
   exposes both binaries on PATH; broker's `direnv-env` plumbing picks
   them up at spawn.
-- `~/flakes/modules/home/satan.nix` — imported by Sleipnir.  Units
+- `~/flakes/modules/home/satan.nix` — imported by Sleipnir. Units
   `satan-morning.{service,timer}` (07:30) and
   `satan-motd.{service,timer}` (07:00).
 
@@ -84,7 +415,7 @@ The wrapper script `~/.emacs.d/satan/bin/satan-run <mode>` invokes
 
 ```
 ~/notes/satan/
-  prompts/                           # mode prompts (was: ~/.emacs.d/satan/prompts/)
+  prompts/                           # mode prompts
     morning.txt
     motd.txt
     self-edit.txt
@@ -112,34 +443,6 @@ The wrapper script `~/.emacs.d/satan/bin/satan-run <mode>` invokes
     status                           # done | failed | timed-out | invalid-protocol
 ```
 
-## Ownership: mind vs mechanism
-
-**Invariant.** All model-facing behavioural text lives under
-`~/notes/satan`. Dotfiles may define mechanisms, validators, handlers,
-and capability checks, but must not be the canonical source for
-prompts, tool descriptions, behavioural instructions, examples, or
-model-facing policy.
-
-| Concern | Owner |
-|---|---|
-| mode prompts | `~/notes/satan/prompts/<mode>.txt` |
-| shared system scaffold | `~/notes/satan/system/scaffold.txt` |
-| per-tool description (model-facing) | `~/notes/satan/tools/<tool-name>.md` |
-| `satan.final` description (synthetic terminal tool) | `~/notes/satan/tools/satan.final.md` |
-| tool name / risk / schema / capability / handler | elisp tool-spec (`dl-satan-tools-*.el`) |
-| mode allowlist / harness / jail / timeouts / budgets | elisp mode-spec (`dl-satan-mode.el`) |
-| JSONL protocol, validation, dispatch, audit, jailing | elisp (`dl-satan-*.el`) |
-
-The broker assembles `manifest.json` by joining the two halves: each
-allowed tool's full OpenAI-tools JSON Schema is built from the elisp
-schema (mechanism) plus the notes-owned description (mind). The harness
-consumes `manifest["tools"]` verbatim — it holds no canonical
-descriptions of its own. Missing notes-side files signal at run-start
-rather than degrading silently.
-
-Rule of thumb: if changing the text could change what the model
-chooses to do, it belongs in `~/notes/satan`.
-
 ## Modes
 
 | Mode | Tools | Auto-apply | Budget tokens / tool-calls / wall |
@@ -164,8 +467,8 @@ Override per-mode in `dl-satan-mode.el`: `:provider`, `:model`,
 
 The python harness intercepts a synthetic `satan.final(summary,
 actions[])` tool call as the terminal signal and emits the broker's
-`final` record.  Plain-content responses with no tool calls are coerced
-into `final` with `reason=no_tool_calls`.  Budget exhaustion: harness
+`final` record. Plain-content responses with no tool calls are coerced
+into `final` with `reason=no_tool_calls`. Budget exhaustion: harness
 self-terminates with `reason=budget_tokens`.
 
 ## Operations
@@ -218,8 +521,8 @@ Inert to org's dblock updater; `dl-satan-block-replace` is idempotent.
 
 Elisp lists become objects unless coerced to vectors.
 `dl-satan-jsonl-prepare` walks payloads: plists (car keyword) preserved;
-non-plist lists → vectors; recurses.  Applied at every JSON write
-boundary (audit, outbound send).  **Never call `json-serialize` directly
+non-plist lists → vectors; recurses. Applied at every JSON write
+boundary (audit, outbound send). **Never call `json-serialize` directly
 on a SATAN payload.**
 
 ### Failed-action shape
@@ -241,7 +544,7 @@ Means the jailed binary lives in the `.emacs.d` devshell; no global
 ### Jail env
 
 `SATAN_RUN_ID`, `SATAN_PROVIDER`, `SATAN_MODEL`, `SATAN_BUDGET_TOKENS`
-forwarded via `try-fwd-env`.  `SATAN_RUN_DIR`, `SATAN_HIPPOCAMPUS` set
+forwarded via `try-fwd-env`. `SATAN_RUN_DIR`, `SATAN_HIPPOCAMPUS` set
 to fixed paths inside the jail (`/satan/run`, `/satan/hippocampus`).
 `$HOME/notes` is ro-bound to `/satan/notes`.
 
@@ -249,13 +552,13 @@ to fixed paths inside the jail (`/satan/run`, `/satan/hippocampus`).
 
 Mode `:provider` symbol maps via `dl-satan-broker-provider-key-vars`
 (`openrouter` → `OPENROUTER_API_KEY`, plus `anthropic`, `openai`,
-`deepseek`).  Broker calls `my/op-read-env` at spawn to resolve any
+`deepseek`). Broker calls `my/op-read-env` at spawn to resolve any
 `op://` ref to plaintext, wrapped in `condition-case` so a locked 1P
-doesn't crash the run.  Resolved plaintext is forwarded into the jail.
+doesn't crash the run. Resolved plaintext is forwarded into the jail.
 
 ### Four traps from the Nix integration
 
-(See `AGENTS.md` for the full table.  Repeated here for SATAN-specific
+(See `AGENTS.md` for the full table. Repeated here for SATAN-specific
 relevance.)
 
 1. **Flake builds see only git-tracked files** — `git add` new `.el` or
@@ -265,9 +568,8 @@ relevance.)
    `use-package` blocks here), but watch in surrounding modules.
 3. **Never `setq` preloaded native-comp vars** — n/a for SATAN.
 4. **`trusted-content` entries must be `~/` form** — n/a for SATAN.
-
 5. **`writePython3Bin` lints with ruff** — `import x, y, z` fails E401;
-   `def f(): ...` one-liners fail E704.  See `flake.nix` `flakeIgnore`
+   `def f(): ...` one-liners fail E704. See `flake.nix` `flakeIgnore`
    list for the codes we currently silence.
 
 ### Naming
@@ -283,31 +585,30 @@ relevance.)
 
 Numbered for cross-referencing in commits / changelog.
 
-1. **Real-API live smoke** — never executed against openrouter from
-   inside Emacs.  Manual: `M-x my/satan-run RET morning` while 1P is
-   unlocked; verify daily-note SATAN block + `transcript.jsonl`
-   `log` events with `usage`.
+1. **Real-API live smoke** — ✅ done 2026-05-19. Morning run against
+   OpenRouter produced a daily-note SATAN block and a full
+   `transcript.jsonl` with `usage` log events.
 2. **`org-roam` backlinks in morning context** —
    `dl-satan-context-morning` currently only dumps today's note text +
-   prompt.  Surfacing backlinks for unresolved-loop items would let the
+   prompt. Surfacing backlinks for unresolved-loop items would let the
    model thread yesterday's open questions into today's plan.
 3. **Memory / proposal review UX (magit-style)** — v1 is raw
-   `find-file` / dired (`my/satan-memory-candidates`).  When volume
+   `find-file` / dired (`my/satan-memory-candidates`). When volume
    warrants, a `magit-status`-style buffer over `proposals/` +
    `memory/candidates/` with `a`pply / `r`eject / `s`nooze actions.
 4. **Budget-exhaustion UX** — harness self-terminates with a synthetic
-   `final{reason=budget_tokens}`.  Smoother: emit a `system` log
+   `final{reason=budget_tokens}`. Smoother: emit a `system` log
    message, let the LLM wind down naturally with its own `satan.final`
    on the next turn.
 5. **Pi / Zerostack harness adapter** — same `Provider` interface,
-   different runtime.  Plug-in via env (`SATAN_PROVIDER=pi`).  Not
+   different runtime. Plug-in via env (`SATAN_PROVIDER=pi`). Not
    started.
 6. **Self-describing manifest** — ✅ done 2026-05-19 (phase 2E).
    Broker writes full JSON Schema for each allowed tool into
    `manifest.json["tools"]`; harness reads verbatim. Descriptions are
    loaded from `~/notes/satan/tools/<name>.md` (mind/mechanism split).
 7. **Self-edit scope expansion** — currently
-   `dl-satan-self-edit-root = ~/.emacs.d/satan/`.  Broader (full
+   `dl-satan-self-edit-root = ~/.emacs.d/satan/`. Broader (full
    `~/.emacs.d/`) is on the table when SATAN's edit suggestions prove
    trustworthy.
 8. **`org.read_context` scope coverage** — only `today | week | inbox`.
@@ -320,8 +621,29 @@ Numbered for cross-referencing in commits / changelog.
    needs a small templating layer. Defer until a second context
    section appears that wants the same treatment.
 
-## Counterpart
+## Preferred shape of future work
 
-- `SATAN.local.md` — design brief, frozen.  Read first for intent and
-  invariants.  This file (`SATAN.md`) for current state.
-- `CHANGELOG.md` — dated, narrative log of what landed.
+Improvements usually fall into one of these categories:
+
+- **Better context** — agenda; backlinks; recently-edited notes;
+  unresolved loops; bough graph queries; project summaries.
+- **Better review** — proposal review UI; memory review UI;
+  accept/reject/snooze flows; diff-based self-edit review.
+- **Better portability** — second harness adapter; self-describing
+  manifests (done — phase 2E); provider-neutral tool schema generation.
+- **Better governance** — clearer capability policy; stronger audit
+  verification; narrower jail profiles; better failure handling.
+- **Better usefulness** — daily planning loop; evening reflection loop;
+  weekly pattern review; capture triage; MOTD/status loop.
+
+Avoid adding autonomy before improving review, audit, and context.
+
+## When implementation conflicts with this document
+
+Either:
+
+1. change the implementation to restore the invariant, or
+2. deliberately revise this document and explain why the governing
+   principle changed.
+
+Do not let accidental implementation drift become architecture.

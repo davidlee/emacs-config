@@ -2,6 +2,51 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-19 — SATAN: mind/mechanism split (phase-2 E)
+
+All model-facing behavioural text now lives under `~/notes/satan/`;
+dotfiles hold mechanism only. Invariant: if changing the text could
+change what the model decides to do, it belongs in the notes repo, not
+this one.
+
+- Moved `satan/prompts/{morning,motd,self-edit}.txt` →
+  `~/notes/satan/prompts/`. New `~/notes/satan/system/scaffold.txt`
+  (shared termination instruction). New `~/notes/satan/tools/<name>.md`
+  per tool (incl. `satan.final`).
+- `satan/dl-satan-mode.el` — `dl-satan-prompts-dir` default rebased on
+  `dl-notes-root`.
+- `satan/dl-satan-context.el` — new `dl-satan-context--read-required`
+  (signals on missing), `dl-satan-system-scaffold-file` defcustom,
+  `dl-satan-context--assemble-prompt` returns
+  `scaffold + "\n\n" + mode`.
+- `satan/dl-satan-tools.el` — new `dl-satan-tools-descriptions-dir`,
+  description loader, `dl-satan-tool-json-schema` (assembles
+  OpenAI-tools dict from elisp schema + notes description),
+  `dl-satan-tool-final-schema` for the synthetic terminal tool.
+- `satan/dl-satan-tools-{org,notify,memory}.el` — dropped
+  `:description` from tool specs; no canonical source in dotfiles.
+- `satan/dl-satan-broker.el` — extracted
+  `dl-satan-broker--build-manifest`; manifest now carries `:tools` as
+  full JSON Schemas (incl. `satan.final`); unknown tool in mode
+  allowlist signals.
+- `satan/harness/gptel_harness.py` — deleted `TOOL_SCHEMAS`,
+  `SATAN_FINAL_SCHEMA`, and the hardcoded termination paragraph.
+  `build_tools(manifest)` returns `manifest["tools"]` verbatim; missing
+  tools array errors out before any model call.
+- Failure mode: missing prompt/scaffold/tool-description signals at
+  run start; no partial behaviour.
+- Tests: +7 ert (`context/missing-prompt`, `context/missing-scaffold`,
+  `tools/json-schema-from-notes`, `tools/json-schema-includes-enum`,
+  `tools/missing-description-errors`,
+  `tools/final-schema-uses-notes-description`,
+  `broker/manifest-tools-shape`); python `build_tools` /
+  `build_system_prompt` tests rewritten around the new contract.
+  31/31 unit ert + 8/8 python unittest + 1/1 integration ert green.
+- SATAN.md: new Ownership section + invariant, updated file map,
+  closed open thread #6 (self-describing manifest done), added new
+  open thread for `build_system_prompt` bundle-section headers (still
+  inlined in python).
+
 ## 2026-05-19 — SATAN: self-edit mode (phase-2 D)
 
 Adds a `self-edit` mode that feeds the entire SATAN source tree to the
