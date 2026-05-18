@@ -1,4 +1,4 @@
-# SATAN — Local Agent Runtime
+# SATAN — Scheduled Agent for Textual Attention and Notes
 
 Living document. Covers both governing architecture and current
 operational state. Update on every meaningful change.
