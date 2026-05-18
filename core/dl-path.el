@@ -1,6 +1,6 @@
 ;;; dl-path.el --- Load & Exec Paths -*- lexical-binding: t; -*-
 (defvar my/lisp-dirs
-  '("lisp" "core" "editing" "completion" "apps" "org" "dev" "lang")
+  '("lisp" "core" "editing" "completion" "apps" "org" "dev" "lang" "satan")
   "My own Lisp directories, relative to `user-emacs-directory'.")
 
 (defvar my/checkout-lisp-dirs

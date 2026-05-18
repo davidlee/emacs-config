@@ -1,0 +1,317 @@
+;;; dl-satan-broker.el --- SATAN broker driver -*- lexical-binding: t; -*-
+
+;; Lifecycle:
+;;   1. resolve mode-spec
+;;   2. mint run-id, create runs/<run-id>/
+;;   3. assemble bundle, write manifest + bundle
+;;   4. open audit handle, log run-start
+;;   5. spawn jailed child via make-process (pipe, line-buffered filter)
+;;   6. on tool_call: dispatch through dl-satan-tool-dispatch; send tool_result
+;;   7. on final: capture, defer to sentinel
+;;   8. sentinel: cancel timeout, run output handler, write actions.json + status, close audit
+;;   9. timeout: kill process; sentinel handles the rest
+
+(require 'cl-lib)
+(require 'subr-x)
+(require 'dl-satan-audit)
+(require 'dl-satan-jsonl)
+(require 'dl-satan-tools)
+(require 'dl-satan-tools-org)
+(require 'dl-satan-mode)
+(require 'dl-satan-context)
+(require 'dl-satan-output)
+
+(defcustom dl-satan-runs-dir
+  (expand-file-name "satan/runs" (or (bound-and-true-p dl-notes-root)
+                                     (expand-file-name "~/notes")))
+  "Directory holding per-run audit bundles."
+  :type 'directory :group 'dl-satan)
+
+(defcustom dl-satan-hippocampus-dir
+  (expand-file-name "satan/hippocampus" (or (bound-and-true-p dl-notes-root)
+                                            (expand-file-name "~/notes")))
+  "Read-write scratch directory inside the jail."
+  :type 'directory :group 'dl-satan)
+
+(defcustom dl-satan-direnv-dir
+  (expand-file-name user-emacs-directory)
+  "Directory whose `.envrc' is sourced into the jailed-harness environment.
+If non-nil and `envrc--export' is available, the broker resolves direnv
+for this directory and merges the result into `process-environment'
+before spawning the child.  Set to nil to disable."
+  :type '(choice directory (const nil)) :group 'dl-satan)
+
+(cl-defstruct dl-satan-run
+  id mode start-time dir bundle-path process
+  pending-tool-calls tool-calls-done
+  applied-actions staged-actions rejected-actions failed-actions
+  final status timeout-timer audit
+  stdout-log-path)
+
+(declare-function envrc--export "envrc" (env-dir))
+(declare-function envrc--merged-environment "envrc" (process-env pairs))
+
+(defun dl-satan-broker--direnv-env (base-env)
+  "Return BASE-ENV merged with the direnv export for `dl-satan-direnv-dir'.
+If envrc is not loaded, or the directory has no .envrc, or direnv
+returns no vars, BASE-ENV is returned unchanged.  Direnv errors signal."
+  (if (and dl-satan-direnv-dir
+           (file-directory-p dl-satan-direnv-dir)
+           (file-readable-p (expand-file-name ".envrc" dl-satan-direnv-dir))
+           (fboundp 'envrc--export))
+      (let ((result (envrc--export dl-satan-direnv-dir)))
+        (pcase result
+          ('error (error "direnv failed for %s" dl-satan-direnv-dir))
+          ('none base-env)
+          ((pred listp) (envrc--merged-environment base-env result))
+          (_ base-env)))
+    base-env))
+
+(defun dl-satan-broker--exec-path-from-env (env)
+  "Extract PATH from ENV (a `process-environment' value) and split into list."
+  (let ((path (cl-some (lambda (kv)
+                         (and (string-prefix-p "PATH=" kv)
+                              (substring kv 5)))
+                       env)))
+    (if path (split-string path ":" t) exec-path)))
+
+(defun dl-satan-broker--mint-run-id (name)
+  (random t)
+  (format "%s-%s-%06x"
+          (format-time-string "%Y%m%dT%H%M%S" nil)
+          name
+          (random (expt 16 6))))
+
+(defun dl-satan-broker--tool-ctx (run-ctx)
+  (let ((mode (dl-satan-run-mode run-ctx)))
+    (list :id (dl-satan-run-id run-ctx)
+          :mode-name (plist-get mode :name)
+          :capabilities (plist-get mode :capabilities)
+          :run-dir (dl-satan-run-dir run-ctx)
+          :hippocampus-dir dl-satan-hippocampus-dir)))
+
+(defun dl-satan-broker--validate-final (obj)
+  "Return non-nil if OBJ is a well-formed `final' plist."
+  (let ((summary (plist-get obj :summary))
+        (actions (plist-get obj :actions)))
+    (and (stringp summary)
+         (or (eq actions :null)
+             (null actions)
+             (and (listp actions)
+                  (cl-every (lambda (a)
+                              (and (plist-get a :type)
+                                   (or (null (plist-get a :args))
+                                       (listp (plist-get a :args)))))
+                            actions))))))
+
+(defun dl-satan-broker--tee-stdout (path chunk)
+  (let ((coding-system-for-write 'utf-8))
+    (write-region chunk nil path 'append 'silent)))
+
+(defun dl-satan-broker--on-tool-call (run-ctx obj)
+  (let* ((mode (dl-satan-run-mode run-ctx))
+         (budget (plist-get mode :budget-tool-calls))
+         (done (dl-satan-run-tool-calls-done run-ctx)))
+    (dl-satan-audit-record (dl-satan-run-audit run-ctx) 'in 'tool-call obj)
+    (cond
+     ((and (integerp budget) (>= done budget))
+      (let ((result (list :type "tool_result"
+                          :id (plist-get obj :id)
+                          :ok :false
+                          :error "tool call budget exhausted")))
+        (dl-satan-audit-record (dl-satan-run-audit run-ctx) 'broker 'tool-denied result)
+        (dl-satan-jsonl-send (dl-satan-run-process run-ctx) result)))
+     (t
+      (setf (dl-satan-run-tool-calls-done run-ctx) (1+ done))
+      (let* ((tool-ctx (dl-satan-broker--tool-ctx run-ctx))
+             (result (dl-satan-tool-dispatch
+                      obj (plist-get mode :tools) tool-ctx)))
+        (dl-satan-audit-record
+         (dl-satan-run-audit run-ctx)
+         (if (eq (plist-get result :ok) t) 'broker 'broker)
+         (if (eq (plist-get result :ok) t) 'tool-result 'tool-denied)
+         result)
+        (dl-satan-audit-record (dl-satan-run-audit run-ctx) 'out 'tool-result result)
+        (dl-satan-jsonl-send (dl-satan-run-process run-ctx) result))))))
+
+(defun dl-satan-broker--on-final (run-ctx obj)
+  (dl-satan-audit-record (dl-satan-run-audit run-ctx) 'in 'final obj)
+  (cond
+   ((dl-satan-broker--validate-final obj)
+    (setf (dl-satan-run-final run-ctx) obj))
+   (t
+    (dl-satan-audit-record (dl-satan-run-audit run-ctx) 'broker 'protocol-error
+                           (list :reason "invalid final"))
+    (setf (dl-satan-run-status run-ctx) 'invalid-protocol))))
+
+(defun dl-satan-broker--on-log (run-ctx obj)
+  (dl-satan-audit-record (dl-satan-run-audit run-ctx) 'in 'log obj))
+
+(defun dl-satan-broker--on-error (run-ctx obj)
+  (dl-satan-audit-record (dl-satan-run-audit run-ctx) 'in 'protocol-error obj)
+  (setf (dl-satan-run-status run-ctx) 'failed))
+
+(defun dl-satan-broker--dispatch (run-ctx obj)
+  (let ((type (plist-get obj :type)))
+    (pcase type
+      ("ready"     (dl-satan-audit-record (dl-satan-run-audit run-ctx) 'in 'ready obj))
+      ("log"       (dl-satan-broker--on-log run-ctx obj))
+      ("tool_call" (dl-satan-broker--on-tool-call run-ctx obj))
+      ("final"     (dl-satan-broker--on-final run-ctx obj))
+      ("error"     (dl-satan-broker--on-error run-ctx obj))
+      (_ (dl-satan-audit-record
+          (dl-satan-run-audit run-ctx) 'broker 'protocol-error
+          (list :reason (format "unknown message type: %s" type)
+                :raw obj))))))
+
+(defun dl-satan-broker--make-filter (run-ctx)
+  (let ((inner (dl-satan-jsonl-make-filter
+                (lambda (obj) (dl-satan-broker--dispatch run-ctx obj))
+                (lambda (err)
+                  (dl-satan-audit-record
+                   (dl-satan-run-audit run-ctx) 'broker 'protocol-error
+                   (list :raw-line (car err)
+                         :error    (cdr err)))))))
+    (lambda (proc chunk)
+      (dl-satan-broker--tee-stdout
+       (dl-satan-run-stdout-log-path run-ctx) chunk)
+      (funcall inner proc chunk))))
+
+(defun dl-satan-broker--finalize (run-ctx)
+  "Output handler + audit close.  Idempotent."
+  (when (eq (dl-satan-run-status run-ctx) 'running)
+    (setf (dl-satan-run-status run-ctx)
+          (if (dl-satan-run-final run-ctx) 'done 'failed)))
+  (let* ((mode (dl-satan-run-mode run-ctx))
+         (final (dl-satan-run-final run-ctx))
+         (handler (plist-get mode :output-handler))
+         (status (dl-satan-run-status run-ctx))
+         (partition
+          (when (and final (eq status 'done) handler)
+            (condition-case err
+                (funcall handler final (dl-satan-broker--tool-ctx run-ctx))
+              (error
+               (dl-satan-audit-record
+                (dl-satan-run-audit run-ctx) 'broker 'action-failed
+                (list :error (error-message-string err)))
+               nil)))))
+    (when partition
+      (dolist (a (plist-get partition :applied))
+        (dl-satan-audit-record (dl-satan-run-audit run-ctx) 'broker 'action-applied a))
+      (dolist (a (plist-get partition :staged))
+        (dl-satan-audit-record (dl-satan-run-audit run-ctx) 'broker 'action-staged a))
+      (dolist (a (plist-get partition :rejected))
+        (dl-satan-audit-record (dl-satan-run-audit run-ctx) 'broker 'action-rejected a))
+      (dolist (a (plist-get partition :failed))
+        (dl-satan-audit-record (dl-satan-run-audit run-ctx) 'broker 'action-failed a)))
+    (dl-satan-audit-close
+     (dl-satan-run-audit run-ctx)
+     final
+     (or partition (list :applied [] :staged [] :rejected [] :failed []))
+     status)))
+
+(defun dl-satan-broker--make-sentinel (run-ctx)
+  (lambda (_proc event)
+    (when (string-match-p "\\(finished\\|exited\\|signal\\|broken\\)" event)
+      (let ((tt (dl-satan-run-timeout-timer run-ctx)))
+        (when tt (cancel-timer tt)))
+      (dl-satan-audit-record (dl-satan-run-audit run-ctx) 'broker 'child-exit
+                             (list :event (string-trim event)))
+      (dl-satan-broker--finalize run-ctx))))
+
+(defun dl-satan-broker-run (name)
+  "Resolve MODE-NAME, spawn jailed harness, drive it to completion.
+Returns the run-id."
+  (let* ((mode (dl-satan-mode-resolve name))
+         (run-id (dl-satan-broker--mint-run-id name))
+         (dir (expand-file-name run-id dl-satan-runs-dir))
+         (bundle-path (expand-file-name "bundle.json" dir))
+         (stdout-log (expand-file-name "stdout.log" dir))
+         (stderr-buf (generate-new-buffer
+                      (format " *satan-stderr-%s*" run-id))))
+    (unless (file-directory-p dir) (make-directory dir t))
+    (unless (file-directory-p dl-satan-hippocampus-dir)
+      (make-directory dl-satan-hippocampus-dir t))
+    (let* ((bundle (funcall (or (plist-get mode :context-fn) #'ignore) mode))
+           (manifest
+            (list :run_id run-id
+                  :start_time (format-time-string "%Y-%m-%dT%H:%M:%S%z" nil)
+                  :mode (list :name (plist-get mode :name)
+                              :auto_apply (symbol-name (plist-get mode :auto-apply))
+                              :timeout_seconds (plist-get mode :timeout-seconds)
+                              :budget_tool_calls (plist-get mode :budget-tool-calls))
+                  :tools_allowed (plist-get mode :tools)
+                  :capabilities  (mapcar #'symbol-name
+                                         (plist-get mode :capabilities))
+                  :harness (list :cmd (plist-get (plist-get mode :harness) :cmd)
+                                 :args (or (plist-get (plist-get mode :harness) :args)
+                                           []))
+                  :jail_profile (symbol-name (plist-get mode :jail-profile))
+                  :context_summary (format "mode=%s date=%s"
+                                           (plist-get mode :name)
+                                           (format-time-string "%Y-%m-%d" nil))))
+           (audit (dl-satan-audit-open dir manifest bundle))
+           (run-ctx (make-dl-satan-run
+                     :id run-id
+                     :mode mode
+                     :start-time (current-time)
+                     :dir dir
+                     :bundle-path bundle-path
+                     :pending-tool-calls (make-hash-table :test 'equal)
+                     :tool-calls-done 0
+                     :applied-actions nil
+                     :staged-actions nil
+                     :rejected-actions nil
+                     :failed-actions nil
+                     :final nil
+                     :status 'running
+                     :audit audit
+                     :stdout-log-path stdout-log)))
+      (let* ((cmd (plist-get (plist-get mode :harness) :cmd))
+             (args (plist-get (plist-get mode :harness) :args))
+             (direnv-env (dl-satan-broker--direnv-env process-environment))
+             (env (append (list (format "SATAN_RUN_ID=%s" run-id)
+                                (format "SATAN_RUN_DIR=%s" dir)
+                                (format "SATAN_BUNDLE=%s" bundle-path))
+                          (plist-get (plist-get mode :harness) :env)
+                          direnv-env))
+             (process-environment env)
+             (exec-path (dl-satan-broker--exec-path-from-env env))
+             (proc
+              (make-process
+               :name (format "satan-%s" run-id)
+               :command (cons cmd args)
+               :connection-type 'pipe
+               :coding 'utf-8
+               :noquery t
+               :stderr stderr-buf
+               :filter (dl-satan-broker--make-filter run-ctx)
+               :sentinel (dl-satan-broker--make-sentinel run-ctx))))
+        (setf (dl-satan-run-process run-ctx) proc)
+        (let ((to (plist-get mode :timeout-seconds)))
+          (when (and (integerp to) (> to 0))
+            (setf (dl-satan-run-timeout-timer run-ctx)
+                  (run-with-timer
+                   to nil
+                   (lambda ()
+                     (when (process-live-p proc)
+                       (dl-satan-audit-record
+                        (dl-satan-run-audit run-ctx) 'broker 'timeout
+                        (list :after-seconds to))
+                       (setf (dl-satan-run-status run-ctx) 'timed-out)
+                       (delete-process proc)))))))
+        (set-process-sentinel
+         proc
+         (let ((existing (process-sentinel proc)))
+           (lambda (p e)
+             (let ((coding-system-for-write 'utf-8))
+               (with-current-buffer stderr-buf
+                 (write-region (point-min) (point-max)
+                               (expand-file-name "stderr.log" dir)
+                               nil 'silent)))
+             (funcall existing p e)
+             (when (buffer-live-p stderr-buf) (kill-buffer stderr-buf)))))
+        run-id))))
+
+(provide 'dl-satan-broker)
+;;; dl-satan-broker.el ends here

@@ -2,6 +2,60 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-19 — SATAN: broker + JSONL protocol + jailed fake harness
+
+Phase-1 of the SATAN local agent runtime (see `SATAN.local.md`).  Emacs
+is the broker and capability authority; a bubblewrap-jailed child
+process is the harness; they exchange newline-delimited JSON over
+stdin/stdout; only the broker mutates durable state.
+
+- `satan/` — new module bucket.
+  - `dl-satan-jsonl.el` — line-buffered filter + writer.  `json-serialize`
+    rejects bare lists, so `dl-satan-jsonl-prepare` walks payloads and
+    coerces non-plist lists to vectors.
+  - `dl-satan-block.el` — find/replace owned org blocks of the form
+    `#+begin_satan :block NAME :owner SATAN :updated [...]` /
+    `#+end_satan`.  Refuses multi-match; creates-at-end on none-match.
+  - `dl-satan-audit.el` — append-only writer for
+    `runs/<run-id>/{manifest,bundle,transcript,final,actions,status}`
+    plus a six-predicate verifier that proves the
+    `SATAN.local.md:601-616` auditability invariant.
+  - `dl-satan-tools.el` + `dl-satan-tools-org.el` — registry, allowlist
+    + schema check, three handlers (`org.read_context`,
+    `org.update_owned_block`, `proposal.stage`).
+  - `dl-satan-mode.el` — `morning` and `motd` mode-specs.
+  - `dl-satan-context.el`, `dl-satan-output.el` — context assembler +
+    handlers.
+  - `dl-satan-broker.el` — `make-process` driver: line-buffered filter,
+    timeout timer, tool-call dispatch, sentinel runs output handler.
+  - `dl-satan.el` — `my/satan-run MODE` interactive entry.
+  - `satan/bin/satan-run` — shell wrapper for systemd/cron via
+    `emacsclient --eval`.
+  - `satan/test/*.el` — 15 unit tests + 1 end-to-end integration test
+    against the real jailed binary (skips unless `SATAN_TEST_JAIL_BIN`
+    is set).
+- `flake.nix` — adds `satan-jailed-fake-harness` derivation built via
+  `pkgs.writers.writePython3Bin`, profile = `offline`.  Jail mounts
+  `~/notes` read-only at `/satan/notes` and
+  `~/notes/satan/hippocampus` read-write at `/satan/hippocampus`.
+  Forwards `SATAN_RUN_ID`, sets `SATAN_RUN_DIR=/satan/run` inside the
+  jail.  Exposes `jailPkgs` as flake `packages` so the binary builds
+  via `nix build .#satan-jailed-fake-harness`.
+- `core/dl-path.el` — adds `satan` to `my/lisp-dirs` and
+  `trusted-content`.
+- `init.el` — `(require 'dl-satan)`.
+- `~/notes/satan/{hippocampus,proposals,runs}/` — on-disk layout.
+- `~/flakes/modules/home/satan.nix` — systemd user services and timers
+  for `satan-morning` (07:30 daily) and `satan-motd` (07:00 daily).
+  **Not** imported by `Sleipnir.nix` — staged for review.
+- `~/flakes/modules/home/emacs.nix` — adds `satan` to `configDirs` so
+  the Nix wrapper's use-package parser scans the bucket.
+
+Phase-1 non-goals: real model harness adapter (fake only), memory
+candidate review UI, ROM management beyond a static prompt file, the
+`self_edit` mode, network egress filtering, multi-step tool-call
+reasoning loops, D-Bus notifications.
+
 ## 2026-05-18 — secrets: 1Password resolution + zsh env sourcing
 
 API keys move out of plaintext on disk. `~/.config/zsh/env.zsh` now

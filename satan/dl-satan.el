@@ -1,0 +1,35 @@
+;;; dl-satan.el --- SATAN broker entry point -*- lexical-binding: t; -*-
+
+;; Aggregator + the public interactive entry `my/satan-run'.
+;;
+;; SATAN is the local broker described in `SATAN.local.md'.  Emacs is the
+;; capability authority; a bubblewrap-jailed child process is the harness;
+;; they exchange newline-delimited JSON over stdin/stdout; only the broker
+;; mutates durable state.
+
+(require 'dl-satan-audit)
+(require 'dl-satan-jsonl)
+(require 'dl-satan-block)
+(require 'dl-satan-tools)
+(require 'dl-satan-tools-org)
+(require 'dl-satan-mode)
+(require 'dl-satan-context)
+(require 'dl-satan-output)
+(require 'dl-satan-broker)
+
+(defgroup dl-satan nil
+  "SATAN local agent runtime."
+  :group 'tools
+  :prefix "dl-satan-")
+
+(defun my/satan-run (name)
+  "Run a SATAN session in mode NAME.  Returns the run-id string."
+  (interactive
+   (list (completing-read "SATAN mode: " (dl-satan-mode-names) nil t)))
+  (let ((run-id (dl-satan-broker-run name)))
+    (when (called-interactively-p 'interactive)
+      (message "SATAN run started: %s" run-id))
+    run-id))
+
+(provide 'dl-satan)
+;;; dl-satan.el ends here

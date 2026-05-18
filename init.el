@@ -59,6 +59,7 @@
 (require 'dl-denote)
 (require 'dl-denote-templates)
 (require 'dl-denote-journal)
+(require 'dl-satan)
 (require 'dl-org-ql)
 (require 'dl-review)
 (require 'dl-org-roam)

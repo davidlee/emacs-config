@@ -52,6 +52,44 @@
         # workspaceDeps = [ "/home/david/flakes/" ];
         workspaceDeps = [];
 
+        # SATAN — phase-1 fake harness.  Emits ready, one tool_call, then
+        # final with one org.update_owned_block action.  Used by the
+        # broker (Emacs side) to validate the JSONL contract end-to-end
+        # before swapping in a real model harness.
+        satanFakeHarness =
+          pkgs.writers.writePython3Bin "satan-fake-harness" {} ''
+            import json
+            import os
+            import sys
+            run_id = os.environ.get("SATAN_RUN_ID", "")
+            print(json.dumps({"type": "ready", "run_id": run_id}), flush=True)
+            print(json.dumps({
+                "type": "tool_call", "id": "c1",
+                "name": "org.read_context",
+                "args": {"scope": "today"},
+            }), flush=True)
+            sys.stdin.readline()
+            print(json.dumps({
+                "type": "final",
+                "summary": "fake harness ack",
+                "actions": [
+                    {"type": "org.update_owned_block",
+                     "args": {"target": "today", "block": "satan",
+                              "content": "SATAN was here.\n"}}
+                ],
+            }), flush=True)
+          '';
+
+        satanJailOptions = with jailLib.combinators; [
+          (unsafe-add-raw-args ''--ro-bind "$HOME/notes" "/satan/notes"'')
+          (unsafe-add-raw-args ''--bind "$HOME/notes/satan/hippocampus" "/satan/hippocampus"'')
+          (unsafe-add-raw-args ''--bind "$SATAN_RUN_DIR" "/satan/run"'')
+          (try-fwd-env "SATAN_RUN_ID")
+          (set-env "SATAN_NOTES_RO"    "/satan/notes")
+          (set-env "SATAN_HIPPOCAMPUS" "/satan/hippocampus")
+          (set-env "SATAN_RUN_DIR"     "/satan/run")
+        ];
+
         jailPkgs = lib.optionalAttrs isLinux {
           jailed-pi = jailLib.makeJailedPi {
             profile = "specDev";
@@ -98,12 +136,21 @@
             extraOptions = jailEnvOptions;
             inherit workspaceDeps;
           };
+          satan-jailed-fake-harness = jailLib.makeJailedAgent {
+            name = "satan-fake-harness";
+            agent = satanFakeHarness;
+            profile = "offline";
+            extraOptions = satanJailOptions;
+            workspaceDeps = [];
+          };
           bubblewrap = pkgs.bubblewrap;
         };
       in {
         _module.args.pkgs = import inputs.nixpkgs {
           inherit system;
         };
+
+        packages = lib.optionalAttrs isLinux jailPkgs;
 
         devshells.default = {
           packages = projectPkgs ++ lib.optionals isLinux (lib.attrValues jailPkgs);
