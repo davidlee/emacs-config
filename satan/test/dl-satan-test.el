@@ -15,6 +15,10 @@
 (require 'dl-satan-block)
 (require 'dl-satan-tools)
 (require 'dl-satan-tools-notify)
+(require 'dl-satan-tools-memory)
+(require 'dl-satan-tools-org)
+(require 'dl-satan-context)
+(require 'dl-satan-output)
 (require 'dl-satan-audit)
 
 ;; ---------- dl-satan-jsonl ----------
@@ -187,6 +191,94 @@
                 nil)))
       (should (equal (plist-get res :ok) :false))
       (should (string-match-p "no D-Bus" (plist-get res :error))))))
+
+;; ---------- dl-satan-tools-memory ----------
+
+(ert-deftest dl-satan-memory/handler-writes-denote-file ()
+  (let* ((tmp (make-temp-file "satan-mem-" t))
+         (dl-satan-memory-candidates-dir tmp))
+    (unwind-protect
+        (let* ((res (dl-satan-tool/memory-add-candidate
+                     '(:title "Avoid mocking the DB"
+                       :body "User burned by a mock/prod divergence in 2026 Q1.")
+                     '(:id "r1" :mode-name "morning"
+                       :capabilities (memory-candidate)))))
+          (should (eq (car res) 'ok))
+          (let* ((path (plist-get (cdr res) :path))
+                 (text (with-temp-buffer
+                         (insert-file-contents path)
+                         (buffer-string))))
+            (should (string-match-p "__satan_memory\\.org$" path))
+            (should (string-match-p ":satan:memory:candidate:" text))
+            (should (string-match-p ":RUN_ID: r1" text))
+            (should (string-match-p "mock/prod divergence" text))))
+      (delete-directory tmp t))))
+
+(ert-deftest dl-satan-memory/capability-required ()
+  (let ((res (dl-satan-tool/memory-add-candidate
+              '(:title "t" :body "b")
+              '(:capabilities (write-daily)))))
+    (should (eq (car res) 'error))
+    (should (string-match-p "memory-candidate" (cdr res)))))
+
+(ert-deftest dl-satan-memory/schema-required ()
+  (let ((res (dl-satan-tool-dispatch
+              '(:type "tool_call" :id "m1" :name "memory.add_candidate"
+                :args (:body "x"))
+              '("memory.add_candidate")
+              '(:capabilities (memory-candidate)))))
+    (should (equal (plist-get res :ok) :false))
+    (should (string-match-p "title" (plist-get res :error)))))
+
+;; ---------- dl-satan self-edit context + output ----------
+
+(ert-deftest dl-satan-self-edit/context-bundles-sources ()
+  "context-fn includes every matching file under root, excludes .elc."
+  (let* ((tmp (make-temp-file "satan-se-" t))
+         (dl-satan-self-edit-root tmp)
+         (user-emacs-directory tmp)
+         (dl-satan-prompts-dir (expand-file-name "prompts/" tmp)))
+    (unwind-protect
+        (progn
+          (make-directory (expand-file-name "prompts" tmp))
+          (with-temp-file (expand-file-name "prompts/se.txt" tmp)
+            (insert "PROMPT"))
+          (with-temp-file (expand-file-name "a.el" tmp) (insert "(provide 'a)"))
+          (with-temp-file (expand-file-name "b.py" tmp) (insert "x = 1"))
+          (with-temp-file (expand-file-name "a.elc" tmp) (insert "skip"))
+          (let* ((spec (list :name "self-edit"
+                             :prompt-file (expand-file-name "prompts/se.txt" tmp)))
+                 (bundle (dl-satan-context-self-edit spec))
+                 (sources (plist-get bundle :sources))
+                 (paths (mapcar (lambda (s) (plist-get s :path)) sources)))
+            (should (equal (plist-get bundle :prompt) "PROMPT"))
+            (should (member "a.el" paths))
+            (should (member "b.py" paths))
+            (should-not (member "a.elc" paths))
+            (let ((a (cl-find "a.el" sources
+                              :key (lambda (s) (plist-get s :path))
+                              :test #'equal)))
+              (should (equal (plist-get a :content) "(provide 'a)")))))
+      (delete-directory tmp t))))
+
+(ert-deftest dl-satan-self-edit/output-only-applies-proposal-stage ()
+  "Output handler auto-applies proposal.stage; everything else gets staged."
+  (let* ((tmp (make-temp-file "satan-se-out-" t))
+         (dl-satan-proposals-dir tmp)
+         (final '(:summary "x"
+                  :actions ((:type "proposal.stage"
+                             :args (:title "fix" :body "do the thing"))
+                            (:type "org.update_owned_block"
+                             :args (:target "today" :block "satan" :content "x")))))
+         (ctx (list :id "r1" :mode-name "self-edit"
+                    :capabilities '(stage-proposal))))
+    (unwind-protect
+        (let ((p (dl-satan-output/self-edit final ctx)))
+          (should (equal (length (plist-get p :applied)) 1))
+          (should (equal (length (plist-get p :staged)) 1))
+          (should (equal (plist-get (car (plist-get p :applied)) :type)
+                         "proposal.stage")))
+      (delete-directory tmp t))))
 
 ;; ---------- dl-satan-audit verifier ----------
 

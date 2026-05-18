@@ -167,6 +167,25 @@ class HarnessTests(unittest.TestCase):
         names = [t["function"]["name"] for t in tools]
         self.assertIn("notify.send", names)
 
+    def test_build_tools_includes_memory(self):
+        tools = h.build_tools(["memory.add_candidate"])
+        names = [t["function"]["name"] for t in tools]
+        self.assertIn("memory.add_candidate", names)
+
+    def test_system_prompt_renders_sources(self):
+        bundle = {
+            "prompt": "P",
+            "sources": [
+                {"path": "satan/x.el", "content": "(provide 'x)"},
+                {"path": "satan/y.py", "content": "x = 1"},
+            ],
+        }
+        prompt = h.build_system_prompt(bundle)
+        self.assertIn("## satan/x.el", prompt)
+        self.assertIn("(provide 'x)", prompt)
+        self.assertIn("## satan/y.py", prompt)
+        self.assertIn("x = 1", prompt)
+
 
 if __name__ == "__main__":
     unittest.main()

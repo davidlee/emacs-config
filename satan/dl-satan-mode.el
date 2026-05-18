@@ -32,8 +32,8 @@
        :prompt-file (expand-file-name "morning.txt" dl-satan-prompts-dir)
        :context-fn 'dl-satan-context-morning
        :tools '("org.read_context" "org.update_owned_block"
-                "proposal.stage" "notify.send")
-       :capabilities '(write-daily stage-proposal notify)
+                "proposal.stage" "notify.send" "memory.add_candidate")
+       :capabilities '(write-daily stage-proposal notify memory-candidate)
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
        :jail-profile 'specDev
        :provider 'openrouter
@@ -59,6 +59,22 @@
        :auto-apply 'owned
        :timeout-seconds 45
        :budget-tool-calls 4))
+
+(dl-satan-mode-register
+ (list :name "self-edit"
+       :prompt-file (expand-file-name "self-edit.txt" dl-satan-prompts-dir)
+       :context-fn 'dl-satan-context-self-edit
+       :tools '("proposal.stage")
+       :capabilities '(stage-proposal)
+       :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
+       :jail-profile 'specDev
+       :provider 'openrouter
+       :model "anthropic/claude-haiku-4.5"
+       :budget-tokens 50000
+       :output-handler 'dl-satan-output/self-edit
+       :auto-apply 'none
+       :timeout-seconds 180
+       :budget-tool-calls 20))
 
 (provide 'dl-satan-mode)
 ;;; dl-satan-mode.el ends here

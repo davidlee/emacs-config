@@ -17,6 +17,8 @@ lambda-emacs
 
 *.eld
 *.elc
+__pycache__/
+*.pyc
 
 *.local
 *.local.*

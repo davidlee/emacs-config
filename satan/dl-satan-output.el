@@ -54,6 +54,10 @@ Returns the (:applied :staged :rejected :failed) plist."
    '("org.update_owned_block" "proposal.stage")
    ctx))
 
+(defun dl-satan-output/self-edit (final ctx)
+  "Self-edit: only `proposal.stage' is allowed to auto-apply."
+  (dl-satan-output--partition final '("proposal.stage") ctx))
+
 (defun dl-satan-output/motd (final ctx)
   "Motd: write FINAL summary to `dl-satan-motd-path' atomically.
 Also auto-apply owned block updates."

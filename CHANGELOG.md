@@ -2,6 +2,60 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-19 — SATAN: self-edit mode (phase-2 D)
+
+Adds a `self-edit` mode that feeds the entire SATAN source tree to the
+LLM and accepts only `proposal.stage` calls.  Nothing auto-applies;
+proposals land as denote files under `~/notes/satan/proposals/` for
+manual review.  Intended for: footgun spotting, missing-test
+detection, doc/code drift, simplification suggestions on SATAN's own
+codebase.
+
+- `satan/dl-satan-context.el` —
+  `dl-satan-context-self-edit` builds a bundle with `:sources` (list
+  of `(:path REL :content STR)` for every file under
+  `dl-satan-self-edit-root` matching
+  `dl-satan-self-edit-source-regexp`, minus
+  `dl-satan-self-edit-exclude-regexp`).  All three are defcustoms.
+- `satan/dl-satan-output.el` — `dl-satan-output/self-edit` partitions
+  `proposal.stage` as the only auto-apply target; everything else gets
+  classified as staged.
+- `satan/dl-satan-mode.el` — registers the `self-edit` mode.  Budget:
+  50k tokens, 20 tool calls, 180s wall.  `:auto-apply 'none`.
+- `satan/prompts/self-edit.txt` — instructions for the LLM:
+  rationale + affected files + patch sketch + test plan per proposal.
+  Don't propose changes outside the SATAN tree.
+- `satan/harness/gptel_harness.py` — `build_system_prompt` now renders
+  a `:sources` array as fenced code blocks under `## <path>` headings.
+- Tests: 2 new ert (context-bundles-sources, output-only-applies)
+  + 1 new python unittest (system-prompt-renders-sources).
+  24/24 unit ert + 8/8 python unittest + 1/1 integration ert green.
+
+## 2026-05-19 — SATAN: memory.add_candidate tool (phase-2 C)
+
+Adds a tool for the agent to stage a candidate memory — a fact,
+preference, or pattern future runs would benefit from remembering —
+as a denote-named org file under `~/notes/satan/memory/candidates/`.
+Review is `find-file` / dired for v1 (`M-x my/satan-memory-candidates`).
+Risk `medium`: durable artifact, capability-gated.
+
+- `satan/dl-satan-tools-memory.el` — handler +
+  registration.  Args: `title` (required), `body` (required).
+  Refuses unless `tool-ctx :capabilities` includes
+  `memory-candidate`.  Filename pattern
+  `<denote-id>--<slug>__satan_memory.org` with filetags
+  `:satan:memory:candidate:`.  `my/satan-memory-candidates` opens the
+  candidates dir in dired.
+- `satan/dl-satan.el` — requires the new file.
+- `satan/dl-satan-mode.el` — `morning` allowlist adds
+  `memory.add_candidate`; new `memory-candidate` capability.  `motd`
+  unchanged (too short to surface durable insights).
+- `satan/harness/gptel_harness.py` — JSON Schema for
+  `memory.add_candidate`.
+- `satan/prompts/morning.txt` — describes the tool.
+- Tests: 3 new ert (`handler-writes-denote-file`, `capability-required`,
+  `schema-required`) — 22/22 unit ert green.  7/7 python unittest green.
+
 ## 2026-05-19 — SATAN: notify.send tool (phase-2 B)
 
 Adds a `notify.send` tool so the agent can post a transient desktop

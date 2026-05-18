@@ -6,6 +6,9 @@ You may call:
   - proposal.stage(title, body)
   - notify.send(title, body, urgency=low|normal|critical, timeout=ms)
     Use sparingly. Only when the user benefits from an immediate interrupt.
+  - memory.add_candidate(title, body)
+    Stage candidate memory for later user review. Use when you spot
+    a fact / pattern future runs would benefit from remembering.
 
 Owned surface: the `#+begin_satan :block satan` block in today's daily note.
 Do not propose changes outside owned surfaces. For anything risky, stage a proposal.

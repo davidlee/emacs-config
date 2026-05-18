@@ -13,6 +13,7 @@
 (require 'dl-satan-tools)
 (require 'dl-satan-tools-org)
 (require 'dl-satan-tools-notify)
+(require 'dl-satan-tools-memory)
 (require 'dl-satan-mode)
 (require 'dl-satan-context)
 (require 'dl-satan-output)

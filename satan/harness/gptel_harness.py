@@ -193,6 +193,26 @@ TOOL_SCHEMAS: dict[str, dict] = {
             },
         },
     },
+    "memory.add_candidate": {
+        "type": "function",
+        "function": {
+            "name": "memory.add_candidate",
+            "description": (
+                "Stage a candidate memory for later user review. Use when "
+                "you spot a fact, preference, or pattern that future runs "
+                "would benefit from remembering. The user reviews and "
+                "promotes manually."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string"},
+                    "body": {"type": "string"},
+                },
+                "required": ["title", "body"],
+            },
+        },
+    },
     "notify.send": {
         "type": "function",
         "function": {
@@ -296,6 +316,18 @@ def build_system_prompt(bundle: dict) -> str:
         parts.append("")
         parts.append("# Today (raw)")
         parts.append(today)
+    sources = bundle.get("sources")
+    if sources:
+        parts.append("")
+        parts.append("# Source files")
+        for item in sources:
+            path = item.get("path", "?")
+            content = item.get("content", "")
+            parts.append("")
+            parts.append(f"## {path}")
+            parts.append("```")
+            parts.append(content)
+            parts.append("```")
     return "\n".join(parts)
 
 
