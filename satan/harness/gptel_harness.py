@@ -140,143 +140,18 @@ def build_provider() -> tuple[Provider, str]:
 
 # ---- tool schemas ----
 #
-# TODO: phase-2.5 — read these from manifest.json so the adapter stays
-# fully mode-agnostic. For now, hardcoded to the three phase-1 tools
-# plus `satan.final`.
-
-TOOL_SCHEMAS: dict[str, dict] = {
-    "org.read_context": {
-        "type": "function",
-        "function": {
-            "name": "org.read_context",
-            "description": "Read a slice of the notes corpus.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "scope": {
-                        "type": "string",
-                        "enum": ["today", "week", "inbox"],
-                    },
-                },
-                "required": ["scope"],
-            },
-        },
-    },
-    "org.update_owned_block": {
-        "type": "function",
-        "function": {
-            "name": "org.update_owned_block",
-            "description": "Replace the SATAN-owned block in an org file.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "target": {"type": "string", "enum": ["today", "motd"]},
-                    "block": {"type": "string"},
-                    "content": {"type": "string"},
-                },
-                "required": ["target", "block", "content"],
-            },
-        },
-    },
-    "proposal.stage": {
-        "type": "function",
-        "function": {
-            "name": "proposal.stage",
-            "description": "Stage a denote-named proposal under satan/proposals/.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "title": {"type": "string"},
-                    "body": {"type": "string"},
-                },
-                "required": ["title", "body"],
-            },
-        },
-    },
-    "memory.add_candidate": {
-        "type": "function",
-        "function": {
-            "name": "memory.add_candidate",
-            "description": (
-                "Stage a candidate memory for later user review. Use when "
-                "you spot a fact, preference, or pattern that future runs "
-                "would benefit from remembering. The user reviews and "
-                "promotes manually."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "title": {"type": "string"},
-                    "body": {"type": "string"},
-                },
-                "required": ["title", "body"],
-            },
-        },
-    },
-    "notify.send": {
-        "type": "function",
-        "function": {
-            "name": "notify.send",
-            "description": (
-                "Send a transient desktop notification via D-Bus. Use "
-                "sparingly: only when the user benefits from an immediate "
-                "interrupt. Body should be at most one short sentence."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "title": {"type": "string"},
-                    "body": {"type": "string"},
-                    "urgency": {
-                        "type": "string",
-                        "enum": ["low", "normal", "critical"],
-                    },
-                    "timeout": {
-                        "type": "integer",
-                        "description": "Display timeout in milliseconds.",
-                    },
-                },
-                "required": ["title", "body"],
-            },
-        },
-    },
-}
-
-SATAN_FINAL_SCHEMA = {
-    "type": "function",
-    "function": {
-        "name": "satan.final",
-        "description": (
-            "Terminate the run. Provide a short summary and any actions "
-            "(structured writes) to commit. Actions: list of "
-            '{"type": "<tool-name>", "args": {...}}.'
-        ),
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "summary": {"type": "string"},
-                "actions": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "type": {"type": "string"},
-                            "args": {"type": "object"},
-                        },
-                        "required": ["type"],
-                    },
-                },
-            },
-            "required": ["summary"],
-        },
-    },
-}
+# The broker writes the full OpenAI-tools JSON Schema for every allowed
+# tool (plus the synthetic `satan.final`) into manifest.json["tools"].
+# The harness consumes that list verbatim — descriptions, parameters,
+# and all — so no canonical model-facing text lives in this file.
 
 
-def build_tools(allowed: list[str]) -> list[dict]:
-    tools = [TOOL_SCHEMAS[name] for name in allowed if name in TOOL_SCHEMAS]
-    tools.append(SATAN_FINAL_SCHEMA)
-    return tools
+def build_tools(manifest: dict) -> list[dict]:
+    """Return the manifest's tools list, validated minimally."""
+    tools = manifest.get("tools")
+    if not tools:
+        raise RuntimeError("manifest missing 'tools' array")
+    return list(tools)
 
 
 # ---- main loop ----
@@ -303,14 +178,10 @@ def load_manifest(run_dir: str) -> dict:
 
 
 def build_system_prompt(bundle: dict) -> str:
+    # bundle["prompt"] is the fully-assembled system prompt (scaffold +
+    # mode prompt) the broker built from ~/notes/satan/. The harness
+    # must not add canonical model-facing prose here.
     parts = [bundle.get("prompt", "").rstrip()]
-    parts.append("")
-    parts.append(
-        "Use tools to read context as needed. When done, call "
-        "`satan.final` with a short summary and any actions to commit. "
-        "Do not emit free-form prose as the final message — always "
-        "terminate via `satan.final`."
-    )
     today = bundle.get("today_text")
     if today:
         parts.append("")
@@ -378,8 +249,11 @@ def run() -> int:
         emit_error(f"init failed: {e}")
         return 1
 
-    allowed = manifest.get("tools_allowed") or []
-    tools = build_tools(allowed)
+    try:
+        tools = build_tools(manifest)
+    except RuntimeError as e:
+        emit_error(str(e))
+        return 1
 
     state = RunState()
     state.messages.append({"role": "system", "content": build_system_prompt(bundle)})

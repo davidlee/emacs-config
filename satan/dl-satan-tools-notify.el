@@ -45,7 +45,6 @@ Returns (ok :id N) | (error MSG)."
 
 (dl-satan-tool-register
  (list :name "notify.send"
-       :description "Send a desktop notification via D-Bus."
        :risk 'low
        :args-schema '(title   (:type string :required t)
                       body    (:type string :required t)

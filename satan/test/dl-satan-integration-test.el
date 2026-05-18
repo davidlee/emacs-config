@@ -12,10 +12,7 @@
 
 (require 'ert)
 (require 'cl-lib)
-(require 'dl-satan-audit)
-(require 'dl-satan-broker)
-(require 'dl-satan-mode)
-(require 'dl-satan-tools-org)
+(require 'dl-satan)
 
 (defvar dl-satan-test--jail-bin (getenv "SATAN_TEST_JAIL_BIN"))
 

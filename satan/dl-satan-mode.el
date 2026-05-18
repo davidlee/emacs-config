@@ -4,6 +4,7 @@
 ;; modes register themselves at load time.
 
 (require 'cl-lib)
+(require 'dl-notes-paths)
 
 (defvar dl-satan-modes nil
   "Alist of (NAME . SPEC) mode registrations.")
@@ -24,8 +25,10 @@
   (mapcar #'car dl-satan-modes))
 
 (defvar dl-satan-prompts-dir
-  (expand-file-name "satan/prompts/" user-emacs-directory)
-  "Directory holding mode prompt files.")
+  (expand-file-name "satan/prompts/" dl-notes-root)
+  "Directory holding mode prompt files.
+Canonical model-facing text lives under `~/notes/satan/prompts/'.
+Dotfiles must not be the source of truth for prompt content.")
 
 (dl-satan-mode-register
  (list :name "morning"

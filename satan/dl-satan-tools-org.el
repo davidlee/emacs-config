@@ -130,9 +130,12 @@ Refused unless TOOL-CTX `:capabilities' includes the target's capability."
 
 ;; ---- Registration ----
 
+;; Tool specs carry mechanism only.  Model-facing descriptions live in
+;; `~/notes/satan/tools/<name>.md' and are loaded at manifest assembly
+;; time.
+
 (dl-satan-tool-register
  (list :name "org.read_context"
-       :description "Read a slice of the notes corpus."
        :risk 'read
        :args-schema '(scope (:type string :required t
                              :enum ("today" "week" "inbox")))
@@ -141,7 +144,6 @@ Refused unless TOOL-CTX `:capabilities' includes the target's capability."
 
 (dl-satan-tool-register
  (list :name "org.update_owned_block"
-       :description "Replace a SATAN-owned block in an org file."
        :risk 'low
        :args-schema '(target (:type string :required t
                               :enum ("today" "motd"))
@@ -152,7 +154,6 @@ Refused unless TOOL-CTX `:capabilities' includes the target's capability."
 
 (dl-satan-tool-register
  (list :name "proposal.stage"
-       :description "Stage a denote-named proposal under satan/proposals/."
        :risk 'low
        :args-schema '(title (:type string :required t)
                       body  (:type string :required t))

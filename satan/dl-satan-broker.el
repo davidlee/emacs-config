@@ -235,6 +235,39 @@ returns no vars, BASE-ENV is returned unchanged.  Direnv errors signal."
                              (list :event (string-trim event)))
       (dl-satan-broker--finalize run-ctx))))
 
+(defun dl-satan-broker--build-manifest (mode run-id)
+  "Return the manifest plist for MODE and RUN-ID.
+Joins mechanical metadata (tools, capabilities, jail) with the
+notes-owned model-facing schemas (`:tools' carries full JSON Schemas
+including descriptions read from `dl-satan-tools-descriptions-dir').
+The harness consumes `:tools' verbatim."
+  (let* ((tool-names (plist-get mode :tools))
+         (specs (mapcar (lambda (n)
+                          (or (dl-satan-tool-lookup n)
+                              (error "SATAN: unknown tool in mode %s: %s"
+                                     (plist-get mode :name) n)))
+                        tool-names))
+         (tools-schema
+          (vconcat (mapcar #'dl-satan-tool-json-schema specs)
+                   (list (dl-satan-tool-final-schema)))))
+    (list :run_id run-id
+          :start_time (format-time-string "%Y-%m-%dT%H:%M:%S%z" nil)
+          :mode (list :name (plist-get mode :name)
+                      :auto_apply (symbol-name (plist-get mode :auto-apply))
+                      :timeout_seconds (plist-get mode :timeout-seconds)
+                      :budget_tool_calls (plist-get mode :budget-tool-calls))
+          :tools_allowed tool-names
+          :tools tools-schema
+          :capabilities  (mapcar #'symbol-name
+                                 (plist-get mode :capabilities))
+          :harness (list :cmd (plist-get (plist-get mode :harness) :cmd)
+                         :args (or (plist-get (plist-get mode :harness) :args)
+                                   []))
+          :jail_profile (symbol-name (plist-get mode :jail-profile))
+          :context_summary (format "mode=%s date=%s"
+                                   (plist-get mode :name)
+                                   (format-time-string "%Y-%m-%d" nil)))))
+
 (defun dl-satan-broker-run (name)
   "Resolve MODE-NAME, spawn jailed harness, drive it to completion.
 Returns the run-id."
@@ -249,23 +282,7 @@ Returns the run-id."
     (unless (file-directory-p dl-satan-hippocampus-dir)
       (make-directory dl-satan-hippocampus-dir t))
     (let* ((bundle (funcall (or (plist-get mode :context-fn) #'ignore) mode))
-           (manifest
-            (list :run_id run-id
-                  :start_time (format-time-string "%Y-%m-%dT%H:%M:%S%z" nil)
-                  :mode (list :name (plist-get mode :name)
-                              :auto_apply (symbol-name (plist-get mode :auto-apply))
-                              :timeout_seconds (plist-get mode :timeout-seconds)
-                              :budget_tool_calls (plist-get mode :budget-tool-calls))
-                  :tools_allowed (plist-get mode :tools)
-                  :capabilities  (mapcar #'symbol-name
-                                         (plist-get mode :capabilities))
-                  :harness (list :cmd (plist-get (plist-get mode :harness) :cmd)
-                                 :args (or (plist-get (plist-get mode :harness) :args)
-                                           []))
-                  :jail_profile (symbol-name (plist-get mode :jail-profile))
-                  :context_summary (format "mode=%s date=%s"
-                                           (plist-get mode :name)
-                                           (format-time-string "%Y-%m-%d" nil))))
+           (manifest (dl-satan-broker--build-manifest mode run-id))
            (audit (dl-satan-audit-open dir manifest bundle))
            (run-ctx (make-dl-satan-run
                      :id run-id

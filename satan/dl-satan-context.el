@@ -8,7 +8,17 @@
 (require 'dl-notes-paths)
 (require 'dl-denote-journal)
 
+(defcustom dl-satan-system-scaffold-file
+  (expand-file-name "satan/system/scaffold.txt" dl-notes-root)
+  "Shared system-prompt scaffold prepended to every mode prompt.
+Canonical text lives under `~/notes/satan/system/'; dotfiles must
+not be the source of truth for behavioural framing."
+  :type 'file :group 'dl-satan)
+
 (defun dl-satan-context--read-file-or-empty (path)
+  "Return contents of PATH, or empty string if missing.
+Use for optional context (e.g. today's note) — never for required
+model-facing text; use `dl-satan-context--read-required' for that."
   (if (file-readable-p path)
       (with-temp-buffer
         (let ((coding-system-for-read 'utf-8))
@@ -16,15 +26,34 @@
         (buffer-string))
     ""))
 
-(defun dl-satan-context--prompt (mode-spec)
-  (let ((p (plist-get mode-spec :prompt-file)))
-    (dl-satan-context--read-file-or-empty p)))
+(defun dl-satan-context--read-required (path)
+  "Return contents of PATH; signal if missing.
+Use for canonical model-facing text where silent emptiness would be
+a misconfiguration: mode prompts, the system scaffold."
+  (unless (file-readable-p path)
+    (error "SATAN: required model-facing file missing: %s" path))
+  (with-temp-buffer
+    (let ((coding-system-for-read 'utf-8))
+      (insert-file-contents path))
+    (buffer-string)))
+
+(defun dl-satan-context--assemble-prompt (mode-spec)
+  "Return MODE-SPEC's assembled system prompt: scaffold + mode prompt.
+Both halves are required; missing files signal an error so a run
+cannot start with degraded behavioural framing."
+  (let* ((prompt-path (plist-get mode-spec :prompt-file))
+         (scaffold (string-trim-right
+                    (dl-satan-context--read-required
+                     dl-satan-system-scaffold-file)))
+         (prompt (string-trim-right
+                  (dl-satan-context--read-required prompt-path))))
+    (concat scaffold "\n\n" prompt)))
 
 (defun dl-satan-context-morning (mode-spec)
   "Bundle for the morning mode: prompt + today's note text."
   (let* ((today (progn (my/journal--ensure-today)
                        (my/journal--today-file dl-notes-journal-dir "journal"))))
-    (list :prompt   (dl-satan-context--prompt mode-spec)
+    (list :prompt   (dl-satan-context--assemble-prompt mode-spec)
           :mode     (plist-get mode-spec :name)
           :date     (format-time-string "%Y-%m-%d" nil)
           :today_path today
@@ -32,7 +61,7 @@
 
 (defun dl-satan-context-motd (mode-spec)
   "Bundle for the motd mode."
-  (list :prompt (dl-satan-context--prompt mode-spec)
+  (list :prompt (dl-satan-context--assemble-prompt mode-spec)
         :mode   (plist-get mode-spec :name)
         :date   (format-time-string "%Y-%m-%d" nil)))
 
@@ -71,7 +100,7 @@
                     (list :path    (file-relative-name f user-emacs-directory)
                           :content (dl-satan-context--read-file-or-empty f)))
                   files)))
-    (list :prompt  (dl-satan-context--prompt mode-spec)
+    (list :prompt  (dl-satan-context--assemble-prompt mode-spec)
           :mode    (plist-get mode-spec :name)
           :date    (format-time-string "%Y-%m-%d" nil)
           :sources sources)))

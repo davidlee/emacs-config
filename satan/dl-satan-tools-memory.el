@@ -61,10 +61,6 @@ includes `memory-candidate'.  Returns (ok :path P) | (error MSG)."
 
 (dl-satan-tool-register
  (list :name "memory.add_candidate"
-       :description
-       "Stage a candidate memory for later user review.  Use when you've \
-spotted a fact or preference that future runs would benefit from \
-remembering."
        :risk 'medium
        :args-schema '(title (:type string :required t)
                       body  (:type string :required t))

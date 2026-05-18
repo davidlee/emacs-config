@@ -20,6 +20,8 @@
 (require 'dl-satan-context)
 (require 'dl-satan-output)
 (require 'dl-satan-audit)
+(require 'dl-satan-broker)
+(require 'dl-satan-mode)
 
 ;; ---------- dl-satan-jsonl ----------
 
@@ -233,16 +235,21 @@
 ;; ---------- dl-satan self-edit context + output ----------
 
 (ert-deftest dl-satan-self-edit/context-bundles-sources ()
-  "context-fn includes every matching file under root, excludes .elc."
+  "context-fn assembles scaffold + mode prompt and includes matching sources."
   (let* ((tmp (make-temp-file "satan-se-" t))
          (dl-satan-self-edit-root tmp)
          (user-emacs-directory tmp)
-         (dl-satan-prompts-dir (expand-file-name "prompts/" tmp)))
+         (dl-satan-prompts-dir (expand-file-name "prompts/" tmp))
+         (dl-satan-system-scaffold-file
+          (expand-file-name "system/scaffold.txt" tmp)))
     (unwind-protect
         (progn
           (make-directory (expand-file-name "prompts" tmp))
+          (make-directory (expand-file-name "system" tmp))
+          (with-temp-file (expand-file-name "system/scaffold.txt" tmp)
+            (insert "SCAFFOLD\n"))
           (with-temp-file (expand-file-name "prompts/se.txt" tmp)
-            (insert "PROMPT"))
+            (insert "PROMPT\n"))
           (with-temp-file (expand-file-name "a.el" tmp) (insert "(provide 'a)"))
           (with-temp-file (expand-file-name "b.py" tmp) (insert "x = 1"))
           (with-temp-file (expand-file-name "a.elc" tmp) (insert "skip"))
@@ -251,7 +258,7 @@
                  (bundle (dl-satan-context-self-edit spec))
                  (sources (plist-get bundle :sources))
                  (paths (mapcar (lambda (s) (plist-get s :path)) sources)))
-            (should (equal (plist-get bundle :prompt) "PROMPT"))
+            (should (equal (plist-get bundle :prompt) "SCAFFOLD\n\nPROMPT"))
             (should (member "a.el" paths))
             (should (member "b.py" paths))
             (should-not (member "a.elc" paths))
@@ -260,6 +267,150 @@
                               :test #'equal)))
               (should (equal (plist-get a :content) "(provide 'a)")))))
       (delete-directory tmp t))))
+
+(ert-deftest dl-satan-context/missing-prompt-errors ()
+  "Mode prompt missing → context-fn signals; run cannot start."
+  (let* ((tmp (make-temp-file "satan-ctx-" t))
+         (dl-satan-prompts-dir (expand-file-name "prompts/" tmp))
+         (dl-satan-system-scaffold-file
+          (expand-file-name "system/scaffold.txt" tmp))
+         (dl-satan-self-edit-root tmp)
+         (user-emacs-directory tmp))
+    (unwind-protect
+        (progn
+          (make-directory (expand-file-name "system" tmp))
+          (with-temp-file dl-satan-system-scaffold-file (insert "S"))
+          (let ((spec (list :name "self-edit"
+                            :prompt-file
+                            (expand-file-name "prompts/never.txt" tmp))))
+            (should-error (dl-satan-context-self-edit spec)
+                          :type 'error)))
+      (delete-directory tmp t))))
+
+(ert-deftest dl-satan-context/missing-scaffold-errors ()
+  "System scaffold missing → context-fn signals."
+  (let* ((tmp (make-temp-file "satan-ctx-" t))
+         (dl-satan-prompts-dir (expand-file-name "prompts/" tmp))
+         (dl-satan-system-scaffold-file
+          (expand-file-name "system/missing.txt" tmp))
+         (dl-satan-self-edit-root tmp)
+         (user-emacs-directory tmp))
+    (unwind-protect
+        (progn
+          (make-directory (expand-file-name "prompts" tmp))
+          (with-temp-file (expand-file-name "prompts/se.txt" tmp) (insert "P"))
+          (let ((spec (list :name "self-edit"
+                            :prompt-file
+                            (expand-file-name "prompts/se.txt" tmp))))
+            (should-error (dl-satan-context-self-edit spec)
+                          :type 'error)))
+      (delete-directory tmp t))))
+
+;; ---------- dl-satan-tools JSON Schema builder ----------
+
+(defun dl-satan-test--with-tool-descriptions (alist body-fn)
+  "Run BODY-FN with `dl-satan-tools-descriptions-dir' bound to a tmp dir
+populated from ALIST `((NAME . CONTENT) …)'."
+  (let ((tmp (make-temp-file "satan-tools-" t)))
+    (unwind-protect
+        (let ((dl-satan-tools-descriptions-dir tmp))
+          (dolist (pair alist)
+            (with-temp-file (expand-file-name (concat (car pair) ".md") tmp)
+              (insert (cdr pair))))
+          (funcall body-fn))
+      (delete-directory tmp t))))
+
+(ert-deftest dl-satan-tools/json-schema-from-notes ()
+  "json-schema dict pulls description from notes and shape from elisp."
+  (dl-satan-test--with-tool-descriptions
+   '(("fake.tool" . "Stage a fake test thing.\n\nParams:\n- title: a string."))
+   (lambda ()
+     (let* ((spec (list :name "fake.tool"
+                        :risk 'low
+                        :args-schema '(title (:type string :required t)
+                                       count (:type integer :required nil))
+                        :modes '("morning")
+                        :handler (lambda (_a _c) (cons 'ok '()))))
+            (js (dl-satan-tool-json-schema spec))
+            (fn (plist-get js :function))
+            (params (plist-get fn :parameters))
+            (props (plist-get params :properties)))
+       (should (equal (plist-get js :type) "function"))
+       (should (equal (plist-get fn :name) "fake.tool"))
+       (should (string-match-p "Stage a fake" (plist-get fn :description)))
+       (should (equal (plist-get params :type) "object"))
+       (should (equal (plist-get (plist-get props :title) :type) "string"))
+       (should (equal (plist-get (plist-get props :count) :type) "integer"))
+       (should (equal (append (plist-get params :required) nil) '("title")))))))
+
+(ert-deftest dl-satan-tools/json-schema-includes-enum ()
+  (dl-satan-test--with-tool-descriptions
+   '(("fake.enum" . "desc"))
+   (lambda ()
+     (let* ((spec (list :name "fake.enum"
+                        :args-schema '(scope (:type string :required t
+                                              :enum ("a" "b")))
+                        :handler #'ignore))
+            (js (dl-satan-tool-json-schema spec))
+            (scope (plist-get (plist-get
+                               (plist-get (plist-get js :function) :parameters)
+                               :properties)
+                              :scope)))
+       (should (equal (append (plist-get scope :enum) nil) '("a" "b")))))))
+
+(ert-deftest dl-satan-tools/missing-description-errors ()
+  "Missing tool description file signals; manifest build cannot proceed."
+  (let ((dl-satan-tools-descriptions-dir
+         (make-temp-file "satan-tools-empty-" t)))
+    (unwind-protect
+        (let ((spec (list :name "fake.absent"
+                          :args-schema nil
+                          :handler #'ignore)))
+          (should-error (dl-satan-tool-json-schema spec) :type 'error))
+      (delete-directory dl-satan-tools-descriptions-dir t))))
+
+(ert-deftest dl-satan-tools/final-schema-uses-notes-description ()
+  (dl-satan-test--with-tool-descriptions
+   '(("satan.final" . "Terminate the run; describe what you did."))
+   (lambda ()
+     (let* ((js (dl-satan-tool-final-schema))
+            (fn (plist-get js :function))
+            (params (plist-get fn :parameters)))
+       (should (equal (plist-get fn :name) "satan.final"))
+       (should (string-match-p "Terminate" (plist-get fn :description)))
+       (should (equal (append (plist-get params :required) nil) '("summary")))))))
+
+;; ---------- dl-satan-broker manifest assembly ----------
+
+(ert-deftest dl-satan-broker/manifest-tools-shape ()
+  "Manifest carries one JSON Schema per allowed tool plus satan.final."
+  (dl-satan-test--with-tool-descriptions
+   '(("org.read_context"      . "Read a slice of the notes corpus.")
+     ("org.update_owned_block" . "Replace a SATAN-owned org block.")
+     ("proposal.stage"         . "Stage a proposal.")
+     ("notify.send"            . "Send a desktop notification.")
+     ("memory.add_candidate"   . "Stage a candidate memory.")
+     ("satan.final"            . "Terminate the run."))
+   (lambda ()
+     (let* ((mode (dl-satan-mode-resolve "morning"))
+            (manifest (dl-satan-broker--build-manifest mode "test-run"))
+            (tools (append (plist-get manifest :tools) nil))
+            (names (mapcar (lambda (t-) (plist-get (plist-get t- :function) :name))
+                           tools)))
+       (should (equal (plist-get manifest :run_id) "test-run"))
+       (should (member "org.read_context" names))
+       (should (member "org.update_owned_block" names))
+       (should (member "notify.send" names))
+       (should (member "memory.add_candidate" names))
+       (should (member "satan.final" names))
+       ;; Descriptions came from notes files, not elisp.
+       (let ((notify (cl-find "notify.send" tools
+                              :key (lambda (t-)
+                                     (plist-get (plist-get t- :function) :name))
+                              :test #'equal)))
+         (should (string-match-p
+                  "Send a desktop notification"
+                  (plist-get (plist-get notify :function) :description))))))))
 
 (ert-deftest dl-satan-self-edit/output-only-applies-proposal-stage ()
   "Output handler auto-applies proposal.stage; everything else gets staged."

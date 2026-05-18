@@ -13,6 +13,7 @@ gotchas, and the open threads.  Update on every meaningful change.
 | 2B — `notify.send` tool | ✅ | landed 2026-05-19 |
 | 2C — `memory.add_candidate` tool | ✅ | landed 2026-05-19, raw `find-file` review |
 | 2D — `self-edit` mode | ✅ | landed 2026-05-19, SATAN-only scope |
+| 2E — mind/mechanism split | ✅ | landed 2026-05-19, prompts + tool descs in `~/notes/satan/` |
 | Wired into Sleipnir (`satan.nix`) | ✅ | timers `satan-morning` 07:30, `satan-motd` 07:00 |
 
 `M-x my/satan-run RET morning` writes a SATAN-owned block into today's
@@ -60,7 +61,6 @@ The wrapper script `~/.emacs.d/satan/bin/satan-run <mode>` invokes
 | `dl-satan-audit.el` | Append-only artifact writer + 6-predicate verifier. |
 | `dl-satan-broker.el` | `make-process` driver: sentinel, timeout, direnv, op:// resolution, env pass. |
 | `bin/satan-run` | Shell wrapper (`emacsclient --eval`). |
-| `prompts/{morning,motd,self-edit}.txt` | Mode prompts. |
 | `harness/gptel_harness.py` | OpenAI-compatible chat-completions driver; `Provider` ABC + `OpenRouterProvider`. |
 | `harness/test_gptel_harness.py` | 8 stdlib unittest cases, no network. |
 | `test/dl-satan-test.el` | 24 unit ert. |
@@ -80,17 +80,30 @@ The wrapper script `~/.emacs.d/satan/bin/satan-run <mode>` invokes
   `satan-morning.{service,timer}` (07:30) and
   `satan-motd.{service,timer}` (07:00).
 
-### Notes tree
+### Notes tree (canonical model-facing surface)
 
 ```
 ~/notes/satan/
+  prompts/                           # mode prompts (was: ~/.emacs.d/satan/prompts/)
+    morning.txt
+    motd.txt
+    self-edit.txt
+  system/
+    scaffold.txt                     # shared system-prompt scaffold (termination instruction)
+  tools/                             # one markdown file per tool — model-facing description
+    org.read_context.md
+    org.update_owned_block.md
+    proposal.stage.md
+    notify.send.md
+    memory.add_candidate.md
+    satan.final.md                   # synthetic harness-side tool, canonical desc here
   motd.txt
   hippocampus/                       # rw inside jail at /satan/hippocampus
   proposals/                         # <ID>--<slug>__satan_proposal.org
   memory/candidates/                 # <ID>--<slug>__satan_memory.org
   runs/<run-id>/                     # YYYYMMDDTHHMMSS-<mode>-<rand6>
-    bundle.json                      # frozen input
-    manifest.json                    # mode + tools + harness + capabilities
+    bundle.json                      # frozen input (incl. assembled :prompt)
+    manifest.json                    # mode + capabilities + harness + tools[] (full JSON Schemas)
     transcript.jsonl                 # one JSON object per line
     final.json                       # validated final or {status: invalid}
     actions.json                     # {applied, staged, rejected, failed}
@@ -98,6 +111,34 @@ The wrapper script `~/.emacs.d/satan/bin/satan-run <mode>` invokes
     stderr.log
     status                           # done | failed | timed-out | invalid-protocol
 ```
+
+## Ownership: mind vs mechanism
+
+**Invariant.** All model-facing behavioural text lives under
+`~/notes/satan`. Dotfiles may define mechanisms, validators, handlers,
+and capability checks, but must not be the canonical source for
+prompts, tool descriptions, behavioural instructions, examples, or
+model-facing policy.
+
+| Concern | Owner |
+|---|---|
+| mode prompts | `~/notes/satan/prompts/<mode>.txt` |
+| shared system scaffold | `~/notes/satan/system/scaffold.txt` |
+| per-tool description (model-facing) | `~/notes/satan/tools/<tool-name>.md` |
+| `satan.final` description (synthetic terminal tool) | `~/notes/satan/tools/satan.final.md` |
+| tool name / risk / schema / capability / handler | elisp tool-spec (`dl-satan-tools-*.el`) |
+| mode allowlist / harness / jail / timeouts / budgets | elisp mode-spec (`dl-satan-mode.el`) |
+| JSONL protocol, validation, dispatch, audit, jailing | elisp (`dl-satan-*.el`) |
+
+The broker assembles `manifest.json` by joining the two halves: each
+allowed tool's full OpenAI-tools JSON Schema is built from the elisp
+schema (mechanism) plus the notes-owned description (mind). The harness
+consumes `manifest["tools"]` verbatim — it holds no canonical
+descriptions of its own. Missing notes-side files signal at run-start
+rather than degrading silently.
+
+Rule of thumb: if changing the text could change what the model
+chooses to do, it belongs in `~/notes/satan`.
 
 ## Modes
 
@@ -261,11 +302,10 @@ Numbered for cross-referencing in commits / changelog.
 5. **Pi / Zerostack harness adapter** — same `Provider` interface,
    different runtime.  Plug-in via env (`SATAN_PROVIDER=pi`).  Not
    started.
-6. **Self-describing manifest** — `gptel_harness.py` currently
-   hardcodes `TOOL_SCHEMAS`.  Future: broker writes full JSON Schema
-   for each allowed tool into `manifest.json`, harness reads it.  Lets
-   a tool be added in elisp alone, no harness edit.  Tracking comment
-   lives in `gptel_harness.py` at the `TOOL_SCHEMAS` definition.
+6. **Self-describing manifest** — ✅ done 2026-05-19 (phase 2E).
+   Broker writes full JSON Schema for each allowed tool into
+   `manifest.json["tools"]`; harness reads verbatim. Descriptions are
+   loaded from `~/notes/satan/tools/<name>.md` (mind/mechanism split).
 7. **Self-edit scope expansion** — currently
    `dl-satan-self-edit-root = ~/.emacs.d/satan/`.  Broader (full
    `~/.emacs.d/`) is on the table when SATAN's edit suggestions prove
@@ -273,6 +313,12 @@ Numbered for cross-referencing in commits / changelog.
 8. **`org.read_context` scope coverage** — only `today | week | inbox`.
    `org-agenda`, `org-roam` graph queries, recently-edited files would
    all be useful.
+9. **Bundle-section framing in `build_system_prompt`** — the
+   `# Today (raw)` and `# Source files` section headers are still
+   inlined in `gptel_harness.py`. They are model-facing but tied to
+   bundle keys (`today_text`, `sources`); cleanly externalising them
+   needs a small templating layer. Defer until a second context
+   section appears that wants the same treatment.
 
 ## Counterpart
 

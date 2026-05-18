@@ -1,13 +1,17 @@
 ;;; dl-satan-tools.el --- Tool registry + dispatch -*- lexical-binding: t; -*-
 
-;; The broker holds a registry of tool-specs.  A tool-spec is a plist:
+;; The broker holds a registry of tool-specs.  A tool-spec carries
+;; mechanism only — name, risk, schema, mode allowlist, handler:
 ;;
 ;;   (:name        "org.read_context"
-;;    :description "..."
 ;;    :risk        read|low|medium|high
 ;;    :args-schema (KEY (:type symbol :required bool :enum (...)))*
 ;;    :modes       ("morning" "motd" ...)
 ;;    :handler     dl-satan-tool/org-read-context)
+;;
+;; The model-facing description for each tool lives outside dotfiles,
+;; under `dl-satan-tools-descriptions-dir' (default
+;; `~/notes/satan/tools/<name>.md').  See `dl-satan-tool-json-schema'.
 ;;
 ;; `dl-satan-tool-dispatch' performs lookup, allowlist check, schema
 ;; validation, and invokes the handler.  Handler returns (ok . RESULT) or
@@ -15,6 +19,15 @@
 
 (require 'cl-lib)
 (require 'subr-x)
+(require 'dl-notes-paths)
+
+(defcustom dl-satan-tools-descriptions-dir
+  (expand-file-name "satan/tools/" dl-notes-root)
+  "Directory holding model-facing tool description files.
+One markdown file per tool, named `<tool-name>.md'.  Canonical
+behavioural text for each tool lives here; the elisp tool-spec
+carries only mechanism (schema, capability, handler)."
+  :type 'directory :group 'dl-satan)
 
 (defvar dl-satan-tools nil
   "Alist of (NAME . SPEC) tool registrations.")
@@ -91,6 +104,103 @@ MODE-TOOLS is the current mode's allowlist.  RUN-CTX is passed to the handler."
             (error
              (list :type "tool_result" :id id :ok :false
                    :error (error-message-string err))))))))))
+
+;; ---------- Model-facing schema (manifest assembly) ----------
+;;
+;; The broker writes the full OpenAI-tools JSON Schema for every allowed
+;; tool into `manifest.json'.  Schemas are assembled from two sources:
+;;
+;;   - mechanical (this file + elisp tool-spec): `:args-schema',
+;;     types/required/enum, tool name.
+;;   - model-facing (notes): description text under
+;;     `dl-satan-tools-descriptions-dir'.
+;;
+;; The harness reads schemas verbatim from the manifest; no canonical
+;; descriptions live in dotfiles.
+
+(defun dl-satan-tool--description (name)
+  "Return the model-facing description for tool NAME.
+Reads `<dl-satan-tools-descriptions-dir>/<name>.md'; signals if
+missing — a tool without a description is a misconfiguration."
+  (let ((path (expand-file-name (concat name ".md")
+                                dl-satan-tools-descriptions-dir)))
+    (unless (file-readable-p path)
+      (error "SATAN: tool description missing: %s" path))
+    (with-temp-buffer
+      (let ((coding-system-for-read 'utf-8))
+        (insert-file-contents path))
+      (string-trim (buffer-string)))))
+
+(defun dl-satan-tool--jsonschema-type (sym)
+  "Map an `:args-schema' type symbol to its JSON Schema name."
+  (pcase sym
+    ('string  "string")
+    ('integer "integer")
+    ('boolean "boolean")
+    ('number  "number")
+    (_ (error "SATAN: unsupported arg type: %S" sym))))
+
+(defun dl-satan-tool--args-schema-to-jsonschema (args-schema)
+  "Convert an elisp `:args-schema' plist into a JSON Schema parameters dict.
+Returns a plist: (:type \"object\" :properties (...) :required [...])."
+  (let ((props nil)
+        (required nil)
+        (cursor args-schema))
+    (while cursor
+      (let* ((key (car cursor))
+             (constraints (cadr cursor))
+             (type (plist-get constraints :type))
+             (enum (plist-get constraints :enum))
+             (req  (plist-get constraints :required))
+             (prop (list :type (dl-satan-tool--jsonschema-type type))))
+        (when enum
+          (setq prop (plist-put prop :enum (vconcat enum))))
+        (push (cons (intern (concat ":" (symbol-name key))) prop) props)
+        (when req
+          (push (symbol-name key) required)))
+      (setq cursor (cddr cursor)))
+    (let ((properties (apply #'append
+                             (mapcar (lambda (kv)
+                                       (list (car kv) (cdr kv)))
+                                     (nreverse props)))))
+      (list :type "object"
+            :properties properties
+            :required (vconcat (nreverse required))))))
+
+(defun dl-satan-tool-json-schema (tool-spec)
+  "Return the OpenAI-tools dict for TOOL-SPEC, ready for the manifest.
+Description is loaded from `dl-satan-tools-descriptions-dir'."
+  (let* ((name (plist-get tool-spec :name))
+         (desc (dl-satan-tool--description name))
+         (params (dl-satan-tool--args-schema-to-jsonschema
+                  (plist-get tool-spec :args-schema))))
+    (list :type "function"
+          :function (list :name name
+                          :description desc
+                          :parameters params))))
+
+(defun dl-satan-tool-final-schema ()
+  "Return the synthetic `satan.final' tool schema.
+`satan.final' is harness-emitted (terminal signal) but its description
+is canonical here so every adapter sees the same text."
+  (let ((desc (dl-satan-tool--description "satan.final")))
+    (list :type "function"
+          :function
+          (list :name "satan.final"
+                :description desc
+                :parameters
+                (list :type "object"
+                      :properties
+                      (list :summary (list :type "string")
+                            :actions
+                            (list :type "array"
+                                  :items
+                                  (list :type "object"
+                                        :properties
+                                        (list :type (list :type "string")
+                                              :args (list :type "object"))
+                                        :required (vector "type"))))
+                      :required (vector "summary"))))))
 
 (provide 'dl-satan-tools)
 ;;; dl-satan-tools.el ends here

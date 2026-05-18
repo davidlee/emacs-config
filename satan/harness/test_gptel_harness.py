@@ -22,7 +22,25 @@ sys.path.insert(0, HERE)
 import gptel_harness as h  # noqa: E402
 
 
-def make_bundle(tmp: str, **overrides) -> str:
+def _stub_tool_schema(name: str, description: str = "") -> dict:
+    return {
+        "type": "function",
+        "function": {
+            "name": name,
+            "description": description or f"stub {name}",
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    }
+
+
+DEFAULT_MANIFEST_TOOLS = [
+    _stub_tool_schema("org.read_context"),
+    _stub_tool_schema("org.update_owned_block"),
+    _stub_tool_schema("satan.final"),
+]
+
+
+def make_bundle(tmp: str, *, tools=None, **overrides) -> str:
     bundle = {
         "prompt": "test prompt",
         "mode": "morning",
@@ -35,7 +53,7 @@ def make_bundle(tmp: str, **overrides) -> str:
         json.dump(bundle, f)
     manifest = {
         "run_id": "test-run",
-        "tools_allowed": ["org.read_context", "org.update_owned_block"],
+        "tools": list(tools) if tools is not None else DEFAULT_MANIFEST_TOOLS,
     }
     with open(os.path.join(tmp, "manifest.json"), "w", encoding="utf-8") as f:
         json.dump(manifest, f)
@@ -154,23 +172,30 @@ class HarnessTests(unittest.TestCase):
         self.assertEqual(final["type"], "final")
         self.assertEqual(final["reason"], "budget_tokens")
 
-    def test_build_tools_filters_allowlist(self):
-        tools = h.build_tools(["org.read_context"])
+    def test_build_tools_returns_manifest_tools(self):
+        manifest = {
+            "tools": [
+                _stub_tool_schema("a.tool"),
+                _stub_tool_schema("satan.final"),
+            ],
+        }
+        tools = h.build_tools(manifest)
         names = [t["function"]["name"] for t in tools]
-        self.assertIn("org.read_context", names)
-        self.assertNotIn("proposal.stage", names)
-        self.assertNotIn("notify.send", names)
-        self.assertIn("satan.final", names)
+        self.assertEqual(names, ["a.tool", "satan.final"])
 
-    def test_build_tools_includes_notify(self):
-        tools = h.build_tools(["notify.send"])
-        names = [t["function"]["name"] for t in tools]
-        self.assertIn("notify.send", names)
+    def test_build_tools_missing_raises(self):
+        with self.assertRaises(RuntimeError):
+            h.build_tools({})
+        with self.assertRaises(RuntimeError):
+            h.build_tools({"tools": []})
 
-    def test_build_tools_includes_memory(self):
-        tools = h.build_tools(["memory.add_candidate"])
-        names = [t["function"]["name"] for t in tools]
-        self.assertIn("memory.add_candidate", names)
+    def test_system_prompt_passes_bundle_prompt_through(self):
+        bundle = {"prompt": "SCAFFOLD\n\nMODE PROMPT"}
+        prompt = h.build_system_prompt(bundle)
+        self.assertTrue(prompt.startswith("SCAFFOLD"))
+        self.assertIn("MODE PROMPT", prompt)
+        # Harness must not append any canonical termination prose.
+        self.assertNotIn("satan.final", prompt)
 
     def test_system_prompt_renders_sources(self):
         bundle = {
