@@ -2,6 +2,29 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-18 — secrets: 1Password resolution + zsh env sourcing
+
+API keys move out of plaintext on disk. `~/.config/zsh/env.zsh` now
+holds `op://vault/item/field` refs instead of secret strings; resolution
+happens on demand.
+
+- `lisp/dl-secret.el` — three concerns merged into one module:
+  - `my/op-read` / `my/op-read-env` — resolve refs via 1Password CLI,
+    session-cached; `my/op-forget` clears the cache.
+  - `my/auth-source-secret` — generic wrapper around
+    `auth-source-search` (lambda-secret + utf-8 handling).
+  - Auto-sources `~/.config/zsh/env.zsh` at load (only sets vars that
+    are currently unset, so terminal-launched Emacs keeps resolved
+    values).
+- `apps/dl-gptel.el` — OpenRouter backend switched to
+  `(lambda () (my/op-read-env "OPENROUTER_API_KEY"))`. Lambda form
+  re-resolves per request; no stale-pin risk.
+- `AGENTS.md` — new "Secrets and env vars" section documents the
+  resolution path and the dl-secret API.
+
+Sway-launched Emacs (which never runs zshrc) now sees the same API
+keys as a terminal session, without any keys touching disk.
+
 ## 2026-05-18 — crash diagnostics: stderr wrapper + SIGUSR2 backtrace
 
 Gui locked + all frames vanished while editing an org buffer; no
