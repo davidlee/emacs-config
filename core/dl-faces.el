@@ -21,8 +21,11 @@
      (hack . "Hack")
      (dejavu-mono . "DejaVu Sans Mono")
 
+
+
      ;; Sans
 
+     (inter . "Inter Regular")
      (roboto . "Roboto")
      (source-sans . "Source Sans 3")
      (noto-sans . "Noto Sans")
@@ -31,6 +34,7 @@
 
      (et-book . "ETBembo")
      (libertinus-serif . "Libertinus Serif")
+     (libertine . "Linux Libertine O")
      (source-serif . "Source Serif 4")
      (noto-serif . "Noto Serif")))
 
@@ -39,15 +43,15 @@
      (mono-alt . monolisa)
      (mono-narrow . iosevka)
      (sans . roboto)
-     (serif . et-book)
-     (ui . iosevka)
+     (serif . inter)
+     (ui . inter)
      (modeline . hack)
      (header . monaspace-neon)
      (tab . monaspace-argon)
      (line-number . zedmono)
      (org-body . sans)
      (org-code . mono)
-     (org-heading . serif)))
+     (org-heading . monolisa)))
 
 (defun my/set-font-role (role font)
   "Set font ROLE to FONT and reapply fonts."
@@ -109,17 +113,17 @@
 
 (defvar my/org-face-styles
   '((org-document-title :role org-heading :height 1.6  :weight bold)
-    (org-level-1        :role org-heading :height 1.4  :weight bold)
-    (org-level-2        :role org-heading :height 1.25 :weight semibold)
-    (org-level-3        :role org-heading :height 1.15 :weight regular)
-    (org-level-4        :role org-heading :height 1.1  :weight regular)
-    (org-level-5        :role org-heading :height 1.05 :weight regular)
-    (org-level-6        :role org-heading :height 1.0  :weight regular)
-    (org-level-7        :role org-heading :height 1.0  :weight regular)
-    (org-level-8        :role org-heading :height 1.0  :weight regular)
-    (org-block          :role org-code    :height 1.0)
-    (org-code           :role org-code    :height 1.0)
-    (org-verbatim       :role org-code    :height 1.0))
+     (org-level-1        :role org-heading :height 1.4  :weight bold)
+     (org-level-2        :role org-heading :height 1.25 :weight semibold)
+     (org-level-3        :role org-heading :height 1.15 :weight regular)
+     (org-level-4        :role org-heading :height 1.1  :weight regular)
+     (org-level-5        :role org-heading :height 1.05 :weight regular)
+     (org-level-6        :role org-heading :height 1.0  :weight regular)
+     (org-level-7        :role org-heading :height 1.0  :weight regular)
+     (org-level-8        :role org-heading :height 1.0  :weight regular)
+     (org-block          :role org-code    :height 1.0)
+     (org-code           :role org-code    :height 1.0)
+     (org-verbatim       :role org-code    :height 1.0))
   "Per-face style for org. Each entry: (FACE :role ROLE [ATTRS...]).
 Heights must be floats so they multiply through `default' and scale
 with `text-scale-adjust' (C-mousewheel).  Edit and call
@@ -130,7 +134,7 @@ with `text-scale-adjust' (C-mousewheel).  Edit and call
   (interactive)
   (pcase-dolist (`(,face . ,plist) my/org-face-styles)
     (let ((role (plist-get plist :role))
-          (attrs (copy-sequence plist)))
+           (attrs (copy-sequence plist)))
       (cl-remf attrs :role)
       (apply #'my/set-face-font face role attrs))))
 
@@ -220,12 +224,12 @@ Variadic to fit `enable-theme-functions', which passes the theme."
   "Paint meow state indicators as coloured blocks.
 Re-applied after theme load so rotating themes can't clobber them."
   (pcase-dolist (`(,face ,bg) '((meow-normal-indicator "#a6e3a1")
-                                (meow-insert-indicator "#f38ba8")
-                                (meow-motion-indicator "#89b4fa")
-                                (meow-keypad-indicator "#f9e2af")
-                                (meow-beacon-indicator "#cba6f7")))
+                                 (meow-insert-indicator "#f38ba8")
+                                 (meow-motion-indicator "#89b4fa")
+                                 (meow-keypad-indicator "#f9e2af")
+                                 (meow-beacon-indicator "#cba6f7")))
     (set-face-attribute face nil
-                        :background bg :foreground "black" :weight 'bold)))
+      :background bg :foreground "black" :weight 'bold)))
 
 (with-eval-after-load 'meow
   (my/apply-meow-indicator-faces)

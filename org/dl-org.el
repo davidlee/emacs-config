@@ -25,18 +25,20 @@
   (org-fontify-quote-and-verse-blocks t)
   (org-todo-keywords
     '((sequence "TODO(t)" "NEXT(n)" "STARTED(s)" "WAITING(w@/!)"
-                "|" "DONE(d!)" "CANCELED(c@)" "MOVED(m@)")))
+        "|" "DONE(d!)" "CANCELED(c@)" "MOVED(m@)")))
   (org-tag-alist
     '( ("@work" . ?w)
        ("@home" . ?h)
        ("reading" . ?r)
        ("writing" . ?W)
        ("idea" . ?i)
-       ("pkm" . ?p))))
+       ("pkm" . ?p)))
+  :config
+  (require 'ox-md)) ; markdown export
 
 (use-package org-modern
   :hook ((org-mode            . org-modern-mode)
-         (org-agenda-finalize . org-modern-agenda)))
+          (org-agenda-finalize . org-modern-agenda)))
 
 (use-package org-bullets
   :hook (org-mode . org-bullets-mode)
@@ -46,7 +48,7 @@
 (defun my/org-setup-margins ()
   "Buffer-local margin + hl-line tweaks for org buffers."
   (setq left-margin-width 2
-        right-margin-width 2)
+    right-margin-width 2)
   (hl-line-mode -1)
   (set-window-buffer nil (current-buffer)))
 
