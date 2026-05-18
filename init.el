@@ -1,5 +1,6 @@
 ;;; init.el --- Emacs init -*- lexical-binding: t; -*-
 (setq debug-on-event 'sigusr2)
+(setq auth-sources '("secrets:Login"))
 
 ;; CORE
 (require 'dl-compile)
@@ -78,6 +79,7 @@
 (require 'dl-eaf)
 (require 'dl-agent-shell)
 (require 'dl-smudge)
+(require 'dl-gptel)
 
 (require 'dl-keybind)
 (require 'dl-dired)
@@ -90,3 +92,4 @@
 (require 'dl-file-ops)
 
 ;;; init.el ends here
+(put 'secrets-mode 'disabled nil)
