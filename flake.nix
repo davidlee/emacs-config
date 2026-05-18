@@ -1,113 +1,120 @@
 {
+  description = "flake for doing emacs";
+
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    flake-utils.url = "github:numtide/flake-utils";
+    flake-parts.url = "github:hercules-ci/flake-parts";
+    devshell.url = "github:numtide/devshell";
+    pub.url = "path:/home/david/flakes/pub";
+    llm-agents.url = "github:numtide/llm-agents.nix";
+    # spec-driver.url = "github:davidlee/spec-driver";
     zig-overlay.url = "github:mitchellh/zig-overlay";
-    # zls-overlay.url = "github:omega-800/zls-overlay";
   };
-  outputs =
-    {
-      self,
-      nixpkgs,
-      flake-utils,
-      zig-overlay,
-      # zls-overlay,
-    }:
-    flake-utils.lib.eachSystem
-      [
+
+  outputs = inputs @ {
+    flake-parts,
+    zig-overlay,
+    ...
+  }:
+    flake-parts.lib.mkFlake {inherit inputs;} {
+      imports = [
+        inputs.devshell.flakeModule
+      ];
+
+      systems = [
         "x86_64-linux"
-        "aarch64-linux"
-        "x86_64-darwin"
         "aarch64-darwin"
-      ]
-      (
-        system:
-        let
-          zigPackage = zig-overlay.packages.${system}."default";
-          pkgs = nixpkgs.legacyPackages.${system};
-          # packageName = "zsdl3";
-          # isLinux = pkgs.stdenv.isLinux;
-          isDarwin = pkgs.stdenv.isDarwin;
+      ];
 
-          # Linux-specific packages
-          linuxPackages = with pkgs; [
-            # vulkan-validation-layers #
-            # imagemagick
-          ];
+      perSystem = {
+        pkgs,
+        system,
+        ...
+      }: let
+        inherit (pkgs) lib stdenv;
+        isLinux = stdenv.isLinux;
+        zigPackage = zig-overlay.packages.${system}."default";
 
-          # Linux LD_LIBRARY_PATH dependencies
-          linuxLibs = with pkgs; [
-            # stdenv.cc.cc.lib # libstdc++ for pip packages with native extensions
-            # mesa
-            # alsa-lib
-            # libdecor
-            # libusb1
-            # libxkbcommon
-            # vulkan-loader
-            # wayland
-            # xorg.libX11
-            # xorg.libXext
-            # xorg.libXi
-            # xorg.libXrandr
-            # xorg.libXinerama
-            # xorg.libXcursor
-            # xorg.libXfixes
-            # udev
-            # dbus
-            # wayland-protocols
-          ];
+        jailLib =
+          if isLinux
+          then inputs.pub.lib.${system}.mkJailedAgents {inherit (inputs) llm-agents;}
+          else {};
 
-          # Linux packages (includes zig/zls from nix)
-          linuxToolchain = [
-            pkgs.pyright
-            # zls-overlay.packages.${system}."0.15.0"
-            pkgs.zls
-            zigPackage
+        projectPkgs = with pkgs; [
+          zigPackage
+        ];
 
-            # pkgs.cue
+        jailEnvOptions = with jailLib.combinators; [
+          (try-fwd-env "OPENROUTER_API_KEY")
+        ];
 
-            # python
-            pkgs.uv
-            pkgs.python312Packages.python-lsp-server
-            pkgs.python312Packages.python-lsp-ruff
-            pkgs.pyright
+        # workspaceDeps = [ "/home/david/.emacs.d/" ];
+        # workspaceDeps = [ "/home/david/flakes/" ];
+        workspaceDeps = [];
 
-            # treesitter
-            pkgs.tree-sitter
-          ];
-
-          # Darwin: don't use nix develop at all - see doc/issues/macos_sdl.md
-          darwinToolchain = [ ];
-
-          # Linux shell: use mkShell with full toolchain
-          linuxShell = pkgs.mkShell {
-            #name = packageName;
-            packages = linuxToolchain ++ linuxPackages;
-            LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath linuxLibs;
+        jailPkgs = lib.optionalAttrs isLinux {
+          jailed-pi = jailLib.makeJailedPi {
+            profile = "specDev";
+            allowSelfAsSubagent = true;
+            maxSubagentDepth = 2;
+            extraPkgs = projectPkgs;
+            extraOptions = jailEnvOptions;
+            inherit workspaceDeps;
           };
-
-          # Darwin: nix shell breaks Zig's framework detection.
-          # Just use Homebrew zig/zls directly - don't use nix develop.
-          # See: doc/issues/macos_sdl.md
-          darwinShell = pkgs.mkShellNoCC {
-            #name = packageName;
-            packages = darwinToolchain;
-            shellHook = ''
-              echo ""
-              echo "NOTE: On macOS, don't use nix develop."
-              echo "      The nix shell environment breaks SDL3 framework detection."
-              echo "      See: doc/issues/macos_sdl.md"
-              echo ""
-              echo "      brew install zig zls"
-              echo "      zig build"
-              echo ""
-            '';
+          jailed-pi-research = jailLib.makeJailedPi {
+            name = "pi-research";
+            profile = "research";
+            extraPkgs = projectPkgs;
+            extraOptions = jailEnvOptions;
+            inherit workspaceDeps;
           };
-        in
-        {
-          formatter = pkgs.nixpkgs-fmt;
+          jailed-opencode = jailLib.makeJailedOpencode {
+            profile = "specDev";
+            extraPkgs = projectPkgs;
+            extraOptions = jailEnvOptions;
+            inherit workspaceDeps;
+          };
+          jailed-claude = jailLib.makeJailedClaude {
+            profile = "specDev";
+            extraPkgs = projectPkgs;
+            extraOptions = jailEnvOptions;
+            inherit workspaceDeps;
+          };
+          jailed-codex = jailLib.makeJailedCodex {
+            profile = "specDev";
+            extraPkgs = projectPkgs;
+            extraOptions = jailEnvOptions;
+            inherit workspaceDeps;
+          };
+          jailed-gemini = jailLib.makeJailedGemini {
+            profile = "specDev";
+            extraPkgs = projectPkgs;
+            extraOptions = jailEnvOptions;
+            inherit workspaceDeps;
+          };
+          jailed-zero = jailLib.makeJailedZerostack {
+            profile = "specDev";
+            extraPkgs = projectPkgs;
+            extraOptions = jailEnvOptions;
+            inherit workspaceDeps;
+          };
+          bubblewrap = pkgs.bubblewrap;
+        };
+      in {
+        _module.args.pkgs = import inputs.nixpkgs {
+          inherit system;
+        };
 
-          devShells.default = if isDarwin then darwinShell else linuxShell;
-        }
-      );
+        devshells.default = {
+          packages = projectPkgs ++ lib.optionals isLinux (lib.attrValues jailPkgs);
+          commands = [
+            {
+              name = "jcl";
+              help = "jailed-claude --dangerously-skip-permissions";
+              command = "jailed-claude --dangerously-skip-permissions $@";
+            }
+          ];
+        };
+      };
+    };
 }

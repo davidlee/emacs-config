@@ -1,4 +1,5 @@
 ;;; init.el --- Emacs init -*- lexical-binding: t; -*-
+(setq debug-on-event 'sigusr2)
 
 ;; CORE
 (require 'dl-compile)

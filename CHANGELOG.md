@@ -2,6 +2,25 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-18 — crash diagnostics: stderr wrapper + SIGUSR2 backtrace
+
+Gui locked + all frames vanished while editing an org buffer; no
+coredump, no journal entry. Fuzzel-spawned pgtk emacs has stdout/stderr
+pointed at `/dev/null`, so wayland/compositor disconnects and late
+fatal messages were unrecoverable.
+
+- `~/.local/bin/emacs-logged` — launcher wrapper, `exec emacs "$@"`
+  with stderr appended to `~/.local/state/emacs/stderr.log`; previous
+  session rotated to `stderr.log.1` on each start. Header line records
+  timestamp + pid + args.
+- `~/.local/share/applications/emacs.desktop` — local override (XDG
+  precedence over Nix) so fuzzel routes through the wrapper.
+- `init.el` — `(setq debug-on-event 'sigusr2)`; `pkill -USR2 emacs`
+  during a freeze drops into the debugger with a backtrace.
+
+Files live outside the repo (state + XDG launcher dirs); noted here so
+future-me knows where to look.
+
 ## 2026-05-18 — org faces scale with text-scale; new-frame bg syncs to theme
 
 `core/dl-faces.el` — org heading/code faces moved to float `:height`
