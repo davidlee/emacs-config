@@ -79,6 +79,7 @@
 (require 'dl-eaf)
 (require 'dl-agent-shell)
 (require 'dl-smudge)
+(require 'dl-secret)
 (require 'dl-gptel)
 
 (require 'dl-keybind)

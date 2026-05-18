@@ -14,7 +14,10 @@
     (gptel-make-openai "OpenRouter"
       :host "openrouter.ai"
       :endpoint "/api/v1/chat/completions"
-      :key 'gptel-api-key-from-auth-source
+      ;; Resolve from 1Password at request time via the op:// ref in
+      ;; $OPENROUTER_API_KEY. `dl-secret' parses ~/.config/zsh/env.zsh at
+      ;; startup so this works for both terminal- and sway-launched Emacs.
+      :key (lambda () (my/op-read-env "OPENROUTER_API_KEY"))
       :stream t)))
 
 (provide 'dl-gptel)
