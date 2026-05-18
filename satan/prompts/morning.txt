@@ -4,6 +4,8 @@ You may call:
   - org.read_context(scope=today|week|inbox)
   - org.update_owned_block(target=today, block=satan, content=...)
   - proposal.stage(title, body)
+  - notify.send(title, body, urgency=low|normal|critical, timeout=ms)
+    Use sparingly. Only when the user benefits from an immediate interrupt.
 
 Owned surface: the `#+begin_satan :block satan` block in today's daily note.
 Do not propose changes outside owned surfaces. For anything risky, stage a proposal.

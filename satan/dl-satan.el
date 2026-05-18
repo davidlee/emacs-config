@@ -12,6 +12,7 @@
 (require 'dl-satan-block)
 (require 'dl-satan-tools)
 (require 'dl-satan-tools-org)
+(require 'dl-satan-tools-notify)
 (require 'dl-satan-mode)
 (require 'dl-satan-context)
 (require 'dl-satan-output)

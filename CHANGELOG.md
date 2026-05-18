@@ -2,6 +2,29 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-19 — SATAN: notify.send tool (phase-2 B)
+
+Adds a `notify.send` tool so the agent can post a transient desktop
+notification via D-Bus.  Thin wrapper around `notifications-notify`
+(Emacs built-in).  Risk `low`; flows through the same audit transcript
+as every other tool call.
+
+- `satan/dl-satan-tools-notify.el` — handler + registration.  Args:
+  `title` (required), `body` (required), `urgency`
+  (`low|normal|critical`, optional), `timeout` (ms, optional, default
+  8000).  D-Bus failure returns `error` instead of propagating.
+- `satan/dl-satan.el` — requires the new file.
+- `satan/dl-satan-mode.el` — `morning` and `motd` allowlist
+  `notify.send`; new `notify` capability tag.
+- `satan/harness/gptel_harness.py` — JSON Schema for `notify.send`
+  added to `TOOL_SCHEMAS` so the LLM sees it whenever the mode
+  manifest allows it.
+- `satan/prompts/{morning,motd}.txt` — note the new tool with a
+  reminder to use it sparingly.
+- Tests: 4 new ert (`dispatch-ok` via stubbed `notifications-notify`,
+  schema missing-title, urgency enum, handler-error path) — 19/19
+  unit ert green.  6/6 python harness unittest green.
+
 ## 2026-05-19 — SATAN: real LLM harness (phase-2 A)
 
 Replaces the phase-1 fake harness with `satan-gptel-harness`, an

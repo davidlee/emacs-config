@@ -159,7 +159,13 @@ class HarnessTests(unittest.TestCase):
         names = [t["function"]["name"] for t in tools]
         self.assertIn("org.read_context", names)
         self.assertNotIn("proposal.stage", names)
+        self.assertNotIn("notify.send", names)
         self.assertIn("satan.final", names)
+
+    def test_build_tools_includes_notify(self):
+        tools = h.build_tools(["notify.send"])
+        names = [t["function"]["name"] for t in tools]
+        self.assertIn("notify.send", names)
 
 
 if __name__ == "__main__":

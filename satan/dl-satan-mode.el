@@ -31,8 +31,9 @@
  (list :name "morning"
        :prompt-file (expand-file-name "morning.txt" dl-satan-prompts-dir)
        :context-fn 'dl-satan-context-morning
-       :tools '("org.read_context" "org.update_owned_block" "proposal.stage")
-       :capabilities '(write-daily stage-proposal)
+       :tools '("org.read_context" "org.update_owned_block"
+                "proposal.stage" "notify.send")
+       :capabilities '(write-daily stage-proposal notify)
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
        :jail-profile 'specDev
        :provider 'openrouter
@@ -47,8 +48,8 @@
  (list :name "motd"
        :prompt-file (expand-file-name "motd.txt" dl-satan-prompts-dir)
        :context-fn 'dl-satan-context-motd
-       :tools '("org.read_context" "org.update_owned_block")
-       :capabilities '(write-motd)
+       :tools '("org.read_context" "org.update_owned_block" "notify.send")
+       :capabilities '(write-motd notify)
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
        :jail-profile 'specDev
        :provider 'openrouter

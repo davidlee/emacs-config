@@ -193,6 +193,33 @@ TOOL_SCHEMAS: dict[str, dict] = {
             },
         },
     },
+    "notify.send": {
+        "type": "function",
+        "function": {
+            "name": "notify.send",
+            "description": (
+                "Send a transient desktop notification via D-Bus. Use "
+                "sparingly: only when the user benefits from an immediate "
+                "interrupt. Body should be at most one short sentence."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string"},
+                    "body": {"type": "string"},
+                    "urgency": {
+                        "type": "string",
+                        "enum": ["low", "normal", "critical"],
+                    },
+                    "timeout": {
+                        "type": "integer",
+                        "description": "Display timeout in milliseconds.",
+                    },
+                },
+                "required": ["title", "body"],
+            },
+        },
+    },
 }
 
 SATAN_FINAL_SCHEMA = {
