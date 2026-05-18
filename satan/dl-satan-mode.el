@@ -33,11 +33,14 @@
        :context-fn 'dl-satan-context-morning
        :tools '("org.read_context" "org.update_owned_block" "proposal.stage")
        :capabilities '(write-daily stage-proposal)
-       :harness '(:cmd "jailed-satan-fake-harness" :args () :env nil)
-       :jail-profile 'offline
+       :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
+       :jail-profile 'specDev
+       :provider 'openrouter
+       :model "anthropic/claude-haiku-4.5"
+       :budget-tokens 20000
        :output-handler 'dl-satan-output/morning
        :auto-apply 'owned
-       :timeout-seconds 30
+       :timeout-seconds 90
        :budget-tool-calls 8))
 
 (dl-satan-mode-register
@@ -46,11 +49,14 @@
        :context-fn 'dl-satan-context-motd
        :tools '("org.read_context" "org.update_owned_block")
        :capabilities '(write-motd)
-       :harness '(:cmd "jailed-satan-fake-harness" :args () :env nil)
-       :jail-profile 'offline
+       :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
+       :jail-profile 'specDev
+       :provider 'openrouter
+       :model "anthropic/claude-haiku-4.5"
+       :budget-tokens 5000
        :output-handler 'dl-satan-output/motd
        :auto-apply 'owned
-       :timeout-seconds 15
+       :timeout-seconds 45
        :budget-tool-calls 4))
 
 (provide 'dl-satan-mode)

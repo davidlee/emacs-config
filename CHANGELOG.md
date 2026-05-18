@@ -2,6 +2,49 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-19 — SATAN: real LLM harness (phase-2 A)
+
+Replaces the phase-1 fake harness with `satan-gptel-harness`, an
+OpenAI-compatible chat-completions driver (OpenRouter v1 by default).
+The harness is provider-agnostic via a `Provider` abstract base — keys
+and model id come from env (`SATAN_PROVIDER`, `SATAN_MODEL`,
+`<PROVIDER>_API_KEY`).  Future providers (Anthropic direct, OpenAI,
+DeepSeek, Pi/Zerostack) plug in by implementing `Provider.complete`.
+
+- `satan/harness/gptel_harness.py` — main harness.  Termination signal
+  is a `satan.final(summary, actions[])` tool call; adapter intercepts
+  it and emits the broker's `final` record.  Plain-content responses
+  with no tool calls are coerced into a final with
+  `reason=no_tool_calls`.
+- Budget: harness tallies `prompt_tokens + completion_tokens` reported
+  by the provider; emits per-turn `log` events with cumulative usage;
+  graceful self-termination via synthetic `final` with
+  `reason=budget_tokens` once a turn crosses
+  `SATAN_BUDGET_TOKENS`.  Broker's existing `:budget-tool-calls` +
+  `:timeout-seconds` remain the backstops.
+- `satan/harness/test_gptel_harness.py` — five unit tests covering the
+  termination paths, budget exhaustion, and tool-call filtering.
+  Stdlib `unittest`; no network.
+- `flake.nix` — `satanGptelHarness` (`writePython3Bin` with
+  `python3Packages.openai`), `satanGptelJailOptions` (forwards
+  `SATAN_PROVIDER`/`SATAN_MODEL`/`SATAN_BUDGET_TOKENS` + four provider
+  key vars), `satan-jailed-gptel-harness` (profile `specDev` for
+  network).
+- `dl-satan-broker.el` — `dl-satan-broker-provider-key-vars` map;
+  resolves `op://` refs via `my/op-read-env` at spawn (condition-case
+  so a locked 1Password doesn't crash the run); forwards
+  `SATAN_PROVIDER`/`SATAN_MODEL`/`SATAN_BUDGET_TOKENS` + selected key
+  into the child env.
+- `dl-satan-mode.el` — `morning` and `motd` now drive
+  `jailed-satan-gptel-harness` against `anthropic/claude-haiku-4.5` via
+  openrouter.  Budgets: morning 20k tokens / 8 tool calls / 90s wall;
+  motd 5k tokens / 4 tool calls / 45s wall.
+- `satan-jailed-fake-harness` retained as the test fixture for the
+  existing integration ert.
+- Smoke: 15/15 unit ert + 1/1 integration ert + 5/5 python unittest
+  green.  Standalone protocol smoke against real openrouter confirms
+  `ready` emission, network reach, error path clean.
+
 ## 2026-05-19 — SATAN: broker + JSONL protocol + jailed fake harness
 
 Phase-1 of the SATAN local agent runtime (see `SATAN.local.md`).  Emacs

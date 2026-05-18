@@ -90,6 +90,33 @@
           (set-env "SATAN_RUN_DIR"     "/satan/run")
         ];
 
+        # SATAN — phase-2 real harness.  Drives an OpenAI-compatible
+        # chat-completions loop (OpenRouter v1 by default).  Speaks the
+        # SATAN JSONL protocol; terminates on a `satan.final` tool call.
+        # See ~/.emacs.d/satan/harness/gptel_harness.py.
+        satanGptelHarness =
+          pkgs.writers.writePython3Bin "satan-gptel-harness" {
+            libraries = with pkgs.python3Packages; [ openai ];
+            flakeIgnore = [
+              "E501" # line too long — model strings carry long descriptions
+              "E402" # module-level import order (we have a __future__ line)
+              "W503" # line break before binary operator
+              "E704" # `def f(...) -> T: ...` one-liner for abstract methods
+            ];
+          } (builtins.readFile ./satan/harness/gptel_harness.py);
+
+        # Extra env passed through the bwrap jail for the real harness:
+        # provider selection + cumulative token budget + per-provider keys.
+        satanGptelJailOptions = satanJailOptions ++ (with jailLib.combinators; [
+          (try-fwd-env "SATAN_PROVIDER")
+          (try-fwd-env "SATAN_MODEL")
+          (try-fwd-env "SATAN_BUDGET_TOKENS")
+          (try-fwd-env "OPENROUTER_API_KEY")
+          (try-fwd-env "ANTHROPIC_API_KEY")
+          (try-fwd-env "OPENAI_API_KEY")
+          (try-fwd-env "DEEPSEEK_API_KEY")
+        ]);
+
         jailPkgs = lib.optionalAttrs isLinux {
           jailed-pi = jailLib.makeJailedPi {
             profile = "specDev";
@@ -141,6 +168,13 @@
             agent = satanFakeHarness;
             profile = "offline";
             extraOptions = satanJailOptions;
+            workspaceDeps = [];
+          };
+          satan-jailed-gptel-harness = jailLib.makeJailedAgent {
+            name = "satan-gptel-harness";
+            agent = satanGptelHarness;
+            profile = "specDev";
+            extraOptions = satanGptelJailOptions;
             workspaceDeps = [];
           };
           bubblewrap = pkgs.bubblewrap;

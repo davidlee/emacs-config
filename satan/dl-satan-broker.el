@@ -41,6 +41,22 @@ for this directory and merges the result into `process-environment'
 before spawning the child.  Set to nil to disable."
   :type '(choice directory (const nil)) :group 'dl-satan)
 
+(defvar dl-satan-broker-provider-key-vars
+  '((openrouter . "OPENROUTER_API_KEY")
+    (anthropic  . "ANTHROPIC_API_KEY")
+    (openai     . "OPENAI_API_KEY")
+    (deepseek   . "DEEPSEEK_API_KEY"))
+  "Map SATAN mode `:provider' symbol to its API-key env var name.")
+
+(declare-function my/op-read-env "dl-secret" (var &optional refresh))
+
+(defun dl-satan-broker--read-env (var)
+  "Return VAR from the environment, resolving `op://' refs when possible.
+Falls back to `getenv' if `my/op-read-env' is unavailable."
+  (if (fboundp 'my/op-read-env)
+      (my/op-read-env var)
+    (getenv var)))
+
 (cl-defstruct dl-satan-run
   id mode start-time dir bundle-path process
   pending-tool-calls tool-calls-done
@@ -269,10 +285,31 @@ Returns the run-id."
                      :stdout-log-path stdout-log)))
       (let* ((cmd (plist-get (plist-get mode :harness) :cmd))
              (args (plist-get (plist-get mode :harness) :args))
+             (provider (plist-get mode :provider))
+             (model (plist-get mode :model))
+             (budget-tokens (plist-get mode :budget-tokens))
+             (key-var (and provider
+                           (cdr (assq provider
+                                      dl-satan-broker-provider-key-vars))))
+             (key-val (and key-var
+                           (condition-case _err
+                               (dl-satan-broker--read-env key-var)
+                             (error nil))))
+             (provider-env (delq nil
+                                 (list
+                                  (when provider
+                                    (format "SATAN_PROVIDER=%s" provider))
+                                  (when model
+                                    (format "SATAN_MODEL=%s" model))
+                                  (when budget-tokens
+                                    (format "SATAN_BUDGET_TOKENS=%d" budget-tokens))
+                                  (when (and key-var key-val)
+                                    (format "%s=%s" key-var key-val)))))
              (direnv-env (dl-satan-broker--direnv-env process-environment))
              (env (append (list (format "SATAN_RUN_ID=%s" run-id)
                                 (format "SATAN_RUN_DIR=%s" dir)
                                 (format "SATAN_BUNDLE=%s" bundle-path))
+                          provider-env
                           (plist-get (plist-get mode :harness) :env)
                           direnv-env))
              (process-environment env)
