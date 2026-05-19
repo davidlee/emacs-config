@@ -567,9 +567,28 @@ design. When added, stage as proposals per `SATAN.md`.)
 
 Migrations: numbered SQL files under
 `~/.emacs.d/satan/memory/migrations/NNNN_<slug>.sql`. Forward-only,
-additive where possible. Applied by `dl-satan-memory-migrate` (impl
-detail: `emacsql-pg` or `psql` subprocess — decide at implementation
-time; both acceptable).
+additive where possible. Applied by `dl-satan-memory-migrate`.
+
+**R3 decided 2026-05-19: `psql` subprocess** for both migration runner
+and runtime store. Verified `psql 18.4` at
+`/run/current-system/sw/bin/psql`; socket auth at `/run/postgresql`
+works as user `david`. Rationale:
+
+- Migrations are already `.sql`; `psql -v ON_ERROR_STOP=1 -1 -f FILE`
+  is a one-line invocation, atomically applied per file.
+- No new emacs package or `home-manager switch` required.
+- Matches surrounding shell-out pattern (`dl-satan-tools-sway.el`,
+  `dl-satan-tools-bough.el`).
+- Runtime throughput is human-paced (mark/resonate), so per-call
+  subprocess latency (~20 ms) is invisible.
+- Multi-step transactions live in SQL as PL/pgSQL functions
+  (`memory_mark(...)` returning `trace_id`); elisp side stays a
+  one-liner. Parameter binding via `psql -v key=value` + `:'key'`
+  quoting handles LLM-supplied strings safely.
+
+If runtime hot-path ever materializes (e.g. auto_rule writers), revisit
+with an `emacsql-pg` backend behind the same `dl-satan-memory-store`
+interface.
 
 Migration state is tracked in `schema_migrations` (§6.2). The runner
 applies a version only when it equals `max(applied) + 1`, records the

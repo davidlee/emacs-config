@@ -2,6 +2,36 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-19 — SATAN: memory substrate, step 2 (migration runner + schema)
+
+Step 2 of the memory-substrate plan (`satan/HANDOVER.md`). Establishes
+the `satan_memory` PG database and a forward-only migration runner.
+
+- `satan/memory/migrations/0001_init.sql` — schema v1 per
+  `memory.design.md` §6.2: `traces`, `trace_handles`, `trace_links`,
+  `handle_aliases`, `handle_weights`, `grammar_versions`,
+  `schema_migrations`. All `CHECK` constraints, indexes, and the
+  `^[a-z][a-z0-9_]*:[A-Za-z0-9][A-Za-z0-9_.+>-]*$` handle regex are in.
+- `satan/memory/migrations/0002_grammar_v1.sql` — grammar v1 seed: one
+  `grammar_versions` row, 6 aliases (§2.3), 24 namespace default weights
+  (§2.4).
+- `satan/dl-satan-memory-migrate.el` — new module. Shell-out to `psql`
+  (R3 decided in `memory.design.md` §6.1). Per-file `--single-transaction`
+  wraps both the SQL body and the `schema_migrations` INSERT, so the
+  bookkeeping row cannot drift from schema state. Refuses to apply on
+  version skip (must equal `max(applied)+1`) or checksum tamper.
+  Public surface: `dl-satan-memory-migrate-apply`,
+  `dl-satan-memory-migrate-status`, and the interactive
+  `my/satan-memory-migrate{,-status}` commands.
+- `satan/test/dl-satan-memory-migrate-test.el` — 9 ert against
+  `satan_memory_test`: filename parsing (case-strict), duplicate-version
+  rejection, ascending sort, real-migration apply, re-apply no-op,
+  tamper detection, version-skip refusal, missing-file refusal.
+- Both migrations applied to `satan_memory` via the runner.
+
+Not yet wired into `dl-satan.el` (step 9 of the plan). Decision and
+bough-CLI scope mapping recorded in `memory.design.md` §6.1 and §10.2.
+
 ## 2026-05-19 — SATAN: sway-border tools (ephemeral, runtime-only)
 
 Two tools so SATAN can transiently retint sway window borders without
