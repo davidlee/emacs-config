@@ -40,6 +40,42 @@ without referencing `memory_*` tools that don't exist yet.
   (`inbox < border < notify < proposal`) and reinforces the
   show-why rule inline.
 
+## 2026-05-19 — SATAN: memory substrate, step 5 (canonicalizer + purity lint)
+
+Step 5 of the memory-substrate plan (`satan/HANDOVER.md`). Lands the
+pure canonicalizer that turns evidence + LLM hints + ctx into canonical
+handles and per-handle source provenance.
+
+- `satan/dl-satan-memory-canon.el` — new module. Strictly pure (no
+  shell, no IO, no clock outside `ctx.time_now`); the purity boundary
+  is enforced by a grep-lint test that reads every form via `read'
+  and refuses if any of `shell-command`, `call-process`,
+  `insert-file-contents`, `url-retrieve`, `current-time`, etc., appear
+  in code (comments stripped). Rule registry via a `defrule` macro;
+  rules are individually defunable and testable. 14 rules landed,
+  covering every entry in `memory.design.md` §3.3 (panopticon
+  current/transitions/docs, bough recent/active, cwd project/file_kind,
+  ctx mode, time day_week, hint topic/phase/focal_app/focal_bough_nanoid;
+  `panopticon.event_transition` is explicitly inert per §10.8).
+- Hint normalization: closed-world fields (kind, phase, valence)
+  validated against the grammar with up-to-5 suggestions on rejection;
+  open-world fields (topic, focal_app) slug-normalized; topic deduped
+  and capped at 5.
+- Origin priority: when the same handle is emitted by multiple rules,
+  the dispatch keeps the highest-priority source (observed > derived >
+  ctx > hint). Handles are returned sorted for stable diffs.
+- `satan/test/dl-satan-memory-canon-test.el` — 22 ert: pure helpers,
+  hint normalization (including rejection with suggestions), one test
+  per rule (incl. inert rule), origin-priority dedup, sort stability,
+  end-to-end through the raw entry point, two golden-fixture round-trips
+  (minimal_firefox, rich_window — full sweep through every rule), and
+  the purity grep-lint.
+- `satan/test/canon-fixtures/{minimal_firefox,rich_window}.json` —
+  golden inputs + expected handle sets.
+
+47/47 ert green across the full memory test suite (migrate + grammar +
+canon); byte-compile clean. Not yet wired into `dl-satan.el` — step 9.
+
 ## 2026-05-19 — SATAN: memory substrate, step 4 (grammar v1 + drift detector)
 
 Step 4 of the memory-substrate plan (`satan/HANDOVER.md`). Lands the
