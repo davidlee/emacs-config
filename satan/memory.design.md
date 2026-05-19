@@ -897,11 +897,39 @@ normalization. Empty array equivalent to omission. Slug regex
 `^[a-z0-9][a-z0-9_-]*$`.
 
 ### 10.2 Bough CLI scopes
-`bough --json node recent_changes --since …` may not exist yet.
-Mitigation paths:
-(a) compose from existing scopes (`node list --updated-since`);
-(b) propose additions to bough-cli.
-This is a bough-side discovery item, not a substrate blocker.
+
+Discovered against `bough 0.1.0` (binary `/home/david/.cargo/bin/bough`)
+on 2026-05-19. Pin this binary path in `dl-satan-tools-bough.el`
+defcustom; fail-fast on shape drift (R2). Sample-output integration
+fixture goes in `test/bough-fixtures/`.
+
+Status legend: **exists** = single invocation; **composable** = N>1
+invocations or in-elisp post-filter; **degraded** = capability missing,
+ship loosened semantics in v1 and file a bough issue.
+
+| Design scope (§5.4) | Status | Invocation(s) | Notes |
+|---------------------|--------|---------------|-------|
+| `node`             | composable | `bough --json node get NANOID` + `bough --json node annotations NANOID` + walk `parent_nanoid` upward via repeated `node get` until `null` | `node get` returns the node with `parent_nanoid` but no chain and no annotations. Compose all three in `dl-satan-tools-bough.el`; cache chain walk per call. |
+| `recent_changes`   | degraded   | `bough --json node tree --after updated_at=<SINCE>` | No `status_at` / per-status-transition history exposed by CLI; only `updated_at` and `created_at` filterable. v1 semantics: "nodes whose `updated_at >= window_start`", not literal status transitions. Document in tool description. **Bough gap B1**. |
+| `active`           | exists     | `bough --json node tree --kind task --status doing,todo,blocked` | Comma-separated `--status` confirmed. Add `--workspace` passthrough. |
+| `day`              | exists     | `bough --json day show -d YYYY-MM-DD` | Returns `error: day not found` when no day entry exists; tool wrapper must translate to `ok { scope:"day", day:null }` rather than error. |
+| `week`             | composable | `bough --json day list <MONDAY> <SUNDAY>` followed by per-non-empty-day `bough --json day show -d <D>` | No `bough week` subcommand. `day list` returns the date set; iterate for entries. |
+| `project_subtree`  | degraded   | `bough --json node subtree NANOID` + elisp post-filter to `max_depth` | `node subtree` has no `--max-depth N` flag. Fetch full subtree, prune in `dl-satan-tools-bough.el` against design-default depth (e.g. 3). **Bough gap B2**. |
+
+Bough-side issues to file (do not block v1):
+
+- **B1**. Add per-status-transition history: e.g. `bough --json node
+  history --since ISO8601` returning `{nanoid, from_status, to_status,
+  at}` rows, or a `status_at` filterable field on `node tree`. v1 ships
+  with the `updated_at` proxy.
+- **B2**. Add `--max-depth N` to `bough node subtree`. v1 prunes in
+  elisp.
+
+Decision tree per R1 followed: gap → degrade scope to loosened
+semantics in v1 + file bough issue, do **not** write parallel read
+logic against the bough DB (B1 of `SATAN.md` enforced by grep-lint).
+
+This unblocks step 3 (`bough_read` tool wrapper).
 
 ### 10.3 Re-normalization cost
 For N traces of ~16 KB `metadata_json`, a full re-norm is N canonicalizer
