@@ -46,14 +46,30 @@ carries only mechanism (schema, capability, handler)."
   "Return non-nil if NAME is present in MODE-TOOLS (mode's :tools allowlist)."
   (and mode-tools (member name mode-tools) t))
 
+(defun dl-satan-tool--plist-like-p (val)
+  "Return non-nil if VAL is a (possibly empty) plist whose keys are keywords."
+  (and (listp val)
+       (or (null val)
+           (and (keywordp (car val))
+                (= (mod (length val) 2) 0)))))
+
 (defun dl-satan-tool--validate-arg (args key constraints)
   "Validate ARGS[KEY] against CONSTRAINTS plist.
-Return nil on success, or an error string."
+Return nil on success, or an error string.
+
+Supported constraints:
+  :type       string|integer|boolean|number|object
+  :required   bool
+  :enum       (list-of-values)
+  :pattern    REGEXP  (string types only)
+  :shape      ARGS-SCHEMA  (object types only; recursive)"
   (let* ((sym (intern (concat ":" (symbol-name key))))
          (val (plist-get args sym))
          (type     (plist-get constraints :type))
          (required (plist-get constraints :required))
-         (enum     (plist-get constraints :enum)))
+         (enum     (plist-get constraints :enum))
+         (pattern  (plist-get constraints :pattern))
+         (shape    (plist-get constraints :shape)))
     (cond
      ((and required (null val))
       (format "missing required arg: %s" key))
@@ -62,8 +78,18 @@ Return nil on success, or an error string."
       (format "arg %s must be string" key))
      ((and (eq type 'integer) (not (integerp val)))
       (format "arg %s must be integer" key))
+     ((and (eq type 'object) (not (dl-satan-tool--plist-like-p val)))
+      (format "arg %s must be object" key))
      ((and enum (not (member val enum)))
       (format "arg %s must be one of %S" key enum))
+     ((and pattern (stringp val) (not (string-match-p pattern val)))
+      (format "arg %s must match %s" key pattern))
+     ((and (eq type 'object) shape)
+      (let ((cursor shape) err)
+        (while (and cursor (null err))
+          (setq err (dl-satan-tool--validate-arg val (car cursor) (cadr cursor)))
+          (setq cursor (cddr cursor)))
+        err))
      (t nil))))
 
 (defun dl-satan-tool-validate-args (spec args)
@@ -138,11 +164,13 @@ missing — a tool without a description is a misconfiguration."
     ('integer "integer")
     ('boolean "boolean")
     ('number  "number")
+    ('object  "object")
     (_ (error "SATAN: unsupported arg type: %S" sym))))
 
 (defun dl-satan-tool--args-schema-to-jsonschema (args-schema)
   "Convert an elisp `:args-schema' plist into a JSON Schema parameters dict.
-Returns a plist: (:type \"object\" :properties (...) :required [...])."
+Returns a plist: (:type \"object\" :properties (...) :required [...]).
+Recurses into `:shape' for nested object args."
   (let ((props nil)
         (required nil)
         (cursor args-schema))
@@ -151,10 +179,16 @@ Returns a plist: (:type \"object\" :properties (...) :required [...])."
              (constraints (cadr cursor))
              (type (plist-get constraints :type))
              (enum (plist-get constraints :enum))
+             (pattern (plist-get constraints :pattern))
+             (shape (plist-get constraints :shape))
              (req  (plist-get constraints :required))
-             (prop (list :type (dl-satan-tool--jsonschema-type type))))
+             (prop (if (and (eq type 'object) shape)
+                       (dl-satan-tool--args-schema-to-jsonschema shape)
+                     (list :type (dl-satan-tool--jsonschema-type type)))))
         (when enum
           (setq prop (plist-put prop :enum (vconcat enum))))
+        (when pattern
+          (setq prop (plist-put prop :pattern pattern)))
         (push (cons (intern (concat ":" (symbol-name key))) prop) props)
         (when req
           (push (symbol-name key) required)))

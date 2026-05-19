@@ -2,6 +2,41 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-19 — SATAN: sway-border tools (ephemeral, runtime-only)
+
+Two tools so SATAN can transiently retint sway window borders without
+ever touching `~/.config/sway/config`. `swaymsg client.<class> ...` at
+runtime; `swaymsg reload` reverts. Keybindings and `exec` lines are
+unreachable by construction — the tool grammar admits only
+`client.<class>` with six-tuples of hex-validated colours.
+
+- `satan/dl-satan-tools-sway.el` — new module. `sway_border_set` is
+  batched (one call may declare several classes); `sway_border_reset`
+  takes no args and emits `swaymsg reload`. Class enum:
+  `focused`, `focused_inactive`, `focused_tab_title`, `unfocused`,
+  `urgent`, `placeholder`. Per-class: `border`, `background`, `text`
+  required; `indicator`, `child_border` optional. Risk `medium` for
+  both (visible, ephemeral, reversible).
+- `satan/dl-satan-tools.el` — validator and JSON Schema mapper grow
+  support for `:type 'object :shape (...)` (recursive) and `:pattern
+  REGEXP` for string fields. No existing tool exercises the new branches.
+- `satan/dl-satan-mode.el` + `satan/dl-satan-tick.el` — both tool
+  names appended to every mode's `:tools` (morning, motd,
+  self-edit-mech, self-edit-mind, tick defaults).
+- `~/notes/satan/tools/sway_border_set.md`,
+  `~/notes/satan/tools/sway_border_reset.md` — model-facing
+  descriptions.
+- `satan/test/test-sway-border.el` — 14 new ert: validator
+  nesting/pattern/required, JSON Schema recursion, handler argv shape,
+  unknown-class rejection, reset-emits-reload, mode allowlist.
+- `satan/test/dl-satan-test.el` — fixture maps in two broker tests
+  gain the sway tool descriptions; the self-edit mode-tool assertion
+  is updated to expect the new entries.
+
+Tests: 101/101 ert (87 unit + 14 sway). User runs `home-manager
+switch --flake ~/flakes#david` after `git add` for the Nix wrapper to
+see the new file.
+
 ## 2026-05-19 — SATAN: activity_read v2 — recent_browser + current scopes
 
 Live smoke against OpenRouter confirmed `activity_read{scope:"today"}`

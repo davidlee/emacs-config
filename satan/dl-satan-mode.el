@@ -36,7 +36,8 @@ Dotfiles must not be the source of truth for prompt content.")
        :context-fn 'dl-satan-context-morning
        :tools '("org_read_context" "org_update_owned_block"
                 "proposal_stage" "notify_send" "hippocampus_write"
-                "inbox_append" "agenda_read" "activity_read")
+                "inbox_append" "agenda_read" "activity_read"
+                "sway_border_set" "sway_border_reset")
        :capabilities '(write-daily stage-proposal notify hippocampus-write
                        inbox-write)
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
@@ -54,7 +55,8 @@ Dotfiles must not be the source of truth for prompt content.")
        :prompt-file (expand-file-name "motd.txt" dl-satan-prompts-dir)
        :context-fn 'dl-satan-context-motd
        :tools '("org_read_context" "notify_send" "inbox_append"
-                "agenda_read" "activity_read")
+                "agenda_read" "activity_read"
+                "sway_border_set" "sway_border_reset")
        :capabilities '(notify inbox-write)
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
        :jail-profile 'specDev
@@ -71,7 +73,7 @@ Dotfiles must not be the source of truth for prompt content.")
        :prompt-file (expand-file-name "self-edit-mech.txt" dl-satan-prompts-dir)
        :context-fn 'dl-satan-context-self-edit
        :source-roots-var 'dl-satan-self-edit-mech-roots
-       :tools '("proposal_stage")
+       :tools '("proposal_stage" "sway_border_set" "sway_border_reset")
        :capabilities '(stage-proposal)
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
        :jail-profile 'specDev
@@ -88,7 +90,7 @@ Dotfiles must not be the source of truth for prompt content.")
        :prompt-file (expand-file-name "self-edit-mind.txt" dl-satan-prompts-dir)
        :context-fn 'dl-satan-context-self-edit
        :source-roots-var 'dl-satan-self-edit-mind-roots
-       :tools '("proposal_stage")
+       :tools '("proposal_stage" "sway_border_set" "sway_border_reset")
        :capabilities '(stage-proposal)
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
        :jail-profile 'specDev
