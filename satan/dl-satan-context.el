@@ -49,13 +49,26 @@ cannot start with degraded behavioural framing."
                   (dl-satan-context--read-required prompt-path))))
     (concat scaffold "\n\n" prompt)))
 
+(defun dl-satan-context-now (&optional time)
+  "Return the canonical `:now' plist for TIME (default `current-time').
+Every bundle includes this so the model has consistent date/time/tz
+framing regardless of mode.  Keys: :iso_date, :weekday, :iso_week,
+:time, :tz_offset, :tz_name."
+  (let ((time (or time (current-time))))
+    (list :iso_date  (format-time-string "%Y-%m-%d" time)
+          :weekday   (format-time-string "%A"       time)
+          :iso_week  (format-time-string "%G-W%V"   time)
+          :time      (format-time-string "%H:%M"    time)
+          :tz_offset (format-time-string "%z"       time)
+          :tz_name   (format-time-string "%Z"       time))))
+
 (defun dl-satan-context-morning (mode-spec)
   "Bundle for the morning mode: prompt + today's note text."
   (let* ((today (progn (my/journal--ensure-today)
                        (my/journal--today-file dl-notes-journal-dir "journal"))))
-    (list :prompt   (dl-satan-context--assemble-prompt mode-spec)
-          :mode     (plist-get mode-spec :name)
-          :date     (format-time-string "%Y-%m-%d" nil)
+    (list :prompt     (dl-satan-context--assemble-prompt mode-spec)
+          :mode       (plist-get mode-spec :name)
+          :now        (dl-satan-context-now)
           :today_path today
           :today_text (dl-satan-context--read-file-or-empty today))))
 
@@ -63,15 +76,13 @@ cannot start with degraded behavioural framing."
   "Bundle for the motd mode."
   (list :prompt (dl-satan-context--assemble-prompt mode-spec)
         :mode   (plist-get mode-spec :name)
-        :date   (format-time-string "%Y-%m-%d" nil)))
+        :now    (dl-satan-context-now)))
 
 (defun dl-satan-context-tick (mode-spec)
-  "Bundle for a tick mode.  Same shape as motd; carries time-of-day so
-the model can shape its pulse around morning / afternoon / evening."
+  "Bundle for a tick mode.  Same shape as motd."
   (list :prompt (dl-satan-context--assemble-prompt mode-spec)
         :mode   (plist-get mode-spec :name)
-        :date   (format-time-string "%Y-%m-%d" nil)
-        :time   (format-time-string "%H:%M" nil)))
+        :now    (dl-satan-context-now)))
 
 (defcustom dl-satan-self-edit-mech-roots
   (list (expand-file-name "satan" user-emacs-directory))
@@ -131,7 +142,7 @@ than long relative dotwalks."
                   files)))
     (list :prompt  (dl-satan-context--assemble-prompt mode-spec)
           :mode    (plist-get mode-spec :name)
-          :date    (format-time-string "%Y-%m-%d" nil)
+          :now     (dl-satan-context-now)
           :roots   (mapcar #'abbreviate-file-name roots)
           :sources sources)))
 

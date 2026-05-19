@@ -59,13 +59,14 @@ across those changes.
 | 2D — `self-edit` mode | ✅ | landed 2026-05-19, SATAN-only scope |
 | 2E — mind/mechanism split | ✅ | landed 2026-05-19, prompts + tool descs in `~/notes/satan/` |
 | Wired into Sleipnir (`satan.nix`) | ✅ | timers `satan-morning` 09:00, `satan-motd` 07:00 |
+| 3A — protocol reification | ✅ | landed 2026-05-19; `protocol/PROTOCOL.md` + fixtures + validators on both sides |
 
 `M-x my/satan-run RET morning` writes a SATAN-owned block into today's
 daily note and a full audit bundle under `~/notes/satan/runs/<run-id>/`.
 `motd` writes `~/notes/satan/motd.txt`. `self-edit` stages proposals
 under `~/notes/satan/proposals/` — nothing auto-applies.
 
-Tests: 43/43 unit ert + 8/8 python unittest + 1/1 integration ert.
+Tests: 68/68 unit ert + 16/16 python unittest + 1/1 integration ert.
 
 ## Quickstart
 
@@ -272,6 +273,14 @@ transcript scraping; no free-text command parsing; structured tool
 calls, results, finals; auditable transcript; strict validation at the
 broker boundary.
 
+The canonical message spec is `protocol/PROTOCOL.md`. Shared exemplars
+live at `protocol/fixtures.json` and drive validator tests on both
+sides — the elisp validator (`dl-satan-protocol-validate` in
+`dl-satan-protocol.el`) and the python validator (PROTOCOL section in
+`harness/gptel_harness.py`) must remain in lockstep. Adding a message
+type or required field means: edit the spec, add fixtures, update both
+validators. Tests fail loudly otherwise.
+
 The protocol is a membrane between untrusted reasoning and trusted
 local action. Optimise for: debuggability, testability, portability,
 crash recovery, explicit failure states, replayable audit logs.
@@ -394,6 +403,9 @@ justification):
 | `dl-satan-output.el` | Mode output handlers (`morning`, `motd`, `tick`, `self-edit`; the last is shared by both `self-edit-{mech,mind}` lanes). |
 | `dl-satan-block.el` | Owned-block find/replace. |
 | `dl-satan-jsonl.el` | Line-buffered filter + writer + `dl-satan-jsonl-prepare`. |
+| `dl-satan-protocol.el` | Validator for the JSONL membrane; fixture loader; constants. |
+| `protocol/PROTOCOL.md` | Canonical message-type spec. |
+| `protocol/fixtures.json` | Shared valid/invalid exemplars consumed by both ert and python tests. |
 | `dl-satan-audit.el` | Append-only artifact writer + 6-predicate verifier. |
 | `dl-satan-budget.el` | Daily token ceiling: enumerates today's `runs/`, sums per-run `usage.tokens_total`, gates the broker pre-spawn. |
 | `dl-satan-broker.el` | `make-process` driver: sentinel, timeout, direnv, op:// resolution, env pass; `--build-manifest`. |
@@ -521,6 +533,15 @@ journalctl --user -u satan-morning.service --since today
 ```
 
 ## Conventions / gotchas
+
+### Bundle `:now` block
+
+Every context-fn includes a `:now` plist via `dl-satan-context-now`:
+`iso_date`, `weekday`, `iso_week`, `time`, `tz_offset`, `tz_name`.
+The python harness renders this as a fixed `# Now` section between the
+assembled prompt and any `today_text` / source-file sections, so the
+model always sees the same date/time/tz framing regardless of mode.
+Single source of truth — never set `:date`/`:time` separately.
 
 ### Owned-block syntax
 
@@ -657,6 +678,14 @@ relevance.)
   Underscored, not dotted: must match `^[a-zA-Z0-9_-]+$` so the schema
   survives every OpenAI-compatible adapter (OpenRouter → Amazon Bedrock
   rejects dots; OpenAI's own validator does too).
+
+## External dependencies
+
+- **panopticon** (`~/dev/panopticon`, own repo) — captures desktop
+  behaviour into `~/.local/state/behaviour/{raw,segments,histograms,current}/`.
+  v0.1 sway watcher live as of 2026-05-19; segmentizer + retention
+  pending. SATAN will consume via the future `activity_read` tool —
+  no IPC from inside the broker. See `~/dev/panopticon/HANDOVER.md`.
 
 ## Open threads
 

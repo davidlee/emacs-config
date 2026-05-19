@@ -2,6 +2,55 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-19 — SATAN: phase 3A — protocol reification
+
+The broker/harness JSONL membrane was implicit: ad-hoc `pcase` dispatch
+on the broker side, hand-rolled `emit_*` helpers on the harness side,
+no schema, no cross-side test contract. Phase 3A reifies it as a named
+artifact with shared exemplars driving validator tests on both sides.
+
+- `satan/protocol/PROTOCOL.md` — canonical message-type spec (inbound:
+  `ready`, `log`, `tool_call`, `final`, `error`; outbound: `tool_result`).
+- `satan/protocol/fixtures.json` — valid + invalid exemplars; each
+  invalid entry carries an expected `reason` string. Loaded by both
+  test suites.
+- `satan/dl-satan-protocol.el` — elisp validator
+  `dl-satan-protocol-validate` returning `nil | (:type T :reason R)`.
+- `satan/harness/gptel_harness.py` — PROTOCOL section with `check`,
+  `validate`, `ProtocolError`. `emit*`/`read_tool_result` now validate
+  on the wire. (Validator stays inline rather than splitting into
+  `harness/protocol.py` until the harness goes multi-file at phase 3B
+  — nix `writePython3Bin` is single-file.)
+- `satan/dl-satan-broker.el` — `dl-satan-broker--dispatch` validates
+  inbound before pcase; `dl-satan-broker--send-validated` audits any
+  malformed outbound (still sends; broker-malformed output is a bug
+  flag, not a wire failure). Drops the bespoke
+  `dl-satan-broker--validate-final` helper.
+- Tests: ert and python both iterate `fixtures.json`, asserting valid
+  fixtures pass and invalid fixtures fail with the recorded reason.
+
+Tests: 68/68 elisp + 16/16 python + 1/1 integration ert.
+
+## 2026-05-19 — SATAN: `:now` block in every mode bundle
+
+Every context-fn now emits a `:now` plist (`iso_date`, `weekday`,
+`iso_week`, `time`, `tz_offset`, `tz_name`) instead of scattered
+`:date`/`:time` keys. The python harness renders it as a fixed `# Now`
+section between the assembled scaffold/mode prompt and any
+`today_text` / source-file sections, so the model has consistent
+date/time/timezone framing regardless of mode.
+
+- `satan/dl-satan-context.el` — new `dl-satan-context-now` helper;
+  `morning`, `motd`, `tick`, and `self-edit` bundles all carry `:now`.
+- `satan/harness/gptel_harness.py` — `build_system_prompt` renders
+  `# Now` when the bundle includes `now`; absent → block omitted.
+- `satan/test/dl-satan-test.el` — 4 new tests: now-plist shape +
+  per-mode bundle inclusion.
+- `satan/harness/test_gptel_harness.py` — `make_bundle` carries a
+  canonical `now`; new tests cover render + skip-when-absent.
+
+Tests: 63/63 elisp + 10/10 python.
+
 ## 2026-05-19 — SATAN: `agenda_read` tool (work calendar via gcalcli)
 
 New read-only tool for the `morning` and `motd` modes. Shells out to
