@@ -2,6 +2,35 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-20 — SATAN: memory quality sweep — §2
+
+Wires the broker's run start-time and per-call wall clock through
+the tool-ctx so the evidence assembler can bound the window by run
+start instead of falling back to the 10-minute default.
+
+- `satan/dl-satan-broker.el`: `dl-satan-broker--tool-ctx` adds
+  `:run-started-at` (formatted from `dl-satan-run-start-time`) and
+  `:time-now` (formatted at call time), both ISO8601.
+- `satan/dl-satan-tools-memory.el` `--ctx-from`: reads `:time-now'
+  from tool-ctx (falls back to `--now' for older fixtures), and
+  threads `:run-started-at` onto the canon ctx as `:run_started_at'.
+  `--mark-impl' and `--derive-cue-handles' now forward
+  `:run_started_at' to `dl-satan-memory-evidence-assemble' as an
+  opts plist. Top-of-file comment drops the entry for this sweep.
+- `satan/dl-satan-tools-hippocampus.el` `--cross-ref`: reads
+  `:time-now` and `:run-started-at` from tool-ctx (falls back to
+  wall clock for time, nil for run-start) and forwards
+  `:run_started_at' to the assembler.
+- `satan/test/dl-satan-test.el`: new ert
+  `dl-satan-broker/tool-ctx-shape` asserts the keys + ISO8601
+  formatting.
+- `satan/test/dl-satan-tools-memory-test.el`: 3 new ert covering
+  prefers-tool-ctx-time-now, falls-back-to-wall-clock, and
+  mark-forwards-run-started-at-to-evidence (via a new
+  `--capture-evidence-opts` macro).
+
+Phase-3 95/95 (+1); memory 123/123 (+3).
+
 ## 2026-05-20 — SATAN: memory quality sweep — §3
 
 Closes the `normalize-hints` + `canonicalize` two-step dance for

@@ -15,9 +15,7 @@
 ;; Sweep items still open (`satan/HANDOVER.md'):
 ;;   - schema lacks `:type 'array' for some hint subfields (topic, links,
 ;;     kinds, cue.handles are declared without type and validated in the
-;;     handler);
-;;   - broker tool-ctx does not yet expose `run-started-at' or `time_now',
-;;     so the evidence window falls back to the 10-minute default.
+;;     handler).
 
 (require 'cl-lib)
 (require 'subr-x)
@@ -57,12 +55,14 @@
 
 (defun dl-satan-tools-memory--ctx-from (tool-ctx)
   "Build the canon ctx plist (§3.1) from the broker's TOOL-CTX.
-TOOL-CTX comes from `dl-satan-broker--tool-ctx': it has `:id',
-`:mode-name', `:capabilities', `:run-dir', `:hippocampus-dir' — it
-does NOT carry `:time_now' or `:run-started-at' in v1, so we derive
-the time from the clock and let the evidence assembler fall back to
-the 10-minute default for the window start."
-  (list :time_now (dl-satan-tools-memory--now)
+Reads `:time-now' and `:run-started-at' from TOOL-CTX when present
+so the evidence window is bounded by the run start.  Falls back to
+the wall clock for `:time_now' when the tool-ctx omits it (older
+callers and unit fixtures); `:run_started_at' stays nil and the
+assembler applies the 10-minute default."
+  (list :time_now (or (plist-get tool-ctx :time-now)
+                      (dl-satan-tools-memory--now))
+        :run_started_at (plist-get tool-ctx :run-started-at)
         :mode_name (dl-satan-tools-memory--mode-name
                     (plist-get tool-ctx :mode-name))
         :run_id (plist-get tool-ctx :id)
@@ -135,7 +135,9 @@ cannot express yet."
 (defun dl-satan-tools-memory--mark-impl (payload raw-hints top-valence links tool-ctx)
   "Assemble, canonicalize, store; return the §5.1 result."
   (let* ((ctx (dl-satan-tools-memory--ctx-from tool-ctx))
-         (evidence (dl-satan-memory-evidence-assemble ctx))
+         (evidence (dl-satan-memory-evidence-assemble
+                    ctx (list :run_started_at
+                              (plist-get ctx :run_started_at))))
          (canon (dl-satan-memory-canon-canonicalize-from-raw
                  evidence raw-hints ctx))
          (handles (plist-get canon :handles))
@@ -232,7 +234,9 @@ cannot express yet."
 (defun dl-satan-tools-memory--derive-cue-handles (hints tool-ctx)
   "Run the evidence + canon pipeline with HINTS to produce a cue list."
   (let* ((ctx (dl-satan-tools-memory--ctx-from tool-ctx))
-         (evidence (dl-satan-memory-evidence-assemble ctx))
+         (evidence (dl-satan-memory-evidence-assemble
+                    ctx (list :run_started_at
+                              (plist-get ctx :run_started_at))))
          (canon (dl-satan-memory-canon-canonicalize-from-raw
                  evidence hints ctx)))
     (plist-get canon :handles)))

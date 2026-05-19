@@ -42,12 +42,16 @@ substrate error is logged and does not affect the caller."
               (list :current_grammar_version
                     dl-satan-memory-grammar-current-version
                     :mode_name mode-str
-                    :time_now (format-time-string "%Y-%m-%dT%T%:z")
+                    :time_now (or (plist-get tool-ctx :time-now)
+                                  (format-time-string "%Y-%m-%dT%T%:z"))
                     :run_id (plist-get tool-ctx :id)
-                    :run_started_at nil))
+                    :run_started_at (plist-get tool-ctx :run-started-at)))
              (slug (dl-satan-tools-hippocampus--slugify title))
              (raw-hints (list :topic (list slug)))
-             (evidence (dl-satan-memory-evidence-assemble canon-ctx))
+             (evidence (dl-satan-memory-evidence-assemble
+                        canon-ctx
+                        (list :run_started_at
+                              (plist-get canon-ctx :run_started_at))))
              (canon (dl-satan-memory-canon-canonicalize-from-raw
                      evidence raw-hints canon-ctx))
              (handles (plist-get canon :handles))

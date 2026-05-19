@@ -588,6 +588,31 @@ populated from ALIST `((NAME . CONTENT) …)'."
        (should (string-match-p "Terminate" (plist-get fn :description)))
        (should (equal (append (plist-get params :required) nil) '("summary")))))))
 
+;; ---------- dl-satan-broker tool-ctx ----------
+
+(ert-deftest dl-satan-broker/tool-ctx-shape ()
+  "Tool-ctx carries run-id, mode, capabilities, dirs, time fields."
+  (let* ((mode '(:name morning :capabilities (memory-write)))
+         (start (encode-time '(0 0 10 19 5 2026 nil nil 36000)))
+         (run-ctx (make-dl-satan-run
+                   :id "20260519T100000-morning-abc123"
+                   :mode mode
+                   :start-time start
+                   :dir "/tmp/satan-run-test"))
+         (tool-ctx (dl-satan-broker--tool-ctx run-ctx)))
+    (should (equal (plist-get tool-ctx :id)
+                   "20260519T100000-morning-abc123"))
+    (should (equal (plist-get tool-ctx :mode-name) 'morning))
+    (should (equal (plist-get tool-ctx :capabilities) '(memory-write)))
+    (should (equal (plist-get tool-ctx :run-dir) "/tmp/satan-run-test"))
+    (should (stringp (plist-get tool-ctx :run-started-at)))
+    (should (string-match-p "\\`2026-05-19T10:00:00"
+                            (plist-get tool-ctx :run-started-at)))
+    (should (stringp (plist-get tool-ctx :time-now)))
+    (should (string-match-p
+             "\\`[0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\}T[0-9]\\{2\\}:[0-9]\\{2\\}:[0-9]\\{2\\}"
+             (plist-get tool-ctx :time-now)))))
+
 ;; ---------- dl-satan-broker manifest assembly ----------
 
 (ert-deftest dl-satan-broker/manifest-tools-shape ()

@@ -101,12 +101,16 @@ returns no vars, BASE-ENV is returned unchanged.  Direnv errors signal."
           (random (expt 16 6))))
 
 (defun dl-satan-broker--tool-ctx (run-ctx)
-  (let ((mode (dl-satan-run-mode run-ctx)))
+  (let* ((mode (dl-satan-run-mode run-ctx))
+         (fmt "%Y-%m-%dT%T%:z")
+         (start (dl-satan-run-start-time run-ctx)))
     (list :id (dl-satan-run-id run-ctx)
           :mode-name (plist-get mode :name)
           :capabilities (plist-get mode :capabilities)
           :run-dir (dl-satan-run-dir run-ctx)
-          :hippocampus-dir dl-satan-hippocampus-dir)))
+          :hippocampus-dir dl-satan-hippocampus-dir
+          :run-started-at (and start (format-time-string fmt start))
+          :time-now (format-time-string fmt))))
 
 (defun dl-satan-broker--tee-stdout (path chunk)
   (let ((coding-system-for-write 'utf-8))

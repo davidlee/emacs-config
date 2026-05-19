@@ -54,6 +54,17 @@
                 dl-satan-tools-memory-test--evidence-stub)))
      ,@body))
 
+(defmacro dl-satan-tools-memory-test--capture-evidence-opts (var &rest body)
+  "Stub `dl-satan-memory-evidence-assemble' to return the fixture; bind
+VAR to the OPTS plist it was called with."
+  (declare (indent 1))
+  `(let ((,var nil))
+     (cl-letf (((symbol-function 'dl-satan-memory-evidence-assemble)
+                (lambda (_ctx &optional o)
+                  (setq ,var o)
+                  dl-satan-tools-memory-test--evidence-stub)))
+       ,@body)))
+
 (defmacro dl-satan-tools-memory-test--capture (var fn-sym &rest body)
   "Bind VAR to a closure that records its args into a list, and stub
 FN-SYM to call it.  After BODY, VAR holds the captured arg list."
@@ -143,6 +154,26 @@ FN-SYM to call it.  After BODY, VAR holds the captured arg list."
     (let ((ctx (dl-satan-tools-memory--ctx-from
                 '(:id "r1" :mode-name "morning"))))
       (should (equal (plist-get ctx :mode_name) "morning")))))
+
+(ert-deftest dl-satan-tools-memory/ctx-from-prefers-tool-ctx-time-now ()
+  (cl-letf (((symbol-function 'dl-satan-tools-memory--now)
+             (lambda () "WALL-CLOCK-FALLBACK")))
+    (let ((ctx (dl-satan-tools-memory--ctx-from
+                '(:id "r1" :mode-name "motd"
+                  :time-now "2026-05-19T10:00:00+10:00"
+                  :run-started-at "2026-05-19T09:45:00+10:00"))))
+      (should (equal (plist-get ctx :time_now)
+                     "2026-05-19T10:00:00+10:00"))
+      (should (equal (plist-get ctx :run_started_at)
+                     "2026-05-19T09:45:00+10:00")))))
+
+(ert-deftest dl-satan-tools-memory/ctx-from-falls-back-to-wall-clock ()
+  (cl-letf (((symbol-function 'dl-satan-tools-memory--now)
+             (lambda () "WALL-CLOCK-FALLBACK")))
+    (let ((ctx (dl-satan-tools-memory--ctx-from
+                '(:id "r1" :mode-name "motd"))))
+      (should (equal (plist-get ctx :time_now) "WALL-CLOCK-FALLBACK"))
+      (should (null (plist-get ctx :run_started_at))))))
 
 ;; ---------------------------------------------------------------------
 ;; Schema validation (delegates to dl-satan-tools dispatch)
@@ -261,6 +292,23 @@ FN-SYM to call it.  After BODY, VAR holds the captured arg list."
                        (plist-get store-args :observed-start-at)))
         (should (equal "2026-05-19T10:00:00+10:00"
                        (plist-get store-args :observed-end-at)))))))
+
+(ert-deftest dl-satan-tools-memory/mark-forwards-run-started-at-to-evidence ()
+  "`memory_mark' threads `:run_started_at' from tool-ctx through to the
+evidence assembler so the window can't reach behind the run."
+  (dl-satan-tools-memory-test--capture-evidence-opts opts
+    (dl-satan-tools-memory-test--capture
+        _captured dl-satan-memory-store-mark
+      (let ((res (dl-satan-tool-dispatch
+                  '(:type "tool_call" :id "c1" :name "memory_mark"
+                    :args (:payload "p"))
+                  '("memory_mark")
+                  '(:id "r1" :mode-name motd
+                    :time-now "2026-05-19T10:00:00+10:00"
+                    :run-started-at "2026-05-19T09:55:00+10:00"))))
+        (should (eq (plist-get res :ok) t))
+        (should (equal (plist-get opts :run_started_at)
+                       "2026-05-19T09:55:00+10:00"))))))
 
 (ert-deftest dl-satan-tools-memory/mark-result-shape ()
   (dl-satan-tools-memory-test--stub-evidence
