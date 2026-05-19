@@ -864,6 +864,47 @@ remain out of scope.
 Implementation: deferred. The schema admits all of the above with no
 change.
 
+### 8.1 v1 canon path: dormant by design
+
+The substrate admits `kind = outcome` end-to-end:
+
+- grammar v1 declares the `outcome` namespace closed-world with five
+  values (`unknown`, `returned_to_editing`, `continued_drift`,
+  `produced_artifact`, `abandoned_context`, `bough_progress`);
+- `traces.kind` accepts `outcome`; `traces.outcome` accepts the same
+  closed-world set;
+- §9.12 invariant is enforced server-side
+  (`memory_mark_trace`, migration `0003`) — any trace with
+  `traces.outcome IS NOT NULL` must carry a matching
+  `outcome:<value>` row in `trace_handles`.
+
+What v1 deliberately does **not** ship:
+
+- **No canon rule emits an `outcome:<value>` handle.** The
+  canonicalizer passes `hints.outcome_for` (a prediction trace_id)
+  through to `:normalized`, but there is no `hint.outcome` rule and
+  the `memory_mark` tool-schema does not expose an `outcome` hint
+  field. An LLM cannot produce an outcome trace via `memory_mark`.
+- **The `memory_mark` handler never forwards `:outcome` to
+  `dl-satan-memory-store-mark`.** Trace origin is hard-wired to
+  `llm_mark`; the store-mark `:outcome` keyword is exercised only
+  by direct callers (today: the integration tests for §9.12).
+
+Rationale: outcome traces belong to the **scorer** lane
+(`trace_origin = auto_rule`), not the LLM lane. The scorer reads
+prior `prediction` traces, observes the window described above
+(git HEAD, bough events, panopticon focus), and emits the matched
+`outcome` trace. Letting the LLM self-report outcomes would
+collapse the prediction/scoring split this section is built around
+and create an unverifiable feedback channel.
+
+Waking the canon path is a v2 task and arrives bundled with the
+scorer itself: add a `hint.outcome` canon rule, expose `outcome`
+on the `memory_mark` hints shape (or a new `outcome_mark` tool),
+and plumb `:outcome` through the handler. Until then the
+server-side invariant is load-bearing future-proofing, not dead
+code.
+
 ## 9. Acceptance criteria
 
 A v1 implementation is acceptable when:

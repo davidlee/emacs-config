@@ -2,6 +2,25 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-20 — SATAN: memory quality sweep — §5 (outcome canon dormant by design)
+
+Docs-only. Closes sweep §5 by declaring the LLM-side outcome canon
+path dormant rather than backfilling a `hint.outcome` rule. v1
+outcome traces are the scorer (`trace_origin = auto_rule`) lane,
+not the `memory_mark` lane; the server-side §9.12 invariant
+remains load-bearing future-proofing for the v2 scorer.
+
+- `satan/memory.design.md`: new §8.1 "v1 canon path: dormant by
+  design" inventories what the schema admits (closed-world
+  `outcome` namespace, `traces.outcome`, server-side invariant)
+  vs. what v1 deliberately omits (no canon rule, no hints-shape
+  entry, no handler plumbing); explains the prediction/scoring
+  split rationale and the v2 wake conditions.
+- `satan/HANDOVER.md`: sweep §5 entry struck through with
+  done-pointer to §8.1.
+
+No code, schema, or test changes. Memory subsystem still 126/126.
+
 ## 2026-05-20 — SATAN: memory quality sweep — §6
 
 Adds a `:cue_only` knob to the evidence assembler so
