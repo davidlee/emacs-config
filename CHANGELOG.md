@@ -2,6 +2,39 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-20 — SATAN: memory step 8 — memory_* tool handlers
+
+`satan/dl-satan-tools-memory.el` registers the three model-facing
+memory tools (`memory_mark`, `memory_resonate`, `memory_show_trace`)
+on top of the existing canon + evidence + store stack. Tool surface
+matches `memory.design.md` §5.1–5.3.
+
+- `memory_mark` (risk: low, capability: memory-write): assembles the
+  evidence window, normalizes hints, canonicalizes against the
+  current grammar, writes one trace + handles + links via
+  `dl-satan-memory-store-mark`. Returns `{trace_id, handles[],
+  rejected[]}`. The broker stamps `trace_origin = "llm_mark"` and
+  `source = "memory_mark@<mode_name>"`.
+- `memory_resonate` (risk: read): explicit `cue.handles` bypasses
+  the evidence pipeline; absent handles re-derive from `cue.hints`
+  through the same canon. Returns `{matches[], cue_handles[]}`.
+  Read-only per §6.4 — no `access_count` / `last_accessed_at`
+  mutation.
+- `memory_show_trace` (risk: read): pass-through to
+  `dl-satan-memory-store-show`.
+- All three register with `:modes nil` — the first shared-file
+  touch (mode allowlists + `(require)` wiring) is reserved for
+  step 9. The substrate is loadable but not yet broker-reachable.
+- Mind-side descriptions at `~/notes/satan/tools/memory_{mark,
+  resonate,show_trace}.md` (mind/mechanism split per SATAN.md).
+- 28 new tool ert. Memory subsystem now 109/109 (9 mig · 6 gram ·
+  32 canon · 16 ev · 18 store · 28 tool). Phase-3 87/87 (no
+  regression). Byte-compile clean.
+
+Six quality-sweep items captured in `satan/HANDOVER.md` for the
+deferred pass after step 11 (the most actionable: lift array
+support and a `:type 'number'` branch into `dl-satan-tool--validate-arg`).
+
 ## 2026-05-19 — SATAN: memory step 7 — store backend (mark/resonate/show)
 
 `satan/dl-satan-memory-store.el` lands the transactional storage and
