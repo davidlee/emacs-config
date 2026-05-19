@@ -168,13 +168,57 @@ class HarnessTests(unittest.TestCase):
         self.assertEqual(final["summary"], "just text")
         self.assertEqual(final["reason"], "no_tool_calls")
 
-    def test_budget_exhaustion_emits_final(self):
+    def test_budget_warning_then_model_finals(self):
+        # Soft budget UX: harness warns once, model winds down with its
+        # own satan_final on the next turn. No synthetic final.
         provider = StubProvider([
             CompletionResult(
                 content="",
                 tool_calls=[{"id": "c1", "name": "org_read_context",
                              "args": {"scope": "today"}}],
                 input_tokens=900, output_tokens=200,  # over budget=1000
+            ),
+            CompletionResult(
+                content="",
+                tool_calls=[{"id": "c2", "name": "satan_final",
+                             "args": {"summary": "winding down", "actions": []}}],
+                input_tokens=50, output_tokens=10,
+            ),
+        ])
+        tool_result = json.dumps({"type": "tool_result", "id": "c1",
+                                   "ok": True, "result": {"content": ""}}) + "\n"
+        rc, lines = self._run_with(provider, stdin_lines=[tool_result], budget=1000)
+        self.assertEqual(rc, 0)
+        warnings = [m for m in lines
+                    if m.get("type") == "log" and m.get("kind") == "budget_warning"]
+        self.assertEqual(len(warnings), 1)
+        self.assertEqual(warnings[0]["budget_tokens"], 1000)
+        final = lines[-1]
+        self.assertEqual(final["type"], "final")
+        self.assertEqual(final["summary"], "winding down")
+        self.assertNotIn("reason", final)
+        # Model saw the system warning on its second turn.
+        self.assertEqual(len(provider.calls), 2)
+        second_turn_systems = [m for m in provider.calls[1]["messages"]
+                               if m["role"] == "system"]
+        self.assertTrue(any("budget" in (m["content"] or "").lower()
+                            for m in second_turn_systems))
+
+    def test_budget_warning_then_model_persists_forces_final(self):
+        # If the model ignores the warning and keeps emitting tool calls
+        # (or text without satan_final), the harness force-terminates.
+        provider = StubProvider([
+            CompletionResult(
+                content="",
+                tool_calls=[{"id": "c1", "name": "org_read_context",
+                             "args": {"scope": "today"}}],
+                input_tokens=900, output_tokens=200,
+            ),
+            CompletionResult(
+                content="still working",
+                tool_calls=[{"id": "c2", "name": "org_read_context",
+                             "args": {"scope": "today"}}],
+                input_tokens=50, output_tokens=10,
             ),
         ])
         tool_result = json.dumps({"type": "tool_result", "id": "c1",
@@ -184,6 +228,7 @@ class HarnessTests(unittest.TestCase):
         final = lines[-1]
         self.assertEqual(final["type"], "final")
         self.assertEqual(final["reason"], "budget_tokens")
+        self.assertIn("did not finalise", final["summary"])
 
     def test_build_tools_returns_manifest_tools(self):
         manifest = {

@@ -710,10 +710,12 @@ Numbered for cross-referencing in commits / changelog.
    `find-file` / dired (`my/satan-hippocampus`). When volume
    warrants, a `magit-status`-style buffer over `proposals/` +
    `hippocampus/` with `a`pply / `r`eject / `s`nooze actions.
-4. **Budget-exhaustion UX** — harness self-terminates with a synthetic
-   `final{reason=budget_tokens}`. Smoother: emit a `system` log
-   message, let the LLM wind down naturally with its own `satan_final`
-   on the next turn.
+4. **Budget-exhaustion UX** — ✅ done 2026-05-19. On first budget
+   breach the harness emits `log{kind=budget_warning}` and appends a
+   system-role nudge to the chat; the model gets one turn to call
+   `satan_final`. If it doesn't, the harness force-terminates with
+   `final{reason=budget_tokens}` (the old behaviour, now an escape
+   hatch rather than the primary path).
 5. **Pi / Zerostack harness adapter** — same `Provider` interface,
    different runtime. Plug-in via env (`SATAN_PROVIDER=pi`). Not
    started.

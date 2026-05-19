@@ -40,6 +40,12 @@ Operational telemetry. Free-form `kind` namespace; known kinds:
 - `usage` — token accounting. Fields: `tokens_in`, `tokens_out`,
   `tokens_total` (all non-negative integers). The broker's daily
   budget gate enumerates these.
+- `budget_warning` — emitted once when `tokens_total` first crosses
+  the run's `SATAN_BUDGET_TOKENS`. Fields: `tokens_total`,
+  `budget_tokens`. Followed by a system-role message into the model
+  asking it to call `satan_final` next turn. If the model fails to
+  finalise after the warning, the harness force-terminates with
+  `final{reason: "budget_tokens"}`.
 
 | Field    | Type   | Required | Notes                            |
 |----------|--------|----------|----------------------------------|

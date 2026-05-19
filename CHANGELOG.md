@@ -2,6 +2,35 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-19 — SATAN: soft budget UX (thread #4)
+
+Budget exhaustion previously force-terminated mid-stream with a
+synthetic `final{reason=budget_tokens}`. The model never knew it
+ran out — it just stopped getting calls. Smoother: warn once, let
+the model wind down on its own terms.
+
+- `satan/harness/runloop.py` — on the first turn whose cumulative
+  `tokens_total` crosses `SATAN_BUDGET_TOKENS`, emit
+  `log{kind=budget_warning, tokens_total, budget_tokens}` and append a
+  system-role nudge into the chat asking the model to call
+  `satan_final` on its next turn. If the model finalises, normal final
+  is emitted (no synthetic). If it persists (tool calls / plain text),
+  the harness force-terminates with the old synthetic final — now an
+  escape hatch rather than the primary path.
+- `satan/protocol/PROTOCOL.md` — documents `budget_warning` as a known
+  `log` kind; the protocol shape is unchanged (free-form `kind`
+  namespace), so no fixture / validator changes.
+- `satan/harness/test_gptel_harness.py` — replaces the old
+  `test_budget_exhaustion_emits_final` with two cases:
+  `test_budget_warning_then_model_finals` (happy path: warning emitted,
+  model satan_finals, no synthetic) and
+  `test_budget_warning_then_model_persists_forces_final` (escape
+  hatch).
+- `SATAN.md` — open thread #4 marked done.
+
+Tests: 76/76 ert, 21/21 python, 1/1 integration,
+`nix build .#satan-jailed-gptel-harness` clean.
+
 ## 2026-05-19 — SATAN: phase 3C-lite — OAI-compatible provider base + DeepSeek
 
 OpenRouter's adapter was the only OpenAI v1 chat-completions client in

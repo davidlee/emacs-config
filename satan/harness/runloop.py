@@ -93,6 +93,12 @@ def run() -> int:
 
     emit_ready(run_id)
 
+    # Soft budget UX: when state.tokens_total first crosses
+    # `budget_tokens`, inject a system nudge asking the model to call
+    # `satan_final` next turn and continue. If the next turn does not
+    # finalise, force a synthetic final. `warned` carries the state.
+    warned = False
+
     while True:
         try:
             comp = provider.complete(state.messages, tools, model)
@@ -118,6 +124,16 @@ def run() -> int:
                 emit_final(summary, actions)
                 return 0
 
+        # Post-warning turn must finalise. Anything else forces synthetic.
+        if warned:
+            emit_final(
+                f"(budget exhausted at {state.tokens_total} tokens; "
+                f"model did not finalise after warning)",
+                [],
+                reason="budget_tokens",
+            )
+            return 0
+
         if comp.tool_calls:
             append_assistant_with_tools(state, comp.content, comp.tool_calls)
             # Emit each non-final tool_call, read the corresponding result.
@@ -134,17 +150,22 @@ def run() -> int:
             )
             return 0
 
-        # Budget guard: graceful final after the current turn settles.
+        # Budget guard: warn + nudge model to wind down on its own.
         if budget_tokens and state.tokens_total >= budget_tokens:
-            # Terminating ourselves with a synthetic final — another full
-            # turn would risk going further over budget. Smoother
-            # winding-down via a system log message is open thread #4.
-            emit_final(
-                f"(budget exhausted at {state.tokens_total} tokens)",
-                [],
-                reason="budget_tokens",
-            )
-            return 0
+            emit_log({
+                "kind": "budget_warning",
+                "tokens_total": state.tokens_total,
+                "budget_tokens": budget_tokens,
+            })
+            state.messages.append({
+                "role": "system",
+                "content": (
+                    f"Token budget of {budget_tokens} reached "
+                    f"(used {state.tokens_total}). Stop and call "
+                    f"`satan_final` on your next turn to wind down."
+                ),
+            })
+            warned = True
 
 
 def main() -> int:
