@@ -66,9 +66,27 @@ Dotfiles must not be the source of truth for prompt content.")
        :budget-tool-calls 4))
 
 (dl-satan-mode-register
- (list :name "self-edit"
-       :prompt-file (expand-file-name "self-edit.txt" dl-satan-prompts-dir)
+ (list :name "self-edit-mech"
+       :prompt-file (expand-file-name "self-edit-mech.txt" dl-satan-prompts-dir)
        :context-fn 'dl-satan-context-self-edit
+       :source-roots-var 'dl-satan-self-edit-mech-roots
+       :tools '("proposal_stage")
+       :capabilities '(stage-proposal)
+       :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
+       :jail-profile 'specDev
+       :provider 'openrouter
+       :model "anthropic/claude-haiku-4.5"
+       :budget-tokens 50000
+       :output-handler 'dl-satan-output/self-edit
+       :auto-apply 'none
+       :timeout-seconds 180
+       :budget-tool-calls 20))
+
+(dl-satan-mode-register
+ (list :name "self-edit-mind"
+       :prompt-file (expand-file-name "self-edit-mind.txt" dl-satan-prompts-dir)
+       :context-fn 'dl-satan-context-self-edit
+       :source-roots-var 'dl-satan-self-edit-mind-roots
        :tools '("proposal_stage")
        :capabilities '(stage-proposal)
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)

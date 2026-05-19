@@ -181,7 +181,8 @@ FINAL is a plist (or nil).  ACTIONS is a plist with the four partition keys
          (let ((s (string-trim
                    (with-temp-buffer
                      (insert-file-contents p) (buffer-string)))))
-           (member s '("done" "failed" "timed-out" "invalid-protocol"))))))
+           (member s '("done" "failed" "timed-out" "invalid-protocol"
+                       "budget-exceeded"))))))
 
 (defun dl-satan-audit-verify-run (dir)
   "Return t if all six audit predicates pass for DIR.

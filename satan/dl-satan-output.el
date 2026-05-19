@@ -54,6 +54,12 @@ Returns the (:applied :staged :rejected :failed) plist."
    '("org_update_owned_block" "proposal_stage" "inbox_append")
    ctx))
 
+(defun dl-satan-output/tick (final ctx)
+  "Tick: auto-apply `inbox_append' only.  Notifications come through the
+`notify_send' tool path during the run; the closing summary is recorded
+in `final.json' for audit but does not write any surface."
+  (dl-satan-output--partition final '("inbox_append") ctx))
+
 (defun dl-satan-output/self-edit (final ctx)
   "Self-edit: only `proposal_stage' is allowed to auto-apply."
   (dl-satan-output--partition final '("proposal_stage") ctx))

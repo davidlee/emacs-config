@@ -8,6 +8,7 @@
 ;; mutates durable state.
 
 (require 'dl-satan-audit)
+(require 'dl-satan-budget)
 (require 'dl-satan-jsonl)
 (require 'dl-satan-block)
 (require 'dl-satan-tools)
@@ -19,6 +20,7 @@
 (require 'dl-satan-context)
 (require 'dl-satan-output)
 (require 'dl-satan-broker)
+(require 'dl-satan-tick)
 
 (defgroup dl-satan nil
   "SATAN local agent runtime."

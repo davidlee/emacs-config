@@ -65,7 +65,7 @@ daily note and a full audit bundle under `~/notes/satan/runs/<run-id>/`.
 `motd` writes `~/notes/satan/motd.txt`. `self-edit` stages proposals
 under `~/notes/satan/proposals/` — nothing auto-applies.
 
-Tests: 31/31 unit ert + 8/8 python unittest + 1/1 integration ert.
+Tests: 43/43 unit ert + 8/8 python unittest + 1/1 integration ert.
 
 ## Quickstart
 
@@ -382,19 +382,22 @@ justification):
 | File | Role |
 |---|---|
 | `dl-satan.el` | Aggregator + `my/satan-run`. |
-| `dl-satan-mode.el` | Mode registry; modes `morning`, `motd`, `self-edit`. |
+| `dl-satan-mode.el` | Mode registry; modes `morning`, `motd`, `self-edit-mech`, `self-edit-mind`. |
+| `dl-satan-tick.el` | Tick mode family: weighted picker, quiet-hours gate, `dl-satan-tick-register` helper, default `tick-pulse`, `my/satan-tick`. |
 | `dl-satan-tools.el` | Tool registry, dispatch, schema validator, JSON-Schema builder (from notes descriptions). |
 | `dl-satan-tools-org.el` | Handlers: `org_read_context`, `org_update_owned_block`, `proposal_stage`. |
 | `dl-satan-tools-notify.el` | `notify_send` (D-Bus). |
 | `dl-satan-tools-hippocampus.el` | `hippocampus_write`; `my/satan-hippocampus`. |
 | `dl-satan-tools-inbox.el` | `inbox_append`; `my/satan-inbox`; `my/satan-inbox-unread-count`. |
 | `dl-satan-context.el` | Per-mode bundle assembly; strict `--read-required`; scaffold assembly. |
-| `dl-satan-output.el` | Mode output handlers (`morning`, `motd`, `self-edit`). |
+| `dl-satan-output.el` | Mode output handlers (`morning`, `motd`, `tick`, `self-edit`; the last is shared by both `self-edit-{mech,mind}` lanes). |
 | `dl-satan-block.el` | Owned-block find/replace. |
 | `dl-satan-jsonl.el` | Line-buffered filter + writer + `dl-satan-jsonl-prepare`. |
 | `dl-satan-audit.el` | Append-only artifact writer + 6-predicate verifier. |
+| `dl-satan-budget.el` | Daily token ceiling: enumerates today's `runs/`, sums per-run `usage.tokens_total`, gates the broker pre-spawn. |
 | `dl-satan-broker.el` | `make-process` driver: sentinel, timeout, direnv, op:// resolution, env pass; `--build-manifest`. |
 | `bin/satan-run` | Shell wrapper (`emacsclient --eval`). |
+| `bin/satan-run-tick` | Tick wrapper; calls `(my/satan-tick)` which picks + quiet-checks. |
 | `harness/gptel_harness.py` | OpenAI-compatible chat-completions driver; `Provider` ABC + `OpenRouterProvider`. |
 | `harness/test_gptel_harness.py` | 8 stdlib unittest cases, no network. |
 | `test/dl-satan-test.el` | 31 unit ert. |
@@ -411,8 +414,10 @@ justification):
   exposes both binaries on PATH; broker's `direnv-env` plumbing picks
   them up at spawn.
 - `~/flakes/modules/home/satan.nix` — imported by Sleipnir. Units
-  `satan-morning.{service,timer}` (09:00) and
-  `satan-motd.{service,timer}` (07:00).
+  `satan-morning.{service,timer}` (09:00),
+  `satan-motd.{service,timer}` (07:00), and
+  `satan-tick.{service,timer}` (`OnBootSec=5min`,
+  `OnUnitActiveSec=30min`, `RandomizedDelaySec=5min`).
 
 ### Notes tree (canonical model-facing surface)
 
@@ -421,7 +426,10 @@ justification):
   prompts/                           # mode prompts
     morning.txt
     motd.txt
-    self-edit.txt
+    self-edit-mech.txt               # SATAN's mechanism scope (~/.emacs.d/satan/)
+    self-edit-mind.txt               # SATAN's mind scope (notes prompts+system+tools)
+    tick/                            # one file per registered tick-* mode
+      pulse.txt
   system/
     scaffold.txt                     # shared system-prompt scaffold (termination instruction)
   tools/                             # one markdown file per tool — model-facing description
@@ -444,7 +452,7 @@ justification):
     actions.json                     # {applied, staged, rejected, failed}
     stdout.log
     stderr.log
-    status                           # done | failed | timed-out | invalid-protocol
+    status                           # done | failed | timed-out | invalid-protocol | budget-exceeded
 ```
 
 ## Modes
@@ -453,7 +461,9 @@ justification):
 |---|---|---|---|
 | `morning` | `org_read_context`, `org_update_owned_block`, `proposal_stage`, `notify_send`, `hippocampus_write`, `inbox_append` | `owned` | 20000 / 8 / 90s |
 | `motd` | `org_read_context`, `notify_send`, `inbox_append` | `owned` (motd surface owned by output handler; written from `satan_final.summary`) | 10000 / 4 / 45s |
-| `self-edit` | `proposal_stage` | `none` | 50000 / 20 / 180s |
+| `tick-*` | `org_read_context`, `notify_send`, `inbox_append` | `owned` (only `inbox_append`) | 3000 / 4 / 30s |
+| `self-edit-mech` | `proposal_stage` | `none` | 50000 / 20 / 180s |
+| `self-edit-mind` | `proposal_stage` | `none` | 50000 / 20 / 180s |
 
 All three use OpenRouter with `anthropic/claude-haiku-4.5` by default.
 Override per-mode in `dl-satan-mode.el`: `:provider`, `:model`,
@@ -538,6 +548,63 @@ Plist `(:action ACTION :reason MSG)`, never the improper cons
 ### Run-id
 
 `format-time-string "%Y%m%dT%H%M%S" + "-" + mode + "-" + 6-hex-random`.
+The `YYYYMMDDT` prefix is load-bearing: `dl-satan-budget` uses it to
+enumerate today's runs without parsing manifests.
+
+### Self-edit lanes (mech vs mind)
+
+Self-editing is split into two proposal-only lanes that share governance
+defaults (50000-token budget, 20 tool calls, 180-second timeout,
+`proposal_stage` only, `auto-apply none`) but read different roots:
+
+| Mode | Source roots | Stamped `:MODE:` |
+|---|---|---|
+| `self-edit-mech` | `dl-satan-self-edit-mech-roots` (default `~/.emacs.d/satan/`) | `self-edit-mech` |
+| `self-edit-mind` | `dl-satan-self-edit-mind-roots` (default `~/notes/satan/{prompts,system,tools}/`) | `self-edit-mind` |
+
+Both lanes write proposals to `~/notes/satan/proposals/`; the
+`:MODE:` property in each denote file distinguishes them. Mode specs
+reference defcustoms via `:source-roots-var` so the user can recustomize
+roots without redefining modes. The shared context-fn
+`dl-satan-context-self-edit` reads either `:source-roots` (direct) or
+`:source-roots-var` (indirect) from the mode spec; sources are
+abbreviated paths (`~/notes/...`, `~/.emacs.d/...`).
+
+### Tick mode family
+
+`tick-*` modes are short, frequent, lightly-budgeted runs fired every
+~30 minutes by `satan-tick.timer`. The wrapper `bin/satan-run-tick`
+calls `my/satan-tick`, which:
+
+1. Returns early if `dl-satan-tick-quiet-p` is non-nil. Default
+   quiet window is 22:00–07:00 inclusive of 22 / exclusive of 07,
+   wraparound supported. Set `dl-satan-tick-quiet-hours` to nil to
+   disable.
+2. Samples a mode name from `dl-satan-tick-pool` (defcustom alist of
+   `(MODE-NAME . WEIGHT)`; default `(("tick-pulse" . 1))`).
+3. Spawns the chosen mode via `my/satan-run`, which still passes
+   through the daily-token-ceiling gate.
+
+Each tick mode is registered via `dl-satan-tick-register SHORT-NAME
+&rest OVERRIDES`. The helper applies the standard defaults
+(`org_read_context` + `notify_send` + `inbox_append` tool surface,
+`(notify inbox-write)` capabilities, 3000-token / 4-call / 30-second
+budget, `dl-satan-context-tick` + `dl-satan-output/tick`,
+`anthropic/claude-haiku-4.5`). Prompts live at
+`~/notes/satan/prompts/tick/<short-name>.txt`. Add a tick by writing a
+prompt file and calling `(dl-satan-tick-register "name")` from the
+config.
+
+### Daily token ceiling
+
+`dl-satan-budget-daily-tokens` (default 400000) caps total tokens spent
+under `dl-satan-runs-dir` per local day. Pre-spawn, the broker sums
+each today-prefixed run's max `usage.tokens_total` log event. If the
+ceiling is met, the broker writes a slim audit bundle for the new
+run-id with `status=budget-exceeded`, a synthetic `final.json` carrying
+`reason=budget_daily_tokens`, and skips the child entirely. Set to nil
+to disable. Status `budget-exceeded` is a valid terminal — the audit
+verifier accepts it.
 
 ### direnv-driven exec-path
 

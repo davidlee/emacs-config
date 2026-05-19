@@ -2,6 +2,142 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-19 — Waybar: SATAN inbox unread badge
+
+New `custom/satan-inbox` waybar module showing the unread count from
+`my/satan-inbox-unread-count`. Hidden when zero (or when the emacs
+server is unreachable); click opens the inbox in the running emacs
+frame via `emacsclient -ne '(my/satan-inbox)'`.
+
+- `~/.config/waybar/scripts/satan-inbox.sh` — new; emits waybar JSON
+  with `text` + `class` (`unread` / `empty`); guards against non-numeric
+  output when emacsclient fails.
+- `~/.config/waybar/config.jsonc` — module declared (60s interval) and
+  inserted in `modules-right` immediately after `custom/agenda`.
+- `~/.config/waybar/style.css` — added `#custom-satan-inbox` to the
+  shared muted-pill group; `.empty` class collapses padding/border so
+  the module disappears at zero.
+
+Reload only — waybar config is a dotfile, not flake-managed; no
+`home-manager switch` required. `systemctl --user reload waybar`
+suffices.
+
+## 2026-05-19 — SATAN: split self-edit into mech + mind lanes
+
+`self-edit` mode is now two proposal-only lanes with different reading
+scopes but identical governance (50k tokens / 20 calls / 180s,
+`proposal_stage` only, `auto-apply none`):
+
+- `self-edit-mech` — reads `~/.emacs.d/satan/` (the broker, harness,
+  handlers, tests). Bug-and-invariant lane.
+- `self-edit-mind` — reads `~/notes/satan/{prompts,system,tools}/`
+  (model-facing text). Behaviour-shaping-text lane.
+
+Proposals land in the same `~/notes/satan/proposals/` directory; each
+denote file carries `:MODE: self-edit-{mech,mind}` so the lanes are
+distinguishable for review.
+
+- `satan/dl-satan-context.el` — replaced `dl-satan-self-edit-root`
+  defcustom with two new lists (`dl-satan-self-edit-mech-roots`,
+  `dl-satan-self-edit-mind-roots`); `dl-satan-context-self-edit` now
+  reads roots from MODE-SPEC (`:source-roots` direct, or
+  `:source-roots-var` indirect); source `:path` values are
+  abbreviate-file-name'd (`~/notes/...` / `~/.emacs.d/...`) instead of
+  long relative dotwalks; missing-root tolerated by
+  `--list-files`.
+- `satan/dl-satan-mode.el` — removed `self-edit`; registered
+  `self-edit-mech` and `self-edit-mind` with `:source-roots-var`
+  pointing at the respective defcustoms.
+- `notes/satan/prompts/self-edit.txt` → `self-edit-mech.txt`
+  (`git mv`); content rewritten to make the mech scope explicit.
+- `notes/satan/prompts/self-edit-mind.txt` — new prompt for the mind
+  lane; calls out prompt/tool/scaffold drift, mode-tool mismatch, and
+  prose-vs-behaviour as the things worth proposing.
+- `SATAN.md` — modes table (mech + mind rows), file map updates, new
+  "Self-edit lanes (mech vs mind)" subsection, notes-tree prompts list.
+- Tests: 50 → 52 (1 changed, 3 new: source-roots-var indirection,
+  mech/mind registered distinctly, missing-root tolerance via the
+  rewritten bundle test).
+
+## 2026-05-19 — SATAN: scaffold rule against fake-JSON termination
+
+Both real motd runs this week ended `reason=no_tool_calls` because the
+model emitted a JSON-shaped string in its assistant message content that
+looked like a `satan_final` payload but wasn't a tool call. The harness
+correctly read no tool calls and coerced to a synthetic final, throwing
+away the model's intended summary.
+
+- `notes/satan/system/scaffold.txt` — Protocol section now spells out
+  that termination is a TOOL CALL, names the failure mode
+  (`reason=no_tool_calls`), and explicitly forbids JSON-looking strings
+  in assistant content as a termination signal.
+
+## 2026-05-19 — SATAN: tick mode family (30-min cadence, quiet hours)
+
+Short, frequent, tightly-budgeted SATAN runs. Most ticks do nothing —
+that's the design.
+
+- `satan/dl-satan-tick.el` — new module:
+  - `dl-satan-tick-pool` (defcustom, default `(("tick-pulse" . 1))`).
+    Weighted alist; picker `dl-satan-tick-pick` samples by weight.
+  - `dl-satan-tick-quiet-hours` (defcustom, default `(22 . 7)`).
+    Wraparound supported; nil disables.
+  - `dl-satan-tick-register SHORT-NAME &rest OVERRIDES` — helper
+    builds a tick-* mode spec with sensible defaults (tools = motd's
+    surface, 3000-token / 4-call / 30-second budget, output handler
+    auto-applies `inbox_append` only). Prompt path defaults to
+    `<prompts>/tick/SHORT-NAME.txt`.
+  - `my/satan-tick` — public entry: quiet-check, pick, dispatch.
+  - Default registration: `tick-pulse`.
+- `satan/dl-satan-context.el` — `dl-satan-context-tick`: motd-shaped
+  bundle plus current `:time` so the model can shape its pulse.
+- `satan/dl-satan-output.el` — `dl-satan-output/tick`: auto-applies
+  `inbox_append` only; `notify_send` is mid-run via the tool path.
+- `satan/dl-satan.el` — require tick module.
+- `satan/bin/satan-run-tick` — wrapper invoking `(my/satan-tick)`.
+- `notes/satan/prompts/tick/pulse.txt` — `tick-pulse` prompt.
+  Explicit "most ticks should do nothing" framing; lists good and bad
+  reasons to act.
+- `~/flakes/modules/home/satan.nix` — `satan-tick.{service,timer}`:
+  `OnBootSec=5min`, `OnUnitActiveSec=30min`, `RandomizedDelaySec=5min`.
+- `SATAN.md` — modes table, file map, notes-tree map, new "Tick mode
+  family" subsection.
+- Tests: 43 → 50 (7 tick: quiet-wraparound, quiet-disabled, pick
+  deterministic single, pick zero-weight nil, weight distribution,
+  default `tick-pulse` budgets, output handler routes).
+
+Headroom against the new 400k daily ceiling: 48 ticks × 3000 = 144k.
+Quiet hours suppress ~ 9 of those, leaving ~117k.
+
+## 2026-05-19 — SATAN: daily 400k token ceiling (pre-spawn gate)
+
+Cap total SATAN token spend per local day. Prevents a runaway tick
+schedule or a malformed run loop from blowing past a sane budget.
+
+- `satan/dl-satan-budget.el` — new module. `dl-satan-budget-daily-tokens`
+  (defcustom, default 400000, nil disables). `dl-satan-budget-today-total`
+  enumerates `runs/<run-id>/` whose run-id begins with today's
+  `YYYYMMDDT` prefix and sums each run's max `usage.tokens_total` log
+  payload from `transcript.jsonl`. Cheap — no manifest parsing, no
+  cross-day fan-out.
+- `satan/dl-satan-broker.el` — pre-spawn check in `dl-satan-broker-run`.
+  If exceeded: mint run-id, write a slim audit bundle (manifest +
+  budget-denied bundle + synthetic final with `reason=budget_daily_tokens`
+  + empty actions + `status=budget-exceeded`), skip the child entirely.
+  Returns the run-id so callers/systemd journals get a clean record.
+  Spawn logic split into `dl-satan-broker--spawn` for the happy path.
+- `satan/dl-satan-audit.el` — `status-terminal` predicate accepts
+  `budget-exceeded` as a valid terminal status.
+- `satan/dl-satan.el` — require `dl-satan-budget`.
+- `SATAN.md` — file map, status counts, run-id section, new
+  "Daily token ceiling" subsection.
+- Tests: 38 → 43 (4 budget + 1 broker refusal). Verifier passes on
+  the denied audit bundle.
+
+Resets at local midnight (run-id prefix flips). Designed to be safe
+for the upcoming tick mode family (30-min cadence × 24h = 48 runs;
+3k token budget × 48 = 144k headroom under the 400k ceiling).
+
 ## 2026-05-19 — SATAN: motd single-writer (drop double-write race)
 
 Two paths could write the motd surface: the `dl-satan-output/motd` handler

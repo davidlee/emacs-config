@@ -65,10 +65,32 @@ cannot start with degraded behavioural framing."
         :mode   (plist-get mode-spec :name)
         :date   (format-time-string "%Y-%m-%d" nil)))
 
-(defcustom dl-satan-self-edit-root
-  (expand-file-name "satan" user-emacs-directory)
-  "Root directory whose source is included in self-edit bundles."
-  :type 'directory :group 'dl-satan)
+(defun dl-satan-context-tick (mode-spec)
+  "Bundle for a tick mode.  Same shape as motd; carries time-of-day so
+the model can shape its pulse around morning / afternoon / evening."
+  (list :prompt (dl-satan-context--assemble-prompt mode-spec)
+        :mode   (plist-get mode-spec :name)
+        :date   (format-time-string "%Y-%m-%d" nil)
+        :time   (format-time-string "%H:%M" nil)))
+
+(defcustom dl-satan-self-edit-mech-roots
+  (list (expand-file-name "satan" user-emacs-directory))
+  "Roots whose source is included in the `self-edit-mech' bundle.
+Mech = the broker / handlers / harness / tests — Emacs-side
+machinery that runs the SATAN protocol."
+  :type '(repeat directory) :group 'dl-satan)
+
+(defcustom dl-satan-self-edit-mind-roots
+  (list (expand-file-name "satan/prompts" (or (bound-and-true-p dl-notes-root)
+                                              (expand-file-name "~/notes")))
+        (expand-file-name "satan/system"  (or (bound-and-true-p dl-notes-root)
+                                              (expand-file-name "~/notes")))
+        (expand-file-name "satan/tools"   (or (bound-and-true-p dl-notes-root)
+                                              (expand-file-name "~/notes"))))
+  "Roots whose source is included in the `self-edit-mind' bundle.
+Mind = mode prompts, the system scaffold, tool descriptions —
+model-facing text under `~/notes/satan/' that shapes behaviour."
+  :type '(repeat directory) :group 'dl-satan)
 
 (defcustom dl-satan-self-edit-source-regexp
   "\\.\\(el\\|py\\|txt\\|md\\)\\'"
@@ -82,8 +104,9 @@ cannot start with degraded behavioural framing."
 
 (defun dl-satan-context-self-edit--list-files (root)
   "Return absolute paths of source files under ROOT, sorted."
-  (let ((all (directory-files-recursively
-              root dl-satan-self-edit-source-regexp nil nil)))
+  (let ((all (and (file-directory-p root)
+                  (directory-files-recursively
+                   root dl-satan-self-edit-source-regexp nil nil))))
     (sort (cl-remove-if
            (lambda (p)
              (string-match-p dl-satan-self-edit-exclude-regexp p))
@@ -91,18 +114,25 @@ cannot start with degraded behavioural framing."
           #'string<)))
 
 (defun dl-satan-context-self-edit (mode-spec)
-  "Bundle for the self-edit mode: prompt + every source file under
-`dl-satan-self-edit-root', each as (:path REL :content STR)."
-  (let* ((root dl-satan-self-edit-root)
-         (files (dl-satan-context-self-edit--list-files root))
+  "Bundle for a self-edit mode: prompt + every source file under each
+root in MODE-SPEC's `:source-roots' list, each as
+\(:path ABBREVIATED :content STR).  Paths are abbreviated with `~/'
+so the model sees `~/notes/satan/...' / `~/.emacs.d/satan/...' rather
+than long relative dotwalks."
+  (let* ((roots (or (plist-get mode-spec :source-roots)
+                    (let ((var (plist-get mode-spec :source-roots-var)))
+                      (and (symbolp var) (boundp var) (symbol-value var)))))
+         (files (cl-loop for root in roots
+                         append (dl-satan-context-self-edit--list-files root)))
          (sources
           (mapcar (lambda (f)
-                    (list :path    (file-relative-name f user-emacs-directory)
+                    (list :path    (abbreviate-file-name f)
                           :content (dl-satan-context--read-file-or-empty f)))
                   files)))
     (list :prompt  (dl-satan-context--assemble-prompt mode-spec)
           :mode    (plist-get mode-spec :name)
           :date    (format-time-string "%Y-%m-%d" nil)
+          :roots   (mapcar #'abbreviate-file-name roots)
           :sources sources)))
 
 (provide 'dl-satan-context)

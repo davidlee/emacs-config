@@ -14,6 +14,7 @@
 (require 'cl-lib)
 (require 'subr-x)
 (require 'dl-satan-audit)
+(require 'dl-satan-budget)
 (require 'dl-satan-jsonl)
 (require 'dl-satan-tools)
 (require 'dl-satan-tools-org)
@@ -268,13 +269,51 @@ The harness consumes `:tools' verbatim."
                                    (plist-get mode :name)
                                    (format-time-string "%Y-%m-%d" nil)))))
 
+(defun dl-satan-broker--write-budget-denied-run (mode run-id dir spent ceiling)
+  "Write a slim audit bundle marking RUN-ID as budget-exceeded.
+No child is spawned; the run terminates with status `budget-exceeded'
+and a synthetic final summarising the gate decision."
+  (unless (file-directory-p dir) (make-directory dir t))
+  (let* ((manifest (dl-satan-broker--build-manifest mode run-id))
+         (bundle (list :budget-denied t
+                       :tokens_spent spent
+                       :tokens_ceiling ceiling))
+         (audit (dl-satan-audit-open dir manifest bundle))
+         (final (list :summary (format "budget-exceeded: %d/%d tokens spent today"
+                                       spent ceiling)
+                      :actions []
+                      :reason "budget_daily_tokens"
+                      :tokens_spent spent
+                      :tokens_ceiling ceiling)))
+    (dl-satan-audit-record audit 'broker 'budget-denied
+                           (list :tokens_spent spent
+                                 :tokens_ceiling ceiling))
+    (dl-satan-audit-close audit final
+                          (list :applied [] :staged [] :rejected [] :failed [])
+                          'budget-exceeded)))
+
 (defun dl-satan-broker-run (name)
   "Resolve MODE-NAME, spawn jailed harness, drive it to completion.
-Returns the run-id."
+Returns the run-id.
+
+If today's spend has met or exceeded `dl-satan-budget-daily-tokens',
+the broker refuses to spawn: it mints a run-id, writes a minimal audit
+bundle with `status=budget-exceeded' under
+`dl-satan-runs-dir/<run-id>/', and returns the run-id without
+launching the child."
   (let* ((mode (dl-satan-mode-resolve name))
          (run-id (dl-satan-broker--mint-run-id name))
-         (dir (expand-file-name run-id dl-satan-runs-dir))
-         (bundle-path (expand-file-name "bundle.json" dir))
+         (dir (expand-file-name run-id dl-satan-runs-dir)))
+    (if (dl-satan-budget-exceeded-p dl-satan-runs-dir)
+        (let ((spent (dl-satan-budget-today-total dl-satan-runs-dir)))
+          (dl-satan-broker--write-budget-denied-run
+           mode run-id dir spent dl-satan-budget-daily-tokens)
+          run-id)
+      (dl-satan-broker--spawn mode run-id dir))))
+
+(defun dl-satan-broker--spawn (mode run-id dir)
+  "Spawn the jailed harness for MODE/RUN-ID under DIR.  Returns RUN-ID."
+  (let* ((bundle-path (expand-file-name "bundle.json" dir))
          (stdout-log (expand-file-name "stdout.log" dir))
          (stderr-buf (generate-new-buffer
                       (format " *satan-stderr-%s*" run-id))))

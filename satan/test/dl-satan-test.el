@@ -22,7 +22,9 @@
 (require 'dl-satan-output)
 (require 'dl-satan-audit)
 (require 'dl-satan-broker)
+(require 'dl-satan-budget)
 (require 'dl-satan-mode)
+(require 'dl-satan-tick)
 
 ;; ---------- dl-satan-jsonl ----------
 
@@ -323,55 +325,98 @@
 
 ;; ---------- dl-satan self-edit context + output ----------
 
+(defun dl-satan-test--path-suffix-p (suffix sources)
+  (cl-some (lambda (s) (string-suffix-p suffix (plist-get s :path)))
+           sources))
+
 (ert-deftest dl-satan-self-edit/context-bundles-sources ()
-  "context-fn assembles scaffold + mode prompt and includes matching sources."
+  "context-fn assembles scaffold + mode prompt and includes matching sources
+from every root in MODE-SPEC's :source-roots."
   (let* ((tmp (make-temp-file "satan-se-" t))
-         (dl-satan-self-edit-root tmp)
-         (user-emacs-directory tmp)
+         (root-a (expand-file-name "root-a" tmp))
+         (root-b (expand-file-name "root-b" tmp))
          (dl-satan-prompts-dir (expand-file-name "prompts/" tmp))
          (dl-satan-system-scaffold-file
           (expand-file-name "system/scaffold.txt" tmp)))
     (unwind-protect
         (progn
+          (make-directory root-a t)
+          (make-directory root-b t)
           (make-directory (expand-file-name "prompts" tmp))
           (make-directory (expand-file-name "system" tmp))
-          (with-temp-file (expand-file-name "system/scaffold.txt" tmp)
-            (insert "SCAFFOLD\n"))
+          (with-temp-file dl-satan-system-scaffold-file (insert "SCAFFOLD\n"))
           (with-temp-file (expand-file-name "prompts/se.txt" tmp)
             (insert "PROMPT\n"))
-          (with-temp-file (expand-file-name "a.el" tmp) (insert "(provide 'a)"))
-          (with-temp-file (expand-file-name "b.py" tmp) (insert "x = 1"))
-          (with-temp-file (expand-file-name "a.elc" tmp) (insert "skip"))
-          (let* ((spec (list :name "self-edit"
-                             :prompt-file (expand-file-name "prompts/se.txt" tmp)))
+          (with-temp-file (expand-file-name "a.el" root-a) (insert "(provide 'a)"))
+          (with-temp-file (expand-file-name "b.py" root-b) (insert "x = 1"))
+          (with-temp-file (expand-file-name "a.elc" root-a) (insert "skip"))
+          (let* ((spec (list :name "self-edit-mech"
+                             :prompt-file (expand-file-name "prompts/se.txt" tmp)
+                             :source-roots (list root-a root-b)))
                  (bundle (dl-satan-context-self-edit spec))
-                 (sources (plist-get bundle :sources))
-                 (paths (mapcar (lambda (s) (plist-get s :path)) sources)))
+                 (sources (plist-get bundle :sources)))
             (should (equal (plist-get bundle :prompt) "SCAFFOLD\n\nPROMPT"))
-            (should (member "a.el" paths))
-            (should (member "b.py" paths))
-            (should-not (member "a.elc" paths))
-            (let ((a (cl-find "a.el" sources
+            (should (dl-satan-test--path-suffix-p "/a.el" sources))
+            (should (dl-satan-test--path-suffix-p "/b.py" sources))
+            (should-not (dl-satan-test--path-suffix-p "/a.elc" sources))
+            (let ((a (cl-find "/a.el" sources
                               :key (lambda (s) (plist-get s :path))
-                              :test #'equal)))
+                              :test (lambda (suf p) (string-suffix-p suf p)))))
               (should (equal (plist-get a :content) "(provide 'a)")))))
       (delete-directory tmp t))))
+
+(ert-deftest dl-satan-self-edit/source-roots-var-indirection ()
+  "When :source-roots is absent, context-fn dereferences :source-roots-var."
+  (let* ((tmp (make-temp-file "satan-se-" t))
+         (root (expand-file-name "rrr" tmp))
+         (dl-satan-prompts-dir (expand-file-name "prompts/" tmp))
+         (dl-satan-system-scaffold-file
+          (expand-file-name "system/scaffold.txt" tmp)))
+    (unwind-protect
+        (progn
+          (make-directory root t)
+          (make-directory (expand-file-name "prompts" tmp))
+          (make-directory (expand-file-name "system" tmp))
+          (with-temp-file dl-satan-system-scaffold-file (insert "S"))
+          (with-temp-file (expand-file-name "prompts/se.txt" tmp) (insert "P"))
+          (with-temp-file (expand-file-name "only.el" root) (insert "x"))
+          (defvar dl-satan-test--roots nil)
+          (let ((dl-satan-test--roots (list root))
+                (spec (list :name "self-edit-mech"
+                            :prompt-file (expand-file-name "prompts/se.txt" tmp)
+                            :source-roots-var 'dl-satan-test--roots)))
+            (should (dl-satan-test--path-suffix-p
+                     "/only.el"
+                     (plist-get (dl-satan-context-self-edit spec) :sources)))))
+      (delete-directory tmp t))))
+
+(ert-deftest dl-satan-self-edit/mech-and-mind-modes-registered-distinctly ()
+  "Both lanes resolve, share governance defaults, point at distinct roots."
+  (let ((mech (dl-satan-mode-resolve "self-edit-mech"))
+        (mind (dl-satan-mode-resolve "self-edit-mind")))
+    (should (eq (plist-get mech :auto-apply) 'none))
+    (should (eq (plist-get mind :auto-apply) 'none))
+    (should (equal (plist-get mech :tools) '("proposal_stage")))
+    (should (equal (plist-get mind :tools) '("proposal_stage")))
+    (should (eq (plist-get mech :source-roots-var) 'dl-satan-self-edit-mech-roots))
+    (should (eq (plist-get mind :source-roots-var) 'dl-satan-self-edit-mind-roots))
+    (should-not (equal (plist-get mech :prompt-file)
+                       (plist-get mind :prompt-file)))))
 
 (ert-deftest dl-satan-context/missing-prompt-errors ()
   "Mode prompt missing → context-fn signals; run cannot start."
   (let* ((tmp (make-temp-file "satan-ctx-" t))
          (dl-satan-prompts-dir (expand-file-name "prompts/" tmp))
          (dl-satan-system-scaffold-file
-          (expand-file-name "system/scaffold.txt" tmp))
-         (dl-satan-self-edit-root tmp)
-         (user-emacs-directory tmp))
+          (expand-file-name "system/scaffold.txt" tmp)))
     (unwind-protect
         (progn
           (make-directory (expand-file-name "system" tmp))
           (with-temp-file dl-satan-system-scaffold-file (insert "S"))
-          (let ((spec (list :name "self-edit"
+          (let ((spec (list :name "self-edit-mech"
                             :prompt-file
-                            (expand-file-name "prompts/never.txt" tmp))))
+                            (expand-file-name "prompts/never.txt" tmp)
+                            :source-roots (list tmp))))
             (should-error (dl-satan-context-self-edit spec)
                           :type 'error)))
       (delete-directory tmp t))))
@@ -381,16 +426,15 @@
   (let* ((tmp (make-temp-file "satan-ctx-" t))
          (dl-satan-prompts-dir (expand-file-name "prompts/" tmp))
          (dl-satan-system-scaffold-file
-          (expand-file-name "system/missing.txt" tmp))
-         (dl-satan-self-edit-root tmp)
-         (user-emacs-directory tmp))
+          (expand-file-name "system/missing.txt" tmp)))
     (unwind-protect
         (progn
           (make-directory (expand-file-name "prompts" tmp))
           (with-temp-file (expand-file-name "prompts/se.txt" tmp) (insert "P"))
-          (let ((spec (list :name "self-edit"
+          (let ((spec (list :name "self-edit-mech"
                             :prompt-file
-                            (expand-file-name "prompts/se.txt" tmp))))
+                            (expand-file-name "prompts/se.txt" tmp)
+                            :source-roots (list tmp))))
             (should-error (dl-satan-context-self-edit spec)
                           :type 'error)))
       (delete-directory tmp t))))
@@ -512,7 +556,7 @@ populated from ALIST `((NAME . CONTENT) …)'."
                              :args (:title "fix" :body "do the thing"))
                             (:type "org_update_owned_block"
                              :args (:target "today" :block "satan" :content "x")))))
-         (ctx (list :id "r1" :mode-name "self-edit"
+         (ctx (list :id "r1" :mode-name "self-edit-mech"
                     :capabilities '(stage-proposal))))
     (unwind-protect
         (let ((p (dl-satan-output/self-edit final ctx)))
@@ -521,6 +565,206 @@ populated from ALIST `((NAME . CONTENT) …)'."
           (should (equal (plist-get (car (plist-get p :applied)) :type)
                          "proposal_stage")))
       (delete-directory tmp t))))
+
+;; ---------- dl-satan-tick ----------
+
+(ert-deftest dl-satan-tick/quiet-hours-wraparound ()
+  "Default 22..7 window suppresses overnight, lets daytime pass."
+  (let ((dl-satan-tick-quiet-hours '(22 . 7)))
+    (cl-letf (((symbol-function 'format-time-string)
+               (lambda (fmt &optional _time &rest _) (if (equal fmt "%H") "23" "x"))))
+      (should (dl-satan-tick-quiet-p)))
+    (cl-letf (((symbol-function 'format-time-string)
+               (lambda (fmt &optional _time &rest _) (if (equal fmt "%H") "03" "x"))))
+      (should (dl-satan-tick-quiet-p)))
+    (cl-letf (((symbol-function 'format-time-string)
+               (lambda (fmt &optional _time &rest _) (if (equal fmt "%H") "09" "x"))))
+      (should-not (dl-satan-tick-quiet-p)))
+    (cl-letf (((symbol-function 'format-time-string)
+               (lambda (fmt &optional _time &rest _) (if (equal fmt "%H") "21" "x"))))
+      (should-not (dl-satan-tick-quiet-p)))))
+
+(ert-deftest dl-satan-tick/quiet-hours-disabled ()
+  "nil quiet hours means never quiet."
+  (let ((dl-satan-tick-quiet-hours nil))
+    (should-not (dl-satan-tick-quiet-p))))
+
+(ert-deftest dl-satan-tick/pick-single-deterministic ()
+  (should (equal (dl-satan-tick-pick '(("tick-pulse" . 1))) "tick-pulse")))
+
+(ert-deftest dl-satan-tick/pick-zero-weight-nil ()
+  (should (null (dl-satan-tick-pick '(("x" . 0))))))
+
+(ert-deftest dl-satan-tick/pick-distribution-respects-weight ()
+  "Over many draws, weights determine relative frequency."
+  (let* ((pool '(("a" . 3) ("b" . 1)))
+         (counts (make-hash-table :test 'equal))
+         (n 4000))
+    (random "tick-test-seed")
+    (dotimes (_ n)
+      (let ((p (dl-satan-tick-pick pool)))
+        (puthash p (1+ (gethash p counts 0)) counts)))
+    (let ((a (gethash "a" counts 0))
+          (b (gethash "b" counts 0)))
+      (should (= (+ a b) n))
+      ;; expect ~3:1; allow generous slack so the test is not flaky
+      (should (> a (* b 2))))))
+
+(ert-deftest dl-satan-tick/default-pulse-mode-registered ()
+  "tick-pulse is registered with the documented budget defaults."
+  (let ((mode (dl-satan-mode-resolve "tick-pulse")))
+    (should (equal (plist-get mode :budget-tokens) 3000))
+    (should (equal (plist-get mode :budget-tool-calls) 4))
+    (should (equal (plist-get mode :timeout-seconds) 30))
+    (should (eq (plist-get mode :output-handler) 'dl-satan-output/tick))
+    (should (member "notify_send" (plist-get mode :tools)))
+    (should (member "inbox_append" (plist-get mode :tools)))
+    (should-not (member "org_update_owned_block" (plist-get mode :tools)))))
+
+(ert-deftest dl-satan-tick/output-only-auto-applies-inbox ()
+  "Tick output handler stages everything except `inbox_append'."
+  (let ((final '(:summary ""
+                 :actions ((:type "inbox_append"
+                            :args (:title "x" :body "y"))
+                           (:type "notify_send"
+                            :args (:title "x" :body "y")))))
+        (ctx (list :id "r1" :mode-name "tick-pulse"
+                   :capabilities '(notify inbox-write)))
+        (called nil))
+    (cl-letf (((symbol-function 'dl-satan-tool/inbox-append)
+               (lambda (&rest _) (setq called t) (cons 'ok '(:path "/x")))))
+      (let ((p (dl-satan-output/tick final ctx)))
+        (should called)
+        (should (equal (length (plist-get p :applied)) 1))
+        (should (equal (length (plist-get p :staged)) 1))
+        (should (equal (plist-get (car (plist-get p :applied)) :type)
+                       "inbox_append"))))))
+
+;; ---------- dl-satan-budget ----------
+
+(defun dl-satan-test--write-transcript (dir lines)
+  "Write LINES (each a plist) as transcript.jsonl under DIR."
+  (make-directory dir t)
+  (let ((coding-system-for-write 'utf-8))
+    (with-temp-file (expand-file-name "transcript.jsonl" dir)
+      (dolist (l lines)
+        (insert (json-serialize
+                 (dl-satan-jsonl-prepare l)
+                 :null-object :null :false-object :false))
+        (insert "\n")))))
+
+(defun dl-satan-test--usage-record (tokens-total)
+  (list :ts "2026-05-19T09:00:00.000000+1000"
+        :dir "in" :event "log"
+        :payload (list :type "log" :kind "usage"
+                       :tokens_in 0 :tokens_out 0
+                       :tokens_total tokens-total)))
+
+(ert-deftest dl-satan-budget/run-tokens-takes-max-cumulative ()
+  (let ((dir (make-temp-file "satan-bud-run-" t)))
+    (unwind-protect
+        (progn
+          (dl-satan-test--write-transcript
+           dir (list (dl-satan-test--usage-record 100)
+                     (dl-satan-test--usage-record 350)
+                     (dl-satan-test--usage-record 350)))
+          (should (equal (dl-satan-budget--run-tokens dir) 350)))
+      (delete-directory dir t))))
+
+(ert-deftest dl-satan-budget/run-tokens-zero-when-no-usage ()
+  (let ((dir (make-temp-file "satan-bud-run-" t)))
+    (unwind-protect
+        (progn
+          (dl-satan-test--write-transcript
+           dir (list (list :ts "x" :dir "in" :event "ready"
+                           :payload (list :type "ready"))))
+          (should (equal (dl-satan-budget--run-tokens dir) 0)))
+      (delete-directory dir t))))
+
+(ert-deftest dl-satan-budget/today-total-sums-today-prefix-only ()
+  (let* ((root (make-temp-file "satan-bud-root-" t))
+         (now (current-time))
+         (today (format-time-string "%Y%m%dT" now))
+         (yesterday (format-time-string
+                     "%Y%m%dT"
+                     (time-subtract now (days-to-time 1))))
+         (today-a (expand-file-name (concat today "090000-x-aaaaaa") root))
+         (today-b (expand-file-name (concat today "100000-x-bbbbbb") root))
+         (older   (expand-file-name (concat yesterday "120000-x-cccccc") root)))
+    (unwind-protect
+        (progn
+          (dl-satan-test--write-transcript
+           today-a (list (dl-satan-test--usage-record 1000)))
+          (dl-satan-test--write-transcript
+           today-b (list (dl-satan-test--usage-record 2500)))
+          (dl-satan-test--write-transcript
+           older   (list (dl-satan-test--usage-record 999999)))
+          (should (equal (dl-satan-budget-today-total root now) 3500)))
+      (delete-directory root t))))
+
+(ert-deftest dl-satan-budget/exceeded-p-respects-ceiling ()
+  (let* ((root (make-temp-file "satan-bud-root-" t))
+         (now (current-time))
+         (today (format-time-string "%Y%m%dT" now))
+         (dir (expand-file-name (concat today "090000-x-aaaaaa") root)))
+    (unwind-protect
+        (progn
+          (dl-satan-test--write-transcript
+           dir (list (dl-satan-test--usage-record 400000)))
+          (let ((dl-satan-budget-daily-tokens 400000))
+            (should (dl-satan-budget-exceeded-p root now)))
+          (let ((dl-satan-budget-daily-tokens 400001))
+            (should-not (dl-satan-budget-exceeded-p root now)))
+          (let ((dl-satan-budget-daily-tokens nil))
+            (should-not (dl-satan-budget-exceeded-p root now))))
+      (delete-directory root t))))
+
+(ert-deftest dl-satan-broker/refuses-spawn-when-budget-exceeded ()
+  "Pre-spawn gate writes status=budget-exceeded; no child spawned."
+  (dl-satan-test--with-tool-descriptions
+   '(("org_read_context"       . "Read.")
+     ("org_update_owned_block" . "Write owned.")
+     ("proposal_stage"         . "Stage.")
+     ("notify_send"            . "Notify.")
+     ("hippocampus_write"      . "Write hippo.")
+     ("inbox_append"           . "Append inbox.")
+     ("satan_final"            . "Terminate."))
+   (lambda ()
+     (let* ((root (make-temp-file "satan-bud-broker-" t))
+            (now (current-time))
+            (today (format-time-string "%Y%m%dT" now))
+            (existing (expand-file-name (concat today "080000-x-eeeeee") root))
+            (dl-satan-runs-dir root)
+            (dl-satan-budget-daily-tokens 400000))
+       (unwind-protect
+           (progn
+             (dl-satan-test--write-transcript
+              existing (list (dl-satan-test--usage-record 500000)))
+             (let* ((run-id (dl-satan-broker-run "morning"))
+                    (dir (expand-file-name run-id root))
+                    (status-path (expand-file-name "status" dir)))
+               (should (file-directory-p dir))
+               (should (file-readable-p status-path))
+               (should (equal (string-trim
+                               (with-temp-buffer
+                                 (insert-file-contents status-path)
+                                 (buffer-string)))
+                              "budget-exceeded"))
+               (should (eq (dl-satan-audit-verify-run dir) t))
+               (let* ((final-path (expand-file-name "final.json" dir))
+                      (final (with-temp-buffer
+                               (insert-file-contents final-path)
+                               (goto-char (point-min))
+                               (json-parse-buffer
+                                :object-type 'plist
+                                :array-type 'list
+                                :null-object :null
+                                :false-object :false))))
+                 (should (string-match-p "budget-exceeded"
+                                         (plist-get final :summary)))
+                 (should (equal (plist-get final :reason)
+                                "budget_daily_tokens")))))
+         (delete-directory root t))))))
 
 ;; ---------- dl-satan-audit verifier ----------
 
