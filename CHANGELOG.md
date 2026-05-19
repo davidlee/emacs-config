@@ -2,6 +2,48 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-19 — SATAN: phase 3C-lite — OAI-compatible provider base + DeepSeek
+
+OpenRouter's adapter was the only OpenAI v1 chat-completions client in
+the harness; DeepSeek speaks the same dialect. Rather than duplicate
+the SDK wiring + tool-call deserialisation, factor it into a shared
+base class and re-derive providers as one-line config rows.
+
+- `satan/harness/providers/base.py` — adds
+  `OpenAICompatibleProvider(api_key, base_url=None)`. Subsumes
+  the `from openai import OpenAI` client construction, the
+  `chat.completions.create` call (with `tools=None` when empty), and
+  the tool-call / usage deserialisation that previously lived in
+  `OpenRouterProvider`. Subclasses set `base_url` as a class attr.
+- `satan/harness/providers/openrouter.py` — thin subclass:
+  `base_url = "https://openrouter.ai/api/v1"`.
+- `satan/harness/providers/deepseek.py` — new thin subclass:
+  `base_url = "https://api.deepseek.com"`. Reasoning models'
+  `reasoning_content` field is not surfaced; `msg.content` already
+  carries the final answer.
+- `satan/harness/providers/__init__.py` — `build_provider()` now
+  reads a `{provider_name: (subclass, key_env_var)}` registry. Adding
+  another OAI-compatible provider is one registry row plus the
+  subclass.
+- `satan/harness/test_gptel_harness.py` — `ProviderFactoryTests`
+  verifies openrouter + deepseek dispatch (subclass type, `base_url`,
+  api key wiring), the default-provider fallback, and the three
+  error paths (unknown provider, missing model, missing key). The
+  real `openai` SDK is stubbed via `sys.modules["openai"]` so the
+  tests don't require it.
+- Broker side already plumbed: `dl-satan-broker-provider-key-vars`
+  carries `(deepseek . "DEEPSEEK_API_KEY")`, `flake.nix` forwards
+  the env var into the bwrap jail, and `~/.config/zsh/env.zsh` has
+  the `op://` ref. `:provider 'deepseek` is now a valid mode-spec
+  value.
+
+Tests: 76/76 ert, 20/20 python (was 14/14; +6 factory tests),
+1/1 integration, `nix build .#satan-jailed-gptel-harness` clean
+(ruff passes).
+
+Open thread #9 (native Anthropic/Gemini) remains explicitly deferred
+per user direction.
+
 ## 2026-05-19 — SATAN: phase 3B — harness multi-file split
 
 `gptel_harness.py` had grown into five concerns under one roof:

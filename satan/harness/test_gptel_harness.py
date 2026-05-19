@@ -21,7 +21,10 @@ sys.path.insert(0, HERE)
 import bundle  # noqa: E402
 import protocol  # noqa: E402
 import runloop  # noqa: E402
+from providers import build_provider  # noqa: E402
 from providers.base import CompletionResult, Provider  # noqa: E402
+from providers.deepseek import DeepSeekProvider  # noqa: E402
+from providers.openrouter import OpenRouterProvider  # noqa: E402
 
 
 def _stub_tool_schema(name: str, description: str = "") -> dict:
@@ -255,6 +258,86 @@ class ProtocolFixtureTests(unittest.TestCase):
     def test_bad_direction_raises(self):
         with self.assertRaises(ValueError):
             protocol.check("sideways", {"type": "ready", "run_id": "x"})
+
+
+class FakeOpenAI:
+    """Captures OpenAI(...) ctor kwargs so tests can assert wiring."""
+    last_kwargs: dict = {}
+
+    def __init__(self, **kwargs):
+        type(self).last_kwargs = kwargs
+        self.chat = mock.MagicMock()
+
+
+def _fake_openai_module():
+    import types
+    mod = types.ModuleType("openai")
+    mod.OpenAI = FakeOpenAI
+    return mod
+
+
+class ProviderFactoryTests(unittest.TestCase):
+    """Verify build_provider dispatches to the right subclass + base_url.
+
+    The real `openai` SDK is not in scope for these unit tests (and may
+    be absent in the dev env). Inject a fake module into `sys.modules`
+    so the `from openai import OpenAI` inside `OpenAICompatibleProvider`
+    resolves to `FakeOpenAI`.
+    """
+
+    def _build(self, env: dict) -> tuple[Provider, str]:
+        with mock.patch.dict(os.environ, env, clear=True), \
+             mock.patch.dict(sys.modules, {"openai": _fake_openai_module()}):
+            FakeOpenAI.last_kwargs = {}
+            return build_provider()
+
+    def test_openrouter_dispatch(self):
+        provider, model = self._build({
+            "SATAN_PROVIDER": "openrouter",
+            "SATAN_MODEL": "x-ai/grok",
+            "OPENROUTER_API_KEY": "or-key",
+        })
+        self.assertIsInstance(provider, OpenRouterProvider)
+        self.assertEqual(model, "x-ai/grok")
+        self.assertEqual(FakeOpenAI.last_kwargs["api_key"], "or-key")
+        self.assertEqual(FakeOpenAI.last_kwargs["base_url"],
+                         "https://openrouter.ai/api/v1")
+
+    def test_deepseek_dispatch(self):
+        provider, model = self._build({
+            "SATAN_PROVIDER": "deepseek",
+            "SATAN_MODEL": "deepseek-chat",
+            "DEEPSEEK_API_KEY": "ds-key",
+        })
+        self.assertIsInstance(provider, DeepSeekProvider)
+        self.assertEqual(model, "deepseek-chat")
+        self.assertEqual(FakeOpenAI.last_kwargs["api_key"], "ds-key")
+        self.assertEqual(FakeOpenAI.last_kwargs["base_url"],
+                         "https://api.deepseek.com")
+
+    def test_default_provider_is_openrouter(self):
+        provider, _ = self._build({
+            "SATAN_MODEL": "any",
+            "OPENROUTER_API_KEY": "k",
+        })
+        self.assertIsInstance(provider, OpenRouterProvider)
+
+    def test_unknown_provider_raises(self):
+        with self.assertRaisesRegex(RuntimeError, "unknown SATAN_PROVIDER"):
+            self._build({
+                "SATAN_PROVIDER": "claude-native",
+                "SATAN_MODEL": "x",
+            })
+
+    def test_missing_model_raises(self):
+        with self.assertRaisesRegex(RuntimeError, "SATAN_MODEL not set"):
+            self._build({"SATAN_PROVIDER": "deepseek",
+                         "DEEPSEEK_API_KEY": "k"})
+
+    def test_missing_key_raises(self):
+        with self.assertRaisesRegex(RuntimeError, "DEEPSEEK_API_KEY not set"):
+            self._build({"SATAN_PROVIDER": "deepseek",
+                         "SATAN_MODEL": "deepseek-chat"})
 
 
 if __name__ == "__main__":

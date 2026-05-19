@@ -1,15 +1,23 @@
 """Provider registry: dispatch on SATAN_PROVIDER env to a concrete adapter.
 
-Phase-3B ships one adapter (OpenRouter). Phase-3C-lite adds a shared
-`OpenAICompatibleProvider` base + DeepSeek as a thin config row.
+Adapters speak OpenAI v1 chat-completions via the shared
+`OpenAICompatibleProvider` base. Adding a new OAI-compatible provider is
+a two-line subclass + a row here.
 """
 
 from __future__ import annotations
 
 import os
 
-from .base import CompletionResult, Provider
+from .base import CompletionResult, OpenAICompatibleProvider, Provider
+from .deepseek import DeepSeekProvider
 from .openrouter import OpenRouterProvider
+
+# provider name -> (subclass, key env var)
+_REGISTRY: dict[str, tuple[type[OpenAICompatibleProvider], str]] = {
+    "openrouter": (OpenRouterProvider, "OPENROUTER_API_KEY"),
+    "deepseek":   (DeepSeekProvider,   "DEEPSEEK_API_KEY"),
+}
 
 
 def build_provider() -> tuple[Provider, str]:
@@ -17,16 +25,20 @@ def build_provider() -> tuple[Provider, str]:
     model = os.environ.get("SATAN_MODEL") or ""
     if not model:
         raise RuntimeError("SATAN_MODEL not set")
-    if provider_name == "openrouter":
-        key = os.environ.get("OPENROUTER_API_KEY")
-        if not key:
-            raise RuntimeError("OPENROUTER_API_KEY not set")
-        return OpenRouterProvider(key), model
-    raise RuntimeError(f"unknown SATAN_PROVIDER: {provider_name}")
+    entry = _REGISTRY.get(provider_name)
+    if entry is None:
+        raise RuntimeError(f"unknown SATAN_PROVIDER: {provider_name}")
+    cls, key_var = entry
+    key = os.environ.get(key_var)
+    if not key:
+        raise RuntimeError(f"{key_var} not set")
+    return cls(key), model
 
 
 __all__ = [
     "CompletionResult",
+    "DeepSeekProvider",
+    "OpenAICompatibleProvider",
     "OpenRouterProvider",
     "Provider",
     "build_provider",
