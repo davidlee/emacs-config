@@ -2,6 +2,31 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-19 — SATAN: memory step 7 — store backend (mark/resonate/show)
+
+`satan/dl-satan-memory-store.el` lands the transactional storage and
+retrieval surfaces for the memory substrate. Implementation: psql
+subprocess (R3, §6.1) feeding stdin scripts so `:'var'` substitution
+works (psql `-c` doesn't perform it).
+
+- Migration `0003_memory_functions.sql` installs four SQL functions:
+  `handle_weight_for`, `memory_mark_trace` (PL/pgSQL; one insert per
+  table, enforces the §9.12 outcome invariant server-side),
+  `memory_resonate` (inverted-index lookup, scored), `memory_show_trace`
+  (json round-trip of trace+handles+links). Applied to both
+  `satan_memory_test` and `satan_memory`.
+- `dl-satan-memory-store-mark` accepts canon-shaped handle plists and
+  passes a single JSONB blob built with `json-serialize` + explicit
+  vectors for arrays (avoids `json-encode`'s plist/array ambiguity).
+- `dl-satan-memory-store-resonate` and `-show` are read-only — no
+  `access_count` / `last_accessed_at` mutation in v1 per §6.4.
+- Acceptance §9 partials green: 9.7 idempotent re-mark, 9.11
+  zero-weight bough_node, 9.12 outcome invariant, 9.14 origin
+  admission. Full §9 pass deferred to step 11.
+- 18 new store ert; total memory-subsystem suite 81/81.
+
+Migrate test count assertion updated for the new migration row.
+
 ## 2026-05-19 — SATAN: memory step 6 — evidence-window assembler
 
 `satan/dl-satan-memory-evidence.el` lands the impure side of the
