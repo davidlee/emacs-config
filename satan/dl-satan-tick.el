@@ -68,7 +68,8 @@ The prompt file defaults to `<prompts>/tick/SHORT-NAME.txt'."
           (list :name full-name
                 :prompt-file prompt-file
                 :context-fn 'dl-satan-context-tick
-                :tools '("org_read_context" "notify_send" "inbox_append")
+                :tools '("org_read_context" "notify_send" "inbox_append"
+                         "activity_read")
                 :capabilities '(notify inbox-write)
                 :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
                 :jail-profile 'specDev

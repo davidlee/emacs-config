@@ -1,0 +1,119 @@
+;;; dl-satan-tools-activity.el --- activity_read tool handler -*- lexical-binding: t; -*-
+
+;; Read-only window into the user's behaviour state, produced by
+;; panopticon (~/dev/panopticon).  Files live under
+;; `dl-satan-tools-activity-dir' (default `~/.local/state/behaviour/').
+;;
+;; Scopes:
+;;   - "today"        -> today's aggregate histogram
+;;                       (per-app, per-workspace, per-hour seconds)
+;;   - "recent_focus" -> last N focus segments for today, default 20,
+;;                       max 200.  Each segment: app_id, workspace,
+;;                       start/end timestamps, duration_s.
+;;
+;; Risk = `read'; no capability required.  Panopticon is the producer
+;; that handles redaction (firefox extension strips queries/fragments
+;; and drops incognito); SATAN is a downstream consumer.
+
+(require 'cl-lib)
+(require 'subr-x)
+(require 'dl-satan-tools)
+
+(defcustom dl-satan-tools-activity-dir
+  (expand-file-name "~/.local/state/behaviour/")
+  "Root directory holding panopticon's behaviour-state output."
+  :type 'directory :group 'dl-satan)
+
+(defcustom dl-satan-tools-activity-default-limit 20
+  "Default `:limit' for the `recent_focus' scope."
+  :type 'integer :group 'dl-satan)
+
+(defconst dl-satan-tools-activity--limit-max 200
+  "Hard upper bound on `:limit'; clamped without error.")
+
+(defun dl-satan-tools-activity--today ()
+  (format-time-string "%Y-%m-%d"))
+
+(defun dl-satan-tools-activity--read-json (path)
+  "Parse JSON at PATH into a plist, or return nil if unreadable/empty."
+  (when (and (file-readable-p path)
+             (> (file-attribute-size (file-attributes path)) 0))
+    (with-temp-buffer
+      (let ((coding-system-for-read 'utf-8))
+        (insert-file-contents path))
+      (json-parse-string (buffer-string)
+                         :object-type 'plist
+                         :array-type 'list
+                         :null-object nil
+                         :false-object :false))))
+
+(defun dl-satan-tools-activity--read-jsonl (path)
+  "Return a list of plists, one per non-empty JSON line at PATH.
+nil if PATH is unreadable."
+  (when (file-readable-p path)
+    (with-temp-buffer
+      (let ((coding-system-for-read 'utf-8))
+        (insert-file-contents path))
+      (let (acc)
+        (goto-char (point-min))
+        (while (not (eobp))
+          (let ((line (buffer-substring-no-properties
+                       (point) (line-end-position))))
+            (unless (string-empty-p (string-trim line))
+              (push (json-parse-string line
+                                       :object-type 'plist
+                                       :array-type 'list
+                                       :null-object nil
+                                       :false-object :false)
+                    acc)))
+          (forward-line 1))
+        (nreverse acc)))))
+
+(defun dl-satan-tools-activity--clamp-limit (raw)
+  (cond
+   ((null raw) dl-satan-tools-activity-default-limit)
+   ((< raw 1) 1)
+   ((> raw dl-satan-tools-activity--limit-max)
+    dl-satan-tools-activity--limit-max)
+   (t raw)))
+
+(defun dl-satan-tool/activity-read (args _ctx)
+  "Implements activity_read.  ARGS: (:scope today|recent_focus :limit INT?).
+Returns (ok PLIST) | (error STRING)."
+  (let* ((scope (plist-get args :scope))
+         (today (dl-satan-tools-activity--today))
+         (root  dl-satan-tools-activity-dir))
+    (pcase scope
+      ("today"
+       (let* ((path (expand-file-name
+                     (format "histograms/daily-%s.json" today) root))
+              (data (dl-satan-tools-activity--read-json path)))
+         (cons 'ok (list :scope "today"
+                         :date today
+                         :path path
+                         :histogram data))))
+      ("recent_focus"
+       (let* ((limit (dl-satan-tools-activity--clamp-limit
+                      (plist-get args :limit)))
+              (path (expand-file-name
+                     (format "segments/focus-%s.jsonl" today) root))
+              (all  (dl-satan-tools-activity--read-jsonl path))
+              (tail (last all limit)))
+         (cons 'ok (list :scope "recent_focus"
+                         :date today
+                         :limit limit
+                         :path path
+                         :segments (or tail '())))))
+      (_ (cons 'error (format "unknown scope: %s" scope))))))
+
+(dl-satan-tool-register
+ (list :name "activity_read"
+       :risk 'read
+       :args-schema '(scope (:type string :required t
+                             :enum ("today" "recent_focus"))
+                      limit (:type integer :required nil))
+       :modes '("morning" "motd" "tick-pulse")
+       :handler 'dl-satan-tool/activity-read))
+
+(provide 'dl-satan-tools-activity)
+;;; dl-satan-tools-activity.el ends here

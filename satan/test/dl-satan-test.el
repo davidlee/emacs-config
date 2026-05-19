@@ -20,6 +20,7 @@
 (require 'dl-satan-tools-inbox)
 (require 'dl-satan-tools-org)
 (require 'dl-satan-tools-agenda)
+(require 'dl-satan-tools-activity)
 (require 'dl-satan-context)
 (require 'dl-satan-output)
 (require 'dl-satan-audit)
@@ -544,6 +545,7 @@ populated from ALIST `((NAME . CONTENT) …)'."
      ("hippocampus_write"      . "Write to the hippocampus.")
      ("inbox_append"           . "Append to the inbox.")
      ("agenda_read"            . "Read the agenda.")
+     ("activity_read"          . "Read the user's recent activity.")
      ("satan_final"            . "Terminate the run."))
    (lambda ()
      (let* ((mode (dl-satan-mode-resolve "morning"))
@@ -558,6 +560,7 @@ populated from ALIST `((NAME . CONTENT) …)'."
        (should (member "hippocampus_write" names))
        (should (member "inbox_append" names))
        (should (member "agenda_read" names))
+       (should (member "activity_read" names))
        (should (member "satan_final" names))
        ;; Descriptions came from notes files, not elisp.
        (let ((notify (cl-find "notify_send" tools
@@ -752,6 +755,121 @@ Captures the argv passed to call-process in `argv-out'."
       (should (equal (plist-get blocked :ok) :false))
       (should (string-match-p "not allowed" (plist-get blocked :error))))))
 
+;; ---------- dl-satan-tools-activity ----------
+
+(defmacro dl-satan-test--with-activity-root (&rest body)
+  "Bind `dl-satan-tools-activity-dir' to a temp dir for BODY."
+  (declare (indent 0))
+  `(let* ((dir (make-temp-file "satan-activity-" t))
+          (dl-satan-tools-activity-dir dir))
+     (make-directory (expand-file-name "histograms" dir) t)
+     (make-directory (expand-file-name "segments" dir) t)
+     (unwind-protect (progn ,@body)
+       (delete-directory dir t))))
+
+(defun dl-satan-test--activity-today ()
+  (format-time-string "%Y-%m-%d"))
+
+(defun dl-satan-test--write-histogram (dir payload)
+  (let ((path (expand-file-name
+               (format "histograms/daily-%s.json"
+                       (dl-satan-test--activity-today))
+               dir)))
+    (with-temp-file path (insert payload))
+    path))
+
+(defun dl-satan-test--write-focus-jsonl (dir lines)
+  (let ((path (expand-file-name
+               (format "segments/focus-%s.jsonl"
+                       (dl-satan-test--activity-today))
+               dir)))
+    (with-temp-file path
+      (dolist (l lines) (insert l) (insert "\n")))
+    path))
+
+(ert-deftest dl-satan-activity/today-returns-parsed-histogram ()
+  "Scope `today' reads histograms/daily-<today>.json and returns a plist."
+  (dl-satan-test--with-activity-root
+    (dl-satan-test--write-histogram
+     dl-satan-tools-activity-dir
+     "{\"day\":\"2026-05-19\",\"per_app_seconds\":{\"emacs\":42.5},\"per_workspace_seconds\":{\"09\":42.5},\"per_hour_seconds\":[0.0]}")
+    (let ((res (dl-satan-tool/activity-read '(:scope "today") nil)))
+      (should (eq (car res) 'ok))
+      (let* ((p (cdr res))
+             (h (plist-get p :histogram)))
+        (should (equal (plist-get p :scope) "today"))
+        (should (equal (plist-get p :date)
+                       (dl-satan-test--activity-today)))
+        (should (equal (plist-get h :day) "2026-05-19"))
+        (should (equal (plist-get (plist-get h :per_app_seconds) :emacs)
+                       42.5))))))
+
+(ert-deftest dl-satan-activity/today-missing-file-returns-nil-histogram ()
+  "Missing histogram file yields ok with :histogram nil, not an error."
+  (dl-satan-test--with-activity-root
+    (let ((res (dl-satan-tool/activity-read '(:scope "today") nil)))
+      (should (eq (car res) 'ok))
+      (should (null (plist-get (cdr res) :histogram))))))
+
+(ert-deftest dl-satan-activity/recent-focus-returns-tail ()
+  "Scope `recent_focus' returns last :limit segments in file order."
+  (dl-satan-test--with-activity-root
+    (dl-satan-test--write-focus-jsonl
+     dl-satan-tools-activity-dir
+     (cl-loop for i from 1 to 5 collect
+              (format "{\"v\":1,\"app_id\":\"app%d\",\"workspace\":\"01\",\"duration_s\":%d}"
+                      i i)))
+    (let* ((res (dl-satan-tool/activity-read
+                 '(:scope "recent_focus" :limit 2) nil))
+           (p (cdr res))
+           (segs (plist-get p :segments)))
+      (should (eq (car res) 'ok))
+      (should (equal (plist-get p :limit) 2))
+      (should (equal (length segs) 2))
+      (should (equal (plist-get (car segs) :app_id) "app4"))
+      (should (equal (plist-get (cadr segs) :app_id) "app5")))))
+
+(ert-deftest dl-satan-activity/recent-focus-limit-defaults-and-clamps ()
+  "Missing :limit uses default; out-of-range clamps to [1, 200]."
+  (dl-satan-test--with-activity-root
+    (dl-satan-test--write-focus-jsonl
+     dl-satan-tools-activity-dir
+     '("{\"app_id\":\"a\"}"))
+    (let ((default-res (dl-satan-tool/activity-read
+                        '(:scope "recent_focus") nil))
+          (hi-res (dl-satan-tool/activity-read
+                   '(:scope "recent_focus" :limit 9999) nil))
+          (lo-res (dl-satan-tool/activity-read
+                   '(:scope "recent_focus" :limit 0) nil)))
+      (should (equal (plist-get (cdr default-res) :limit)
+                     dl-satan-tools-activity-default-limit))
+      (should (equal (plist-get (cdr hi-res) :limit)
+                     dl-satan-tools-activity--limit-max))
+      (should (equal (plist-get (cdr lo-res) :limit) 1)))))
+
+(ert-deftest dl-satan-activity/recent-focus-missing-file-empty-segments ()
+  "Missing segments file yields ok with :segments '()."
+  (dl-satan-test--with-activity-root
+    (let ((res (dl-satan-tool/activity-read
+                '(:scope "recent_focus") nil)))
+      (should (eq (car res) 'ok))
+      (should (equal (plist-get (cdr res) :segments) '())))))
+
+(ert-deftest dl-satan-activity/unknown-scope-errors ()
+  "Unknown :scope is a structured error."
+  (let ((res (dl-satan-tool/activity-read '(:scope "tomorrow") nil)))
+    (should (eq (car res) 'error))
+    (should (string-match-p "unknown scope" (cdr res)))))
+
+(ert-deftest dl-satan-activity/dispatch-schema-enum ()
+  "Dispatcher rejects scope values outside the registered enum."
+  (let ((res (dl-satan-tool-dispatch
+              '(:type "tool_call" :id "ar1" :name "activity_read"
+                :args (:scope "yesterday"))
+              '("activity_read") nil)))
+    (should (equal (plist-get res :ok) :false))
+    (should (string-match-p "must be one of" (plist-get res :error)))))
+
 ;; ---------- dl-satan-budget ----------
 
 (defun dl-satan-test--write-transcript (dir lines)
@@ -841,6 +959,7 @@ Captures the argv passed to call-process in `argv-out'."
      ("hippocampus_write"      . "Write hippo.")
      ("inbox_append"           . "Append inbox.")
      ("agenda_read"            . "Read agenda.")
+     ("activity_read"          . "Read activity.")
      ("satan_final"            . "Terminate."))
    (lambda ()
      (let* ((root (make-temp-file "satan-bud-broker-" t))

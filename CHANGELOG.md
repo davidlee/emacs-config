@@ -2,6 +2,47 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-19 — SATAN: activity_read tool (panopticon consumer)
+
+Panopticon's sway watcher + firefox extension + segmentizer landed
+earlier today, so the behaviour state at `~/.local/state/behaviour/`
+now contains a daily histogram, focus segments, and (when the
+segmentizer has run) browser segments. New `activity_read` tool gives
+SATAN read-only access for behaviour-aware prompts.
+
+- `satan/dl-satan-tools-activity.el` — new module. Scope `today`
+  returns the parsed `histograms/daily-<today>.json` plist
+  (per_app_seconds, per_workspace_seconds, per_hour_seconds, plus the
+  browser per-domain seconds when merged in). Scope `recent_focus`
+  returns the tail-N segments from `segments/focus-<today>.jsonl`
+  (default 20, clamped to 1..200). Both scopes return ok with empty
+  data when the file is missing — common at start-of-day before the
+  segmentizer fires — rather than erroring, so the model can branch
+  on "no activity data yet" without losing the rest of the turn.
+- `~/notes/satan/tools/activity_read.md` — model-facing description
+  (mind side). Documents the two scopes, the producer-side PII
+  redaction, and the start-of-day empty-data condition.
+- `satan/dl-satan.el` — `(require 'dl-satan-tools-activity)`.
+- `satan/dl-satan-mode.el` — adds `activity_read` to the `morning`
+  and `motd` mode-spec `:tools` allowlists. `motd` doesn't run for
+  long so the tool is informational; `morning` gets the richest use.
+- `satan/dl-satan-tick.el` — adds `activity_read` to the default tick
+  allowlist so `tick-pulse` can decide whether to interrupt deep work.
+- `satan/test/dl-satan-test.el` — 7 new ert: today happy path,
+  today missing-file, recent_focus tail, default/clamp limits,
+  recent_focus missing-file, unknown scope, dispatch enum guard.
+  Fixture helpers `dl-satan-test--with-tool-descriptions` for the
+  manifest-shape and budget-gate tests pick up the new tool too.
+- `SATAN.md` — modules table, mode table, tool table, and
+  External dependencies note refreshed.
+
+The handler runs broker-side (Emacs), not inside the bwrap jail —
+so no extra bind mounts are needed; the jail only sees the JSON-encoded
+tool result.
+
+Tests: 83/83 ert (+7), 21/21 python, 1/1 integration,
+`nix build .#satan-jailed-gptel-harness` clean.
+
 ## 2026-05-19 — SATAN: soft budget UX (thread #4)
 
 Budget exhaustion previously force-terminated mid-stream with a
