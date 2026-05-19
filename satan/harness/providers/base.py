@@ -6,10 +6,12 @@ collapses every provider whose wire shape is OpenAI v1 chat-completions
 parameterised by `base_url` and `api_key`. Concrete adapters subclass it
 purely as a configuration row.
 
-DeepSeek's reasoning models emit a `reasoning_content` field outside the
-OpenAI schema. We do not surface it — `msg.content` carries the final
-answer and tool_calls follow the standard shape, so the runloop is
-unaffected.
+DeepSeek's reasoning models (and any future thinking-mode provider)
+emit a `reasoning_content` field on the assistant message outside the
+OpenAI schema. DeepSeek then *requires* that the field be echoed back
+on the next request or rejects with HTTP 400. We capture it on
+`CompletionResult` and the runloop attaches it to the assistant message
+it appends to history, so the next provider call carries it through.
 """
 
 from __future__ import annotations
@@ -25,6 +27,7 @@ class CompletionResult:
     tool_calls: list[dict]  # [{"id": str, "name": str, "args": dict}]
     input_tokens: int
     output_tokens: int
+    reasoning_content: str | None = None
 
 
 class Provider(ABC):
@@ -74,9 +77,11 @@ class OpenAICompatibleProvider(Provider):
                 "args": args,
             })
         usage = resp.usage
+        reasoning = getattr(msg, "reasoning_content", None) or None
         return CompletionResult(
             content=content,
             tool_calls=tool_calls,
             input_tokens=getattr(usage, "prompt_tokens", 0) or 0,
             output_tokens=getattr(usage, "completion_tokens", 0) or 0,
+            reasoning_content=reasoning,
         )

@@ -2,6 +2,37 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-20 — SATAN: provider profiles + deepseek thinking-mode round-trip
+
+Provider/model now live in `dl-satan-profiles' (alist of NAME →
+plist). Each mode-spec carries `:profile NAME' instead of duplicating
+`:provider'/`:model'. Mode-level keys still win over profile, so a
+mode can pin one half without owning both. Built-in profiles:
+`claude-haiku' (openrouter/claude-haiku-4.5) and `deepseek-pro'
+(deepseek/deepseek-v4-pro).
+
+`tick-pulse' moves to `deepseek-pro'. Recent run data: cold-start
+spikes blew the 30 s wall-clock on ~20% of ticks, and the 10k token
+ceiling was fictional (real spend 10–36k across multi-turn tool
+chains). Bumped to 60 s / 40k.
+
+Harness round-trips DeepSeek's `reasoning_content'. v4-pro returns
+the thinking trace on every assistant turn and rejects the next
+request with HTTP 400 unless the field is echoed back. Captured on
+`CompletionResult', attached to the assistant message in
+`append_assistant_with_tools', forwarded by the OpenAI SDK via its
+TypedDict-loose message shape.
+
+- `satan/dl-satan-mode.el`: `dl-satan-profiles' + `--apply-profile'
+  merge in `dl-satan-mode-register'. All five built-in modes now use
+  `:profile'.
+- `satan/dl-satan-tick.el`: tick-pulse → `:profile 'deepseek-pro',
+  `:timeout-seconds 60', `:budget-tokens 40000'.
+- `satan/harness/providers/base.py`: `CompletionResult.reasoning_content'.
+- `satan/harness/runloop.py': `append_assistant_with_tools' threads
+  `reasoning_content' onto the message dict.
+- `satan/test/dl-satan-test.el': tick assertion bumps.
+
 ## 2026-05-20 — SATAN: observation tank
 
 Adds `my/satan-tank` (buffer `*satan-tank*`), a read-only composite

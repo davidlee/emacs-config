@@ -39,6 +39,7 @@ def append_assistant_with_tools(
     state: RunState,
     content: str,
     tool_calls: list[dict],
+    reasoning_content: str | None = None,
 ) -> None:
     msg: dict[str, Any] = {"role": "assistant", "content": content or None}
     if tool_calls:
@@ -53,6 +54,11 @@ def append_assistant_with_tools(
             }
             for tc in tool_calls
         ]
+    if reasoning_content:
+        # DeepSeek thinking-mode round-trip requirement: the reasoning
+        # block returned with the assistant turn must be echoed back on
+        # the next request or the provider rejects.
+        msg["reasoning_content"] = reasoning_content
     state.messages.append(msg)
 
 
@@ -135,7 +141,10 @@ def run() -> int:
             return 0
 
         if comp.tool_calls:
-            append_assistant_with_tools(state, comp.content, comp.tool_calls)
+            append_assistant_with_tools(
+                state, comp.content, comp.tool_calls,
+                reasoning_content=comp.reasoning_content,
+            )
             # Emit each non-final tool_call, read the corresponding result.
             for tc in comp.tool_calls:
                 emit_tool_call(tc["id"], tc["name"], tc["args"])

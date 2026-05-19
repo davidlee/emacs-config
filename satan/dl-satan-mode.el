@@ -9,11 +9,44 @@
 (defvar dl-satan-modes nil
   "Alist of (NAME . SPEC) mode registrations.")
 
+(defcustom dl-satan-profiles
+  '((claude-haiku . (:provider openrouter
+                     :model "anthropic/claude-haiku-4.5"))
+    (deepseek-pro . (:provider deepseek
+                     :model "deepseek-v4-pro")))
+  "Alist of (NAME . PLIST) provider/model profiles.
+A mode-spec referring to a profile via `:profile NAME' inherits each
+PLIST key that the mode-spec does not set itself.  Mode-level keys
+always win, so a mode may pin `:model' while taking `:provider' from
+the profile.  Currently used for `:provider' and `:model'."
+  :type '(alist :key-type symbol :value-type plist)
+  :group 'dl-satan)
+
+(defun dl-satan-profile-resolve (name)
+  "Return the profile plist named NAME, or signal if unknown."
+  (or (cdr (assq name dl-satan-profiles))
+      (error "Unknown SATAN profile: %s" name)))
+
+(defun dl-satan-mode--apply-profile (spec)
+  "If SPEC has `:profile', merge that profile's plist in, mode wins."
+  (let ((profile-name (plist-get spec :profile)))
+    (if (not profile-name)
+        spec
+      (let ((profile (dl-satan-profile-resolve profile-name))
+            (merged (copy-sequence spec)))
+        (cl-loop for (k v) on profile by #'cddr
+                 unless (plist-member merged k)
+                 do (setq merged (plist-put merged k v)))
+        merged))))
+
 (defun dl-satan-mode-register (spec)
-  "Register or replace mode SPEC keyed by `:name'."
-  (let ((name (plist-get spec :name)))
+  "Register or replace mode SPEC keyed by `:name'.
+If SPEC has a `:profile' key, profile defaults are merged in at
+registration time (mode-level keys win)."
+  (let* ((expanded (dl-satan-mode--apply-profile spec))
+         (name (plist-get expanded :name)))
     (setq dl-satan-modes
-          (cons (cons name spec)
+          (cons (cons name expanded)
                 (cl-remove name dl-satan-modes :key #'car :test #'equal)))))
 
 (defun dl-satan-mode-resolve (name)
@@ -45,8 +78,7 @@ Dotfiles must not be the source of truth for prompt content.")
                        inbox-write memory-write)
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
        :jail-profile 'specDev
-       :provider 'openrouter
-       :model "anthropic/claude-haiku-4.5"
+       :profile 'claude-haiku
        :budget-tokens 20000
        :output-handler 'dl-satan-output/morning
        :auto-apply 'owned
@@ -65,8 +97,7 @@ Dotfiles must not be the source of truth for prompt content.")
        :capabilities '(notify inbox-write memory-write)
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
        :jail-profile 'specDev
-       :provider 'openrouter
-       :model "anthropic/claude-haiku-4.5"
+       :profile 'claude-haiku
        :budget-tokens 10000
        :output-handler 'dl-satan-output/motd
        :auto-apply 'owned
@@ -83,8 +114,7 @@ Dotfiles must not be the source of truth for prompt content.")
        :capabilities '(stage-proposal)
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
        :jail-profile 'specDev
-       :provider 'openrouter
-       :model "anthropic/claude-haiku-4.5"
+       :profile 'claude-haiku
        :budget-tokens 50000
        :output-handler 'dl-satan-output/self-edit
        :auto-apply 'none
@@ -101,8 +131,7 @@ Dotfiles must not be the source of truth for prompt content.")
        :capabilities '(stage-proposal)
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
        :jail-profile 'specDev
-       :provider 'openrouter
-       :model "anthropic/claude-haiku-4.5"
+       :profile 'claude-haiku
        :budget-tokens 50000
        :output-handler 'dl-satan-output/self-edit
        :auto-apply 'none

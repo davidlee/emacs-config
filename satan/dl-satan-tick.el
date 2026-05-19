@@ -5,7 +5,7 @@
 ;; tick mode from `dl-satan-tick-pool' by weight and runs it.  Quiet hours
 ;; suppress the run entirely so SATAN does not nudge during sleep.
 ;;
-;; Per-tick budget is tight by design (≤10000 tokens, ≤4 tool calls, ≤30s).
+;; Per-tick budget is tight by design (≤40000 tokens, ≤4 tool calls, ≤60s).
 ;; The daily ceiling in `dl-satan-budget' caps total spend regardless.
 
 (require 'cl-lib)
@@ -76,12 +76,11 @@ The prompt file defaults to `<prompts>/tick/SHORT-NAME.txt'."
               :capabilities '(notify inbox-write memory-write)
               :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
               :jail-profile 'specDev
-              :provider 'openrouter
-              :model "anthropic/claude-haiku-4.5"
-              :budget-tokens 10000
+              :profile 'deepseek-pro
+              :budget-tokens 40000
               :output-handler 'dl-satan-output/tick
               :auto-apply 'owned
-              :timeout-seconds 30
+              :timeout-seconds 60
               :budget-tool-calls 4))
           (spec defaults))
     (cl-loop for (k v) on overrides by #'cddr
