@@ -9,6 +9,10 @@
 (require 'subr-x)
 (require 'dl-notes-paths)
 (require 'dl-satan-tools)
+(require 'dl-satan-memory-grammar)
+(require 'dl-satan-memory-canon)
+(require 'dl-satan-memory-evidence)
+(require 'dl-satan-memory-store)
 
 (defcustom dl-satan-hippocampus-dir
   (expand-file-name "satan/hippocampus" dl-notes-root)
@@ -21,10 +25,77 @@
          (trim (replace-regexp-in-string "\\(^-+\\|-+$\\)" "" clean)))
     (if (string-empty-p trim) "untitled" trim)))
 
+(defun dl-satan-tools-hippocampus--mode-str (raw)
+  (cond ((null raw) nil)
+        ((symbolp raw) (symbol-name raw))
+        ((stringp raw) raw)
+        (t (format "%s" raw))))
+
+(defun dl-satan-tools-hippocampus--cross-ref (title path tool-ctx)
+  "Mark an `auto_rule' observation trace cross-referencing the
+hippocampus PATH (§10.7 of memory.design.md).  Soft failure: any
+substrate error is logged and does not affect the caller."
+  (condition-case err
+      (let* ((mode-str (dl-satan-tools-hippocampus--mode-str
+                        (plist-get tool-ctx :mode-name)))
+             (canon-ctx
+              (list :current_grammar_version
+                    dl-satan-memory-grammar-current-version
+                    :mode_name mode-str
+                    :time_now (format-time-string "%Y-%m-%dT%T%:z")
+                    :run_id (plist-get tool-ctx :id)
+                    :run_started_at nil))
+             (slug (dl-satan-tools-hippocampus--slugify title))
+             (raw-hints (list :topic (list slug)))
+             (evidence (dl-satan-memory-evidence-assemble canon-ctx))
+             (nh (dl-satan-memory-canon-normalize-hints raw-hints))
+             (normalized (plist-get nh :normalized))
+             (canon (dl-satan-memory-canon-canonicalize
+                     evidence normalized canon-ctx))
+             (handles (plist-get canon :handles))
+             (sources (plist-get canon :handle_sources))
+             (gv (plist-get canon-ctx :current_grammar_version))
+             (handle-rows
+              (mapcar (lambda (h)
+                        (list :handle h
+                              :source (cdr (assoc h sources))
+                              :grammar_version gv))
+                      handles))
+             (metadata
+              (list :evidence evidence
+                    :hints raw-hints
+                    :normalized_hints (or normalized '())
+                    :ctx canon-ctx
+                    :hippocampus_path (abbreviate-file-name path)
+                    :truncated_at (plist-get evidence :truncated_at)))
+             (result
+              (dl-satan-memory-store-mark
+               :kind "observation"
+               :trace-origin "auto_rule"
+               :source (format "hippocampus_write@%s"
+                               (or mode-str "unknown"))
+               :observed-start-at (plist-get evidence :window_start_at)
+               :observed-end-at   (plist-get evidence :window_end_at)
+               :payload (format "hippocampus entry: %s" title)
+               :grammar-version gv
+               :metadata-json metadata
+               :handles handle-rows)))
+        (pcase result
+          (`(ok . ,tid) tid)
+          (`(error . ,msg)
+           (message "hippocampus cross-ref skipped: %s" msg)
+           nil)))
+    (error
+     (message "hippocampus cross-ref error: %s"
+              (error-message-string err))
+     nil)))
+
 (defun dl-satan-tool/hippocampus-write (args ctx)
   "Implements hippocampus_write.
 ARGS: (:title STR :body STR).  Refused unless TOOL-CTX `:capabilities'
-includes `hippocampus-write'.  Returns (ok :path P) | (error MSG)."
+includes `hippocampus-write'.  Returns (ok :path P) | (error MSG).
+When `memory-write' is also present, emits an `auto_rule' observation
+trace cross-referencing PATH (§10.7); cross-ref errors are soft."
   (let* ((title (plist-get args :title))
          (body  (plist-get args :body))
          (run-id    (plist-get ctx :id))
@@ -56,6 +127,8 @@ includes `hippocampus-write'.  Returns (ok :path P) | (error MSG)."
           (insert ":END:\n\n")
           (insert body)
           (unless (string-suffix-p "\n" body) (insert "\n")))
+        (when (memq 'memory-write caps)
+          (dl-satan-tools-hippocampus--cross-ref title path ctx))
         (cons 'ok (list :path path)))))))
 
 (dl-satan-tool-register

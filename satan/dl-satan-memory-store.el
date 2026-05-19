@@ -181,12 +181,16 @@ plists are converted to vectors of plists."
            collect (dl-satan-memory-store--prep-value v)))
 
 (defun dl-satan-memory-store--prep-value (v)
+  "Recursively normalise V for `json-serialize'.
+Plists become objects; any other list becomes a JSON array (each
+element recursively prepared); symbols become strings."
   (cond
    ((null v) :null)
    ((and (consp v) (keywordp (car v)))
     (dl-satan-memory-store--prep-plist v))
-   ((and (listp v) (consp (car v)) (keywordp (car (car v))))
-    (vconcat (mapcar #'dl-satan-memory-store--prep-plist v)))
+   ((listp v)
+    (vconcat (mapcar #'dl-satan-memory-store--prep-value v)))
+   ((symbolp v) (symbol-name v))
    (t v)))
 
 (defun dl-satan-memory-store--build-mark-payload

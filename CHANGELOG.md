@@ -2,6 +2,33 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-20 — SATAN: memory step 12 — hippocampus cross-ref hook
+
+Closes §10.7 of `memory.design.md`.  Every `hippocampus_write`
+performed by a mode that also holds `memory-write` (currently
+`morning`) now emits an `auto_rule` observation trace pointing at
+the org file via `metadata_json.hippocampus_path`.  The trace shape
+is identical to LLM-marked observations (canon-emitted handles,
+full evidence snapshot), differing only in `trace_origin`.
+
+- `satan/dl-satan-tools-hippocampus.el`: requires the memory
+  substrate; adds `dl-satan-tools-hippocampus--cross-ref` and
+  invokes it after the org write when the tool-ctx carries the
+  `memory-write` capability.  Cross-ref errors are soft-logged and
+  never bubble up — the file write remains the load-bearing
+  side-effect.
+- `satan/dl-satan-memory-store.el`: `--prep-value` now treats any
+  non-plist list as a JSON array (previously bare lists of scalars
+  like `:tags ("ux")` from real bough nodes tripped `json-serialize`)
+  and stringifies symbols.  Latent since step 7; surfaced by the
+  first production-shaped evidence blob reaching the store.
+- `satan/test/dl-satan-tools-hippocampus-test.el` (new): three ert
+  (no-cross-ref-without-memory-write, cross-ref-with-memory-write,
+  cross-ref-soft-fail-on-bad-db).
+
+Memory subsystem 118/118 (115 + 3 hippocampus); phase-3 87/87;
+integration 1/1.
+
 ## 2026-05-20 — SATAN: memory step 10 — renormalize CLI + grammar-bump golden test
 
 Closes the §7 grammar-bump replay path and lands acceptance §9.8.
