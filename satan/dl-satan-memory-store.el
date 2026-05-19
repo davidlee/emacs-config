@@ -305,5 +305,68 @@ Returns (error . MSG) on psql or parse error."
              (error (cons 'error (format "JSON parse: %S" err)))))))
       (err err))))
 
+;; ---------------------------------------------------------------------
+;; Recent (by-time access path used by the observation tank)
+;; ---------------------------------------------------------------------
+
+(cl-defun dl-satan-memory-store-recent
+    (&key (limit 10) kinds grammar-version
+          (db dl-satan-memory-store-database))
+  "Last LIMIT traces ordered by `observed_end_at' DESC.
+Returns (ok . LIST) of plists
+  (:trace_id ID :kind STR :valence STR-OR-NIL
+   :observed_end_at ISO :payload SINGLE-LINE :handles LIST)
+or (error . MSG).
+
+KINDS is an optional list of trace-kind strings to filter on.
+GRAMMAR-VERSION is an optional smallint; when nil, all grammar
+versions are admitted (unlike `resonate', which scores against a
+single version's weights).  Payload newlines/tabs are collapsed
+to spaces and the field is truncated to 200 chars so the tab-split
+parser stays single-line."
+  (let* ((kinds-filter (when kinds " AND t.kind = ANY(:'kinds'::text[])"))
+         (gv-filter (when grammar-version
+                      (format " AND t.grammar_version = %d::smallint"
+                              grammar-version)))
+         (vars (append (when kinds
+                         `(("kinds" . ,(dl-satan-memory-store--format-pg-array
+                                        kinds))))))
+         (sql (format
+               (concat
+                "SELECT t.id, t.kind, "
+                "COALESCE(t.valence::text, ''), "
+                "to_char(t.observed_end_at AT TIME ZONE 'UTC', "
+                "'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), "
+                "REPLACE(REPLACE("
+                "LEFT(t.payload, 200), E'\n', ' '), E'\t', ' '), "
+                "COALESCE("
+                "(SELECT string_agg(handle, ',' ORDER BY handle) "
+                "FROM trace_handles WHERE trace_id = t.id), '') "
+                "FROM traces t WHERE TRUE%s%s "
+                "ORDER BY t.observed_end_at DESC LIMIT %d")
+               (or gv-filter "")
+               (or kinds-filter "")
+               limit))
+         (result (dl-satan-memory-store--query db sql vars)))
+    (pcase result
+      (`(ok . ,out)
+       (cons 'ok
+             (cl-loop for line in (split-string out "\n" t)
+                      for parts = (split-string line "\t")
+                      when (= 6 (length parts))
+                      collect
+                      (let ((val (nth 2 parts))
+                            (handles (nth 5 parts)))
+                        (list :trace_id (nth 0 parts)
+                              :kind (nth 1 parts)
+                              :valence (if (string-empty-p val) nil val)
+                              :observed_end_at (nth 3 parts)
+                              :payload (nth 4 parts)
+                              :handles
+                              (if (string-empty-p handles)
+                                  nil
+                                (split-string handles ",")))))))
+      (err err))))
+
 (provide 'dl-satan-memory-store)
 ;;; dl-satan-memory-store.el ends here

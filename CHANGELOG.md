@@ -2,6 +2,43 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-20 — SATAN: observation tank
+
+Adds `my/satan-tank` (buffer `*satan-tank*`), a read-only composite
+view mirroring what SATAN sees right now. Three sections refresh on
+a timer (default 5 s; `g` for manual, `q` to quit):
+
+1. **EVIDENCE WINDOW** — `dl-satan-memory-evidence-assemble` output
+   rendered compactly: window times, current panopticon app/title,
+   focus / browser segment counts, top bough_active nodes, git state,
+   cwd, and any `:truncated_at` passes.
+2. **RECENT TRACES** — last N marks via the new `store-recent` reader.
+3. **RECENT EVENTS** — tail of run transcripts under
+   `dl-satan-runs-dir` with a one-line summary per record
+   (`tool-call(args)`, `tool-result → ok|error`, `log:<kind>`,
+   `timeout`).
+
+Section renderers are pure (state plist in, string out); gatherers
+swallow errors so a degraded section never blanks the buffer.
+
+- `satan/dl-satan-memory-store.el`: new `dl-satan-memory-store-recent`
+  reader — `SELECT … ORDER BY observed_end_at DESC LIMIT N` with
+  optional `:kinds` / `:grammar-version` filters. Returns
+  `(:trace_id :kind :valence :observed_end_at :payload :handles)`
+  plists, payload newlines/tabs collapsed to spaces.
+- `satan/dl-satan-tank.el`: new module — section renderers, gatherers
+  (`evidence-assemble` synth ctx, `store-recent`, transcript tail),
+  `dl-satan-tank-mode`, timer lifecycle gated on buffer kill,
+  `my/satan-tank` entry point.
+- `satan/dl-satan.el`: aggregator pulls in `dl-satan-tank`.
+- `satan/test/dl-satan-memory-store-test.el`: +4 ert covering
+  `store-recent` (empty / order / limit / kind-filter).
+- `satan/test/dl-satan-tank-test.el`: 18 ert covering pure helpers,
+  three renderers (nil + populated), `--read-run-events` against
+  a fixture transcript, and `--recent-runs` ordering.
+
+Memory subsystem now 130/130; tank suite 18/18.
+
 ## 2026-05-20 — SATAN: memory quality sweep — §5 (outcome canon dormant by design)
 
 Docs-only. Closes sweep §5 by declaring the LLM-side outcome canon

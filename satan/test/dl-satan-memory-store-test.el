@@ -376,5 +376,89 @@
                        "20260519T100000-pred01"))))
      (err (ert-fail (format "show failed: %S" err))))))
 
+;; ---------------------------------------------------------------------
+;; Recent
+;; ---------------------------------------------------------------------
+
+(ert-deftest dl-satan-memory-store/recent-empty ()
+  (dl-satan-memory-store-test--with-db
+   (should (equal (dl-satan-memory-store-recent) (cons 'ok nil)))))
+
+(ert-deftest dl-satan-memory-store/recent-orders-newest-first ()
+  (dl-satan-memory-store-test--with-db
+   (dl-satan-memory-store-mark
+    :trace-id "20260519T100000-old001"
+    :kind "observation" :trace-origin "llm_mark" :source "t"
+    :observed-start-at "2026-05-19T09:50:00+10:00"
+    :observed-end-at   "2026-05-19T10:00:00+10:00"
+    :payload "first line\nsecond line" :valence "neutral" :grammar-version 1
+    :handles (list (list :handle "app:firefox"
+                         :source (list :rule_id "r" :origin "observed"))))
+   (dl-satan-memory-store-mark
+    :trace-id "20260519T110000-new001"
+    :kind "intervention" :trace-origin "llm_mark" :source "t"
+    :observed-start-at "2026-05-19T10:50:00+10:00"
+    :observed-end-at   "2026-05-19T11:00:00+10:00"
+    :payload "second trace" :valence "positive" :grammar-version 1
+    :handles (list (list :handle "app:emacs"
+                         :source (list :rule_id "r" :origin "observed"))
+                   (list :handle "mode:motd"
+                         :source (list :rule_id "ctx" :origin "ctx"))))
+   (pcase (dl-satan-memory-store-recent)
+     (`(ok . ,rows)
+      (should (= 2 (length rows)))
+      (let ((newest (nth 0 rows))
+            (oldest (nth 1 rows)))
+        (should (equal (plist-get newest :trace_id) "20260519T110000-new001"))
+        (should (equal (plist-get newest :kind) "intervention"))
+        (should (equal (plist-get newest :valence) "positive"))
+        (should (equal (plist-get newest :payload) "second trace"))
+        (should (member "app:emacs" (plist-get newest :handles)))
+        (should (member "mode:motd" (plist-get newest :handles)))
+        (should (equal (plist-get oldest :trace_id) "20260519T100000-old001"))
+        (should (equal (plist-get oldest :valence) "neutral"))
+        ;; newline collapsed to space so tab-parser stays single-line
+        (should (equal (plist-get oldest :payload) "first line second line"))))
+     (err (ert-fail (format "recent failed: %S" err))))))
+
+(ert-deftest dl-satan-memory-store/recent-respects-limit ()
+  (dl-satan-memory-store-test--with-db
+   (dotimes (i 3)
+     (dl-satan-memory-store-mark
+      :trace-id (format "20260519T1000%02d-rec%03d" i i)
+      :kind "observation" :trace-origin "llm_mark" :source "t"
+      :observed-start-at (format "2026-05-19T09:50:%02d+10:00" i)
+      :observed-end-at   (format "2026-05-19T10:00:%02d+10:00" i)
+      :payload (format "trace %d" i) :grammar-version 1
+      :handles (list (list :handle "app:firefox"
+                           :source (list :rule_id "r" :origin "observed")))))
+   (pcase (dl-satan-memory-store-recent :limit 2)
+     (`(ok . ,rows) (should (= 2 (length rows))))
+     (err (ert-fail (format "recent failed: %S" err))))))
+
+(ert-deftest dl-satan-memory-store/recent-kind-filter ()
+  (dl-satan-memory-store-test--with-db
+   (dl-satan-memory-store-mark
+    :trace-id "20260519T100000-obs001"
+    :kind "observation" :trace-origin "llm_mark" :source "t"
+    :observed-start-at "2026-05-19T09:50:00+10:00"
+    :observed-end-at   "2026-05-19T10:00:00+10:00"
+    :payload "o" :grammar-version 1
+    :handles (list (list :handle "app:firefox"
+                         :source (list :rule_id "r" :origin "observed"))))
+   (dl-satan-memory-store-mark
+    :trace-id "20260519T100100-int001"
+    :kind "intervention" :trace-origin "llm_mark" :source "t"
+    :observed-start-at "2026-05-19T09:50:00+10:00"
+    :observed-end-at   "2026-05-19T10:01:00+10:00"
+    :payload "i" :grammar-version 1
+    :handles (list (list :handle "app:firefox"
+                         :source (list :rule_id "r" :origin "observed"))))
+   (pcase (dl-satan-memory-store-recent :kinds '("intervention"))
+     (`(ok . ,rows)
+      (should (= 1 (length rows)))
+      (should (equal (plist-get (car rows) :kind) "intervention")))
+     (err (ert-fail (format "recent failed: %S" err))))))
+
 (provide 'dl-satan-memory-store-test)
 ;;; dl-satan-memory-store-test.el ends here

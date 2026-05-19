@@ -26,6 +26,7 @@
 (require 'dl-satan-output)
 (require 'dl-satan-broker)
 (require 'dl-satan-tick)
+(require 'dl-satan-tank)
 
 (defgroup dl-satan nil
   "SATAN local agent runtime."
