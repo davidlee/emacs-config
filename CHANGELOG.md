@@ -2,6 +2,27 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-19 — Journal quick capture
+
+Fast timestamped append into the daily journal's `* Log` from anywhere.
+
+- `my/journal-quick-capture` (`org/dl-denote-journal.el`) — pops a
+  small org buffer; `C-c C-c` / `C-RET` append the trimmed text as a
+  `** [YYYY-MM-DD HH:MM]` sub-heading under today's `* Log` and
+  dismiss; `C-c C-k` aborts. Creates `* Log` if absent. Multi-line
+  content preserved. `my/work-journal-quick-capture` is the work
+  variant.
+- Display prefers a centered `posframe` child frame on graphical
+  frames (`(use-package posframe :defer t)`); falls back to a
+  below-selected side window in TTY or when posframe is unavailable.
+  Restores input focus to the originating frame on dismiss.
+- `C-c C-w` inside the capture buffer cycles the target through
+  `dl-journal-quick-capture-targets` (personal → work → …) without
+  losing typed text. Header line shows the active target label.
+- `core/dl-keybind.el` — global `<f1>` runs the personal quick
+  capture; `help-command` relocates to `C-<f1>` (C-h remains primary
+  help prefix).
+
 ## 2026-05-19 — SATAN: phase 3A — protocol reification
 
 The broker/harness JSONL membrane was implicit: ad-hoc `pcase` dispatch

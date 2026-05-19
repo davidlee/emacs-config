@@ -109,6 +109,12 @@ Window resize: _<left>_/_<right>_ width  _<up>_/_<down>_ height  _=_ balance  _q
 ;; Bind it to a key (example: F9)
 (global-set-key (kbd "<f9>") 'toggle-maximize-buffer)
 
+;; Fast journal capture: <f1> pops a small org buffer; C-c C-c / C-RET
+;; appends a timestamped entry under today's `* Log'.  `help-command'
+;; relocates to C-<f1> (C-h remains the primary help prefix).
+(global-set-key (kbd "<f1>")   #'my/journal-quick-capture)
+(global-set-key (kbd "C-<f1>") 'help-command)
+
 
 (provide 'dl-keybind)
 ;;; dl-keybind.el ends here
