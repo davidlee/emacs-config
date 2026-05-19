@@ -2,6 +2,28 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-19 — SATAN: prompt tightening (sway_border, satan_final, show-why)
+
+Notes-side only (`~/notes/satan/`, commit `98e04c7` in that repo). No
+code change. Prepares ground for the memory-substrate prompt rewrite
+without referencing `memory_*` tools that don't exist yet.
+
+- `prompts/morning.txt` — `Terminate with a 'final' message` was drift
+  from the rest of the bundle; replaced with the same `satan_final` +
+  JSON-blob warning as the scaffold.
+- `prompts/{morning,motd,tick/pulse,self-edit-mech,self-edit-mind}.txt`
+  now list `sway_border_set` / `sway_border_reset`. The tools have
+  been in every mode's elisp allowlist since `663083c1`; the model-
+  facing prompts had not caught up.
+- `system/scaffold.txt` — two additive lines: (1) "adversarially
+  intimate, not managerial" tone rule; (2) "show why" — any action
+  that interrupts the user or alters the environment
+  (`notify_send`, `sway_border_*`, `proposal_stage`) must name the
+  concrete cue.
+- `prompts/tick/pulse.txt` — adds the intervention hierarchy
+  (`inbox < border < notify < proposal`) and reinforces the
+  show-why rule inline.
+
 ## 2026-05-19 — SATAN: memory substrate, step 2 (migration runner + schema)
 
 Step 2 of the memory-substrate plan (`satan/HANDOVER.md`). Establishes
