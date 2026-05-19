@@ -57,6 +57,33 @@ admits `event:status_changed` and pairs like `bough_event:status_changed`.
 Status changes already write rows somewhere (the TUI shows transition
 history); exposing them is a read-path addition, not a model change.
 
+**Status (2026-05-20).** Bough DR-116 in flight at
+`~/dev/vk/.spec-driver/deltas/DE-116-bough_cli_per_status_transition_history/DR-116.md`.
+Adds three subcommands — `node status-history <NANOID>`,
+`node status-transitions`, `node created` — backed by a new
+`status_log` table + DB trigger. JSON shape locked (DR-116 §4.5):
+flat array DESC by `(at, seq)`, fields `seq, nanoid, from_status,
+to_status, at, actor`; `seq BIGSERIAL` is a stable cursor;
+`--after-seq N` for incremental polling.  Append-only (D14): rows
+survive soft-delete/archive.  Truncation is exit 1 with no partial
+JSON (D10).
+
+**SATAN follow-up once DR-116 ships (out of v1 memory scope):**
+
+1. `dl-satan-tools-bough.el:280` (the `recent_changes` scope) —
+   replace the `node tree --after updated_at=...` proxy with
+   `bough --json node status-transitions --since ...`, or add a
+   sibling `status_transitions` scope.
+2. `dl-satan-memory-evidence.el:156` — synthesize
+   `:event "status_changed"` per status_log row so the dormant canon
+   rule `bough.recent_status_change`
+   (`dl-satan-memory-canon.el:357`) starts firing.
+3. Compose `node created` (DR-116 §D18 peer event feed) alongside
+   `status-transitions` for the full "what's new + what moved" view;
+   initial-status assignments never appear in the transitions feed
+   (DR-116 D2).
+4. Close this section (B1) and update `memory.design.md` §10.2.
+
 ---
 
 ## B2. `--max-depth N` on `node subtree`

@@ -364,5 +364,44 @@
       (when (dl-satan-memory-canon-test--contains-symbol-p forms sym)
         (ert-fail (format "forbidden symbol present in canon module: %S" sym))))))
 
+;; ---------------------------------------------------------------------
+;; Acceptance §9.10: bough isolation across the substrate
+;; ---------------------------------------------------------------------
+
+(defconst dl-satan-memory-canon-test--memory-modules
+  '("dl-satan-memory"
+    "dl-satan-memory-canon"
+    "dl-satan-memory-evidence"
+    "dl-satan-memory-grammar"
+    "dl-satan-memory-migrate"
+    "dl-satan-memory-store")
+  "Substrate modules subject to the §9.10 bough-isolation lint.")
+
+(defconst dl-satan-memory-canon-test--forbidden-bough-substrings
+  '("bough_production" "bough_agent" "dl-satan-bough-program"
+    "dl-satan-bough--invoke")
+  "Strings that, if present in any substrate module, signal a direct
+bough surface (DB name, binary path, or low-level invoker).  Memory
+code must reach bough only through the `bough_read' tool handler.")
+
+(ert-deftest dl-satan-memory/bough-isolation ()
+  "§9.10: no dl-satan-memory-* module may reference a bough DB name
+or the bough binary directly; all reads go via `bough_read'."
+  (dolist (module dl-satan-memory-canon-test--memory-modules)
+    (let* ((path (locate-library module))
+           (src (and path
+                     (if (string-suffix-p ".elc" path)
+                         (concat (substring path 0 -1))
+                       path))))
+      (should src)
+      (with-temp-buffer
+        (insert-file-contents src)
+        (dolist (needle dl-satan-memory-canon-test--forbidden-bough-substrings)
+          (goto-char (point-min))
+          (when (search-forward needle nil t)
+            (ert-fail
+             (format "%s.el contains forbidden bough surface %S"
+                     module needle))))))))
+
 (provide 'dl-satan-memory-canon-test)
 ;;; dl-satan-memory-canon-test.el ends here

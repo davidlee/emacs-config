@@ -2,6 +2,40 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-20 — SATAN: memory step 11 — acceptance §9 sweep + docs
+
+Substrate-level closure of the v1 memory work.  Walks every §9
+acceptance criterion in `satan/memory.design.md` and lands the one
+missing enforcement (§9.10 bough isolation across the substrate);
+the remaining 13 criteria were already covered by golden / store /
+tool / renormalize / canon-purity ert.
+
+- `satan/test/dl-satan-memory-canon-test.el`: new
+  `dl-satan-memory/bough-isolation` lint walks every
+  `dl-satan-memory-*.el` source file and refuses any reference to a
+  bough DB name (`bough_production`, `bough_agent`), the bough
+  binary path (`dl-satan-bough-program`), or the low-level invoker
+  (`dl-satan-bough--invoke`).  All reads must reach bough through
+  the `bough_read' tool handler — the only path admitted by
+  `memory.design.md` §0.5.
+- `SATAN.md`: file map gains every memory module, every memory
+  migration, the bough/memory tool handlers, the cross-ref hook
+  note on hippocampus, and the new test files; modes table picks
+  up `bough_read`, `memory_*`, and `sway_border_*` per the step-9
+  wiring; tools table documents the four new tools and their risk /
+  capability shape; notes-tree gains the four new tool description
+  files.
+- `satan/bough-gaps.md`: B1 section gains a status block recording
+  bough's in-flight DR-116 (per-status-transition CLI) and the
+  three-step SATAN follow-up (`recent_changes` scope, evidence
+  synthesis of `:event "status_changed"`, composing `node created`
+  alongside).  The dormant canon rule
+  `bough.recent_status_change` wakes once that lands; out of v1
+  memory scope.
+
+Memory subsystem 119/119 (118 + 1 bough-isolation lint); phase-3
+87/87; integration 1/1.
+
 ## 2026-05-20 — SATAN: memory step 12 — hippocampus cross-ref hook
 
 Closes §10.7 of `memory.design.md`.  Every `hippocampus_write`
