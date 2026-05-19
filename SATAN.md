@@ -277,8 +277,8 @@ broker boundary.
 The canonical message spec is `protocol/PROTOCOL.md`. Shared exemplars
 live at `protocol/fixtures.json` and drive validator tests on both
 sides — the elisp validator (`dl-satan-protocol-validate` in
-`dl-satan-protocol.el`) and the python validator (PROTOCOL section in
-`harness/gptel_harness.py`) must remain in lockstep. Adding a message
+`dl-satan-protocol.el`) and the python validator (`harness/protocol.py`)
+must remain in lockstep. Adding a message
 type or required field means: edit the spec, add fixtures, update both
 validators. Tests fail loudly otherwise.
 
@@ -412,8 +412,12 @@ justification):
 | `dl-satan-broker.el` | `make-process` driver: sentinel, timeout, direnv, op:// resolution, env pass; `--build-manifest`. |
 | `bin/satan-run` | Shell wrapper (`emacsclient --eval`). |
 | `bin/satan-run-tick` | Tick wrapper; calls `(my/satan-tick)` which picks + quiet-checks. |
-| `harness/gptel_harness.py` | OpenAI-compatible chat-completions driver; `Provider` ABC + `OpenRouterProvider`. |
-| `harness/test_gptel_harness.py` | 8 stdlib unittest cases, no network. |
+| `harness/__main__.py` | Entrypoint: sys.path bootstrap + `main`. |
+| `harness/protocol.py` | JSONL validator + `emit*` / `read_tool_result`. |
+| `harness/bundle.py` | `load_bundle` / `load_manifest` / `build_system_prompt` / `build_tools`. |
+| `harness/runloop.py` | Turn loop + budget guard + tool-call dispatch. |
+| `harness/providers/{base,openrouter}.py`, `__init__.py` | `Provider` ABC, OpenAI-v1 adapter, `build_provider` registry. |
+| `harness/test_gptel_harness.py` | stdlib unittest cases (no network). |
 | `test/dl-satan-test.el` | 31 unit ert. |
 | `test/dl-satan-integration-test.el` | 1 e2e ert (skips unless `SATAN_TEST_JAIL_BIN` set). |
 
@@ -665,9 +669,11 @@ relevance.)
    `use-package` blocks here), but watch in surrounding modules.
 3. **Never `setq` preloaded native-comp vars** — n/a for SATAN.
 4. **`trusted-content` entries must be `~/` form** — n/a for SATAN.
-5. **`writePython3Bin` lints with ruff** — `import x, y, z` fails E401;
-   `def f(): ...` one-liners fail E704. See `flake.nix` `flakeIgnore`
-   list for the codes we currently silence.
+5. **Harness build runs `ruff check`** — the
+   `pkgs.stdenv.mkDerivation` shape introduced in phase 3B replaced
+   `pkgs.writers.writePython3Bin` (single-file only).  `checkPhase`
+   runs `ruff check --select E,F,W --ignore E501,E402 .`; the legacy
+   W503 / E704 ignores were dropped because ruff doesn't emit them.
 
 ### Naming
 

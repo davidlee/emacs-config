@@ -122,11 +122,8 @@ Both sides ship a thin validator. Each consumes the same fixture file
 behaviour matches the fixture's `kind`.
 
 - elisp: `dl-satan-protocol-validate` in `dl-satan-protocol.el`.
-- python: `validate` / `check` in `harness/gptel_harness.py`
-  (PROTOCOL section). Kept inline rather than split into a sibling
-  module because the nix `writePython3Bin` harness build is
-  single-file. Splits into `harness/protocol.py` when the harness
-  goes multi-file (phase 3B).
+- python: `validate` / `check` in `harness/protocol.py`. Both sides
+  ship the validator as its own module (since phase 3B).
 
 Adding a message type or required field means: update this doc, add
 fixtures, update both validators. Tests fail loudly otherwise.

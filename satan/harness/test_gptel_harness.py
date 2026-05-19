@@ -1,8 +1,7 @@
 """Unit tests for the SATAN gptel harness.
 
 No network. Stub Provider, stub stdin/stdout, verify protocol shape.
-Run: python -m unittest satan.harness.test_gptel_harness
-or:  python -m unittest discover -s ~/.emacs.d/satan/harness -p 'test_*.py'
+Run: cd satan/harness && python -m unittest test_gptel_harness
 """
 
 from __future__ import annotations
@@ -19,7 +18,10 @@ from unittest import mock
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
-import gptel_harness as h  # noqa: E402
+import bundle  # noqa: E402
+import protocol  # noqa: E402
+import runloop  # noqa: E402
+from providers.base import CompletionResult, Provider  # noqa: E402
 
 
 def _stub_tool_schema(name: str, description: str = "") -> dict:
@@ -41,7 +43,7 @@ DEFAULT_MANIFEST_TOOLS = [
 
 
 def make_bundle(tmp: str, *, tools=None, **overrides) -> str:
-    bundle = {
+    bundle_dict = {
         "prompt": "test prompt",
         "mode": "morning",
         "now": {
@@ -55,9 +57,9 @@ def make_bundle(tmp: str, *, tools=None, **overrides) -> str:
         "today_path": "/satan/notes/today.org",
         "today_text": "",
     }
-    bundle.update(overrides)
+    bundle_dict.update(overrides)
     with open(os.path.join(tmp, "bundle.json"), "w", encoding="utf-8") as f:
-        json.dump(bundle, f)
+        json.dump(bundle_dict, f)
     manifest = {
         "run_id": "test-run",
         "tools": list(tools) if tools is not None else DEFAULT_MANIFEST_TOOLS,
@@ -71,8 +73,8 @@ def emitted_lines(buf: io.StringIO) -> list[dict]:
     return [json.loads(line) for line in buf.getvalue().splitlines() if line.strip()]
 
 
-class StubProvider(h.Provider):
-    def __init__(self, results: list[h.CompletionResult]):
+class StubProvider(Provider):
+    def __init__(self, results: list[CompletionResult]):
         self._results = list(results)
         self.calls: list[dict] = []
 
@@ -95,15 +97,16 @@ class HarnessTests(unittest.TestCase):
             make_bundle(tmp)
             env["SATAN_RUN_DIR"] = tmp
             with mock.patch.dict(os.environ, env, clear=False), \
-                 mock.patch.object(h, "build_provider", return_value=(provider, "test-model")), \
+                 mock.patch.object(runloop, "build_provider",
+                                   return_value=(provider, "test-model")), \
                  mock.patch.object(sys, "stdin", io.StringIO("".join(stdin_lines))), \
                  redirect_stdout(buf):
-                rc = h.run()
+                rc = runloop.run()
         return rc, emitted_lines(buf)
 
     def test_satan_final_terminates(self):
         provider = StubProvider([
-            h.CompletionResult(
+            CompletionResult(
                 content="",
                 tool_calls=[{"id": "c1", "name": "satan_final",
                              "args": {"summary": "ok", "actions": []}}],
@@ -122,13 +125,13 @@ class HarnessTests(unittest.TestCase):
 
     def test_tool_call_then_final(self):
         provider = StubProvider([
-            h.CompletionResult(
+            CompletionResult(
                 content="",
                 tool_calls=[{"id": "c1", "name": "org_read_context",
                              "args": {"scope": "today"}}],
                 input_tokens=10, output_tokens=5,
             ),
-            h.CompletionResult(
+            CompletionResult(
                 content="",
                 tool_calls=[{"id": "c2", "name": "satan_final",
                              "args": {"summary": "done", "actions": []}}],
@@ -149,7 +152,7 @@ class HarnessTests(unittest.TestCase):
 
     def test_no_tool_calls_coerces_final(self):
         provider = StubProvider([
-            h.CompletionResult(
+            CompletionResult(
                 content="just text",
                 tool_calls=[],
                 input_tokens=10, output_tokens=5,
@@ -164,7 +167,7 @@ class HarnessTests(unittest.TestCase):
 
     def test_budget_exhaustion_emits_final(self):
         provider = StubProvider([
-            h.CompletionResult(
+            CompletionResult(
                 content="",
                 tool_calls=[{"id": "c1", "name": "org_read_context",
                              "args": {"scope": "today"}}],
@@ -186,15 +189,15 @@ class HarnessTests(unittest.TestCase):
                 _stub_tool_schema("satan_final"),
             ],
         }
-        tools = h.build_tools(manifest)
+        tools = bundle.build_tools(manifest)
         names = [t["function"]["name"] for t in tools]
         self.assertEqual(names, ["a_tool", "satan_final"])
 
     def test_build_tools_missing_raises(self):
         with self.assertRaises(RuntimeError):
-            h.build_tools({})
+            bundle.build_tools({})
         with self.assertRaises(RuntimeError):
-            h.build_tools({"tools": []})
+            bundle.build_tools({"tools": []})
 
     def test_system_prompt_returns_bundle_prompt_verbatim(self):
         # The broker hands the harness a fully-rendered system prompt
@@ -204,12 +207,13 @@ class HarnessTests(unittest.TestCase):
             "SCAFFOLD\n\nMODE PROMPT\n\n# Now\ndate: 2026-05-19\n\n"
             "# Today (raw)\nbody\n\n# Source files\n## a.el\n```\nx\n```"
         )
-        self.assertEqual(h.build_system_prompt({"prompt": rendered}), rendered)
+        self.assertEqual(bundle.build_system_prompt({"prompt": rendered}),
+                         rendered)
 
     def test_system_prompt_missing_key_raises(self):
         # `bundle["prompt"]` is now a hard contract from the broker.
         with self.assertRaises(KeyError):
-            h.build_system_prompt({})
+            bundle.build_system_prompt({})
 
 
 class ProtocolFixtureTests(unittest.TestCase):
@@ -221,36 +225,36 @@ class ProtocolFixtureTests(unittest.TestCase):
     """
 
     def test_fixtures_load(self):
-        fixtures = h.load_fixtures()
+        fixtures = protocol.load_fixtures()
         self.assertTrue(fixtures)
 
     def test_valid_fixtures_pass(self):
-        for entry in h.load_fixtures():
+        for entry in protocol.load_fixtures():
             if entry["kind"] != "valid":
                 continue
             with self.subTest(name=entry["name"]):
-                reason = h.check(entry["direction"], entry["message"])
+                reason = protocol.check(entry["direction"], entry["message"])
                 self.assertIsNone(reason)
 
     def test_invalid_fixtures_fail_with_expected_reason(self):
-        for entry in h.load_fixtures():
+        for entry in protocol.load_fixtures():
             if entry["kind"] != "invalid":
                 continue
             with self.subTest(name=entry["name"]):
-                reason = h.check(entry["direction"], entry["message"])
+                reason = protocol.check(entry["direction"], entry["message"])
                 self.assertIsNotNone(reason, f"{entry['name']} unexpectedly passed")
                 self.assertEqual(reason, entry["reason"])
 
     def test_validate_raises_on_invalid(self):
-        with self.assertRaises(h.ProtocolError):
-            h.validate("in", {"type": "ready"})
+        with self.assertRaises(protocol.ProtocolError):
+            protocol.validate("in", {"type": "ready"})
 
     def test_validate_passes_on_valid(self):
-        h.validate("in", {"type": "ready", "run_id": "x"})
+        protocol.validate("in", {"type": "ready", "run_id": "x"})
 
     def test_bad_direction_raises(self):
         with self.assertRaises(ValueError):
-            h.check("sideways", {"type": "ready", "run_id": "x"})
+            protocol.check("sideways", {"type": "ready", "run_id": "x"})
 
 
 if __name__ == "__main__":

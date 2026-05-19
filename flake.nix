@@ -93,17 +93,46 @@
         # SATAN — phase-2 real harness.  Drives an OpenAI-compatible
         # chat-completions loop (OpenRouter v1 by default).  Speaks the
         # SATAN JSONL protocol; terminates on a `satan_final` tool call.
-        # See ~/.emacs.d/satan/harness/gptel_harness.py.
-        satanGptelHarness =
-          pkgs.writers.writePython3Bin "satan-gptel-harness" {
-            libraries = with pkgs.python3Packages; [ openai ];
-            flakeIgnore = [
-              "E501" # line too long — model strings carry long descriptions
-              "E402" # module-level import order (we have a __future__ line)
-              "W503" # line break before binary operator
-              "E704" # `def f(...) -> T: ...` one-liner for abstract methods
-            ];
-          } (builtins.readFile ./satan/harness/gptel_harness.py);
+        # Multi-file since phase 3B: protocol / bundle / runloop /
+        # providers.  See ~/.emacs.d/satan/harness/__main__.py.
+        satanGptelHarness = let
+          pythonEnv = pkgs.python3.withPackages (ps: [ ps.openai ]);
+        in pkgs.stdenv.mkDerivation {
+          pname = "satan-gptel-harness";
+          version = "0";
+          src = lib.cleanSourceWith {
+            src = ./satan/harness;
+            filter = path: type:
+              let base = baseNameOf (toString path); in
+              type == "directory"
+              || (lib.hasSuffix ".py" base
+                  && !(lib.hasPrefix "test_" base));
+          };
+          nativeBuildInputs = [ pkgs.makeWrapper pkgs.ruff ];
+          dontConfigure = true;
+          dontBuild = true;
+          doCheck = true;
+          checkPhase = ''
+            runHook preCheck
+            # Inherit the legacy writePython3Bin ignores that still
+            # apply to ruff: long lines (model descriptions) and
+            # __future__-first imports.  W503 (line break before binary
+            # op) and E704 (def one-liners) are dropped — ruff doesn't
+            # implement them; pycodestyle did.
+            ruff check --select E,F,W --ignore E501,E402 .
+            runHook postCheck
+          '';
+          installPhase = ''
+            runHook preInstall
+            mkdir -p $out/lib/satan-gptel-harness $out/bin
+            cp -r ./. $out/lib/satan-gptel-harness/
+            makeWrapper ${pythonEnv}/bin/python3 \
+              $out/bin/satan-gptel-harness \
+              --add-flags "$out/lib/satan-gptel-harness/__main__.py"
+            runHook postInstall
+          '';
+          meta.mainProgram = "satan-gptel-harness";
+        };
 
         # Extra env passed through the bwrap jail for the real harness:
         # provider selection + cumulative token budget + per-provider keys.

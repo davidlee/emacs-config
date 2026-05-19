@@ -2,6 +2,47 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-19 — SATAN: phase 3B — harness multi-file split
+
+`gptel_harness.py` had grown into five concerns under one roof:
+protocol validator, bundle loader, provider abstraction + adapter,
+run loop, entry point. Phase 3B splits them into discrete modules so
+the upcoming 3C-lite (OpenAI-compatible provider base + DeepSeek) is
+a thin config change, not a surgical edit through a 500-line file.
+
+- `satan/harness/protocol.py` — validator + `emit*` / `read_tool_result`
+  helpers. (Moved from the PROTOCOL section of the old monolith.)
+- `satan/harness/bundle.py` — `load_bundle`, `load_manifest`,
+  `build_system_prompt`, `build_tools`.
+- `satan/harness/runloop.py` — `RunState`, message accumulators, `run`,
+  `main`. Provider- and protocol-agnostic.
+- `satan/harness/providers/base.py` — `Provider` ABC + `CompletionResult`.
+- `satan/harness/providers/openrouter.py` — `OpenRouterProvider`
+  (OpenAI v1 chat-completions with base_url override).
+- `satan/harness/providers/__init__.py` — `build_provider()` registry
+  dispatched off `SATAN_PROVIDER` env.
+- `satan/harness/__main__.py` — entrypoint. Adds its own directory to
+  `sys.path` so absolute imports (`import protocol`,
+  `from providers import build_provider`) resolve whether invoked
+  via the nix bin or via `python -m unittest test_gptel_harness`.
+  No top-level `__init__.py`; `providers/` is the only subpackage.
+- `satan/harness/gptel_harness.py` — deleted.
+- `flake.nix` — `satanGptelHarness` switches from
+  `pkgs.writers.writePython3Bin` (single-file) to
+  `pkgs.stdenv.mkDerivation` + `pkgs.makeWrapper` over
+  `pkgs.python3.withPackages (ps: [ ps.openai ])`. `checkPhase` runs
+  `ruff check` with the legacy ignore set (W503 / E704 dropped — ruff
+  doesn't implement them).
+- `satan/protocol/PROTOCOL.md` — note updated: both sides ship the
+  validator as its own module.
+- `satan/harness/test_gptel_harness.py` — imports rewritten to target
+  the new modules; `mock.patch.object(runloop, "build_provider", …)`
+  replaces the old `h.build_provider` patch. StubProvider subclasses
+  `providers.base.Provider`. Same 14 tests; same coverage.
+
+Tests: 76/76 elisp + 14/14 python + 1/1 integration.
+`nix build .#satan-jailed-gptel-harness` clean.
+
 ## 2026-05-19 — SATAN: phase 3D — broker owns bundle framing
 
 The `# Now` / `# Today (raw)` / `# Source files` section headers used to
