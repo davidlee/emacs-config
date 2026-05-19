@@ -172,6 +172,7 @@ Dotfiles contain mechanism.
 |---|---|
 | ROM/system prompt, mode prompts | `~/notes/satan/prompts/<mode>.txt` |
 | shared system scaffold | `~/notes/satan/system/scaffold.txt` |
+| bundle-section headers (`# Now`, `# Today (raw)`, `# Source files`) | `~/notes/satan/system/framing.txt` |
 | per-tool description (model-facing) | `~/notes/satan/tools/<tool-name>.md` |
 | `satan_final` description (synthetic terminal tool) | `~/notes/satan/tools/satan_final.md` |
 | examples / few-shot snippets, style instructions, hippocampus policy | `~/notes/satan/` |
@@ -538,10 +539,11 @@ journalctl --user -u satan-morning.service --since today
 
 Every context-fn includes a `:now` plist via `dl-satan-context-now`:
 `iso_date`, `weekday`, `iso_week`, `time`, `tz_offset`, `tz_name`.
-The python harness renders this as a fixed `# Now` section between the
-assembled prompt and any `today_text` / source-file sections, so the
-model always sees the same date/time/tz framing regardless of mode.
-Single source of truth — never set `:date`/`:time` separately.
+The broker renders this as a fixed `# Now` section between the
+assembled prompt and any `today_text` / source-file sections (see
+`dl-satan-context--render-prompt` and `~/notes/satan/system/framing.txt`),
+so the model always sees the same date/time/tz framing regardless of
+mode. Single source of truth — never set `:date`/`:time` separately.
 
 ### Owned-block syntax
 
@@ -720,12 +722,13 @@ Numbered for cross-referencing in commits / changelog.
 8. **`org_read_context` scope coverage** — only `today | week | inbox`.
    `org-agenda`, `org-roam` graph queries, recently-edited files would
    all be useful.
-9. **Bundle-section framing in `build_system_prompt`** — the
-   `# Today (raw)` and `# Source files` section headers are still
-   inlined in `gptel_harness.py`. They are model-facing but tied to
-   bundle keys (`today_text`, `sources`); cleanly externalising them
-   needs a small templating layer. Defer until a second context
-   section appears that wants the same treatment.
+9. **Bundle-section framing in `build_system_prompt`** — ✅ done
+   2026-05-19 (phase 3D). Section headers (`# Now`, `# Today (raw)`,
+   `# Source files`) live in `~/notes/satan/system/framing.txt`; the
+   broker renders the full system prompt and writes it into
+   `bundle["prompt"]`; the harness is a passthrough
+   (`return bundle["prompt"]`). No canonical model-facing prose lives
+   in dotfiles anymore.
 
 ## Preferred shape of future work
 

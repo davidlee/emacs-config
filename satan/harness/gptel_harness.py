@@ -325,55 +325,12 @@ def load_manifest(run_dir: str) -> dict:
         return json.load(f)
 
 
-def _render_now(now: dict) -> list[str]:
-    iso_date = now.get("iso_date") or ""
-    weekday = now.get("weekday") or ""
-    iso_week = now.get("iso_week") or ""
-    hm = now.get("time") or ""
-    tz_offset = now.get("tz_offset") or ""
-    tz_name = now.get("tz_name") or ""
-    lines = ["# Now"]
-    if iso_date:
-        suffix_bits = []
-        if weekday:
-            suffix_bits.append(weekday)
-        if iso_week:
-            suffix_bits.append(f"ISO {iso_week}")
-        suffix = f" ({', '.join(suffix_bits)})" if suffix_bits else ""
-        lines.append(f"date: {iso_date}{suffix}")
-    if hm:
-        tz = " ".join(b for b in (tz_offset, tz_name) if b)
-        lines.append(f"time: {hm}{(' ' + tz) if tz else ''}")
-    return lines
-
-
 def build_system_prompt(bundle: dict) -> str:
-    # bundle["prompt"] is the fully-assembled system prompt (scaffold +
-    # mode prompt) the broker built from ~/notes/satan/. The harness
-    # must not add canonical model-facing prose here.
-    parts = [bundle.get("prompt", "").rstrip()]
-    now = bundle.get("now")
-    if isinstance(now, dict) and now:
-        parts.append("")
-        parts.extend(_render_now(now))
-    today = bundle.get("today_text")
-    if today:
-        parts.append("")
-        parts.append("# Today (raw)")
-        parts.append(today)
-    sources = bundle.get("sources")
-    if sources:
-        parts.append("")
-        parts.append("# Source files")
-        for item in sources:
-            path = item.get("path", "?")
-            content = item.get("content", "")
-            parts.append("")
-            parts.append(f"## {path}")
-            parts.append("```")
-            parts.append(content)
-            parts.append("```")
-    return "\n".join(parts)
+    # bundle["prompt"] is the fully-rendered system prompt — scaffold,
+    # mode prompt, and every context-section (`# Now`, `# Today (raw)`,
+    # `# Source files`) assembled by the broker. The harness consumes
+    # it verbatim and adds no model-facing prose.
+    return bundle["prompt"]
 
 
 def append_assistant_with_tools(

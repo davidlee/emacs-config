@@ -2,6 +2,43 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-19 — SATAN: phase 3D — broker owns bundle framing
+
+The `# Now` / `# Today (raw)` / `# Source files` section headers used to
+be inlined in `gptel_harness.py`. That broke the mind/mechanism
+invariant (no canonical model-facing prose in dotfiles) and forced
+every alternative harness adapter to re-implement the same framing.
+Phase 3D moves rendering across the membrane: the broker writes a
+fully-assembled system prompt into `bundle["prompt"]`; the harness is
+a passthrough.
+
+- `~/notes/satan/system/framing.txt` (NEW, mind) — section headers as
+  `key=value` lines. Required at run time; missing-file signals so
+  prose cannot silently default in dotfiles.
+- `satan/dl-satan-context.el` — `dl-satan-context--framing` parses the
+  framing file; `dl-satan-context--render-{now,today,sources}` build
+  per-section line lists; `dl-satan-context--render-prompt` assembles
+  scaffold + mode + framing. Every context-fn (`morning`, `motd`,
+  `tick`, `self-edit`) returns a bundle whose `:prompt` is the fully
+  rendered system prompt. Structured fields (`:now`, `:today_text`,
+  `:sources`) remain in the bundle for audit forensics but are no
+  longer read by the harness.
+- `satan/harness/gptel_harness.py` — `build_system_prompt(bundle)` is
+  now `return bundle["prompt"]`. `_render_now` removed; the harness
+  holds no canonical model-facing prose.
+- `satan/test/dl-satan-test.el` — 8 new tests covering framing parse,
+  missing-file/missing-key errors, per-block rendering, section
+  ordering. Existing context-fn tests now write a framing.txt fixture.
+- `satan/harness/test_gptel_harness.py` — drop the `# Now` /
+  `# Today (raw)` / `# Source files` rendering tests (assertions moved
+  elisp-side); add passthrough + missing-key assertions on
+  `build_system_prompt`.
+
+Closes SATAN.md open thread #9.
+
+Tests: 76/76 elisp + 14/14 python + 1/1 integration ert.
+`nix build .#satan-jailed-gptel-harness` clean.
+
 ## 2026-05-19 — Journal quick capture
 
 Fast timestamped append into the daily journal's `* Log` from anywhere.

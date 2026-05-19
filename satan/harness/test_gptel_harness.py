@@ -196,48 +196,20 @@ class HarnessTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             h.build_tools({"tools": []})
 
-    def test_system_prompt_passes_bundle_prompt_through(self):
-        bundle = {"prompt": "SCAFFOLD\n\nMODE PROMPT"}
-        prompt = h.build_system_prompt(bundle)
-        self.assertTrue(prompt.startswith("SCAFFOLD"))
-        self.assertIn("MODE PROMPT", prompt)
-        # Harness must not append any canonical termination prose.
-        self.assertNotIn("satan_final", prompt)
+    def test_system_prompt_returns_bundle_prompt_verbatim(self):
+        # The broker hands the harness a fully-rendered system prompt
+        # (scaffold + mode + bundle-section framing). The harness must
+        # not modify it — every section header lives mind-side.
+        rendered = (
+            "SCAFFOLD\n\nMODE PROMPT\n\n# Now\ndate: 2026-05-19\n\n"
+            "# Today (raw)\nbody\n\n# Source files\n## a.el\n```\nx\n```"
+        )
+        self.assertEqual(h.build_system_prompt({"prompt": rendered}), rendered)
 
-    def test_system_prompt_renders_now(self):
-        bundle = {
-            "prompt": "P",
-            "now": {
-                "iso_date": "2026-05-19",
-                "weekday": "Tuesday",
-                "iso_week": "2026-W21",
-                "time": "09:00",
-                "tz_offset": "+1000",
-                "tz_name": "AEST",
-            },
-        }
-        prompt = h.build_system_prompt(bundle)
-        self.assertIn("# Now", prompt)
-        self.assertIn("date: 2026-05-19 (Tuesday, ISO 2026-W21)", prompt)
-        self.assertIn("time: 09:00 +1000 AEST", prompt)
-
-    def test_system_prompt_skips_now_when_absent(self):
-        prompt = h.build_system_prompt({"prompt": "P"})
-        self.assertNotIn("# Now", prompt)
-
-    def test_system_prompt_renders_sources(self):
-        bundle = {
-            "prompt": "P",
-            "sources": [
-                {"path": "satan/x.el", "content": "(provide 'x)"},
-                {"path": "satan/y.py", "content": "x = 1"},
-            ],
-        }
-        prompt = h.build_system_prompt(bundle)
-        self.assertIn("## satan/x.el", prompt)
-        self.assertIn("(provide 'x)", prompt)
-        self.assertIn("## satan/y.py", prompt)
-        self.assertIn("x = 1", prompt)
+    def test_system_prompt_missing_key_raises(self):
+        # `bundle["prompt"]` is now a hard contract from the broker.
+        with self.assertRaises(KeyError):
+            h.build_system_prompt({})
 
 
 class ProtocolFixtureTests(unittest.TestCase):

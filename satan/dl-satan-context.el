@@ -15,6 +15,15 @@ Canonical text lives under `~/notes/satan/system/'; dotfiles must
 not be the source of truth for behavioural framing."
   :type 'file :group 'dl-satan)
 
+(defcustom dl-satan-system-framing-file
+  (expand-file-name "satan/system/framing.txt" dl-notes-root)
+  "Bundle-section headers for context blocks the broker appends to `:prompt'.
+Each call to a context-fn reads this file fresh to assemble the
+`# Now' / `# Today (raw)' / `# Source files' headers added after the
+scaffold + mode prompt.  Mind owns these strings; dotfiles only own
+the value substitution."
+  :type 'file :group 'dl-satan)
+
 (defun dl-satan-context--read-file-or-empty (path)
   "Return contents of PATH, or empty string if missing.
 Use for optional context (e.g. today's note) — never for required
@@ -49,6 +58,103 @@ cannot start with degraded behavioural framing."
                   (dl-satan-context--read-required prompt-path))))
     (concat scaffold "\n\n" prompt)))
 
+(defun dl-satan-context--parse-framing (text)
+  "Parse TEXT as `key=value' lines; return an alist.
+Lines starting with `#' or that contain no `=' are ignored."
+  (let (acc)
+    (dolist (line (split-string text "\n"))
+      (let ((trimmed (string-trim line)))
+        (unless (or (string-empty-p trimmed)
+                    (string-prefix-p "#" trimmed))
+          (let ((eq (string-search "=" line)))
+            (when eq
+              (push (cons (string-trim (substring line 0 eq))
+                          (substring line (1+ eq)))
+                    acc))))))
+    (nreverse acc)))
+
+(defun dl-satan-context--framing ()
+  "Return framing alist loaded from `dl-satan-system-framing-file'.
+Required keys: `now', `today', `sources'.  Missing file signals."
+  (let ((alist (dl-satan-context--parse-framing
+                (dl-satan-context--read-required
+                 dl-satan-system-framing-file))))
+    (dolist (key '("now" "today" "sources"))
+      (unless (assoc key alist)
+        (error "SATAN: framing.txt missing required key: %s" key)))
+    alist))
+
+(defun dl-satan-context--render-now (framing now)
+  "Return the rendered `# Now' block as a list of lines.
+NOW is the bundle `:now' plist, FRAMING the parsed framing alist.
+Returns nil when NOW is empty."
+  (when (and (plistp now) now)
+    (let* ((iso-date  (or (plist-get now :iso_date)  ""))
+           (weekday   (or (plist-get now :weekday)   ""))
+           (iso-week  (or (plist-get now :iso_week)  ""))
+           (hm        (or (plist-get now :time)      ""))
+           (tz-offset (or (plist-get now :tz_offset) ""))
+           (tz-name   (or (plist-get now :tz_name)   ""))
+           (suffix-bits (delq nil
+                              (list (and (not (string-empty-p weekday)) weekday)
+                                    (and (not (string-empty-p iso-week))
+                                         (concat "ISO " iso-week)))))
+           (suffix (if suffix-bits
+                       (format " (%s)" (mapconcat #'identity suffix-bits ", "))
+                     ""))
+           (tz (string-trim
+                (concat tz-offset (if (and (not (string-empty-p tz-offset))
+                                           (not (string-empty-p tz-name)))
+                                      " " "")
+                        tz-name)))
+           (lines (list (cdr (assoc "now" framing)))))
+      (unless (string-empty-p iso-date)
+        (push (format "date: %s%s" iso-date suffix) lines))
+      (unless (string-empty-p hm)
+        (push (format "time: %s%s" hm (if (string-empty-p tz) "" (concat " " tz)))
+              lines))
+      (nreverse lines))))
+
+(defun dl-satan-context--render-today (framing today-text)
+  "Return rendered `# Today (raw)' block as a list of lines, or nil if empty."
+  (when (and (stringp today-text) (not (string-empty-p today-text)))
+    (list (cdr (assoc "today" framing)) today-text)))
+
+(defun dl-satan-context--render-sources (framing sources)
+  "Return rendered `# Source files' block as a list of lines, or nil if empty."
+  (when sources
+    (let ((lines (list (cdr (assoc "sources" framing)))))
+      (dolist (item sources)
+        (let ((path (or (plist-get item :path) "?"))
+              (content (or (plist-get item :content) "")))
+          (push "" lines)
+          (push (format "## %s" path) lines)
+          (push "```" lines)
+          (push content lines)
+          (push "```" lines)))
+      (nreverse lines))))
+
+(defun dl-satan-context--render-prompt (assembled bundle)
+  "Return the fully-rendered system prompt for the harness.
+ASSEMBLED is the scaffold + mode-prompt string (no framing yet).
+BUNDLE is the context plist providing `:now', `:today_text', `:sources'.
+Missing framing.txt signals — there is no canonical fallback."
+  (let* ((framing (dl-satan-context--framing))
+         (parts (list (string-trim-right assembled)))
+         (blocks (delq nil
+                       (list
+                        (dl-satan-context--render-now
+                         framing (plist-get bundle :now))
+                        (dl-satan-context--render-today
+                         framing (plist-get bundle :today_text))
+                        (dl-satan-context--render-sources
+                         framing (plist-get bundle :sources))))))
+    (dolist (block blocks)
+      (push "" parts)
+      (dolist (line block)
+        (push line parts)))
+    (mapconcat #'identity (nreverse parts) "\n")))
+
 (defun dl-satan-context-now (&optional time)
   "Return the canonical `:now' plist for TIME (default `current-time').
 Every bundle includes this so the model has consistent date/time/tz
@@ -62,27 +168,40 @@ framing regardless of mode.  Keys: :iso_date, :weekday, :iso_week,
           :tz_offset (format-time-string "%z"       time)
           :tz_name   (format-time-string "%Z"       time))))
 
+(defun dl-satan-context--finalize-prompt (bundle assembled)
+  "Replace BUNDLE's `:prompt' with the fully-rendered prompt.
+ASSEMBLED is the scaffold + mode-prompt string the caller built.
+The harness consumes `:prompt' verbatim; other bundle keys remain
+for audit but are no longer read by the harness."
+  (plist-put bundle :prompt (dl-satan-context--render-prompt assembled bundle)))
+
 (defun dl-satan-context-morning (mode-spec)
   "Bundle for the morning mode: prompt + today's note text."
   (let* ((today (progn (my/journal--ensure-today)
-                       (my/journal--today-file dl-notes-journal-dir "journal"))))
-    (list :prompt     (dl-satan-context--assemble-prompt mode-spec)
-          :mode       (plist-get mode-spec :name)
-          :now        (dl-satan-context-now)
-          :today_path today
-          :today_text (dl-satan-context--read-file-or-empty today))))
+                       (my/journal--today-file dl-notes-journal-dir "journal")))
+         (assembled (dl-satan-context--assemble-prompt mode-spec))
+         (bundle (list :prompt     ""
+                       :mode       (plist-get mode-spec :name)
+                       :now        (dl-satan-context-now)
+                       :today_path today
+                       :today_text (dl-satan-context--read-file-or-empty today))))
+    (dl-satan-context--finalize-prompt bundle assembled)))
 
 (defun dl-satan-context-motd (mode-spec)
   "Bundle for the motd mode."
-  (list :prompt (dl-satan-context--assemble-prompt mode-spec)
-        :mode   (plist-get mode-spec :name)
-        :now    (dl-satan-context-now)))
+  (let* ((assembled (dl-satan-context--assemble-prompt mode-spec))
+         (bundle (list :prompt ""
+                       :mode   (plist-get mode-spec :name)
+                       :now    (dl-satan-context-now))))
+    (dl-satan-context--finalize-prompt bundle assembled)))
 
 (defun dl-satan-context-tick (mode-spec)
   "Bundle for a tick mode.  Same shape as motd."
-  (list :prompt (dl-satan-context--assemble-prompt mode-spec)
-        :mode   (plist-get mode-spec :name)
-        :now    (dl-satan-context-now)))
+  (let* ((assembled (dl-satan-context--assemble-prompt mode-spec))
+         (bundle (list :prompt ""
+                       :mode   (plist-get mode-spec :name)
+                       :now    (dl-satan-context-now))))
+    (dl-satan-context--finalize-prompt bundle assembled)))
 
 (defcustom dl-satan-self-edit-mech-roots
   (list (expand-file-name "satan" user-emacs-directory))
@@ -139,12 +258,14 @@ than long relative dotwalks."
           (mapcar (lambda (f)
                     (list :path    (abbreviate-file-name f)
                           :content (dl-satan-context--read-file-or-empty f)))
-                  files)))
-    (list :prompt  (dl-satan-context--assemble-prompt mode-spec)
-          :mode    (plist-get mode-spec :name)
-          :now     (dl-satan-context-now)
-          :roots   (mapcar #'abbreviate-file-name roots)
-          :sources sources)))
+                  files))
+         (assembled (dl-satan-context--assemble-prompt mode-spec))
+         (bundle (list :prompt  ""
+                       :mode    (plist-get mode-spec :name)
+                       :now     (dl-satan-context-now)
+                       :roots   (mapcar #'abbreviate-file-name roots)
+                       :sources sources)))
+    (dl-satan-context--finalize-prompt bundle assembled)))
 
 (provide 'dl-satan-context)
 ;;; dl-satan-context.el ends here
