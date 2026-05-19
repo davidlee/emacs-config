@@ -2,6 +2,23 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-20 — SATAN: memory quality sweep — §4 + §7
+
+Two small post-v1 cleanups from `HANDOVER.md` "Quality sweep":
+
+- §4 `satan/dl-satan-memory-store.el`: docstring drift — per-handle
+  `:source` is a PLIST (consumed by `--prep-plist`), not an ALIST.
+  Doc-only.
+- §7 `satan/dl-satan-tools.el` + `satan/dl-satan-tools-memory.el`:
+  `dl-satan-tool--validate-arg` now has a `:type 'number` clause
+  (`"arg %s must be number"`), so the dispatcher rejects non-numeric
+  values before the handler runs. `memory_resonate`'s handler-side
+  `(not (numberp min-score))` check drops out; the existing
+  `resonate-bad-min-score-rejected` ert still passes because the
+  validator's error message contains `min_score`.
+
+Memory subsystem 119/119; phase-3 87/87.
+
 ## 2026-05-20 — SATAN: memory step 11 — acceptance §9 sweep + docs
 
 Substrate-level closure of the v1 memory work.  Walks every §9

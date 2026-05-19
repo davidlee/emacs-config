@@ -78,6 +78,8 @@ Supported constraints:
       (format "arg %s must be string" key))
      ((and (eq type 'integer) (not (integerp val)))
       (format "arg %s must be integer" key))
+     ((and (eq type 'number) (not (numberp val)))
+      (format "arg %s must be number" key))
      ((and (eq type 'object) (not (dl-satan-tool--plist-like-p val)))
       (format "arg %s must be object" key))
      ((and enum (not (member val enum)))

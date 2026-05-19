@@ -208,9 +208,7 @@ cannot express yet."
                 (and (or (not (integerp limit))
                          (< limit 1)
                          (> limit 25))
-                     "limit must be integer 1..25")
-                (and (not (numberp min-score))
-                     "min_score must be number"))))))
+                     "limit must be integer 1..25"))))))
     (if err
         (cons 'error err)
       (dl-satan-tools-memory--resonate-impl

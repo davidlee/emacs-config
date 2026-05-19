@@ -144,7 +144,7 @@ Returns (ok . TRACE-ID) or (error . MSG).
 Required: KIND, TRACE-ORIGIN, SOURCE, OBSERVED-START-AT,
 OBSERVED-END-AT (ISO8601 strings), PAYLOAD (display prose),
 GRAMMAR-VERSION, HANDLES (list of plists
-  (:handle STR :source ALIST [:grammar_version N])).
+  (:handle STR :source PLIST [:grammar_version N])).
 
 Optional: TRACE-ID (else minted from OBSERVED-END-AT), VALENCE,
 OUTCOME, METADATA-JSON (any JSON-serializable value), RETENTION-JSON,
