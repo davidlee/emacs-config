@@ -53,7 +53,7 @@
         workspaceDeps = [];
 
         # SATAN — phase-1 fake harness.  Emits ready, one tool_call, then
-        # final with one org.update_owned_block action.  Used by the
+        # final with one org_update_owned_block action.  Used by the
         # broker (Emacs side) to validate the JSONL contract end-to-end
         # before swapping in a real model harness.
         satanFakeHarness =
@@ -65,7 +65,7 @@
             print(json.dumps({"type": "ready", "run_id": run_id}), flush=True)
             print(json.dumps({
                 "type": "tool_call", "id": "c1",
-                "name": "org.read_context",
+                "name": "org_read_context",
                 "args": {"scope": "today"},
             }), flush=True)
             sys.stdin.readline()
@@ -73,7 +73,7 @@
                 "type": "final",
                 "summary": "fake harness ack",
                 "actions": [
-                    {"type": "org.update_owned_block",
+                    {"type": "org_update_owned_block",
                      "args": {"target": "today", "block": "satan",
                               "content": "SATAN was here.\n"}}
                 ],
@@ -92,7 +92,7 @@
 
         # SATAN — phase-2 real harness.  Drives an OpenAI-compatible
         # chat-completions loop (OpenRouter v1 by default).  Speaks the
-        # SATAN JSONL protocol; terminates on a `satan.final` tool call.
+        # SATAN JSONL protocol; terminates on a `satan_final` tool call.
         # See ~/.emacs.d/satan/harness/gptel_harness.py.
         satanGptelHarness =
           pkgs.writers.writePython3Bin "satan-gptel-harness" {

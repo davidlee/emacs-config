@@ -1,4 +1,4 @@
-;;; dl-satan-tools-notify.el --- notify.send tool handler -*- lexical-binding: t; -*-
+;;; dl-satan-tools-notify.el --- notify_send tool handler -*- lexical-binding: t; -*-
 
 ;; Desktop notification via D-Bus.  Thin wrapper around
 ;; `notifications-notify' (built-in).  Visible to the user immediately,
@@ -44,7 +44,7 @@ Returns (ok :id N) | (error MSG)."
         (error (cons 'error (error-message-string err))))))))
 
 (dl-satan-tool-register
- (list :name "notify.send"
+ (list :name "notify_send"
        :risk 'low
        :args-schema '(title   (:type string :required t)
                       body    (:type string :required t)

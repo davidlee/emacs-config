@@ -3,7 +3,7 @@
 ;; The broker holds a registry of tool-specs.  A tool-spec carries
 ;; mechanism only — name, risk, schema, mode allowlist, handler:
 ;;
-;;   (:name        "org.read_context"
+;;   (:name        "org_read_context"
 ;;    :risk        read|low|medium|high
 ;;    :args-schema (KEY (:type symbol :required bool :enum (...)))*
 ;;    :modes       ("morning" "motd" ...)
@@ -180,13 +180,13 @@ Description is loaded from `dl-satan-tools-descriptions-dir'."
                           :parameters params))))
 
 (defun dl-satan-tool-final-schema ()
-  "Return the synthetic `satan.final' tool schema.
-`satan.final' is harness-emitted (terminal signal) but its description
+  "Return the synthetic `satan_final' tool schema.
+`satan_final' is harness-emitted (terminal signal) but its description
 is canonical here so every adapter sees the same text."
-  (let ((desc (dl-satan-tool--description "satan.final")))
+  (let ((desc (dl-satan-tool--description "satan_final")))
     (list :type "function"
           :function
-          (list :name "satan.final"
+          (list :name "satan_final"
                 :description desc
                 :parameters
                 (list :type "object"

@@ -34,9 +34,9 @@ def _stub_tool_schema(name: str, description: str = "") -> dict:
 
 
 DEFAULT_MANIFEST_TOOLS = [
-    _stub_tool_schema("org.read_context"),
-    _stub_tool_schema("org.update_owned_block"),
-    _stub_tool_schema("satan.final"),
+    _stub_tool_schema("org_read_context"),
+    _stub_tool_schema("org_update_owned_block"),
+    _stub_tool_schema("satan_final"),
 ]
 
 
@@ -98,7 +98,7 @@ class HarnessTests(unittest.TestCase):
         provider = StubProvider([
             h.CompletionResult(
                 content="",
-                tool_calls=[{"id": "c1", "name": "satan.final",
+                tool_calls=[{"id": "c1", "name": "satan_final",
                              "args": {"summary": "ok", "actions": []}}],
                 input_tokens=10, output_tokens=5,
             ),
@@ -117,13 +117,13 @@ class HarnessTests(unittest.TestCase):
         provider = StubProvider([
             h.CompletionResult(
                 content="",
-                tool_calls=[{"id": "c1", "name": "org.read_context",
+                tool_calls=[{"id": "c1", "name": "org_read_context",
                              "args": {"scope": "today"}}],
                 input_tokens=10, output_tokens=5,
             ),
             h.CompletionResult(
                 content="",
-                tool_calls=[{"id": "c2", "name": "satan.final",
+                tool_calls=[{"id": "c2", "name": "satan_final",
                              "args": {"summary": "done", "actions": []}}],
                 input_tokens=20, output_tokens=8,
             ),
@@ -137,7 +137,7 @@ class HarnessTests(unittest.TestCase):
         self.assertIn("tool_call", types)
         self.assertEqual(types[-1], "final")
         tc = next(m for m in lines if m["type"] == "tool_call")
-        self.assertEqual(tc["name"], "org.read_context")
+        self.assertEqual(tc["name"], "org_read_context")
         self.assertEqual(tc["args"], {"scope": "today"})
 
     def test_no_tool_calls_coerces_final(self):
@@ -159,7 +159,7 @@ class HarnessTests(unittest.TestCase):
         provider = StubProvider([
             h.CompletionResult(
                 content="",
-                tool_calls=[{"id": "c1", "name": "org.read_context",
+                tool_calls=[{"id": "c1", "name": "org_read_context",
                              "args": {"scope": "today"}}],
                 input_tokens=900, output_tokens=200,  # over budget=1000
             ),
@@ -175,13 +175,13 @@ class HarnessTests(unittest.TestCase):
     def test_build_tools_returns_manifest_tools(self):
         manifest = {
             "tools": [
-                _stub_tool_schema("a.tool"),
-                _stub_tool_schema("satan.final"),
+                _stub_tool_schema("a_tool"),
+                _stub_tool_schema("satan_final"),
             ],
         }
         tools = h.build_tools(manifest)
         names = [t["function"]["name"] for t in tools]
-        self.assertEqual(names, ["a.tool", "satan.final"])
+        self.assertEqual(names, ["a_tool", "satan_final"])
 
     def test_build_tools_missing_raises(self):
         with self.assertRaises(RuntimeError):
@@ -195,7 +195,7 @@ class HarnessTests(unittest.TestCase):
         self.assertTrue(prompt.startswith("SCAFFOLD"))
         self.assertIn("MODE PROMPT", prompt)
         # Harness must not append any canonical termination prose.
-        self.assertNotIn("satan.final", prompt)
+        self.assertNotIn("satan_final", prompt)
 
     def test_system_prompt_renders_sources(self):
         bundle = {

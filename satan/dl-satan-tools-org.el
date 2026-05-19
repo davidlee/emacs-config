@@ -30,7 +30,7 @@
       (buffer-string))))
 
 (defun dl-satan-tool/org-read-context (args _ctx)
-  "Implements org.read_context.  ARGS: (:scope today|week|inbox)."
+  "Implements org_read_context.  ARGS: (:scope today|week|inbox)."
   (let ((scope (plist-get args :scope)))
     (pcase scope
       ("today"
@@ -52,19 +52,19 @@
   (pcase target
     ("today" (progn (my/journal--ensure-today)
                     (my/journal--today-file dl-notes-journal-dir "journal")))
-    ("motd"  dl-satan-motd-path)
     (_ nil)))
 
 (defun dl-satan-tools-org--target-capability (target)
   (pcase target
     ("today" 'write-daily)
-    ("motd"  'write-motd)
     (_ nil)))
 
 (defun dl-satan-tool/org-update-owned-block (args ctx)
-  "Implements org.update_owned_block.
-ARGS: (:target today|motd :block STR :content STR).
-Refused unless TOOL-CTX `:capabilities' includes the target's capability."
+  "Implements org_update_owned_block.
+ARGS: (:target today :block STR :content STR).
+Refused unless TOOL-CTX `:capabilities' includes the target's capability.
+Motd is no longer a valid target — motd content is owned by the broker
+output handler and written from `satan_final.summary'."
   (let* ((target  (plist-get args :target))
          (block   (plist-get args :block))
          (content (plist-get args :content))
@@ -99,11 +99,11 @@ Refused unless TOOL-CTX `:capabilities' includes the target's capability."
     (if (string-empty-p trim) "untitled" trim)))
 
 (defun dl-satan-tool/proposal-stage (args ctx)
-  "Implements proposal.stage.  ARGS: (:title STR :body STR)."
+  "Implements proposal_stage.  ARGS: (:title STR :body STR)."
   (let* ((title (plist-get args :title))
          (body  (plist-get args :body))
          (run-id (plist-get ctx :id))
-         (mode-name (plist-get ctx :mode-name)))
+         (mode-str (plist-get ctx :mode-name)))
     (cond
      ((not (and (stringp title) (stringp body)))
       (cons 'error "title and body must be strings"))
@@ -122,7 +122,7 @@ Refused unless TOOL-CTX `:capabilities' includes the target's capability."
           (insert "#+identifier: " id "\n\n")
           (insert ":PROPERTIES:\n")
           (insert ":RUN_ID: " (or run-id "") "\n")
-          (insert ":MODE: "   (or mode-name "") "\n")
+          (insert ":MODE: "   (or mode-str "") "\n")
           (insert ":END:\n\n")
           (insert body)
           (unless (string-suffix-p "\n" body) (insert "\n")))
@@ -135,7 +135,7 @@ Refused unless TOOL-CTX `:capabilities' includes the target's capability."
 ;; time.
 
 (dl-satan-tool-register
- (list :name "org.read_context"
+ (list :name "org_read_context"
        :risk 'read
        :args-schema '(scope (:type string :required t
                              :enum ("today" "week" "inbox")))
@@ -143,17 +143,17 @@ Refused unless TOOL-CTX `:capabilities' includes the target's capability."
        :handler 'dl-satan-tool/org-read-context))
 
 (dl-satan-tool-register
- (list :name "org.update_owned_block"
+ (list :name "org_update_owned_block"
        :risk 'low
        :args-schema '(target (:type string :required t
-                              :enum ("today" "motd"))
+                              :enum ("today"))
                       block  (:type string :required t)
                       content (:type string :required t))
-       :modes '("morning" "motd")
+       :modes '("morning")
        :handler 'dl-satan-tool/org-update-owned-block))
 
 (dl-satan-tool-register
- (list :name "proposal.stage"
+ (list :name "proposal_stage"
        :risk 'low
        :args-schema '(title (:type string :required t)
                       body  (:type string :required t))

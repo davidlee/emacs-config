@@ -4,7 +4,7 @@ Drives a chat-completions loop against any OpenAI-compatible provider
 (OpenRouter v1 by default). Speaks the SATAN JSONL protocol on
 stdin/stdout: ready -> 0..N tool_calls (results back on stdin) -> final.
 
-Termination signal from the model is a tool call to `satan.final`
+Termination signal from the model is a tool call to `satan_final`
 (summary, actions[]). Adapter intercepts and emits the broker's `final`
 record.
 
@@ -141,7 +141,7 @@ def build_provider() -> tuple[Provider, str]:
 # ---- tool schemas ----
 #
 # The broker writes the full OpenAI-tools JSON Schema for every allowed
-# tool (plus the synthetic `satan.final`) into manifest.json["tools"].
+# tool (plus the synthetic `satan_final`) into manifest.json["tools"].
 # The harness consumes that list verbatim — descriptions, parameters,
 # and all — so no canonical model-facing text lives in this file.
 
@@ -276,9 +276,9 @@ def run() -> int:
             "tokens_total": state.tokens_total,
         })
 
-        # Process satan.final first if present — it's terminal.
+        # Process satan_final first if present — it's terminal.
         for tc in comp.tool_calls:
-            if tc["name"] == "satan.final":
+            if tc["name"] == "satan_final":
                 args = tc["args"] or {}
                 summary = args.get("summary") or comp.content or ""
                 actions = args.get("actions") or []
@@ -303,7 +303,7 @@ def run() -> int:
 
         # Budget guard: graceful final after the current turn settles.
         if budget_tokens and state.tokens_total >= budget_tokens:
-            # Ask model to wrap up via satan.final on next turn — but
+            # Ask model to wrap up via satan_final on next turn — but
             # since we'd risk another full turn over budget, terminate
             # ourselves with a synthetic final.
             emit_final(

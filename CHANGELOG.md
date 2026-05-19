@@ -2,6 +2,121 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-19 — SATAN: motd single-writer (drop double-write race)
+
+Two paths could write the motd surface: the `dl-satan-output/motd` handler
+(unconditional, atomic, from `satan_final.summary`) and the
+`org_update_owned_block` tool with `target=motd`. The handler runs last,
+so when the model called the tool to write a good motd and then emitted
+plain content as the closing turn, the harness coerced to
+`final{reason=no_tool_calls}` with an empty/synthetic summary and the
+handler stomped the good content.
+
+Fix: one writer, one job. `satan_final.summary` is canonical motd content.
+
+- `satan/dl-satan-mode.el` — motd `:tools` drops `org_update_owned_block`;
+  `:capabilities` drops `write-motd` (no remaining gate uses it).
+- `satan/dl-satan-tools-org.el` — `org_update_owned_block` target enum
+  restricted to `"today"`; `:modes` restricted to `("morning")`;
+  `target-path` / `target-capability` drop the `"motd"` arm.
+- `satan/dl-satan-output.el` — motd handler auto-apply list is
+  `("inbox_append")` only; docstring documents the single-writer invariant.
+- `notes/satan/prompts/motd.txt` — rewritten: no `org_update_owned_block`
+  in the tool list; explicit instruction that `satan_final.summary` is
+  the motd content.
+- `notes/satan/tools/org_update_owned_block.md` — target documented as
+  `today` only; motd ownership note.
+- `SATAN.md` — modes table (motd tools), tools table (capability column).
+- Tests: 35 → 38 (3 new: motd target rejected via dispatcher, motd mode
+  `:tools` excludes the tool, tool `:modes` registered for morning only).
+
+## 2026-05-19 — SATAN: inbox surface + scaffold expansion + motd budget
+
+Quiet append-only inbox at `~/notes/satan/inbox.org`. Lets SATAN drop
+messages the user should see without interrupting them — preferred
+over `notify_send` for almost everything.
+
+- `satan/dl-satan-tools-inbox.el` — new `inbox_append(title, body,
+  urgency)` tool. Auto-applied with capability `inbox-write`.
+  Entries are top-level `*` headlines tagged `:unread:satan:` (plus
+  optional `:low:` / `:urgent:`).
+- `my/satan-inbox` opens the file; `my/satan-inbox-unread-count`
+  returns the unread headline count (suitable for a waybar widget).
+- Mode wiring: morning + motd both gain `inbox_append` in `:tools`
+  and `inbox-write` in `:capabilities`; output handlers auto-apply.
+- `~/notes/satan/system/scaffold.txt` rewritten (was: single
+  termination instruction; now: identity, standing rules covering
+  owned surfaces / inbox-over-notify / hippocampus, protocol).
+- `~/notes/satan/prompts/{morning,motd}.txt` — `inbox_append` listed.
+- `~/notes/satan/tools/inbox_append.md` — model-facing description.
+- Motd budget bumped 5000 → 10000 tokens. Haiku exhausted 5k before
+  reaching `satan_final` in the first real run.
+- Fixed pre-existing `mode-name` variable-shadow bug in inbox /
+  hippocampus / proposal-stage handlers: `mode-name` is a global
+  defvar (buffer-local in every buffer), so a `let` binding gets
+  overwritten by `with-temp-{buffer,file}` to "Fundamental". Renamed
+  to `mode-str`.
+- Tests: 31 → 35 (4 new inbox).
+
+## 2026-05-19 — SATAN: tool names dot → underscore
+
+OpenRouter routed every real-model run to Amazon Bedrock, which rejects
+tool names containing dots (`tools.0.custom.name: String should match
+pattern '^[a-zA-Z0-9_-]{1,128}$'`). SATAN had never completed a real
+end-to-end run; the "smoke-tested live" claim in phase-2A was wishful
+— successful runs were all the fake harness.
+
+OpenAI's own validator enforces the same pattern. Switching to
+`domain_verb` (underscore) makes the schema portable across every
+OpenAI-compatible adapter.
+
+- All tool names renamed: `org.read_context` → `org_read_context`,
+  `org.update_owned_block` → `org_update_owned_block`,
+  `proposal.stage` → `proposal_stage`, `notify.send` → `notify_send`,
+  `hippocampus.write` → `hippocampus_write`,
+  `satan.final` → `satan_final`.
+- Updated: every tool-spec registration, mode `:tools` lists,
+  `dl-satan-output` allowlists, harness `satan_final` interception,
+  prompts (`morning.txt`, `motd.txt`, `self-edit.txt`), system
+  scaffold (`scaffold.txt`), unit + python harness tests.
+- Tool description files `git mv`d: `notes/satan/tools/<dotted>.md` →
+  `<underscored>.md` (6 files).
+- SATAN.md "Naming" rule updated: `domain_verb`, must match
+  `^[a-zA-Z0-9_-]+$`.
+- `~/flakes/modules/home/satan.nix` — morning timer moved 07:30 → 09:00
+  (07:30 is before 1Password is unlocked → empty `OPENROUTER_API_KEY`
+  resolution → guaranteed failed run).
+
+Tests: 31/31 unit ert + 8/8 python unittest still green.
+
+## 2026-05-19 — SATAN: memory → hippocampus rename
+
+The memory subsystem is now called the hippocampus. SATAN owns it:
+writes auto-apply, no candidate / confirmed ceremony. Mechanical rename
+preparing the ground for `hippocampus.{write,recall,forget}`.
+
+- `satan/dl-satan-tools-memory.el` → `satan/dl-satan-tools-hippocampus.el`
+  (`git mv`). New defcustom `dl-satan-hippocampus-dir` =
+  `~/notes/satan/hippocampus/`. Handler renamed
+  `dl-satan-tool/hippocampus-write`; risk dropped `medium` → `low`.
+  User command `my/satan-memory-candidates` → `my/satan-hippocampus`.
+- `satan/dl-satan-mode.el` — morning tool list +
+  capabilities rewired (`memory.add_candidate` → `hippocampus.write`,
+  `memory-candidate` → `hippocampus-write`).
+- `satan/dl-satan.el` — `(require 'dl-satan-tools-hippocampus)`.
+- `~/notes/satan/tools/memory.add_candidate.md` →
+  `tools/hippocampus.write.md` (rewritten — auto-apply framing, no
+  "stage for review" language). `prompts/morning.txt` updated.
+- Filename pattern `__satan_memory.org` → `__satan_hippocampus.org`;
+  filetags `:satan:memory:candidate:` → `:satan:hippocampus:`.
+- Tests renamed (`dl-satan-memory/*` → `dl-satan-hippocampus/*`).
+- `SATAN.md` — "Memory governance" section rewritten as "Hippocampus
+  governance"; file map, modes/tools tables, conventions updated.
+
+No data migration: `~/notes/satan/memory/` was never populated. The
+existing `~/notes/satan/hippocampus/` dir (already present in the spec
+for jail bind-mount) is now the durable home for entries.
+
 ## 2026-05-19 — SATAN: mind/mechanism split (phase-2 E)
 
 All model-facing behavioural text now lives under `~/notes/satan/`;

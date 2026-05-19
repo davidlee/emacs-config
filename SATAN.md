@@ -54,11 +54,11 @@ across those changes.
 |---|---|---|
 | 1 — broker + JSONL + fake harness | ✅ | landed 2026-05-19 |
 | 2A — real LLM harness (OpenRouter) | ✅ | landed 2026-05-19, smoke-tested live |
-| 2B — `notify.send` tool | ✅ | landed 2026-05-19 |
-| 2C — `memory.add_candidate` tool | ✅ | landed 2026-05-19, raw `find-file` review |
+| 2B — `notify_send` tool | ✅ | landed 2026-05-19 |
+| 2C — `hippocampus_write` tool | ✅ | landed 2026-05-19, raw `find-file` review; renamed from `memory.add_candidate` |
 | 2D — `self-edit` mode | ✅ | landed 2026-05-19, SATAN-only scope |
 | 2E — mind/mechanism split | ✅ | landed 2026-05-19, prompts + tool descs in `~/notes/satan/` |
-| Wired into Sleipnir (`satan.nix`) | ✅ | timers `satan-morning` 07:30, `satan-motd` 07:00 |
+| Wired into Sleipnir (`satan.nix`) | ✅ | timers `satan-morning` 09:00, `satan-motd` 07:00 |
 
 `M-x my/satan-run RET morning` writes a SATAN-owned block into today's
 daily note and a full audit bundle under `~/notes/satan/runs/<run-id>/`.
@@ -76,7 +76,7 @@ M-x my/satan-run RET motd
 M-x my/satan-run RET self-edit          # SATAN audits its own source
 
 # Review staged artifacts.
-M-x my/satan-memory-candidates           # dired ~/notes/satan/memory/candidates
+M-x my/satan-hippocampus                 # dired ~/notes/satan/hippocampus
 find ~/notes/satan/proposals             # denote-named proposals
 
 # Audit a finished run.
@@ -117,7 +117,7 @@ user has explicitly installed.
 
 ### Broker
 Trusted authority. Owns mode resolution, context assembly,
-prompt/memory loading, permission profile selection, process
+prompt/hippocampus loading, permission profile selection, process
 lifecycle, JSONL handling, tool dispatch, action validation, output
 handling, audit logging. The broker enforces policy; the model
 proposes.
@@ -130,7 +130,7 @@ harness-specific interface. No adapter should become the canonical
 definition of SATAN behaviour.
 
 ### Model
-Performs reasoning. Receives model-facing prompts, relevant memory,
+Performs reasoning. Receives model-facing prompts, relevant hippocampus,
 selected context, tool manifest, output contract. Emits tool calls,
 logs, final structured output. Must not receive ambient authority;
 can only request named capabilities through the broker.
@@ -150,7 +150,7 @@ notify locally if permitted; update audit artifacts. Mode-specific.
 
 ### State
 Local, text-first, inspectable. ROM prompt fragments, mode prompts,
-tool descriptions, memory, proposals, run logs, owned daily-note
+tool descriptions, hippocampus, proposals, run logs, owned daily-note
 blocks, MOTD/status surfaces. Favour files the user can read, diff,
 grep, review, and version.
 
@@ -172,9 +172,9 @@ Dotfiles contain mechanism.
 | ROM/system prompt, mode prompts | `~/notes/satan/prompts/<mode>.txt` |
 | shared system scaffold | `~/notes/satan/system/scaffold.txt` |
 | per-tool description (model-facing) | `~/notes/satan/tools/<tool-name>.md` |
-| `satan.final` description (synthetic terminal tool) | `~/notes/satan/tools/satan.final.md` |
-| examples / few-shot snippets, style instructions, memory policy | `~/notes/satan/` |
-| candidate and confirmed memories, staged proposals | `~/notes/satan/{memory,proposals}/` |
+| `satan_final` description (synthetic terminal tool) | `~/notes/satan/tools/satan_final.md` |
+| examples / few-shot snippets, style instructions, hippocampus policy | `~/notes/satan/` |
+| hippocampus entries, staged proposals | `~/notes/satan/{hippocampus,proposals}/` |
 | tool name / risk / schema / capability / handler | elisp tool-spec (`dl-satan-tools-*.el`) |
 | mode allowlist / harness / jail / timeouts / budgets | elisp mode-spec (`dl-satan-mode.el`) |
 | JSONL protocol, validation, dispatch, audit, jailing | elisp (`dl-satan-*.el`) |
@@ -197,7 +197,7 @@ chooses to do, it belongs in `~/notes/satan`.
 - **Derived operational layer**: `bough` may cache, index, relate,
   enrich, or project org/denote state. Treat as reconstructable unless
   explicitly promoted. Operationally useful, not canonical.
-- **SATAN-owned state**: lives under `~/notes/satan` — memory,
+- **SATAN-owned state**: lives under `~/notes/satan` — hippocampus,
   proposals, run summaries, prompt material, owned output surfaces.
 
 ## Read broadly, write narrowly
@@ -205,7 +205,7 @@ chooses to do, it belongs in `~/notes/satan`.
 Safety depends on asymmetric access. SATAN may read selected personal
 context broadly, subject to mode and privacy policy. It may write only
 through narrow broker-controlled surfaces: SATAN-owned org blocks,
-SATAN memory/candidate files, SATAN proposal files, SATAN MOTD/status
+SATAN hippocampus files, SATAN proposal files, SATAN MOTD/status
 files, local notifications, other explicitly registered low-risk
 surfaces. All other effects should be staged as proposals.
 
@@ -235,7 +235,7 @@ observe → infer → propose → validate → apply or stage → audit
 ## Self-modification governance
 
 Self-editing is allowed but constrained. SATAN may propose changes to
-prompts, tool descriptions, memory policy, style, mode behaviour,
+prompts, tool descriptions, hippocampus policy, style, mode behaviour,
 future tools, local documentation.
 
 SATAN must not silently apply changes to: ROM prompt, tool
@@ -282,30 +282,32 @@ Capability-based. A mode grants capabilities; a tool requires
 capabilities; an action is allowed only if the mode, tool, risk
 policy, and validator all agree. Avoid vague categories like "trusted
 model" or "safe prompt." Use explicit capabilities: read context,
-write owned daily block, write MOTD, stage proposal, add candidate
-memory, send local notification, query bough, propose self-edit. The
+write owned daily block, write MOTD, stage proposal, write hippocampus
+entry, send local notification, query bough, propose self-edit. The
 model is never the authority on whether an action is safe.
 
-## Memory governance
+## Hippocampus governance
 
-Inspectable and revisable. Lifecycle:
+SATAN's memory is called the hippocampus and lives at
+`~/notes/satan/hippocampus/` as one denote-named org file per entry.
+SATAN curates the hippocampus freely — writes auto-apply, no candidate
+/ confirmed ceremony. The user reviews when they want to via
+`my/satan-hippocampus`; ad-hoc deletes / edits are expected.
 
-```text
-observation → candidate memory → reviewed memory → confirmed / rejected / expired
-```
+Each entry carries provenance (`:RUN_ID:`, `:MODE:`, file mtime).
+A future loop-detection / salience pass can use that to weigh
+SATAN-authored entries against user-confirmed ones.
 
-Include provenance where possible. A memory should not become permanent
-merely because the model inferred it once. Important classes:
-preference, behavioural pattern, standing constraint, project fact,
-operating principle, rejected inference, stale/expired belief. Memory
-helps SATAN behave consistently without becoming an opaque personality
-accretion.
+Important classes of entry: preference, behavioural pattern, standing
+constraint, project fact, operating principle, rejected inference,
+stale/expired belief. Hippocampus helps SATAN behave consistently
+without becoming an opaque personality accretion.
 
 ## Outbound communication governance
 
 Start local and narrow. Permitted low-risk surfaces: desktop
 notification, MOTD/status text, SATAN-owned daily-note block, proposal
-file, memory candidate file. Higher-impact outbound (email, chat,
+file, hippocampus file. Higher-impact outbound (email, chat,
 calendar mutation, issue/PR comments, public posting, external API
 mutation) requires explicit review. SATAN does not become socially or
 operationally active by accident.
@@ -326,7 +328,7 @@ Every run is explainable after the fact. A run answers:
 
 - Which mode ran?
 - What prompt material was used?
-- What memory was visible?
+- What hippocampus was visible?
 - What context was visible?
 - Which harness and model executed?
 - Which tools were available?
@@ -344,14 +346,14 @@ When extending SATAN, prefer changes that preserve or strengthen these
 properties:
 
 1. **Local first** — durable state remains local and inspectable.
-2. **Text first** — behaviour and memory visible as text where practical.
+2. **Text first** — behaviour and hippocampus visible as text where practical.
 3. **Broker enforced** — enforcement in the trusted broker, not in prompt wording.
 4. **Harness agnostic** — new runtimes plug in behind the protocol.
 5. **Proposal first** — risky actions are staged before applied.
 6. **Read broad, write narrow** — write surfaces stay explicit and small.
 7. **Self-edit cautiously** — reflexive behaviour produces reviewable proposals, not silent mutation.
 8. **No ambient authority** — models/harnesses never inherit broad host access by default.
-9. **Make drift visible** — behaviour/prompt/memory/permission changes auditable.
+9. **Make drift visible** — behaviour/prompt/hippocampus/permission changes auditable.
 10. **Small useful loops beat grand autonomy** — a good daily block beats a half-trusted general agent.
 
 ## Architectural smells
@@ -366,7 +368,7 @@ justification):
 - terminal transcript scraping as protocol
 - generated code auto-loaded without review
 - self-edit scope expanding before review UX matures
-- memories accumulating without confirmation/rejection
+- hippocampus accumulating without curation / forgetting
 - noisy notifications with low utility
 - bough becoming canonical by accident
 - audit artifacts missing or incomplete
@@ -382,9 +384,10 @@ justification):
 | `dl-satan.el` | Aggregator + `my/satan-run`. |
 | `dl-satan-mode.el` | Mode registry; modes `morning`, `motd`, `self-edit`. |
 | `dl-satan-tools.el` | Tool registry, dispatch, schema validator, JSON-Schema builder (from notes descriptions). |
-| `dl-satan-tools-org.el` | Handlers: `org.read_context`, `org.update_owned_block`, `proposal.stage`. |
-| `dl-satan-tools-notify.el` | `notify.send` (D-Bus). |
-| `dl-satan-tools-memory.el` | `memory.add_candidate`; `my/satan-memory-candidates`. |
+| `dl-satan-tools-org.el` | Handlers: `org_read_context`, `org_update_owned_block`, `proposal_stage`. |
+| `dl-satan-tools-notify.el` | `notify_send` (D-Bus). |
+| `dl-satan-tools-hippocampus.el` | `hippocampus_write`; `my/satan-hippocampus`. |
+| `dl-satan-tools-inbox.el` | `inbox_append`; `my/satan-inbox`; `my/satan-inbox-unread-count`. |
 | `dl-satan-context.el` | Per-mode bundle assembly; strict `--read-required`; scaffold assembly. |
 | `dl-satan-output.el` | Mode output handlers (`morning`, `motd`, `self-edit`). |
 | `dl-satan-block.el` | Owned-block find/replace. |
@@ -408,7 +411,7 @@ justification):
   exposes both binaries on PATH; broker's `direnv-env` plumbing picks
   them up at spawn.
 - `~/flakes/modules/home/satan.nix` — imported by Sleipnir. Units
-  `satan-morning.{service,timer}` (07:30) and
+  `satan-morning.{service,timer}` (09:00) and
   `satan-motd.{service,timer}` (07:00).
 
 ### Notes tree (canonical model-facing surface)
@@ -422,16 +425,17 @@ justification):
   system/
     scaffold.txt                     # shared system-prompt scaffold (termination instruction)
   tools/                             # one markdown file per tool — model-facing description
-    org.read_context.md
-    org.update_owned_block.md
-    proposal.stage.md
-    notify.send.md
-    memory.add_candidate.md
-    satan.final.md                   # synthetic harness-side tool, canonical desc here
+    org_read_context.md
+    org_update_owned_block.md
+    proposal_stage.md
+    notify_send.md
+    hippocampus_write.md
+    inbox_append.md
+    satan_final.md                   # synthetic harness-side tool, canonical desc here
   motd.txt
-  hippocampus/                       # rw inside jail at /satan/hippocampus
+  inbox.org                          # append-only headlines, tagged :unread:satan:
+  hippocampus/                       # <ID>--<slug>__satan_hippocampus.org; rw inside jail at /satan/hippocampus
   proposals/                         # <ID>--<slug>__satan_proposal.org
-  memory/candidates/                 # <ID>--<slug>__satan_memory.org
   runs/<run-id>/                     # YYYYMMDDTHHMMSS-<mode>-<rand6>
     bundle.json                      # frozen input (incl. assembled :prompt)
     manifest.json                    # mode + capabilities + harness + tools[] (full JSON Schemas)
@@ -447,9 +451,9 @@ justification):
 
 | Mode | Tools | Auto-apply | Budget tokens / tool-calls / wall |
 |---|---|---|---|
-| `morning` | `org.read_context`, `org.update_owned_block`, `proposal.stage`, `notify.send`, `memory.add_candidate` | `owned` | 20000 / 8 / 90s |
-| `motd` | `org.read_context`, `org.update_owned_block`, `notify.send` | `owned` | 5000 / 4 / 45s |
-| `self-edit` | `proposal.stage` | `none` | 50000 / 20 / 180s |
+| `morning` | `org_read_context`, `org_update_owned_block`, `proposal_stage`, `notify_send`, `hippocampus_write`, `inbox_append` | `owned` | 20000 / 8 / 90s |
+| `motd` | `org_read_context`, `notify_send`, `inbox_append` | `owned` (motd surface owned by output handler; written from `satan_final.summary`) | 10000 / 4 / 45s |
+| `self-edit` | `proposal_stage` | `none` | 50000 / 20 / 180s |
 
 All three use OpenRouter with `anthropic/claude-haiku-4.5` by default.
 Override per-mode in `dl-satan-mode.el`: `:provider`, `:model`,
@@ -459,13 +463,14 @@ Override per-mode in `dl-satan-mode.el`: `:provider`, `:model`,
 
 | Name | Risk | Auth | Effect |
 |---|---|---|---|
-| `org.read_context` | read | — | Read today/week/inbox text. |
-| `org.update_owned_block` | low | capability `write-daily` or `write-motd` | Replace owned `#+begin_satan` block. |
-| `proposal.stage` | low | capability `stage-proposal` | Write a denote proposal file. |
-| `notify.send` | low | capability `notify` | D-Bus desktop notification. |
-| `memory.add_candidate` | medium | capability `memory-candidate` | Write a denote memory-candidate file. |
+| `org_read_context` | read | — | Read today/week/inbox text. |
+| `org_update_owned_block` | low | capability `write-daily` | Replace owned `#+begin_satan` block (target=today). |
+| `proposal_stage` | low | capability `stage-proposal` | Write a denote proposal file. |
+| `notify_send` | low | capability `notify` | D-Bus desktop notification. |
+| `hippocampus_write` | low | capability `hippocampus-write` | Append a denote hippocampus entry (SATAN-owned, auto-applied). |
+| `inbox_append` | low | capability `inbox-write` | Append a headline to `~/notes/satan/inbox.org` (SATAN-owned, auto-applied; preferred over `notify_send` for non-urgent messages). |
 
-The python harness intercepts a synthetic `satan.final(summary,
+The python harness intercepts a synthetic `satan_final(summary,
 actions[])` tool call as the terminal signal and emits the broker's
 `final` record. Plain-content responses with no tool calls are coerced
 into `final` with `reason=no_tool_calls`. Budget exhaustion: harness
@@ -578,8 +583,11 @@ relevance.)
 - `dl-satan-MODULE-name` for public internals; `dl-satan-MODULE--name`
   for private.
 - `my/satan-*` for user-callable commands (`my/satan-run`,
-  `my/satan-memory-candidates`).
-- Tool names: `domain.verb` (`org.read_context`, `notify.send`).
+  `my/satan-hippocampus`).
+- Tool names: `domain_verb` (`org_read_context`, `notify_send`).
+  Underscored, not dotted: must match `^[a-zA-Z0-9_-]+$` so the schema
+  survives every OpenAI-compatible adapter (OpenRouter → Amazon Bedrock
+  rejects dots; OpenAI's own validator does too).
 
 ## Open threads
 
@@ -592,13 +600,13 @@ Numbered for cross-referencing in commits / changelog.
    `dl-satan-context-morning` currently only dumps today's note text +
    prompt. Surfacing backlinks for unresolved-loop items would let the
    model thread yesterday's open questions into today's plan.
-3. **Memory / proposal review UX (magit-style)** — v1 is raw
-   `find-file` / dired (`my/satan-memory-candidates`). When volume
+3. **Hippocampus / proposal review UX (magit-style)** — v1 is raw
+   `find-file` / dired (`my/satan-hippocampus`). When volume
    warrants, a `magit-status`-style buffer over `proposals/` +
-   `memory/candidates/` with `a`pply / `r`eject / `s`nooze actions.
+   `hippocampus/` with `a`pply / `r`eject / `s`nooze actions.
 4. **Budget-exhaustion UX** — harness self-terminates with a synthetic
    `final{reason=budget_tokens}`. Smoother: emit a `system` log
-   message, let the LLM wind down naturally with its own `satan.final`
+   message, let the LLM wind down naturally with its own `satan_final`
    on the next turn.
 5. **Pi / Zerostack harness adapter** — same `Provider` interface,
    different runtime. Plug-in via env (`SATAN_PROVIDER=pi`). Not
@@ -611,7 +619,7 @@ Numbered for cross-referencing in commits / changelog.
    `dl-satan-self-edit-root = ~/.emacs.d/satan/`. Broader (full
    `~/.emacs.d/`) is on the table when SATAN's edit suggestions prove
    trustworthy.
-8. **`org.read_context` scope coverage** — only `today | week | inbox`.
+8. **`org_read_context` scope coverage** — only `today | week | inbox`.
    `org-agenda`, `org-roam` graph queries, recently-edited files would
    all be useful.
 9. **Bundle-section framing in `build_system_prompt`** — the
@@ -627,7 +635,7 @@ Improvements usually fall into one of these categories:
 
 - **Better context** — agenda; backlinks; recently-edited notes;
   unresolved loops; bough graph queries; project summaries.
-- **Better review** — proposal review UI; memory review UI;
+- **Better review** — proposal review UI; hippocampus review UI;
   accept/reject/snooze flows; diff-based self-edit review.
 - **Better portability** — second harness adapter; self-describing
   manifests (done — phase 2E); provider-neutral tool schema generation.

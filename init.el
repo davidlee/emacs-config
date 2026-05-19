@@ -82,6 +82,7 @@
 (require 'dl-smudge)
 (require 'dl-secret)
 (require 'dl-gptel)
+(require 'dl-minuet)
 
 (require 'dl-keybind)
 (require 'dl-dired)

@@ -48,23 +48,25 @@ Returns the (:applied :staged :rejected :failed) plist."
           :failed   (nreverse failed))))
 
 (defun dl-satan-output/morning (final ctx)
-  "Morning: auto-apply org.update_owned_block + proposal.stage."
+  "Morning: auto-apply org_update_owned_block + proposal_stage + inbox_append."
   (dl-satan-output--partition
    final
-   '("org.update_owned_block" "proposal.stage")
+   '("org_update_owned_block" "proposal_stage" "inbox_append")
    ctx))
 
 (defun dl-satan-output/self-edit (final ctx)
-  "Self-edit: only `proposal.stage' is allowed to auto-apply."
-  (dl-satan-output--partition final '("proposal.stage") ctx))
+  "Self-edit: only `proposal_stage' is allowed to auto-apply."
+  (dl-satan-output--partition final '("proposal_stage") ctx))
 
 (defun dl-satan-output/motd (final ctx)
   "Motd: write FINAL summary to `dl-satan-motd-path' atomically.
-Also auto-apply owned block updates."
+`satan_final.summary' is the canonical motd content; the model has no
+tool that targets the motd surface, so there is one writer (this
+handler) and no race."
   (let ((partition
          (dl-satan-output--partition
           final
-          '("org.update_owned_block")
+          '("inbox_append")
           ctx))
         (summary (plist-get final :summary)))
     (when (stringp summary)

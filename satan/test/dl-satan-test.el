@@ -15,7 +15,8 @@
 (require 'dl-satan-block)
 (require 'dl-satan-tools)
 (require 'dl-satan-tools-notify)
-(require 'dl-satan-tools-memory)
+(require 'dl-satan-tools-hippocampus)
+(require 'dl-satan-tools-inbox)
 (require 'dl-satan-tools-org)
 (require 'dl-satan-context)
 (require 'dl-satan-output)
@@ -157,27 +158,27 @@
   (cl-letf (((symbol-function 'notifications-notify)
              (lambda (&rest _args) 42)))
     (let ((res (dl-satan-tool-dispatch
-                '(:type "tool_call" :id "n1" :name "notify.send"
+                '(:type "tool_call" :id "n1" :name "notify_send"
                   :args (:title "hi" :body "there"))
-                '("notify.send")
+                '("notify_send")
                 nil)))
       (should (eq (plist-get res :ok) t))
       (should (equal (plist-get (plist-get res :result) :id) 42)))))
 
 (ert-deftest dl-satan-notify/schema-missing-title ()
   (let ((res (dl-satan-tool-dispatch
-              '(:type "tool_call" :id "n2" :name "notify.send"
+              '(:type "tool_call" :id "n2" :name "notify_send"
                 :args (:body "x"))
-              '("notify.send")
+              '("notify_send")
               nil)))
     (should (equal (plist-get res :ok) :false))
     (should (string-match-p "title" (plist-get res :error)))))
 
 (ert-deftest dl-satan-notify/schema-urgency-enum ()
   (let ((res (dl-satan-tool-dispatch
-              '(:type "tool_call" :id "n3" :name "notify.send"
+              '(:type "tool_call" :id "n3" :name "notify_send"
                 :args (:title "t" :body "b" :urgency "screaming"))
-              '("notify.send")
+              '("notify_send")
               nil)))
     (should (equal (plist-get res :ok) :false))
     (should (string-match-p "urgency" (plist-get res :error)))))
@@ -187,50 +188,138 @@
   (cl-letf (((symbol-function 'notifications-notify)
              (lambda (&rest _args) (error "no D-Bus today"))))
     (let ((res (dl-satan-tool-dispatch
-                '(:type "tool_call" :id "n4" :name "notify.send"
+                '(:type "tool_call" :id "n4" :name "notify_send"
                   :args (:title "t" :body "b"))
-                '("notify.send")
+                '("notify_send")
                 nil)))
       (should (equal (plist-get res :ok) :false))
       (should (string-match-p "no D-Bus" (plist-get res :error))))))
 
-;; ---------- dl-satan-tools-memory ----------
+;; ---------- dl-satan-tools-inbox ----------
 
-(ert-deftest dl-satan-memory/handler-writes-denote-file ()
-  (let* ((tmp (make-temp-file "satan-mem-" t))
-         (dl-satan-memory-candidates-dir tmp))
+(ert-deftest dl-satan-inbox/handler-appends-headline ()
+  (let* ((tmp (make-temp-file "satan-inbox-"))
+         (dl-satan-inbox-file tmp))
     (unwind-protect
-        (let* ((res (dl-satan-tool/memory-add-candidate
+        (let* ((res (dl-satan-tool/inbox-append
+                     '(:title "Daily plan ready"
+                       :body "Focus section blank; nudge to fill in.")
+                     '(:id "r1" :mode-name "motd"
+                       :capabilities (inbox-write)))))
+          (should (eq (car res) 'ok))
+          (let ((text (with-temp-buffer
+                        (insert-file-contents tmp)
+                        (buffer-string))))
+            (should (string-match-p "#\\+title:    SATAN inbox" text))
+            (should (string-match-p "^\\* \\[.*\\] Daily plan ready" text))
+            (should (string-match-p ":unread:satan:" text))
+            (should (string-match-p ":RUN_ID: r1" text))
+            (should (string-match-p "Focus section blank" text))))
+      (when (file-exists-p tmp) (delete-file tmp)))))
+
+(ert-deftest dl-satan-inbox/capability-required ()
+  (let ((res (dl-satan-tool/inbox-append
+              '(:title "t" :body "b")
+              '(:capabilities (write-daily)))))
+    (should (eq (car res) 'error))
+    (should (string-match-p "inbox-write" (cdr res)))))
+
+(ert-deftest dl-satan-inbox/append-preserves-existing ()
+  (let* ((tmp (make-temp-file "satan-inbox-"))
+         (dl-satan-inbox-file tmp))
+    (unwind-protect
+        (progn
+          (dl-satan-tool/inbox-append
+           '(:title "first" :body "a")
+           '(:id "r1" :mode-name "motd" :capabilities (inbox-write)))
+          (dl-satan-tool/inbox-append
+           '(:title "second" :body "b" :urgency "urgent")
+           '(:id "r1" :mode-name "motd" :capabilities (inbox-write)))
+          (let ((text (with-temp-buffer
+                        (insert-file-contents tmp)
+                        (buffer-string))))
+            (should (string-match-p "first" text))
+            (should (string-match-p "second" text))
+            (should (string-match-p ":urgent:" text))))
+      (when (file-exists-p tmp) (delete-file tmp)))))
+
+(ert-deftest dl-satan-inbox/unread-count-matches-tags ()
+  (let* ((tmp (make-temp-file "satan-inbox-"))
+         (dl-satan-inbox-file tmp))
+    (unwind-protect
+        (progn
+          (should (equal (my/satan-inbox-unread-count) 0))
+          (dl-satan-tool/inbox-append
+           '(:title "a" :body "x")
+           '(:capabilities (inbox-write)))
+          (dl-satan-tool/inbox-append
+           '(:title "b" :body "y")
+           '(:capabilities (inbox-write)))
+          (should (equal (my/satan-inbox-unread-count) 2)))
+      (when (file-exists-p tmp) (delete-file tmp)))))
+
+;; ---------- dl-satan-tools-hippocampus ----------
+
+(ert-deftest dl-satan-hippocampus/handler-writes-denote-file ()
+  (let* ((tmp (make-temp-file "satan-hippo-" t))
+         (dl-satan-hippocampus-dir tmp))
+    (unwind-protect
+        (let* ((res (dl-satan-tool/hippocampus-write
                      '(:title "Avoid mocking the DB"
                        :body "User burned by a mock/prod divergence in 2026 Q1.")
                      '(:id "r1" :mode-name "morning"
-                       :capabilities (memory-candidate)))))
+                       :capabilities (hippocampus-write)))))
           (should (eq (car res) 'ok))
           (let* ((path (plist-get (cdr res) :path))
                  (text (with-temp-buffer
                          (insert-file-contents path)
                          (buffer-string))))
-            (should (string-match-p "__satan_memory\\.org$" path))
-            (should (string-match-p ":satan:memory:candidate:" text))
+            (should (string-match-p "__satan_hippocampus\\.org$" path))
+            (should (string-match-p ":satan:hippocampus:" text))
             (should (string-match-p ":RUN_ID: r1" text))
             (should (string-match-p "mock/prod divergence" text))))
       (delete-directory tmp t))))
 
-(ert-deftest dl-satan-memory/capability-required ()
-  (let ((res (dl-satan-tool/memory-add-candidate
+(ert-deftest dl-satan-hippocampus/capability-required ()
+  (let ((res (dl-satan-tool/hippocampus-write
               '(:title "t" :body "b")
               '(:capabilities (write-daily)))))
     (should (eq (car res) 'error))
-    (should (string-match-p "memory-candidate" (cdr res)))))
+    (should (string-match-p "hippocampus-write" (cdr res)))))
 
-(ert-deftest dl-satan-memory/schema-required ()
+(ert-deftest dl-satan-hippocampus/schema-required ()
   (let ((res (dl-satan-tool-dispatch
-              '(:type "tool_call" :id "m1" :name "memory.add_candidate"
+              '(:type "tool_call" :id "m1" :name "hippocampus_write"
                 :args (:body "x"))
-              '("memory.add_candidate")
-              '(:capabilities (memory-candidate)))))
+              '("hippocampus_write")
+              '(:capabilities (hippocampus-write)))))
     (should (equal (plist-get res :ok) :false))
     (should (string-match-p "title" (plist-get res :error)))))
+
+;; ---------- dl-satan-tools-org ----------
+
+(ert-deftest dl-satan-org/update-owned-block-rejects-motd-target ()
+  "motd is no longer a writable target; satan_final.summary owns motd."
+  (let ((res (dl-satan-tool-dispatch
+              '(:type "tool_call" :id "u1" :name "org_update_owned_block"
+                :args (:target "motd" :block "satan" :content "x"))
+              '("org_update_owned_block")
+              '(:capabilities (write-daily)))))
+    (should (equal (plist-get res :ok) :false))
+    (should (string-match-p "target" (plist-get res :error)))))
+
+(ert-deftest dl-satan-org/update-owned-block-tool-not-in-motd-mode ()
+  "motd mode's :tools list must not include org_update_owned_block."
+  (let* ((mode (dl-satan-mode-resolve "motd"))
+         (tools (plist-get mode :tools)))
+    (should-not (member "org_update_owned_block" tools))))
+
+(ert-deftest dl-satan-org/update-owned-block-only-registered-for-morning ()
+  "Tool registration restricts org_update_owned_block to morning mode."
+  (let* ((spec (dl-satan-tool-lookup "org_update_owned_block"))
+         (modes (plist-get spec :modes)))
+    (should (member "morning" modes))
+    (should-not (member "motd" modes))))
 
 ;; ---------- dl-satan self-edit context + output ----------
 
@@ -371,26 +460,27 @@ populated from ALIST `((NAME . CONTENT) …)'."
 
 (ert-deftest dl-satan-tools/final-schema-uses-notes-description ()
   (dl-satan-test--with-tool-descriptions
-   '(("satan.final" . "Terminate the run; describe what you did."))
+   '(("satan_final" . "Terminate the run; describe what you did."))
    (lambda ()
      (let* ((js (dl-satan-tool-final-schema))
             (fn (plist-get js :function))
             (params (plist-get fn :parameters)))
-       (should (equal (plist-get fn :name) "satan.final"))
+       (should (equal (plist-get fn :name) "satan_final"))
        (should (string-match-p "Terminate" (plist-get fn :description)))
        (should (equal (append (plist-get params :required) nil) '("summary")))))))
 
 ;; ---------- dl-satan-broker manifest assembly ----------
 
 (ert-deftest dl-satan-broker/manifest-tools-shape ()
-  "Manifest carries one JSON Schema per allowed tool plus satan.final."
+  "Manifest carries one JSON Schema per allowed tool plus satan_final."
   (dl-satan-test--with-tool-descriptions
-   '(("org.read_context"      . "Read a slice of the notes corpus.")
-     ("org.update_owned_block" . "Replace a SATAN-owned org block.")
-     ("proposal.stage"         . "Stage a proposal.")
-     ("notify.send"            . "Send a desktop notification.")
-     ("memory.add_candidate"   . "Stage a candidate memory.")
-     ("satan.final"            . "Terminate the run."))
+   '(("org_read_context"      . "Read a slice of the notes corpus.")
+     ("org_update_owned_block" . "Replace a SATAN-owned org block.")
+     ("proposal_stage"         . "Stage a proposal.")
+     ("notify_send"            . "Send a desktop notification.")
+     ("hippocampus_write"      . "Write to the hippocampus.")
+     ("inbox_append"           . "Append to the inbox.")
+     ("satan_final"            . "Terminate the run."))
    (lambda ()
      (let* ((mode (dl-satan-mode-resolve "morning"))
             (manifest (dl-satan-broker--build-manifest mode "test-run"))
@@ -398,13 +488,14 @@ populated from ALIST `((NAME . CONTENT) …)'."
             (names (mapcar (lambda (t-) (plist-get (plist-get t- :function) :name))
                            tools)))
        (should (equal (plist-get manifest :run_id) "test-run"))
-       (should (member "org.read_context" names))
-       (should (member "org.update_owned_block" names))
-       (should (member "notify.send" names))
-       (should (member "memory.add_candidate" names))
-       (should (member "satan.final" names))
+       (should (member "org_read_context" names))
+       (should (member "org_update_owned_block" names))
+       (should (member "notify_send" names))
+       (should (member "hippocampus_write" names))
+       (should (member "inbox_append" names))
+       (should (member "satan_final" names))
        ;; Descriptions came from notes files, not elisp.
-       (let ((notify (cl-find "notify.send" tools
+       (let ((notify (cl-find "notify_send" tools
                               :key (lambda (t-)
                                      (plist-get (plist-get t- :function) :name))
                               :test #'equal)))
@@ -417,9 +508,9 @@ populated from ALIST `((NAME . CONTENT) …)'."
   (let* ((tmp (make-temp-file "satan-se-out-" t))
          (dl-satan-proposals-dir tmp)
          (final '(:summary "x"
-                  :actions ((:type "proposal.stage"
+                  :actions ((:type "proposal_stage"
                              :args (:title "fix" :body "do the thing"))
-                            (:type "org.update_owned_block"
+                            (:type "org_update_owned_block"
                              :args (:target "today" :block "satan" :content "x")))))
          (ctx (list :id "r1" :mode-name "self-edit"
                     :capabilities '(stage-proposal))))
@@ -428,7 +519,7 @@ populated from ALIST `((NAME . CONTENT) …)'."
           (should (equal (length (plist-get p :applied)) 1))
           (should (equal (length (plist-get p :staged)) 1))
           (should (equal (plist-get (car (plist-get p :applied)) :type)
-                         "proposal.stage")))
+                         "proposal_stage")))
       (delete-directory tmp t))))
 
 ;; ---------- dl-satan-audit verifier ----------

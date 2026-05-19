@@ -34,9 +34,11 @@ Dotfiles must not be the source of truth for prompt content.")
  (list :name "morning"
        :prompt-file (expand-file-name "morning.txt" dl-satan-prompts-dir)
        :context-fn 'dl-satan-context-morning
-       :tools '("org.read_context" "org.update_owned_block"
-                "proposal.stage" "notify.send" "memory.add_candidate")
-       :capabilities '(write-daily stage-proposal notify memory-candidate)
+       :tools '("org_read_context" "org_update_owned_block"
+                "proposal_stage" "notify_send" "hippocampus_write"
+                "inbox_append")
+       :capabilities '(write-daily stage-proposal notify hippocampus-write
+                       inbox-write)
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
        :jail-profile 'specDev
        :provider 'openrouter
@@ -51,13 +53,13 @@ Dotfiles must not be the source of truth for prompt content.")
  (list :name "motd"
        :prompt-file (expand-file-name "motd.txt" dl-satan-prompts-dir)
        :context-fn 'dl-satan-context-motd
-       :tools '("org.read_context" "org.update_owned_block" "notify.send")
-       :capabilities '(write-motd notify)
+       :tools '("org_read_context" "notify_send" "inbox_append")
+       :capabilities '(notify inbox-write)
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
        :jail-profile 'specDev
        :provider 'openrouter
        :model "anthropic/claude-haiku-4.5"
-       :budget-tokens 5000
+       :budget-tokens 10000
        :output-handler 'dl-satan-output/motd
        :auto-apply 'owned
        :timeout-seconds 45
@@ -67,7 +69,7 @@ Dotfiles must not be the source of truth for prompt content.")
  (list :name "self-edit"
        :prompt-file (expand-file-name "self-edit.txt" dl-satan-prompts-dir)
        :context-fn 'dl-satan-context-self-edit
-       :tools '("proposal.stage")
+       :tools '("proposal_stage")
        :capabilities '(stage-proposal)
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
        :jail-profile 'specDev
