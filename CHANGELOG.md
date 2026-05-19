@@ -2,6 +2,32 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-20 — SATAN: memory quality sweep — §1
+
+Extends the elisp tool args-schema with a working `:type 'array'
+contract.
+
+- `satan/dl-satan-tools.el`: `dl-satan-tool--validate-arg` is now a
+  lookup wrapper around a new `dl-satan-tool--validate-value` helper
+  so element-level checks can reuse the same constraint logic. New
+  branch on `:type 'array'` rejects non-array values
+  (`"arg KEY must be array"`) and, when `:items` is supplied,
+  validates each element with a label of the form `KEY[N]`. New
+  `dl-satan-tool--items-constraints` coerces `:items SYMBOL` (legacy)
+  to `(:type SYMBOL)` so both spellings work.
+- `dl-satan-tool--args-schema-to-jsonschema` now delegates `:items`
+  rendering to `dl-satan-tool--items-jsonschema`: symbol items keep
+  their `(:type "string")` shape; constraint-plist items can carry
+  `:enum`/`:pattern`; `(:type 'object :shape ...)` items recurse so
+  the manifest emits a full nested object schema with `properties`
+  and `required`.
+- `satan/test/dl-satan-test.el`: 7 new ert covering non-array
+  rejection, scalar-element happy path, element-type mismatch with
+  indexed label, object-element shape validation (required missing
+  + ok), and the matching jsonschema fragments.
+
+Phase-3 94/94 (+7); memory 119/119.
+
 ## 2026-05-20 — SATAN: memory quality sweep — §4 + §7
 
 Two small post-v1 cleanups from `HANDOVER.md` "Quality sweep":

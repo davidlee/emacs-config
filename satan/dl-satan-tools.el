@@ -58,41 +58,74 @@ carries only mechanism (schema, capability, handler)."
 Return nil on success, or an error string.
 
 Supported constraints:
-  :type       string|integer|boolean|number|object
+  :type       string|integer|boolean|number|object|array
   :required   bool
   :enum       (list-of-values)
   :pattern    REGEXP  (string types only)
-  :shape      ARGS-SCHEMA  (object types only; recursive)"
+  :shape      ARGS-SCHEMA  (object types only; recursive)
+  :items      SYMBOL or CONSTRAINTS-plist  (array types only)"
   (let* ((sym (intern (concat ":" (symbol-name key))))
          (val (plist-get args sym))
-         (type     (plist-get constraints :type))
-         (required (plist-get constraints :required))
-         (enum     (plist-get constraints :enum))
-         (pattern  (plist-get constraints :pattern))
-         (shape    (plist-get constraints :shape)))
+         (required (plist-get constraints :required)))
     (cond
      ((and required (null val))
       (format "missing required arg: %s" key))
      ((null val) nil)
+     (t (dl-satan-tool--validate-value val constraints (symbol-name key))))))
+
+(defun dl-satan-tool--validate-value (val constraints label)
+  "Validate VAL (non-nil) against CONSTRAINTS plist.
+LABEL is the human-readable name used in error strings (e.g. \"tags\"
+or \"tags[2]\"). Returns nil on success, or an error string. Does not
+re-check `:required'."
+  (let ((type    (plist-get constraints :type))
+        (enum    (plist-get constraints :enum))
+        (pattern (plist-get constraints :pattern))
+        (shape   (plist-get constraints :shape))
+        (items   (plist-get constraints :items)))
+    (cond
      ((and (eq type 'string) (not (stringp val)))
-      (format "arg %s must be string" key))
+      (format "arg %s must be string" label))
      ((and (eq type 'integer) (not (integerp val)))
-      (format "arg %s must be integer" key))
+      (format "arg %s must be integer" label))
      ((and (eq type 'number) (not (numberp val)))
-      (format "arg %s must be number" key))
+      (format "arg %s must be number" label))
      ((and (eq type 'object) (not (dl-satan-tool--plist-like-p val)))
-      (format "arg %s must be object" key))
+      (format "arg %s must be object" label))
+     ((and (eq type 'array) (not (or (listp val) (vectorp val))))
+      (format "arg %s must be array" label))
      ((and enum (not (member val enum)))
-      (format "arg %s must be one of %S" key enum))
+      (format "arg %s must be one of %S" label enum))
      ((and pattern (stringp val) (not (string-match-p pattern val)))
-      (format "arg %s must match %s" key pattern))
+      (format "arg %s must match %s" label pattern))
      ((and (eq type 'object) shape)
       (let ((cursor shape) err)
         (while (and cursor (null err))
           (setq err (dl-satan-tool--validate-arg val (car cursor) (cadr cursor)))
           (setq cursor (cddr cursor)))
         err))
+     ((and (eq type 'array) items)
+      (let* ((item-constraints (dl-satan-tool--items-constraints items))
+             (idx 0) err)
+        (cl-loop for el being the elements of val
+                 while (null err)
+                 do (setq err
+                          (if (null el)
+                              (format "arg %s[%d] must not be nil" label idx)
+                            (dl-satan-tool--validate-value
+                             el item-constraints
+                             (format "%s[%d]" label idx))))
+                 do (cl-incf idx))
+        err))
      (t nil))))
+
+(defun dl-satan-tool--items-constraints (items)
+  "Coerce an `:items' spec to a constraints plist.
+ITEMS is either a TYPE symbol (e.g. `string') or a constraints plist."
+  (cond
+   ((symbolp items) (list :type items))
+   ((and (consp items) (keywordp (car items))) items)
+   (t (error "SATAN: bad :items spec: %S" items))))
 
 (defun dl-satan-tool-validate-args (spec args)
   "Return nil if ARGS conform to SPEC `:args-schema', else error string."
@@ -193,9 +226,8 @@ Recurses into `:shape' for nested object args."
                      (let ((p (list :type "array")))
                        (when items
                          (setq p (plist-put p :items
-                                            (list :type
-                                                  (dl-satan-tool--jsonschema-type
-                                                   items)))))
+                                            (dl-satan-tool--items-jsonschema
+                                             items))))
                        p))
                     (t (list :type (dl-satan-tool--jsonschema-type type))))))
         (when enum
@@ -213,6 +245,28 @@ Recurses into `:shape' for nested object args."
       (list :type "object"
             :properties properties
             :required (vconcat (nreverse required))))))
+
+(defun dl-satan-tool--items-jsonschema (items)
+  "Convert an `:items' spec to its JSON Schema fragment.
+ITEMS is a TYPE symbol or a constraints plist; for `:type \\='object\\='
+with `:shape', recurses to build an object schema."
+  (cond
+   ((symbolp items)
+    (list :type (dl-satan-tool--jsonschema-type items)))
+   ((and (consp items) (keywordp (car items)))
+    (let* ((itype   (plist-get items :type))
+           (shape   (plist-get items :shape))
+           (enum    (plist-get items :enum))
+           (pattern (plist-get items :pattern)))
+      (cond
+       ((and (eq itype 'object) shape)
+        (dl-satan-tool--args-schema-to-jsonschema shape))
+       (t
+        (let ((p (list :type (dl-satan-tool--jsonschema-type itype))))
+          (when enum    (setq p (plist-put p :enum (vconcat enum))))
+          (when pattern (setq p (plist-put p :pattern pattern)))
+          p)))))
+   (t (error "SATAN: bad :items spec: %S" items))))
 
 (defun dl-satan-tool-json-schema (tool-spec)
   "Return the OpenAI-tools dict for TOOL-SPEC, ready for the manifest.

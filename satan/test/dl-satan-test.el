@@ -138,6 +138,58 @@
                                           :enum ("today" "week"))))))
     (should (null (dl-satan-tool-validate-args spec '(:scope "today"))))))
 
+(ert-deftest dl-satan-tools/schema-array-non-array-rejected ()
+  (let ((spec (list :args-schema '(tags (:type array :items string)))))
+    (should (string-match-p
+             "tags must be array"
+             (dl-satan-tool-validate-args spec '(:tags "foo"))))))
+
+(ert-deftest dl-satan-tools/schema-array-of-scalars-ok ()
+  (let ((spec (list :args-schema '(tags (:type array :items string)))))
+    (should (null (dl-satan-tool-validate-args spec '(:tags ("a" "b")))))))
+
+(ert-deftest dl-satan-tools/schema-array-element-type-mismatch ()
+  (let ((spec (list :args-schema '(tags (:type array :items string)))))
+    (should (string-match-p
+             "tags\\[1\\]"
+             (dl-satan-tool-validate-args spec '(:tags ("a" 2)))))))
+
+(ert-deftest dl-satan-tools/schema-array-of-objects-shape-ok ()
+  (let ((spec (list :args-schema
+                    '(rows (:type array
+                            :items (:type object
+                                    :shape (id (:type string :required t))))))))
+    (should (null (dl-satan-tool-validate-args
+                   spec '(:rows ((:id "x") (:id "y"))))))))
+
+(ert-deftest dl-satan-tools/schema-array-of-objects-shape-missing-required ()
+  (let ((spec (list :args-schema
+                    '(rows (:type array
+                            :items (:type object
+                                    :shape (id (:type string :required t))))))))
+    (should (string-match-p
+             "id"
+             (dl-satan-tool-validate-args spec '(:rows ((:other "x"))))))))
+
+(ert-deftest dl-satan-tools/jsonschema-items-scalar ()
+  (let* ((params (dl-satan-tool--args-schema-to-jsonschema
+                  '(tags (:type array :items string))))
+         (tags (plist-get (plist-get params :properties) :tags)))
+    (should (equal (plist-get tags :type) "array"))
+    (should (equal (plist-get tags :items) (list :type "string")))))
+
+(ert-deftest dl-satan-tools/jsonschema-items-object-shape ()
+  (let* ((params (dl-satan-tool--args-schema-to-jsonschema
+                  '(rows (:type array
+                          :items (:type object
+                                  :shape (id (:type string :required t)))))))
+         (rows (plist-get (plist-get params :properties) :rows))
+         (items (plist-get rows :items)))
+    (should (equal (plist-get items :type) "object"))
+    (should (equal (plist-get (plist-get items :properties) :id)
+                   (list :type "string")))
+    (should (equal (plist-get items :required) ["id"]))))
+
 (ert-deftest dl-satan-tools/dispatch-unknown ()
   (let ((res (dl-satan-tool-dispatch
               '(:type "tool_call" :id "x" :name "no.such" :args nil)
