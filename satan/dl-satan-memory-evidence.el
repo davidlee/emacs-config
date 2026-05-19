@@ -1,0 +1,363 @@
+;;; dl-satan-memory-evidence.el --- evidence-window assembler (impure) -*- lexical-binding: t; -*-
+
+;; Step 6 of memory.design.md.  Impure: reads files, runs `git', calls
+;; the `bough_read' tool handler.  Produces the evidence_window plist
+;; consumed by `dl-satan-memory-canon-canonicalize' (step 5) and stored
+;; verbatim (after truncation) in `traces.metadata_json' (step 7).
+;;
+;; Public entry point:
+;;   (dl-satan-memory-evidence-assemble CTX &optional OPTS) -> PLIST
+;;
+;; CTX is the canon ctx plist: :time_now (ISO8601 string), :mode_name,
+;;   :run_id, :current_grammar_version.
+;;
+;; OPTS keys (all optional):
+;;   :run_started_at         ISO8601 string limiting how far back the window reaches
+;;   :cwd                    absolute path; defaults to `default-directory'
+;;   :behaviour_dir          panopticon root; defaults to `dl-satan-tools-activity-dir'
+;;   :bough_workspace        passed through to `bough_read'
+;;   :seg_limit              focus/browser cap (default 10)
+;;   :bough_limit            bough_recent cap (default 50)
+;;   :budget_target_bytes    soft byte budget (default 16384)
+;;   :budget_hard_cap_bytes  hard byte cap (default 65536)
+;;
+;; This module is intentionally separate from `dl-satan-memory-canon'
+;; (which is PURE per §3.5).  The canon module must never `require'
+;; this one.
+
+(require 'cl-lib)
+(require 'json)
+(require 'subr-x)
+(require 'dl-satan-tools-activity)
+(require 'dl-satan-tools-bough)
+
+;; ---------------------------------------------------------------------
+;; Configuration
+;; ---------------------------------------------------------------------
+
+(defcustom dl-satan-memory-evidence-window-minutes 10
+  "Window length in minutes from time_now back to start_at.
+Capped further by `:run_started_at' (see §4.1)."
+  :type 'integer :group 'dl-satan)
+
+(defcustom dl-satan-memory-evidence-seg-limit 10
+  "Maximum focus/browser segments retained per source (newest)."
+  :type 'integer :group 'dl-satan)
+
+(defcustom dl-satan-memory-evidence-bough-limit 50
+  "Maximum bough_recent entries retained (after dedup by nanoid)."
+  :type 'integer :group 'dl-satan)
+
+(defcustom dl-satan-memory-evidence-budget-target 16384
+  "Soft byte budget for the JSON-serialised evidence (§4.3)."
+  :type 'integer :group 'dl-satan)
+
+(defcustom dl-satan-memory-evidence-budget-hard-cap 65536
+  "Hard byte cap for the JSON-serialised evidence (§4.3)."
+  :type 'integer :group 'dl-satan)
+
+(defcustom dl-satan-memory-evidence-recent-files-limit 8
+  "Cap on `:fs_state.recent_files' entries."
+  :type 'integer :group 'dl-satan)
+
+;; ---------------------------------------------------------------------
+;; Bounds (§4.1)
+;; ---------------------------------------------------------------------
+
+(defun dl-satan-memory-evidence--iso-format (time-val)
+  "Format TIME-VAL as ISO8601 with offset colon (`+10:00')."
+  (format-time-string "%Y-%m-%dT%T%:z" time-val))
+
+(defun dl-satan-memory-evidence--bounds (time-now run-started)
+  "Compute (START . END) ISO strings for the evidence window.
+END is TIME-NOW; START is the later of (TIME-NOW - window-minutes)
+and RUN-STARTED.  RUN-STARTED may be nil."
+  (let* ((end-t (date-to-time time-now))
+         (back-t (time-subtract
+                  end-t
+                  (seconds-to-time
+                   (* 60 dl-satan-memory-evidence-window-minutes))))
+         (run-t (and run-started (date-to-time run-started)))
+         (start-t (if (and run-t (time-less-p back-t run-t))
+                      run-t
+                    back-t)))
+    (cons (if (and run-t (time-less-p back-t run-t))
+              run-started
+            (dl-satan-memory-evidence--iso-format start-t))
+          time-now)))
+
+;; ---------------------------------------------------------------------
+;; Panopticon reads (§4.2)
+;; ---------------------------------------------------------------------
+
+(defun dl-satan-memory-evidence--read-current-window (root)
+  (let ((path (expand-file-name "current/sway.json" root)))
+    (and (file-readable-p path)
+         (dl-satan-tools-activity--read-json path))))
+
+(defun dl-satan-memory-evidence--filter-segments (segments start end)
+  "Return SEGMENTS overlapping the half-open [START, END] window.
+A segment overlaps if its :end_ts >= START and its :start_ts <= END."
+  (let ((s-t (date-to-time start))
+        (e-t (date-to-time end)))
+    (cl-remove-if-not
+     (lambda (seg)
+       (let* ((s (plist-get seg :start_ts))
+              (en (plist-get seg :end_ts))
+              (s-time (and (stringp s) (date-to-time s)))
+              (e-time (and (stringp en) (date-to-time en))))
+         (and (or (null e-time) (not (time-less-p e-time s-t)))
+              (or (null s-time) (not (time-less-p e-t s-time))))))
+     segments)))
+
+(defun dl-satan-memory-evidence--read-segments (root prefix today start end limit)
+  "Read panopticon segments JSONL for PREFIX (focus|browser) on TODAY,
+filter to [START, END], return the last LIMIT entries."
+  (let* ((path (expand-file-name
+                (format "segments/%s-%s.jsonl" prefix today) root))
+         (all (and (file-readable-p path)
+                   (dl-satan-tools-activity--read-jsonl path)))
+         (filt (dl-satan-memory-evidence--filter-segments all start end))
+         (tail (and filt (last filt limit))))
+    (or tail '())))
+
+;; ---------------------------------------------------------------------
+;; Bough reads via the tool handler (§5.4 — only path into bough)
+;; ---------------------------------------------------------------------
+
+(defun dl-satan-memory-evidence--bough-call (scope &rest args)
+  "Call `dl-satan-tool/bough-read' with SCOPE and ARGS (keyword plist).
+Return the payload plist on `ok', or nil on any error."
+  (let* ((arg-plist (apply #'list :scope scope args))
+         (result (condition-case _err
+                     (dl-satan-tool/bough-read arg-plist nil)
+                   (error nil))))
+    (when (and (consp result) (eq (car result) 'ok))
+      (cdr result))))
+
+(defun dl-satan-memory-evidence--flatten-tree (nodes)
+  "Depth-first flatten of a tree of node plists.  Strip :children from
+each emitted plist.  Accept nil for NODES."
+  (let (acc)
+    (cl-labels
+        ((walk (xs)
+           (dolist (n xs)
+             (when (and n (listp n))
+               (let ((children (plist-get n :children))
+                     (cp (copy-sequence n)))
+                 (setq cp (plist-put cp :children nil))
+                 (push cp acc)
+                 (when children (walk children)))))))
+      (walk (or nodes '())))
+    (nreverse acc)))
+
+(defun dl-satan-memory-evidence--bough-recent (start workspace limit)
+  (let* ((payload (dl-satan-memory-evidence--bough-call
+                   "recent_changes" :since start :workspace workspace))
+         (flat (dl-satan-memory-evidence--flatten-tree
+                (and payload (plist-get payload :nodes)))))
+    (if (and limit (< limit (length flat)))
+        (cl-subseq flat 0 limit)
+      flat)))
+
+(defun dl-satan-memory-evidence--bough-active (workspace)
+  (let ((payload (dl-satan-memory-evidence--bough-call
+                  "active" :workspace workspace)))
+    (dl-satan-memory-evidence--flatten-tree
+     (and payload (plist-get payload :nodes)))))
+
+(defun dl-satan-memory-evidence--bough-day (date workspace)
+  (let ((payload (dl-satan-memory-evidence--bough-call
+                  "day" :date date :workspace workspace)))
+    (and payload (plist-get payload :day))))
+
+;; ---------------------------------------------------------------------
+;; Git + fs (§4.2)
+;; ---------------------------------------------------------------------
+
+(defun dl-satan-memory-evidence--git-output (&rest args)
+  "Run `git ARGS' and return trimmed stdout, or nil on non-zero exit."
+  (with-temp-buffer
+    (let ((exit (apply #'call-process "git" nil
+                       (list (current-buffer) nil) nil args)))
+      (and (integerp exit) (zerop exit)
+           (string-trim (buffer-string))))))
+
+(defun dl-satan-memory-evidence--git-state (cwd)
+  "Return git state plist for CWD, or nil if CWD is not in a repo."
+  (when (and cwd (file-directory-p cwd))
+    (let ((default-directory (file-name-as-directory cwd)))
+      (when (zerop (call-process "git" nil nil nil
+                                 "rev-parse" "--git-dir"))
+        (list :head_short
+              (dl-satan-memory-evidence--git-output
+               "rev-parse" "--short" "HEAD")
+              :remote
+              (dl-satan-memory-evidence--git-output
+               "config" "--get" "remote.origin.url")
+              :dirty
+              (not (string-empty-p
+                    (or (dl-satan-memory-evidence--git-output
+                         "status" "--porcelain")
+                        "")))
+              :commits
+              (split-string
+               (or (dl-satan-memory-evidence--git-output
+                    "log" "-n" "5" "--oneline")
+                   "")
+               "\n" t))))))
+
+(defun dl-satan-memory-evidence--recent-files (cwd limit)
+  "Return up to LIMIT entries of `recentf-list' whose absolute path is
+under CWD, relativized.  Empty list if recentf unavailable."
+  (when (and cwd (boundp 'recentf-list) recentf-list)
+    (let* ((prefix (expand-file-name (file-name-as-directory cwd)))
+           out)
+      (cl-loop for f in recentf-list
+               while (< (length out) limit)
+               for full = (expand-file-name f)
+               when (string-prefix-p prefix full)
+               do (push (file-relative-name full cwd) out))
+      (nreverse out))))
+
+(defun dl-satan-memory-evidence--fs-state (cwd)
+  (list :cwd (and cwd (abbreviate-file-name cwd))
+        :recent_files
+        (or (dl-satan-memory-evidence--recent-files
+             cwd dl-satan-memory-evidence-recent-files-limit)
+            '())))
+
+;; ---------------------------------------------------------------------
+;; Truncation (§4.3)
+;; ---------------------------------------------------------------------
+
+(defun dl-satan-memory-evidence--encode-bytes (ev)
+  "Return the byte length of EV's UTF-8 JSON encoding."
+  (length (encode-coding-string (json-encode ev) 'utf-8)))
+
+(defun dl-satan-memory-evidence--truncate-segments-middle (segs)
+  "Keep first 3 + last 3 with a sentinel between.  No-op when length<=6."
+  (if (<= (length segs) 6)
+      segs
+    (let* ((head (cl-subseq segs 0 3))
+           (tail (cl-subseq segs (- (length segs) 3)))
+           (dropped (- (length segs) 6)))
+      (append head
+              (list (list :truncated t :dropped dropped))
+              tail))))
+
+(defun dl-satan-memory-evidence--shrink-annotations (nodes max-len)
+  "Replace any :annotation string longer than MAX-LEN with a placeholder.
+Returns a fresh list; original NODES is not modified."
+  (mapcar
+   (lambda (n)
+     (let ((ann (plist-get n :annotation)))
+       (if (and (stringp ann) (> (length ann) max-len))
+           (let ((cp (copy-sequence n)))
+             (plist-put cp :annotation
+                        (concat (substring ann 0 max-len) "…"))
+             (plist-put cp :annotation_len_original (length ann))
+             cp)
+         n)))
+   nodes))
+
+(defun dl-satan-memory-evidence--truncate (ev target hard-cap)
+  "Apply deterministic truncation passes until EV fits TARGET (best
+effort) or HARD-CAP (mandatory).  Returns EV with :truncated_at set
+to a list of pass names that fired, or nil if none did."
+  (let ((dropped nil)
+        (cur ev))
+    ;; Pass 1: drop bough_day body, keep linked-items only.
+    (when (> (dl-satan-memory-evidence--encode-bytes cur) target)
+      (let ((day (plist-get cur :bough_day)))
+        (when (and day (listp day))
+          (let ((linked (plist-get day :linked)))
+            (setq cur
+                  (plist-put cur :bough_day
+                             (list :linked (or linked '())
+                                   :body_dropped t)))
+            (push 'bough_day_bodies dropped)))))
+    ;; Pass 2: middle-drop browser segments.
+    (when (> (dl-satan-memory-evidence--encode-bytes cur) target)
+      (let ((segs (plist-get cur :browser_segments)))
+        (when (and segs (> (length segs) 6))
+          (setq cur (plist-put cur :browser_segments
+                               (dl-satan-memory-evidence--truncate-segments-middle
+                                segs)))
+          (push 'browser_segments_middle dropped))))
+    ;; Pass 3: middle-drop focus segments.
+    (when (> (dl-satan-memory-evidence--encode-bytes cur) target)
+      (let ((segs (plist-get cur :focus_segments)))
+        (when (and segs (> (length segs) 6))
+          (setq cur (plist-put cur :focus_segments
+                               (dl-satan-memory-evidence--truncate-segments-middle
+                                segs)))
+          (push 'focus_segments_middle dropped))))
+    ;; Pass 4: shrink long bough_active annotations.
+    (when (> (dl-satan-memory-evidence--encode-bytes cur) target)
+      (let ((act (plist-get cur :bough_active)))
+        (when act
+          (setq cur (plist-put cur :bough_active
+                               (dl-satan-memory-evidence--shrink-annotations
+                                act 256)))
+          (push 'bough_active_annotation_bodies dropped))))
+    ;; Pass 5 (hard cap): drop bough_recent entirely.
+    (when (> (dl-satan-memory-evidence--encode-bytes cur) hard-cap)
+      (setq cur (plist-put cur :bough_recent nil))
+      (push 'bough_recent dropped))
+    (when dropped
+      (setq cur (plist-put cur :truncated_at (nreverse dropped))))
+    cur))
+
+;; ---------------------------------------------------------------------
+;; Public entry point
+;; ---------------------------------------------------------------------
+
+(defun dl-satan-memory-evidence-assemble (ctx &optional opts)
+  "Assemble the evidence_window plist (§4) for canonicalization and storage.
+CTX is the canon ctx plist; OPTS optional knobs (see file header)."
+  (let* ((time-now (plist-get ctx :time_now))
+         (run-started (plist-get opts :run_started_at))
+         (bounds (dl-satan-memory-evidence--bounds time-now run-started))
+         (start (car bounds))
+         (end (cdr bounds))
+         (today (substring end 0 10))
+         (root (or (plist-get opts :behaviour_dir)
+                   dl-satan-tools-activity-dir))
+         (workspace (or (plist-get opts :bough_workspace)
+                        dl-satan-bough-default-workspace))
+         (cwd (or (plist-get opts :cwd) default-directory))
+         (seg-limit (or (plist-get opts :seg_limit)
+                        dl-satan-memory-evidence-seg-limit))
+         (bough-limit (or (plist-get opts :bough_limit)
+                          dl-satan-memory-evidence-bough-limit))
+         (budget-target (or (plist-get opts :budget_target_bytes)
+                            dl-satan-memory-evidence-budget-target))
+         (budget-hard (or (plist-get opts :budget_hard_cap_bytes)
+                          dl-satan-memory-evidence-budget-hard-cap))
+         (raw (list
+               :current_window
+               (dl-satan-memory-evidence--read-current-window root)
+               :focus_segments
+               (dl-satan-memory-evidence--read-segments
+                root "focus" today start end seg-limit)
+               :browser_segments
+               (dl-satan-memory-evidence--read-segments
+                root "browser" today start end seg-limit)
+               :bough_recent
+               (dl-satan-memory-evidence--bough-recent
+                start workspace bough-limit)
+               :bough_active
+               (dl-satan-memory-evidence--bough-active workspace)
+               :bough_day
+               (dl-satan-memory-evidence--bough-day today workspace)
+               :git_state
+               (dl-satan-memory-evidence--git-state cwd)
+               :fs_state
+               (dl-satan-memory-evidence--fs-state cwd)
+               :window_start_at start
+               :window_end_at end)))
+    (dl-satan-memory-evidence--truncate raw budget-target budget-hard)))
+
+(provide 'dl-satan-memory-evidence)
+;;; dl-satan-memory-evidence.el ends here

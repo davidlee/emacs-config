@@ -2,6 +2,28 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-19 — SATAN: memory step 6 — evidence-window assembler
+
+`satan/dl-satan-memory-evidence.el` lands the impure side of the
+memory substrate: bounded reads of panopticon
+(`~/.local/state/behaviour/`), bough (via `bough_read` only — no
+parallel DB read), `git`, and a small `recentf` heuristic, assembled
+into the plist consumed by `dl-satan-memory-canon-canonicalize`.
+
+- Bounds (§4.1): `end = ctx.time_now`, `start = max(end − 10 min,
+  run_started_at)`; segments capped at 10, bough_recent at 50.
+- Truncation (§4.3) is deterministic, five passes: drop bough_day
+  bodies → middle-drop browser segments → middle-drop focus segments
+  → shrink long bough_active annotations → drop bough_recent at the
+  hard cap. Each pass that fires is recorded in `:truncated_at`.
+- Bough output (tree-shaped) is flattened depth-first into the flat
+  list `dl-satan-memory-canon` expects for `bough_active` /
+  `bough_recent`; canon rules don't need to know about trees.
+- 16 new ert pass; total memory-subsystem suite is 63/63.
+
+No shared file touched — registration into the broker, mode
+allowlists, and `dl-satan.el` `require` happen at step 9.
+
 ## 2026-05-19 — SATAN: tick-pulse budget 3000 → 10000
 
 `tick-pulse` was hitting its 3000-token soft cap mid-turn (observed:
