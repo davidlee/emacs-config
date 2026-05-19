@@ -40,6 +40,33 @@ without referencing `memory_*` tools that don't exist yet.
   (`inbox < border < notify < proposal`) and reinforces the
   show-why rule inline.
 
+## 2026-05-19 — SATAN: memory substrate, step 4 (grammar v1 + drift detector)
+
+Step 4 of the memory-substrate plan (`satan/HANDOVER.md`). Lands the
+in-process mirror of grammar v1 and the drift detector that the
+canonicalizer depends on for step 5 (per R4).
+
+- `satan/dl-satan-memory-grammar.el` — new module. Pure-data
+  constants mirroring `memory.design.md` §2 verbatim:
+  `dl-satan-memory-grammar-namespaces` (26 namespaces, open/closed
+  world), `-closed-values` (15 enums per §2.2), `-aliases` (6 entries
+  per §2.3), `-default-weights` (24 namespace defaults per §2.4),
+  plus `-current-version = 1`. Accessors: world / closed-values /
+  alias-target / default-weight / valid-value-p.
+- `satan/test/dl-satan-memory-grammar-test.el` — 6 ert. Three pure:
+  every closed-world namespace has a values entry (and vice versa);
+  accessors return known values; `valid-value-p` distinguishes
+  closed/open/unknown. Three DB-sync: `MAX(grammar_versions.version)`
+  equals `-current-version`; `handle_aliases` for v1 equals
+  `-aliases` set-wise; `handle_weights` v1 + `__default__` rows equal
+  `-default-weights`. Sync tests target `satan_memory` (override via
+  `SATAN_MEMORY_TEST_DB` env var); skip when DB unreachable.
+
+When grammar v2 lands, both sides change: a new migration adds rows
+for the new version, and these constants bump `-current-version` and
+add namespace/alias/weight entries. The sync test catches either
+side moving alone.
+
 ## 2026-05-19 — SATAN: memory substrate, step 3 (bough_read tool)
 
 Step 3 of the memory-substrate plan (`satan/HANDOVER.md`). Lands the
