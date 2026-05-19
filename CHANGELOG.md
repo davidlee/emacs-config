@@ -2,6 +2,63 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-20 — SATAN: memory quality sweep — §6
+
+Adds a `:cue_only` knob to the evidence assembler so
+`memory_resonate`'s cue-derivation pass skips heavy probes that
+do not influence the cue. Trims 3 of the 4 bough shell-outs and
+both panopticon segment reads per resonate call when no explicit
+`cue.handles[]` is supplied.
+
+- `satan/dl-satan-memory-evidence.el`: new opt `:cue_only` (`nil`
+  default). When `t`, `focus_segments` and `browser_segments` are
+  returned as `'()`, and `bough_recent` / `bough_day` as `nil`,
+  without running their probes. `current_window`, `bough_active`,
+  `git_state`, and `fs_state` still populate — they are the
+  "what is now" signals cue derivation depends on. File header
+  documents the knob.
+- `satan/dl-satan-tools-memory.el` `--derive-cue-handles`: passes
+  `:cue_only t` alongside `:run_started_at`. `--mark-impl` is
+  unchanged (it needs the full window).
+- `satan/test/dl-satan-memory-evidence-test.el`: new ert
+  `assemble-cue-only-skips-heavy-probes` stubs the bough
+  helpers to signal if called and asserts the four skipped fields.
+- `satan/test/dl-satan-tools-memory-test.el`: 2 new ert —
+  `resonate-derives-cue-with-cue-only-opt` (capture confirms
+  `:cue_only t` flows through resonate handler) and
+  `mark-does-not-set-cue-only` (mark path unaffected).
+
+Memory 126/126 (+3).
+
+## 2026-05-20 — SATAN: `notes_recent` tool
+
+New read-risk tool that lists recently changed files under
+`~/notes`, complementing `activity_read` (window focus) and
+`org_read_context` (fixed files) by surfacing which artifacts the
+user actually moved.
+
+- `satan/dl-satan-tools-notes.el` (new): shells out to `fd
+  --changed-after Nh -t f --print0 --base-directory ~/notes
+  --exclude satan`, parses NUL-separated output, sorts by mtime
+  desc, clamps `:since-hours` to [1, 720] and `:limit` to [1,
+  200]. Denote-style basenames `DATE--SLUG__TAG_TAG.EXT` parse
+  into `:title` (dashes→spaces) and `:tags` (underscore-split);
+  non-denote basenames return `:title` nil.
+- `satan/dl-satan.el`: requires the new module.
+- `satan/dl-satan-mode.el`: adds `notes_recent` to morning + motd
+  `:tools` lists.
+- `satan/dl-satan-tick.el`: adds `notes_recent` to the tick-pulse
+  default `:tools` list.
+- `satan/test/dl-satan-test.el`: new test block stubs
+  `call-process` via `cl-letf` and covers argv build, mtime sort,
+  limit/since-hours clamp + default, denote-vs-plain basename
+  parse, fd non-zero exit, empty output. Manifest fixtures for
+  morning + budget-exceeded broker test get the new description
+  entry.
+- Caller must drop a model-facing description at
+  `~/notes/satan/tools/notes_recent.md` (loaded at manifest build
+  time per `dl-satan-tools.el:24-30`) before live runs.
+
 ## 2026-05-20 — SATAN: memory quality sweep — §2
 
 Wires the broker's run start-time and per-call wall clock through
