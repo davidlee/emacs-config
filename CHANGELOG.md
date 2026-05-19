@@ -24,6 +24,36 @@ without referencing `memory_*` tools that don't exist yet.
   (`inbox < border < notify < proposal`) and reinforces the
   show-why rule inline.
 
+## 2026-05-19 — SATAN: memory substrate, step 3 (bough_read tool)
+
+Step 3 of the memory-substrate plan (`satan/HANDOVER.md`). Lands the
+read-only path SATAN uses against the bough task tree — the *only*
+permitted read path, with no direct PG access against the `bough_*`
+databases anywhere in satan code.
+
+- `satan/dl-satan-tools-bough.el` — new module. Shell-out to the pinned
+  `bough --json` binary. Six scopes per `memory.design.md` §5.4:
+  `node`, `recent_changes`, `active`, `day`, `week`, `project_subtree`.
+  Composition per §10.2: `node` walks `parent_nanoid` upward to a
+  16-deep root; `week` composes `day list` + per-day `day show`;
+  `project_subtree` fetches the full subtree and prunes in elisp
+  (default `max_depth=3`, marked with `:children_truncated_count` at
+  the boundary). Degraded semantics for `recent_changes` (B1 — uses
+  `updated_at` as proxy until bough exposes status-transition history)
+  and `project_subtree` (B2 — until bough adds `--max-depth`) are both
+  surfaced in the tool description.
+- `satan/test/dl-satan-tools-bough-test.el` — 19 ert: registration
+  shape, schema validation (scope enum + nanoid/date/ISO8601 patterns),
+  per-scope required-arg checks, week-bounds math, depth-prune purity,
+  unknown-scope rejection, plus three integration tests that skip when
+  `bough` is missing.
+- `~/notes/satan/tools/bough_read.md` — model-facing tool description
+  (lives outside this repo).
+
+Not yet wired into `dl-satan.el` or any mode allowlist — that's step 9
+(per HANDOVER). The tool registers itself on load via the existing
+`dl-satan-tool-register` surface.
+
 ## 2026-05-19 — SATAN: memory substrate, step 2 (migration runner + schema)
 
 Step 2 of the memory-substrate plan (`satan/HANDOVER.md`). Establishes
