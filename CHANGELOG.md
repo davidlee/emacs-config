@@ -2,6 +2,32 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-19 — SATAN: activity_read v2 — recent_browser + current scopes
+
+Live smoke against OpenRouter confirmed `activity_read{scope:"today"}`
+works end-to-end. Adding two more scopes the panopticon producer already
+feeds.
+
+- `satan/dl-satan-tools-activity.el` — adds `recent_browser` (mirrors
+  `recent_focus` over `segments/browser-<today>.jsonl`; tail-N, default
+  20, clamped 1..200) and `current` (single snapshot from
+  `current/sway.json` — `app_id`, `workspace`, `output`, `title`, `pid`).
+  Enum on `:scope` extended; both new scopes return ok with empty/nil
+  data when the producer hasn't written the file yet.
+- `~/notes/satan/tools/activity_read.md` — model-facing description
+  expanded to cover the new scopes and the new title caveat.
+- `satan/test/dl-satan-test.el` — 4 new ert: recent_browser tail,
+  recent_browser missing file, current snapshot, current missing file.
+  Test fixtures gain `--write-browser-jsonl` and `--write-current-sway`.
+- `SATAN.md` — tool-table row refreshed; new open thread #10
+  "`activity_read` current-scope title leak" documents the deliberate
+  decision to pass sway's window-title through verbatim (acceptable for
+  now; future work either strips at the SATAN boundary or has panopticon
+  emit a `current/sway-public.json` without title).
+
+Tests: 87/87 ert (+4), 21/21 python, 1/1 integration,
+`nix build .#satan-jailed-gptel-harness` clean.
+
 ## 2026-05-19 — SATAN: activity_read tool (panopticon consumer)
 
 Panopticon's sway watcher + firefox extension + segmentizer landed

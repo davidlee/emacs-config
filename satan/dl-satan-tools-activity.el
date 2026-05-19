@@ -5,11 +5,21 @@
 ;; `dl-satan-tools-activity-dir' (default `~/.local/state/behaviour/').
 ;;
 ;; Scopes:
-;;   - "today"        -> today's aggregate histogram
-;;                       (per-app, per-workspace, per-hour seconds)
-;;   - "recent_focus" -> last N focus segments for today, default 20,
-;;                       max 200.  Each segment: app_id, workspace,
-;;                       start/end timestamps, duration_s.
+;;   - "today"          -> today's aggregate histogram
+;;                         (per-app, per-workspace, per-hour seconds)
+;;   - "recent_focus"   -> last N focus segments for today, default 20,
+;;                         max 200.  Each segment: app_id, workspace,
+;;                         start/end timestamps, duration_s.
+;;   - "recent_browser" -> last N firefox tab segments for today, same
+;;                         shape contract as recent_focus.  Each
+;;                         segment: origin (URL stripped to origin),
+;;                         start/end timestamps, duration_s.
+;;   - "current"        -> currently-focused window snapshot from sway.
+;;                         {app_id, workspace, output, title, pid}.
+;;                         NOTE: title is passed through verbatim and
+;;                         can be sensitive (browser tab page-title,
+;;                         editor file path, etc.) — see SATAN.md open
+;;                         thread "current-scope title leak".
 ;;
 ;; Risk = `read'; no capability required.  Panopticon is the producer
 ;; that handles redaction (firefox extension strips queries/fragments
@@ -104,13 +114,32 @@ Returns (ok PLIST) | (error STRING)."
                          :limit limit
                          :path path
                          :segments (or tail '())))))
+      ("recent_browser"
+       (let* ((limit (dl-satan-tools-activity--clamp-limit
+                      (plist-get args :limit)))
+              (path (expand-file-name
+                     (format "segments/browser-%s.jsonl" today) root))
+              (all  (dl-satan-tools-activity--read-jsonl path))
+              (tail (last all limit)))
+         (cons 'ok (list :scope "recent_browser"
+                         :date today
+                         :limit limit
+                         :path path
+                         :segments (or tail '())))))
+      ("current"
+       (let* ((path (expand-file-name "current/sway.json" root))
+              (data (dl-satan-tools-activity--read-json path)))
+         (cons 'ok (list :scope "current"
+                         :path path
+                         :window data))))
       (_ (cons 'error (format "unknown scope: %s" scope))))))
 
 (dl-satan-tool-register
  (list :name "activity_read"
        :risk 'read
        :args-schema '(scope (:type string :required t
-                             :enum ("today" "recent_focus"))
+                             :enum ("today" "recent_focus"
+                                    "recent_browser" "current"))
                       limit (:type integer :required nil))
        :modes '("morning" "motd" "tick-pulse")
        :handler 'dl-satan-tool/activity-read))

@@ -499,7 +499,7 @@ Override per-mode in `dl-satan-mode.el`: `:provider`, `:model`,
 | `hippocampus_write` | low | capability `hippocampus-write` | Append a denote hippocampus entry (SATAN-owned, auto-applied). |
 | `inbox_append` | low | capability `inbox-write` | Append a headline to `~/notes/satan/inbox.org` (SATAN-owned, auto-applied; preferred over `notify_send` for non-urgent messages). |
 | `agenda_read` | read | — | Fetch the work calendar via `gcalcli`. Calendar id read from `$WORK_EMAIL`; wrapped in `timeout(1)` so a stalled gcalcli can't freeze the broker. |
-| `activity_read` | read | — | Read panopticon's behaviour state from `~/.local/state/behaviour/`. `scope="today"` returns the per-app/per-workspace/per-hour histogram; `scope="recent_focus"` returns the last N focus segments. PII redaction is handled by the producer (firefox urls stripped to origin, incognito dropped). |
+| `activity_read` | read | — | Read panopticon's behaviour state from `~/.local/state/behaviour/`. `scope="today"` returns the daily histogram; `scope="recent_focus"` / `recent_browser` return the last N focus / browser segments; `scope="current"` returns the live focused-window snapshot (`app_id`, `workspace`, `output`, `title`, `pid`). PII redaction is handled by the producer (firefox URLs stripped to origin, incognito dropped). The `current` scope intentionally passes `title` through — see open thread "current-scope title leak". |
 
 The python harness intercepts a synthetic `satan_final(summary,
 actions[])` tool call as the terminal signal and emits the broker's
@@ -740,6 +740,15 @@ Numbered for cross-referencing in commits / changelog.
    `bundle["prompt"]`; the harness is a passthrough
    (`return bundle["prompt"]`). No canonical model-facing prose lives
    in dotfiles anymore.
+10. **`activity_read` current-scope title leak** — `scope="current"`
+    returns sway's focused-window snapshot verbatim, including the
+    `title` field. Sway IPC titles surface browser tab page-titles,
+    editor file paths, Slack thread subjects, etc. — anything the
+    focused window puts in its title bar. When this lands in the LLM
+    request body the provider can log it. Acceptable for now; tighten
+    later either by (a) stripping `:title` SATAN-side or (b) having
+    panopticon write a `current/sway-public.json` without title for
+    consumers like SATAN to read.
 
 ## Preferred shape of future work
 

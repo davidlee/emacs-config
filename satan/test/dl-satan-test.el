@@ -787,6 +787,21 @@ Captures the argv passed to call-process in `argv-out'."
       (dolist (l lines) (insert l) (insert "\n")))
     path))
 
+(defun dl-satan-test--write-browser-jsonl (dir lines)
+  (let ((path (expand-file-name
+               (format "segments/browser-%s.jsonl"
+                       (dl-satan-test--activity-today))
+               dir)))
+    (with-temp-file path
+      (dolist (l lines) (insert l) (insert "\n")))
+    path))
+
+(defun dl-satan-test--write-current-sway (dir payload)
+  (make-directory (expand-file-name "current" dir) t)
+  (let ((path (expand-file-name "current/sway.json" dir)))
+    (with-temp-file path (insert payload))
+    path))
+
 (ert-deftest dl-satan-activity/today-returns-parsed-histogram ()
   "Scope `today' reads histograms/daily-<today>.json and returns a plist."
   (dl-satan-test--with-activity-root
@@ -854,6 +869,54 @@ Captures the argv passed to call-process in `argv-out'."
                 '(:scope "recent_focus") nil)))
       (should (eq (car res) 'ok))
       (should (equal (plist-get (cdr res) :segments) '())))))
+
+(ert-deftest dl-satan-activity/recent-browser-returns-tail ()
+  "Scope `recent_browser' returns last :limit browser segments in order."
+  (dl-satan-test--with-activity-root
+    (dl-satan-test--write-browser-jsonl
+     dl-satan-tools-activity-dir
+     (cl-loop for i from 1 to 4 collect
+              (format "{\"v\":1,\"origin\":\"site%d.example\",\"duration_s\":%d}"
+                      i i)))
+    (let* ((res (dl-satan-tool/activity-read
+                 '(:scope "recent_browser" :limit 2) nil))
+           (p (cdr res))
+           (segs (plist-get p :segments)))
+      (should (eq (car res) 'ok))
+      (should (equal (plist-get p :scope) "recent_browser"))
+      (should (equal (length segs) 2))
+      (should (equal (plist-get (car segs) :origin) "site3.example"))
+      (should (equal (plist-get (cadr segs) :origin) "site4.example")))))
+
+(ert-deftest dl-satan-activity/recent-browser-missing-file-empty-segments ()
+  "Missing browser segments file yields ok with :segments '()."
+  (dl-satan-test--with-activity-root
+    (let ((res (dl-satan-tool/activity-read
+                '(:scope "recent_browser") nil)))
+      (should (eq (car res) 'ok))
+      (should (equal (plist-get (cdr res) :segments) '())))))
+
+(ert-deftest dl-satan-activity/current-returns-window-snapshot ()
+  "Scope `current' returns parsed current/sway.json verbatim (title included)."
+  (dl-satan-test--with-activity-root
+    (dl-satan-test--write-current-sway
+     dl-satan-tools-activity-dir
+     "{\"app_id\":\"emacs\",\"title\":\"~/notes/foo.org\",\"workspace\":\"09\",\"output\":\"DP-3\",\"pid\":4242}")
+    (let* ((res (dl-satan-tool/activity-read '(:scope "current") nil))
+           (p (cdr res))
+           (w (plist-get p :window)))
+      (should (eq (car res) 'ok))
+      (should (equal (plist-get p :scope) "current"))
+      (should (equal (plist-get w :app_id) "emacs"))
+      (should (equal (plist-get w :workspace) "09"))
+      (should (equal (plist-get w :title) "~/notes/foo.org")))))
+
+(ert-deftest dl-satan-activity/current-missing-file-nil-window ()
+  "Missing current/sway.json yields ok with :window nil."
+  (dl-satan-test--with-activity-root
+    (let ((res (dl-satan-tool/activity-read '(:scope "current") nil)))
+      (should (eq (car res) 'ok))
+      (should (null (plist-get (cdr res) :window))))))
 
 (ert-deftest dl-satan-activity/unknown-scope-errors ()
   "Unknown :scope is a structured error."
