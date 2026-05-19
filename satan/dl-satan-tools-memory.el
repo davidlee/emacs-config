@@ -12,16 +12,12 @@
 ;; touch).  No edit to `dl-satan-tools.el', `dl-satan.el', or
 ;; `dl-satan-mode.el' here.
 ;;
-;; Several quality-sweep items captured in `satan/HANDOVER.md':
-;;   - schema lacks `:type 'array' (topic, links, kinds, cue.handles are
-;;     declared without type and validated in the handler);
+;; Sweep items still open (`satan/HANDOVER.md'):
+;;   - schema lacks `:type 'array' for some hint subfields (topic, links,
+;;     kinds, cue.handles are declared without type and validated in the
+;;     handler);
 ;;   - broker tool-ctx does not yet expose `run-started-at' or `time_now',
-;;     so the evidence window falls back to the 10-minute default;
-;;   - `canonicalize-from-raw' drops normalized hint scalars, so this
-;;     module calls `normalize-hints' + `canonicalize' directly to keep
-;;     `kind' and `valence' in hand.
-;; Revisit once the substrate is wired and acceptance §9 has driven
-;; real call data.
+;;     so the evidence window falls back to the 10-minute default.
 
 (require 'cl-lib)
 (require 'subr-x)
@@ -140,13 +136,12 @@ cannot express yet."
   "Assemble, canonicalize, store; return the §5.1 result."
   (let* ((ctx (dl-satan-tools-memory--ctx-from tool-ctx))
          (evidence (dl-satan-memory-evidence-assemble ctx))
-         (nh (dl-satan-memory-canon-normalize-hints raw-hints))
-         (normalized (plist-get nh :normalized))
-         (rejected-hints (plist-get nh :rejected))
-         (canon (dl-satan-memory-canon-canonicalize evidence normalized ctx))
+         (canon (dl-satan-memory-canon-canonicalize-from-raw
+                 evidence raw-hints ctx))
          (handles (plist-get canon :handles))
          (sources (plist-get canon :handle_sources))
-         (rejected (append rejected-hints (plist-get canon :rejected)))
+         (rejected (plist-get canon :rejected))
+         (normalized (plist-get canon :normalized))
          (kind (or (plist-get normalized :kind) "observation"))
          (valence (or top-valence (plist-get normalized :valence)))
          (gv (plist-get ctx :current_grammar_version))
@@ -238,10 +233,8 @@ cannot express yet."
   "Run the evidence + canon pipeline with HINTS to produce a cue list."
   (let* ((ctx (dl-satan-tools-memory--ctx-from tool-ctx))
          (evidence (dl-satan-memory-evidence-assemble ctx))
-         (nh (dl-satan-memory-canon-normalize-hints hints))
-         (normalized (plist-get nh :normalized))
-         (canon (dl-satan-memory-canon-canonicalize
-                 evidence normalized ctx)))
+         (canon (dl-satan-memory-canon-canonicalize-from-raw
+                 evidence hints ctx)))
     (plist-get canon :handles)))
 
 ;; ---------------------------------------------------------------------

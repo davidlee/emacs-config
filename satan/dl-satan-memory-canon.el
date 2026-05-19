@@ -550,15 +550,21 @@ REJECTED here is always nil — hint rejection is the job of
 
 (defun dl-satan-memory-canon-canonicalize-from-raw (evidence raw-hints ctx)
   "Convenience wrapper: normalize RAW-HINTS, dispatch rules, merge
-rejected lists.  Returns the same shape as
-`dl-satan-memory-canon-canonicalize'."
+rejected lists.  Returns
+  (:handles LIST :handle_sources ALIST :rejected LIST :normalized PLIST)
+where `:normalized' is the closed/open-world hint scalars produced
+by `dl-satan-memory-canon-normalize-hints' (kind, phase, valence,
+topic, focal_app, focal_bough_nanoid, outcome_for).  Callers that
+need `kind' or `valence' read them off `:normalized' instead of
+running the normalize step a second time."
   (let* ((nh (dl-satan-memory-canon-normalize-hints raw-hints))
          (normalized (plist-get nh :normalized))
          (rejected (plist-get nh :rejected))
          (canon (dl-satan-memory-canon-canonicalize
                  evidence normalized ctx)))
-    (plist-put canon :rejected
-               (append rejected (plist-get canon :rejected)))))
+    (setq canon (plist-put canon :rejected
+                           (append rejected (plist-get canon :rejected))))
+    (plist-put canon :normalized normalized)))
 
 (provide 'dl-satan-memory-canon)
 ;;; dl-satan-memory-canon.el ends here

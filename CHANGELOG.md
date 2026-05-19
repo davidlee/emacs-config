@@ -2,6 +2,31 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-20 — SATAN: memory quality sweep — §3
+
+Closes the `normalize-hints` + `canonicalize` two-step dance for
+substrate callers.
+
+- `satan/dl-satan-memory-canon.el`:
+  `dl-satan-memory-canon-canonicalize-from-raw` now also returns
+  `:normalized PLIST`, exposing the closed/open-world hint scalars
+  the inner `normalize-hints` already computed (kind, valence,
+  phase, topic, focal_app, focal_bough_nanoid, outcome_for).
+  Existing `:handles` / `:handle_sources` / `:rejected` keys are
+  unchanged.
+- `satan/dl-satan-tools-memory.el` `--mark-impl` and
+  `--derive-cue-handles`, and
+  `satan/dl-satan-tools-hippocampus.el` `--cross-ref`: replaced
+  the manual `normalize-hints` + `canonicalize` call pair with a
+  single `canonicalize-from-raw`, reading `:kind` / `:valence` off
+  the new `:normalized` key. Top-of-file comment in
+  `tools-memory.el` no longer lists the workaround.
+- `satan/test/dl-satan-memory-canon-test.el`: new ert asserts the
+  normalized scalars come back on `canonicalize-from-raw` (kind,
+  valence, phase, topic, focal_app).
+
+Canon ert 34/34 (+1 normalized); memory 120/120; phase-3 94/94.
+
 ## 2026-05-20 — SATAN: memory quality sweep — §1
 
 Extends the elisp tool args-schema with a working `:type 'array'

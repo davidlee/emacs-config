@@ -273,6 +273,21 @@
     (should (= 1 (length rej)))
     (should (eq 'phase (plist-get (car rej) :field)))))
 
+(ert-deftest dl-satan-memory-canon/raw-entry-exposes-normalized ()
+  (let* ((res (dl-satan-memory-canon-canonicalize-from-raw
+               nil
+               (list :kind "intervention" :valence "positive"
+                     :phase "orientation"
+                     :topic '("UX") :focal_app "Firefox")
+               (list :time_now "2026-05-19T10:00:00+10:00"
+                     :current_grammar_version 1)))
+         (norm (plist-get res :normalized)))
+    (should (equal "intervention" (plist-get norm :kind)))
+    (should (equal "positive"     (plist-get norm :valence)))
+    (should (equal "orientation"  (plist-get norm :phase)))
+    (should (equal '("ux")        (plist-get norm :topic)))
+    (should (equal "firefox"      (plist-get norm :focal_app)))))
+
 ;; ---------- golden fixtures ----------
 
 (defun dl-satan-memory-canon-test--load-fixture (name)

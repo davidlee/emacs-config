@@ -48,12 +48,11 @@ substrate error is logged and does not affect the caller."
              (slug (dl-satan-tools-hippocampus--slugify title))
              (raw-hints (list :topic (list slug)))
              (evidence (dl-satan-memory-evidence-assemble canon-ctx))
-             (nh (dl-satan-memory-canon-normalize-hints raw-hints))
-             (normalized (plist-get nh :normalized))
-             (canon (dl-satan-memory-canon-canonicalize
-                     evidence normalized canon-ctx))
+             (canon (dl-satan-memory-canon-canonicalize-from-raw
+                     evidence raw-hints canon-ctx))
              (handles (plist-get canon :handles))
              (sources (plist-get canon :handle_sources))
+             (normalized (plist-get canon :normalized))
              (gv (plist-get canon-ctx :current_grammar_version))
              (handle-rows
               (mapcar (lambda (h)
