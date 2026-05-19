@@ -2,6 +2,22 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-19 — SATAN: tick-pulse budget 3000 → 10000
+
+`tick-pulse` was hitting its 3000-token soft cap mid-turn (observed:
+budget exhausted at 5044 tokens with one extra turn after warn). Most
+ticks still no-op early; the higher ceiling gives the model room to
+finish a turn when it does act. `:budget-tool-calls` and
+`:timeout-seconds` unchanged.
+
+- `satan/dl-satan-tick.el` — `:budget-tokens 10000`; header doc string
+  updated to match.
+- `satan/dl-satan-tick.el` — `dl-satan-tick-quiet-hours` defcustom
+  default is now `nil` (quiet hours opt-in); the previous `'(22 . 7)`
+  default lives on as a comment for reference.
+- `satan/test/dl-satan-test.el` — assertion updated.
+- `~/notes/satan/prompts/tick/pulse.txt` — claim updated to match.
+
 ## 2026-05-19 — SATAN: prompt tightening (sway_border, satan_final, show-why)
 
 Notes-side only (`~/notes/satan/`, commit `98e04c7` in that repo). No
