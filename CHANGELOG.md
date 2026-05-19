@@ -2,6 +2,41 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-20 — SATAN: memory step 10 — renormalize CLI + grammar-bump golden test
+
+Closes the §7 grammar-bump replay path and lands acceptance §9.8.
+Operator can now bump grammar versions and replay canonicalization
+across every stored trace without touching the trace row itself.
+
+- `satan/dl-satan-memory-migrate.el`: appended `dl-satan-memory-renormalize`
+  (per-trace BEGIN/COMMIT; flips old `trace_handles` rows to
+  `active = FALSE`; inserts fresh rows under the target version),
+  `dl-satan-memory-renormalize-status` (read-only `(:by-version
+  :stale-traces)`), and `my/satan-memory-renormalize` interactive
+  wrapper.  Worker is idempotent: a pass whose newly-canonicalized
+  handle set matches the currently-active set skips the transaction
+  entirely.
+- `satan/memory/migrations/0004_grammar_v2_fixture.sql` (new):
+  smallest-possible v2 bump that copies v1 weights + aliases forward
+  and adds `planning -> phase:orientation`.  Seeds v2 in the test
+  DB on every reset; stays pending in production until an operator
+  applies it.
+- `satan/test/dl-satan-memory-renormalize-test.el` (new): six ert
+  (`no-op-when-current`, `single-trace-bump`, `idempotent`,
+  `per-trace-tx`, `renormalize-status/counts`, `acceptance-9-8`).
+  `cl-letf` rebinds the elisp grammar constants to v2 + the planning
+  alias for the bumped-shape tests; per-trace-tx test forces a canon
+  error on the second trace via a `cl-letf` wrapper and asserts the
+  first trace's commit survives.
+- `satan/test/dl-satan-memory-migrate-test.el`: `applies-real-migrations`
+  bumped to `(1 2 3 4)` / length 4 for the new fixture migration.
+
+Memory subsystem 115/115 (109 prior + 6 renormalize); phase-3 87/87
+(no regression); integration 1/1 against the fake harness.  The
+fixture migration lives in the migrations dir so the golden test
+applies it through the same runner operators will use; it is
+deliberately operator-applied, never LLM-reachable.
+
 ## 2026-05-20 — SATAN: memory step 9 — wire substrate into broker
 
 First shared-file touch since the memory work began.  Three modes

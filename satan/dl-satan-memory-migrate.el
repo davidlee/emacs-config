@@ -14,6 +14,8 @@
 ;; row cannot drift from the schema state.
 
 (require 'cl-lib)
+(require 'json)
+(require 'subr-x)
 
 (defgroup dl-satan-memory nil
   "SATAN memory substrate."
@@ -261,6 +263,234 @@ would skip (must be max(applied)+1, max+2, ...)."
                        (plist-get e :version)
                        (plist-get e :filename)
                        (plist-get e :status)))))))
+
+;; ---------- renormalize (§7 grammar-bump replay) ----------
+;;
+;; `dl-satan-memory-renormalize' replays the canonicalizer over every
+;; trace under a new grammar version, flipping old `trace_handles' rows
+;; to `active = FALSE' and inserting the freshly-canonicalized set under
+;; the new version.  Per-trace transaction, no-op when the new handle
+;; set is byte-identical to the currently-active set (idempotence).
+;;
+;; Required modules pulled in lazily so this file stays loadable in
+;; environments that only need the migrate runner.
+
+(defun dl-satan-memory-renormalize--require ()
+  (require 'dl-satan-memory-grammar)
+  (require 'dl-satan-memory-canon))
+
+(defun dl-satan-memory-renormalize--mode-from-source (source)
+  "Extract mode name from SOURCE shaped `memory_mark@<mode>'.  Else nil."
+  (when (and (stringp source)
+             (string-match "\\`memory_mark@\\(.+\\)\\'" source))
+    (match-string 1 source)))
+
+(defun dl-satan-memory-renormalize--parse-metadata (s)
+  "Parse JSONB text S into a plist; nil for empty input."
+  (and (stringp s)
+       (not (string-empty-p s))
+       (condition-case _err
+           (json-parse-string s
+                              :object-type 'plist
+                              :array-type 'list
+                              :null-object nil
+                              :false-object :false)
+         (error nil))))
+
+(defun dl-satan-memory-renormalize--fetch-traces (db)
+  "Return list of (:trace_id :observed_end_at :source :metadata_json
+:active_handles), one row per trace, sorted by trace_id ascending."
+  (let* ((sql
+          (concat
+           "SELECT t.id, "
+           "       to_char(t.observed_end_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SSOF'), "
+           "       t.source, "
+           "       t.metadata_json::text, "
+           "       COALESCE(("
+           "         SELECT string_agg(th.handle, ',' ORDER BY th.handle) "
+           "         FROM trace_handles th "
+           "         WHERE th.trace_id = t.id AND th.active), '') "
+           "FROM traces t "
+           "ORDER BY t.id"))
+         (result (dl-satan-memory-migrate--psql
+                  db (list "-A" "-t" "-F" "\t" "-c" sql))))
+    (pcase result
+      (`(ok . ,out)
+       (cl-loop for line in (split-string out "\n" t)
+                for parts = (split-string line "\t")
+                when (>= (length parts) 5)
+                collect
+                (list :trace_id        (nth 0 parts)
+                      :observed_end_at (nth 1 parts)
+                      :source          (nth 2 parts)
+                      :metadata_json   (nth 3 parts)
+                      :active_handles
+                      (split-string (nth 4 parts) "," t))))
+      (`(error . ,msg) (user-error "%s" msg)))))
+
+(defun dl-satan-memory-renormalize--build-ctx (row version)
+  "Build the canon ctx plist for ROW under VERSION."
+  (list :current_grammar_version version
+        :mode_name (dl-satan-memory-renormalize--mode-from-source
+                    (plist-get row :source))
+        :time_now (plist-get row :observed_end_at)
+        :run_id nil
+        :run_started_at nil))
+
+(defun dl-satan-memory-renormalize--source-jsonb (source grammar-version)
+  "Serialise SOURCE plist as a JSON string for trace_handles.source."
+  (let ((sanitized
+         (list :rule_id  (or (plist-get source :rule_id) :null)
+               :origin   (or (plist-get source :origin) :null)
+               :evidence_pointer
+               (or (plist-get source :evidence_pointer) :null)
+               :hint_field
+               (or (plist-get source :hint_field) :null)
+               :confidence
+               (or (plist-get source :confidence) 1.0)
+               :grammar_version grammar-version)))
+    (json-serialize sanitized)))
+
+(defun dl-satan-memory-renormalize--apply-sql (row version canon)
+  "Build the single-trace transaction SQL for ROW at VERSION."
+  (let* ((tid (plist-get row :trace_id))
+         (handles (plist-get canon :handles))
+         (sources (plist-get canon :handle_sources))
+         (tid-lit (dl-satan-memory-migrate--sql-literal tid))
+         (rows
+          (mapconcat
+           (lambda (h)
+             (let* ((src (cdr (assoc h sources)))
+                    (json (dl-satan-memory-renormalize--source-jsonb
+                           src version)))
+               (format "(%s,%d::smallint,%s,%s::jsonb,TRUE)"
+                       tid-lit
+                       version
+                       (dl-satan-memory-migrate--sql-literal h)
+                       (dl-satan-memory-migrate--sql-literal json))))
+           handles
+           ",")))
+    (concat
+     "BEGIN;\n"
+     (format
+      "UPDATE trace_handles SET active = FALSE WHERE trace_id = %s AND active AND grammar_version < %d::smallint;\n"
+      tid-lit version)
+     (if (string-empty-p rows)
+         ""
+       (format
+        "INSERT INTO trace_handles (trace_id, grammar_version, handle, source, active) VALUES %s;\n"
+        rows))
+     "COMMIT;\n")))
+
+(defun dl-satan-memory-renormalize--one (db version row)
+  "Renormalize ROW at VERSION.  Returns `updated' or `skipped'.
+Signals on canon error or SQL failure (caller frames each trace in
+its own condition-case)."
+  (let* ((metadata (dl-satan-memory-renormalize--parse-metadata
+                    (plist-get row :metadata_json)))
+         (evidence (plist-get metadata :evidence))
+         (raw-hints (plist-get metadata :hints))
+         (ctx (dl-satan-memory-renormalize--build-ctx row version))
+         (canon (dl-satan-memory-canon-canonicalize-from-raw
+                 evidence raw-hints ctx))
+         (new-handles (sort (copy-sequence (plist-get canon :handles))
+                            #'string<))
+         (current (sort (copy-sequence (plist-get row :active_handles))
+                        #'string<)))
+    (if (equal new-handles current)
+        'skipped
+      (let* ((sql (dl-satan-memory-renormalize--apply-sql row version canon))
+             (result (dl-satan-memory-migrate--psql db (list "-f" "-") sql)))
+        (pcase result
+          (`(ok . ,_) 'updated)
+          (`(error . ,msg)
+           (error "renormalize failed for %s: %s"
+                  (plist-get row :trace_id) msg)))))))
+
+(defun dl-satan-memory-renormalize (&optional db version)
+  "Replay canonicalization for every trace under VERSION.
+DB defaults to `dl-satan-memory-migrate-database'; VERSION to the
+current elisp grammar version.  Returns
+  (:updated N :skipped N :failed LIST)
+where LIST entries are (:trace_id ID :error MSG).  Idempotent: a
+no-op pass touches zero rows."
+  (dl-satan-memory-renormalize--require)
+  (let* ((db (or db dl-satan-memory-migrate-database))
+         (version (or version dl-satan-memory-grammar-current-version))
+         (rows (dl-satan-memory-renormalize--fetch-traces db))
+         (updated 0)
+         (skipped 0)
+         failed)
+    (dolist (row rows)
+      (condition-case err
+          (pcase (dl-satan-memory-renormalize--one db version row)
+            ('updated (cl-incf updated))
+            ('skipped (cl-incf skipped)))
+        (error
+         (push (list :trace_id (plist-get row :trace_id)
+                     :error (error-message-string err))
+               failed))))
+    (list :updated updated :skipped skipped :failed (nreverse failed))))
+
+(defun dl-satan-memory-renormalize-status (&optional db)
+  "Read-only summary of trace_handles activity per grammar_version.
+DB defaults to `dl-satan-memory-migrate-database'.  Returns plist
+  (:by-version ((1 . N1) (2 . N2) ...) :stale-traces M)
+where a trace is stale when the newest active-handle row's
+grammar_version is below the current elisp grammar version."
+  (dl-satan-memory-renormalize--require)
+  (let* ((db (or db dl-satan-memory-migrate-database))
+         (current dl-satan-memory-grammar-current-version)
+         (sql
+          (concat
+           "WITH per_trace AS ("
+           "  SELECT trace_id, MAX(grammar_version) AS gv "
+           "  FROM trace_handles WHERE active GROUP BY trace_id"
+           ") "
+           "SELECT 'by_version'::text, gv::text, COUNT(*)::text "
+           "FROM per_trace GROUP BY gv "
+           "UNION ALL "
+           "SELECT 'stale'::text, ''::text, COUNT(*)::text "
+           "FROM per_trace WHERE gv < "
+           (number-to-string current)))
+         (result (dl-satan-memory-migrate--psql
+                  db (list "-A" "-t" "-F" "\t" "-c" sql))))
+    (pcase result
+      (`(ok . ,out)
+       (let (by-version stale)
+         (dolist (line (split-string out "\n" t))
+           (let ((parts (split-string line "\t")))
+             (pcase (nth 0 parts)
+               ("by_version"
+                (push (cons (string-to-number (nth 1 parts))
+                            (string-to-number (nth 2 parts)))
+                      by-version))
+               ("stale"
+                (setq stale (string-to-number (nth 2 parts)))))))
+         (list :by-version
+               (sort by-version (lambda (a b) (< (car a) (car b))))
+               :stale-traces (or stale 0))))
+      (`(error . ,msg) (user-error "%s" msg)))))
+
+;;;###autoload
+(defun my/satan-memory-renormalize (&optional db)
+  "Replay canonicalization against the current grammar version.
+With prefix arg, prompt for DB."
+  (interactive
+   (list (if current-prefix-arg
+             (read-string "Database: " dl-satan-memory-migrate-database)
+           dl-satan-memory-migrate-database)))
+  (let* ((before (dl-satan-memory-renormalize-status db))
+         (result (dl-satan-memory-renormalize db))
+         (after  (dl-satan-memory-renormalize-status db)))
+    (message
+     "renormalize: %d updated, %d skipped, %d failed; active by version: %S -> %S"
+     (plist-get result :updated)
+     (plist-get result :skipped)
+     (length (plist-get result :failed))
+     (plist-get before :by-version)
+     (plist-get after :by-version))
+    result))
 
 (provide 'dl-satan-memory-migrate)
 ;;; dl-satan-memory-migrate.el ends here
