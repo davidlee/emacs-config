@@ -20,6 +20,12 @@
 ;;   :bough_limit            bough_recent cap (default 50)
 ;;   :budget_target_bytes    soft byte budget (default 16384)
 ;;   :budget_hard_cap_bytes  hard byte cap (default 65536)
+;;   :cue_only               t to skip heavy "what happened in the
+;;                           window" probes (focus/browser segments,
+;;                           bough_recent, bough_day).  Keeps the
+;;                           "what is now" probes (current_window,
+;;                           bough_active, git_state, fs_state).
+;;                           Used by `memory_resonate' cue derivation.
 ;;
 ;; This module is intentionally separate from `dl-satan-memory-canon'
 ;; (which is PURE per §3.5).  The canon module must never `require'
@@ -335,22 +341,27 @@ CTX is the canon ctx plist; OPTS optional knobs (see file header)."
                             dl-satan-memory-evidence-budget-target))
          (budget-hard (or (plist-get opts :budget_hard_cap_bytes)
                           dl-satan-memory-evidence-budget-hard-cap))
+         (cue-only (plist-get opts :cue_only))
          (raw (list
                :current_window
                (dl-satan-memory-evidence--read-current-window root)
                :focus_segments
-               (dl-satan-memory-evidence--read-segments
-                root "focus" today start end seg-limit)
+               (if cue-only '()
+                 (dl-satan-memory-evidence--read-segments
+                  root "focus" today start end seg-limit))
                :browser_segments
-               (dl-satan-memory-evidence--read-segments
-                root "browser" today start end seg-limit)
+               (if cue-only '()
+                 (dl-satan-memory-evidence--read-segments
+                  root "browser" today start end seg-limit))
                :bough_recent
-               (dl-satan-memory-evidence--bough-recent
-                start workspace bough-limit)
+               (unless cue-only
+                 (dl-satan-memory-evidence--bough-recent
+                  start workspace bough-limit))
                :bough_active
                (dl-satan-memory-evidence--bough-active workspace)
                :bough_day
-               (dl-satan-memory-evidence--bough-day today workspace)
+               (unless cue-only
+                 (dl-satan-memory-evidence--bough-day today workspace))
                :git_state
                (dl-satan-memory-evidence--git-state cwd)
                :fs_state

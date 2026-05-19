@@ -168,6 +168,36 @@
      (should (equal (plist-get (plist-get out :fs_state) :recent_files)
                     '())))))
 
+(ert-deftest dl-satan-memory-evidence/assemble-cue-only-skips-heavy-probes ()
+  "`:cue_only t' returns empty focus/browser segments and nil
+bough_recent / bough_day even when those sources would otherwise
+populate them.  Keeps current_window and bough_active."
+  (dl-satan-memory-evidence-test--in-tmp tmp
+   (let* ((current-dir (expand-file-name "current" tmp))
+          (segments-dir (expand-file-name "segments" tmp)))
+     (make-directory current-dir t)
+     (make-directory segments-dir t)
+     (with-temp-file (expand-file-name "sway.json" current-dir)
+       (insert "{\"app_id\":\"firefox\",\"workspace\":\"main\"}"))
+     (with-temp-file (expand-file-name "focus-2026-05-19.jsonl" segments-dir)
+       (insert "{\"app_id\":\"firefox\",\"start_ts\":\"2026-05-19T09:55:00+10:00\",\"end_ts\":\"2026-05-19T09:58:00+10:00\",\"duration_s\":180}\n"))
+     (cl-letf (((symbol-function 'dl-satan-memory-evidence--bough-recent)
+                (lambda (&rest _) (error "should not be called"))))
+       (cl-letf (((symbol-function 'dl-satan-memory-evidence--bough-day)
+                  (lambda (&rest _) (error "should not be called"))))
+         (let* ((ctx (list :time_now "2026-05-19T10:00:00+10:00"
+                           :mode_name "motd"))
+                (out (dl-satan-memory-evidence-assemble
+                      ctx (list :behaviour_dir (file-name-as-directory tmp)
+                                :cwd tmp
+                                :cue_only t))))
+           (should (equal (plist-get (plist-get out :current_window) :app_id)
+                          "firefox"))
+           (should (equal (plist-get out :focus_segments) '()))
+           (should (equal (plist-get out :browser_segments) '()))
+           (should (null (plist-get out :bough_recent)))
+           (should (null (plist-get out :bough_day)))))))))
+
 (ert-deftest dl-satan-memory-evidence/assemble-reads-panopticon ()
   (dl-satan-memory-evidence-test--in-tmp tmp
    (let* ((current-dir (expand-file-name "current" tmp))

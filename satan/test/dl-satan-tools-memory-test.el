@@ -293,6 +293,37 @@ FN-SYM to call it.  After BODY, VAR holds the captured arg list."
         (should (equal "2026-05-19T10:00:00+10:00"
                        (plist-get store-args :observed-end-at)))))))
 
+(ert-deftest dl-satan-tools-memory/resonate-derives-cue-with-cue-only-opt ()
+  "`memory_resonate' (no explicit handles) re-runs evidence-assemble for
+cue derivation with `:cue_only t' so heavy probes are skipped."
+  (dl-satan-tools-memory-test--capture-evidence-opts opts
+    (cl-letf (((symbol-function 'dl-satan-memory-store-resonate)
+               (lambda (&rest _) (cons 'ok nil))))
+      (let ((res (dl-satan-tool-dispatch
+                  '(:type "tool_call" :id "c1" :name "memory_resonate"
+                    :args (:cue (:hints (:topic ("ux")))))
+                  '("memory_resonate")
+                  '(:id "r1" :mode-name motd
+                    :time-now "2026-05-19T10:00:00+10:00"
+                    :run-started-at "2026-05-19T09:55:00+10:00"))))
+        (should (eq (plist-get res :ok) t))
+        (should (eq (plist-get opts :cue_only) t))
+        (should (equal (plist-get opts :run_started_at)
+                       "2026-05-19T09:55:00+10:00"))))))
+
+(ert-deftest dl-satan-tools-memory/mark-does-not-set-cue-only ()
+  "`memory_mark' assembles a full evidence window (no :cue_only)."
+  (dl-satan-tools-memory-test--capture-evidence-opts opts
+    (dl-satan-tools-memory-test--capture
+        _captured dl-satan-memory-store-mark
+      (let ((res (dl-satan-tool-dispatch
+                  '(:type "tool_call" :id "c2" :name "memory_mark"
+                    :args (:payload "p"))
+                  '("memory_mark")
+                  dl-satan-tools-memory-test--tool-ctx)))
+        (should (eq (plist-get res :ok) t))
+        (should-not (plist-get opts :cue_only))))))
+
 (ert-deftest dl-satan-tools-memory/mark-forwards-run-started-at-to-evidence ()
   "`memory_mark' threads `:run_started_at' from tool-ctx through to the
 evidence assembler so the window can't reach behind the run."

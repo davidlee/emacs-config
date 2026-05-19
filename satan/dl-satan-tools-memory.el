@@ -232,11 +232,15 @@ cannot express yet."
       (err err))))
 
 (defun dl-satan-tools-memory--derive-cue-handles (hints tool-ctx)
-  "Run the evidence + canon pipeline with HINTS to produce a cue list."
+  "Run the evidence + canon pipeline with HINTS to produce a cue list.
+Passes `:cue_only t' to the assembler so the heavy \"what happened\"
+probes (focus/browser segments, bough_recent, bough_day) are
+skipped — cue derivation only needs the current-moment context."
   (let* ((ctx (dl-satan-tools-memory--ctx-from tool-ctx))
          (evidence (dl-satan-memory-evidence-assemble
                     ctx (list :run_started_at
-                              (plist-get ctx :run_started_at))))
+                              (plist-get ctx :run_started_at)
+                              :cue_only t)))
          (canon (dl-satan-memory-canon-canonicalize-from-raw
                  evidence hints ctx)))
     (plist-get canon :handles)))
