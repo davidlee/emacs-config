@@ -36,7 +36,7 @@ Dotfiles must not be the source of truth for prompt content.")
        :context-fn 'dl-satan-context-morning
        :tools '("org_read_context" "org_update_owned_block"
                 "proposal_stage" "notify_send" "hippocampus_write"
-                "inbox_append")
+                "inbox_append" "agenda_read")
        :capabilities '(write-daily stage-proposal notify hippocampus-write
                        inbox-write)
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
@@ -53,7 +53,7 @@ Dotfiles must not be the source of truth for prompt content.")
  (list :name "motd"
        :prompt-file (expand-file-name "motd.txt" dl-satan-prompts-dir)
        :context-fn 'dl-satan-context-motd
-       :tools '("org_read_context" "notify_send" "inbox_append")
+       :tools '("org_read_context" "notify_send" "inbox_append" "agenda_read")
        :capabilities '(notify inbox-write)
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
        :jail-profile 'specDev

@@ -2,6 +2,29 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-19 — SATAN: `agenda_read` tool (work calendar via gcalcli)
+
+New read-only tool for the `morning` and `motd` modes. Shells out to
+`gcalcli agenda --calendar $WORK_EMAIL` with a configurable day window
+(default 5, clamped 1..14) and a hard `timeout(1)` wrapper so a stalled
+gcalcli can't freeze the broker's host Emacs. Calendar id is sourced
+from an env var (`WORK_EMAIL`) rather than hard-coded, so the dotfile
+carries no identity.
+
+- `satan/dl-satan-tools-agenda.el` — new handler + registration; risk
+  `read`, no capability required, default 15s wall timeout.
+- `satan/dl-satan-mode.el` — `agenda_read` added to the `:tools`
+  allowlist for `morning` and `motd`.
+- `satan/dl-satan.el` — `require dl-satan-tools-agenda` after the
+  existing tool modules.
+- `notes/satan/tools/agenda_read.md` — model-facing description.
+- `lisp/dl-secret.el` — added `~/.config/zsh/work.identity.zsh` to
+  `my/env-source-files` so launcher-started Emacs (sway, no zshrc)
+  sees `WORK_EMAIL`. Terminal-launched Emacs already inherits it.
+- `SATAN.md` — modes table (morning + motd), tools table, file map.
+- Tests: 52 → 59 (happy path, `:days` honoured, clamp, missing env,
+  non-zero exit, `timeout(1)` exit 124, mode allowlist via dispatcher).
+
 ## 2026-05-19 — Waybar: SATAN inbox unread badge
 
 New `custom/satan-inbox` waybar module showing the unread count from

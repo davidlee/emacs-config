@@ -16,6 +16,7 @@
 (require 'dl-satan-tools-notify)
 (require 'dl-satan-tools-hippocampus)
 (require 'dl-satan-tools-inbox)
+(require 'dl-satan-tools-agenda)
 (require 'dl-satan-mode)
 (require 'dl-satan-context)
 (require 'dl-satan-output)

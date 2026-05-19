@@ -18,6 +18,7 @@
 (require 'dl-satan-tools-hippocampus)
 (require 'dl-satan-tools-inbox)
 (require 'dl-satan-tools-org)
+(require 'dl-satan-tools-agenda)
 (require 'dl-satan-context)
 (require 'dl-satan-output)
 (require 'dl-satan-audit)
@@ -524,6 +525,7 @@ populated from ALIST `((NAME . CONTENT) …)'."
      ("notify_send"            . "Send a desktop notification.")
      ("hippocampus_write"      . "Write to the hippocampus.")
      ("inbox_append"           . "Append to the inbox.")
+     ("agenda_read"            . "Read the agenda.")
      ("satan_final"            . "Terminate the run."))
    (lambda ()
      (let* ((mode (dl-satan-mode-resolve "morning"))
@@ -537,6 +539,7 @@ populated from ALIST `((NAME . CONTENT) …)'."
        (should (member "notify_send" names))
        (should (member "hippocampus_write" names))
        (should (member "inbox_append" names))
+       (should (member "agenda_read" names))
        (should (member "satan_final" names))
        ;; Descriptions came from notes files, not elisp.
        (let ((notify (cl-find "notify_send" tools
@@ -640,6 +643,97 @@ populated from ALIST `((NAME . CONTENT) …)'."
         (should (equal (plist-get (car (plist-get p :applied)) :type)
                        "inbox_append"))))))
 
+;; ---------- dl-satan-tools-agenda ----------
+
+(defmacro dl-satan-test--with-gcalcli-stub (status output &rest body)
+  "Run BODY with `call-process' stubbed to return STATUS and emit OUTPUT.
+Captures the argv passed to call-process in `argv-out'."
+  (declare (indent 2))
+  `(let ((argv-out nil))
+     (cl-letf (((symbol-function 'call-process)
+                (lambda (program &optional _in dest _disp &rest args)
+                  (setq argv-out (cons program args))
+                  (when (and dest (bufferp dest))
+                    (with-current-buffer dest (insert ,output)))
+                  (when (and dest (eq dest t))
+                    (insert ,output))
+                  ,status)))
+       (let ((process-environment (cons "WORK_EMAIL=test@example.com"
+                                        process-environment)))
+         ,@body))))
+
+(ert-deftest dl-satan-agenda/handler-ok ()
+  "Happy path: agenda_read returns ok + trimmed text + echoed calendar/days."
+  (dl-satan-test--with-gcalcli-stub 0 "Mon May 19  9:00 standup\n"
+    (let ((res (dl-satan-tool/agenda-read nil nil)))
+      (should (eq (car res) 'ok))
+      (should (equal (plist-get (cdr res) :text) "Mon May 19  9:00 standup"))
+      (should (equal (plist-get (cdr res) :calendar) "test@example.com"))
+      (should (equal (plist-get (cdr res) :days)
+                     dl-satan-tools-agenda-default-days)))
+    (should (member "timeout" argv-out))
+    (should (member "gcalcli" argv-out))
+    (should (member "--calendar" argv-out))
+    (should (member "test@example.com" argv-out))))
+
+(ert-deftest dl-satan-agenda/handler-respects-days ()
+  "`:days' overrides the default and shows up in the response."
+  (dl-satan-test--with-gcalcli-stub 0 ""
+    (let ((res (dl-satan-tool/agenda-read '(:days 3) nil)))
+      (should (eq (car res) 'ok))
+      (should (equal (plist-get (cdr res) :days) 3)))))
+
+(ert-deftest dl-satan-agenda/days-clamped ()
+  "Out-of-range `:days' is clamped to [1, agenda--days-max]."
+  (dl-satan-test--with-gcalcli-stub 0 ""
+    (let ((hi (dl-satan-tool/agenda-read '(:days 99) nil))
+          (lo (dl-satan-tool/agenda-read '(:days 0) nil)))
+      (should (equal (plist-get (cdr hi) :days)
+                     dl-satan-tools-agenda--days-max))
+      (should (equal (plist-get (cdr lo) :days) 1)))))
+
+(ert-deftest dl-satan-agenda/missing-calendar-env ()
+  "Unset env var yields a structured error, no process spawn."
+  (let* ((spawned nil)
+         (process-environment (cl-remove-if
+                               (lambda (e) (string-prefix-p "WORK_EMAIL=" e))
+                               process-environment)))
+    (cl-letf (((symbol-function 'call-process)
+               (lambda (&rest _) (setq spawned t) 0)))
+      (let ((res (dl-satan-tool/agenda-read nil nil)))
+        (should (eq (car res) 'error))
+        (should (string-match-p "WORK_EMAIL" (cdr res)))
+        (should-not spawned)))))
+
+(ert-deftest dl-satan-agenda/handler-nonzero-exit ()
+  "Non-zero exit surfaces stderr/stdout in the error string."
+  (dl-satan-test--with-gcalcli-stub 1 "auth failure\n"
+    (let ((res (dl-satan-tool/agenda-read nil nil)))
+      (should (eq (car res) 'error))
+      (should (string-match-p "auth failure" (cdr res))))))
+
+(ert-deftest dl-satan-agenda/handler-timeout ()
+  "Status 124 from `timeout(1)' is reported as a timeout."
+  (dl-satan-test--with-gcalcli-stub 124 ""
+    (let ((res (dl-satan-tool/agenda-read nil nil)))
+      (should (eq (car res) 'error))
+      (should (string-match-p "timed out" (cdr res))))))
+
+(ert-deftest dl-satan-agenda/dispatch-mode-allowlist ()
+  "agenda_read is allowed in morning and motd, blocked elsewhere."
+  (dl-satan-test--with-gcalcli-stub 0 "x"
+    (let ((ok (dl-satan-tool-dispatch
+               '(:type "tool_call" :id "a1" :name "agenda_read" :args nil)
+               '("agenda_read")
+               nil))
+          (blocked (dl-satan-tool-dispatch
+                    '(:type "tool_call" :id "a2" :name "agenda_read" :args nil)
+                    '("inbox_append")
+                    nil)))
+      (should (eq (plist-get ok :ok) t))
+      (should (equal (plist-get blocked :ok) :false))
+      (should (string-match-p "not allowed" (plist-get blocked :error))))))
+
 ;; ---------- dl-satan-budget ----------
 
 (defun dl-satan-test--write-transcript (dir lines)
@@ -728,6 +822,7 @@ populated from ALIST `((NAME . CONTENT) …)'."
      ("notify_send"            . "Notify.")
      ("hippocampus_write"      . "Write hippo.")
      ("inbox_append"           . "Append inbox.")
+     ("agenda_read"            . "Read agenda.")
      ("satan_final"            . "Terminate."))
    (lambda ()
      (let* ((root (make-temp-file "satan-bud-broker-" t))

@@ -90,7 +90,8 @@ unset. With non-nil REFRESH, bypass the op cache."
 ;; placeholders in the file.
 
 (defcustom my/env-source-files
-  '("~/.config/zsh/env.zsh")
+  '("~/.config/zsh/env.zsh"
+    "~/.config/zsh/work.identity.zsh")
   "Shell env files to parse on load.
 
 Each file is read for lines matching `[export] NAME=VALUE'. Surrounding

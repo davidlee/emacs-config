@@ -389,6 +389,7 @@ justification):
 | `dl-satan-tools-notify.el` | `notify_send` (D-Bus). |
 | `dl-satan-tools-hippocampus.el` | `hippocampus_write`; `my/satan-hippocampus`. |
 | `dl-satan-tools-inbox.el` | `inbox_append`; `my/satan-inbox`; `my/satan-inbox-unread-count`. |
+| `dl-satan-tools-agenda.el` | `agenda_read` (gcalcli → text); timeout-wrapped; calendar id from `$WORK_EMAIL`. |
 | `dl-satan-context.el` | Per-mode bundle assembly; strict `--read-required`; scaffold assembly. |
 | `dl-satan-output.el` | Mode output handlers (`morning`, `motd`, `tick`, `self-edit`; the last is shared by both `self-edit-{mech,mind}` lanes). |
 | `dl-satan-block.el` | Owned-block find/replace. |
@@ -459,8 +460,8 @@ justification):
 
 | Mode | Tools | Auto-apply | Budget tokens / tool-calls / wall |
 |---|---|---|---|
-| `morning` | `org_read_context`, `org_update_owned_block`, `proposal_stage`, `notify_send`, `hippocampus_write`, `inbox_append` | `owned` | 20000 / 8 / 90s |
-| `motd` | `org_read_context`, `notify_send`, `inbox_append` | `owned` (motd surface owned by output handler; written from `satan_final.summary`) | 10000 / 4 / 45s |
+| `morning` | `org_read_context`, `org_update_owned_block`, `proposal_stage`, `notify_send`, `hippocampus_write`, `inbox_append`, `agenda_read` | `owned` | 20000 / 8 / 90s |
+| `motd` | `org_read_context`, `notify_send`, `inbox_append`, `agenda_read` | `owned` (motd surface owned by output handler; written from `satan_final.summary`) | 10000 / 4 / 45s |
 | `tick-*` | `org_read_context`, `notify_send`, `inbox_append` | `owned` (only `inbox_append`) | 3000 / 4 / 30s |
 | `self-edit-mech` | `proposal_stage` | `none` | 50000 / 20 / 180s |
 | `self-edit-mind` | `proposal_stage` | `none` | 50000 / 20 / 180s |
@@ -479,6 +480,7 @@ Override per-mode in `dl-satan-mode.el`: `:provider`, `:model`,
 | `notify_send` | low | capability `notify` | D-Bus desktop notification. |
 | `hippocampus_write` | low | capability `hippocampus-write` | Append a denote hippocampus entry (SATAN-owned, auto-applied). |
 | `inbox_append` | low | capability `inbox-write` | Append a headline to `~/notes/satan/inbox.org` (SATAN-owned, auto-applied; preferred over `notify_send` for non-urgent messages). |
+| `agenda_read` | read | — | Fetch the work calendar via `gcalcli`. Calendar id read from `$WORK_EMAIL`; wrapped in `timeout(1)` so a stalled gcalcli can't freeze the broker. |
 
 The python harness intercepts a synthetic `satan_final(summary,
 actions[])` tool call as the terminal signal and emits the broker's
