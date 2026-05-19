@@ -2,6 +2,21 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-20 — SATAN: tank LAST RUN section
+
+Tank gains a fourth section between RECENT TRACES and RECENT EVENTS:
+a structured summary of the newest completed run pulled from its
+`transcript.jsonl' (run-id, mode, status, duration, cumulative
+tokens, ordered tool calls with ok/error, fill-wrapped final
+summary, action count).  Status is derived from event tags
+(`final', `timeout', `protocol-error', otherwise `in-progress').
+
+- `satan/dl-satan-tank.el': `--last-run-status', `--last-run-state',
+  `--iso-duration', `--wrap-paragraph', `--gather-last-run',
+  `--render-last-run'.  Refresh inserts the new section.
+- `satan/test/dl-satan-tank-test.el': +5 ert covering aggregator
+  status branches and renderer formatting.  Suite now 23/23.
+
 ## 2026-05-20 — SATAN: provider profiles + deepseek thinking-mode round-trip
 
 Provider/model now live in `dl-satan-profiles' (alist of NAME →

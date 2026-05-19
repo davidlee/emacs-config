@@ -181,5 +181,93 @@
             (should (equal (length out) 3))))
       (delete-directory tmp t))))
 
+;; ---------------------------------------------------------------------
+;; last-run aggregation + render
+;; ---------------------------------------------------------------------
+
+(ert-deftest dl-satan-tank/last-run-state-aggregates ()
+  "`--last-run-state' folds usage / tool-call / tool-result / final."
+  (let* ((events
+          '((:ts "2026-05-20T09:21:32+10:00" :dir "in"
+             :event "ready" :payload (:type "ready"))
+            (:ts "2026-05-20T09:21:37+10:00" :dir "in"
+             :event "log"
+             :payload (:kind "usage" :tokens_in 9000 :tokens_out 200
+                       :tokens_total 9200))
+            (:ts "2026-05-20T09:21:37+10:00" :dir "in"
+             :event "tool-call"
+             :payload (:id "c1" :name "activity_read"))
+            (:ts "2026-05-20T09:21:37+10:00" :dir "broker"
+             :event "tool-result"
+             :payload (:id "c1" :ok t))
+            (:ts "2026-05-20T09:21:44+10:00" :dir "in"
+             :event "tool-call"
+             :payload (:id "c2" :name "memory_resonate"))
+            (:ts "2026-05-20T09:21:44+10:00" :dir "broker"
+             :event "tool-result"
+             :payload (:id "c2" :ok :false))
+            (:ts "2026-05-20T09:21:52+10:00" :dir "in"
+             :event "log"
+             :payload (:kind "usage" :tokens_in 1000 :tokens_out 100
+                       :tokens_total 29040))
+            (:ts "2026-05-20T09:21:52+10:00" :dir "in"
+             :event "final"
+             :payload (:summary "done" :actions ((:type "x"))))))
+         (state (dl-satan-tank--last-run-state
+                 "20260520T092127-tick-pulse-1e8e70" events)))
+    (should (equal (plist-get state :mode) "tick-pulse"))
+    (should (eq (plist-get state :status) 'final))
+    (should (equal (plist-get state :tokens_total) 29040))
+    (should (equal (length (plist-get state :tool_calls)) 2))
+    (should (equal (plist-get (nth 0 (plist-get state :tool_calls)) :name)
+                   "activity_read"))
+    (should (eq (plist-get (nth 0 (plist-get state :tool_calls)) :ok) t))
+    (should (eq (plist-get (nth 1 (plist-get state :tool_calls)) :ok) nil))
+    (should (equal (plist-get state :final_summary) "done"))
+    (should (equal (plist-get state :final_actions) 1))
+    (should (numberp (plist-get state :duration_s)))
+    (should (>= (plist-get state :duration_s) 19.0))))
+
+(ert-deftest dl-satan-tank/last-run-status-timeout ()
+  (let* ((events
+          '((:ts "2026-05-20T08:28:08+10:00" :dir "in"
+             :event "ready" :payload (:type "ready"))
+            (:ts "2026-05-20T08:28:38+10:00" :dir "broker"
+             :event "timeout" :payload (:after-seconds 30)))))
+    (should (eq (dl-satan-tank--last-run-status events) 'timeout))))
+
+(ert-deftest dl-satan-tank/last-run-status-error ()
+  (let* ((events
+          '((:ts "2026-05-20T09:03:34+10:00" :dir "in"
+             :event "ready" :payload (:type "ready"))
+            (:ts "2026-05-20T09:03:42+10:00" :dir "in"
+             :event "protocol-error"
+             :payload (:error "provider failed")))))
+    (should (eq (dl-satan-tank--last-run-status events) 'error))))
+
+(ert-deftest dl-satan-tank/render-last-run-nil ()
+  (let ((out (dl-satan-tank--render-last-run nil)))
+    (should (string-match-p "LAST RUN" out))
+    (should (string-match-p "(no runs yet)" out))))
+
+(ert-deftest dl-satan-tank/render-last-run-formats ()
+  (let* ((state (list :run_id "20260520T092127-tick-pulse-1e8e70"
+                      :mode "tick-pulse" :status 'final
+                      :duration_s 20.0 :tokens_total 29040
+                      :tool_calls '((:name "activity_read" :ok t)
+                                    (:name "memory_resonate" :ok nil))
+                      :final_summary "Tick at 09:21."
+                      :final_actions 0))
+         (out (dl-satan-tank--render-last-run state)))
+    (should (string-match-p "LAST RUN" out))
+    (should (string-match-p "tick-pulse" out))
+    (should (string-match-p "status: final" out))
+    (should (string-match-p "20.0s" out))
+    (should (string-match-p "29040 cumulative" out))
+    (should (string-match-p "tcalls: 2" out))
+    (should (string-match-p "activity_read +ok" out))
+    (should (string-match-p "memory_resonate +error" out))
+    (should (string-match-p "Tick at 09:21" out))))
+
 (provide 'dl-satan-tank-test)
 ;;; dl-satan-tank-test.el ends here

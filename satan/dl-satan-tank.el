@@ -1,14 +1,17 @@
 ;;; dl-satan-tank.el --- SATAN observation tank -*- lexical-binding: t; -*-
 
 ;; Composite read-only buffer that mirrors what SATAN sees right now.
-;; Three sections refresh on a timer (`g' for manual refresh, `q' to
+;; Four sections refresh on a timer (`g' for manual refresh, `q' to
 ;; quit):
 ;;
 ;;   1. EVIDENCE WINDOW   `dl-satan-memory-evidence-assemble' output
 ;;                        (current panopticon window, focus / browser
 ;;                        segment counts, active bough nodes, git + cwd)
 ;;   2. RECENT TRACES     `dl-satan-memory-store-recent' last N rows
-;;   3. RECENT EVENTS     tail of run transcripts under `dl-satan-runs-dir'
+;;   3. LAST RUN          summary of the newest run under
+;;                        `dl-satan-runs-dir': mode, status, duration,
+;;                        token spend, ordered tool calls, final text
+;;   4. RECENT EVENTS     tail of run transcripts under `dl-satan-runs-dir'
 ;;
 ;; Section renderers are pure (state plist in, string out) so they are
 ;; tested without DB / panopticon / bough access.  Gatherers wrap the
@@ -51,6 +54,10 @@
 (defcustom dl-satan-tank-evidence-history-seconds 1800
   "How far back to anchor the evidence window when the tank is opened
 outside an active SATAN run.  Default is 30 minutes."
+  :type 'integer :group 'dl-satan-tank)
+
+(defcustom dl-satan-tank-last-run-summary-width 78
+  "Soft wrap width for the LAST RUN final-summary block."
   :type 'integer :group 'dl-satan-tank)
 
 (defconst dl-satan-tank--buffer-name "*satan-tank*")
@@ -213,6 +220,72 @@ outside an active SATAN run.  Default is 30 minutes."
       rows "\n")))
    "\n"))
 
+(defun dl-satan-tank--wrap-paragraph (text width)
+  "Soft-wrap TEXT at WIDTH, returning the wrapped string with `\\n's."
+  (cond
+   ((or (null text) (string-empty-p text)) "")
+   (t
+    (with-temp-buffer
+      (insert text)
+      (let ((fill-column width)
+            (fill-prefix "  "))
+        (fill-region (point-min) (point-max)))
+      (buffer-string)))))
+
+(defun dl-satan-tank--render-last-run (state)
+  "Render the LAST RUN section for STATE plist.
+STATE is the gatherer plist (see `dl-satan-tank--gather-last-run');
+nil means no completed runs are available yet."
+  (concat
+   (dl-satan-tank--section "LAST RUN")
+   (cond
+    ((null state) "(no runs yet)\n")
+    (t
+     (let* ((run-id (plist-get state :run_id))
+            (mode (plist-get state :mode))
+            (status (plist-get state :status))
+            (dur (plist-get state :duration_s))
+            (ttot (plist-get state :tokens_total))
+            (tcalls (plist-get state :tool_calls))
+            (summary (plist-get state :final_summary))
+            (actions (plist-get state :final_actions))
+            (err (plist-get state :error_msg)))
+       (concat
+        (format "%s\n" (or run-id "-"))
+        (format "mode: %s  ·  status: %s  ·  dur: %s\n"
+                (or mode "?")
+                (or status "?")
+                (if (numberp dur) (format "%.1fs" dur) "?"))
+        (format "tokens: %s cumulative  ·  tcalls: %d\n"
+                (or ttot "?") (length tcalls))
+        (cond
+         ((null tcalls) "")
+         (t
+          (concat
+           "\ntools:\n"
+           (mapconcat
+            (lambda (tc)
+              (format "  · %-26s %s"
+                      (dl-satan-tank--truncate
+                       (or (plist-get tc :name) "?") 26)
+                      (if (plist-get tc :ok) "ok" "error")))
+            tcalls "\n")
+           "\n")))
+        (cond
+         (err (format "\nerror: %s\n" err))
+         (summary
+          (concat
+           "\nfinal summary:\n"
+           (dl-satan-tank--wrap-paragraph
+            (concat "  " summary)
+            dl-satan-tank-last-run-summary-width)
+           "\n"
+           (if (and (numberp actions) (> actions 0))
+               (format "actions: %d\n" actions) "")))
+         (t "")))))
+    )
+   "\n"))
+
 (defun dl-satan-tank--render-events (events)
   "Render the RECENT EVENTS section for EVENTS (list of plists)."
   (concat
@@ -308,6 +381,89 @@ Each returned plist gains a `:run' (mode slug) and `:summary' field."
             (forward-line 1)))))
     (nreverse out)))
 
+(defun dl-satan-tank--last-run-status (events)
+  "Derive a run-level status symbol from transcript EVENTS.
+Returns one of: `final', `timeout', `error', `in-progress'."
+  (cond
+   ((cl-some (lambda (e) (equal (plist-get e :event) "timeout")) events)
+    'timeout)
+   ((cl-some (lambda (e) (equal (plist-get e :event) "protocol-error"))
+             events)
+    'error)
+   ((cl-some (lambda (e) (equal (plist-get e :event) "final")) events)
+    'final)
+   (t 'in-progress)))
+
+(defun dl-satan-tank--last-run-state (run-id events)
+  "Aggregate transcript EVENTS into the LAST RUN state plist for RUN-ID."
+  (let* ((start-ts nil)
+         (end-ts nil)
+         (last-usage nil)
+         (tool-calls nil)
+         (tool-results (make-hash-table :test 'equal))
+         (final nil)
+         (err nil))
+    (dolist (e events)
+      (let ((ts (plist-get e :ts))
+            (event (plist-get e :event))
+            (payload (plist-get e :payload)))
+        (when (and ts (or (null start-ts) (string-lessp ts start-ts)))
+          (setq start-ts ts))
+        (when (and ts (or (null end-ts) (string-greaterp ts end-ts)))
+          (setq end-ts ts))
+        (pcase event
+          ("log"
+           (when (and (listp payload) (equal (plist-get payload :kind) "usage"))
+             (setq last-usage payload)))
+          ("tool-call"
+           (let ((id (and (listp payload) (plist-get payload :id)))
+                 (name (and (listp payload) (plist-get payload :name))))
+             (push (list :id id :name name) tool-calls)))
+          ("tool-result"
+           (let ((id (and (listp payload) (plist-get payload :id)))
+                 (ok (and (listp payload) (plist-get payload :ok))))
+             (when id (puthash id (not (eq ok :false)) tool-results))))
+          ("final"
+           (setq final payload))
+          ("protocol-error"
+           (setq err (and (listp payload) (plist-get payload :error)))))))
+    (setq tool-calls (nreverse tool-calls))
+    (dolist (tc tool-calls)
+      (let ((id (plist-get tc :id)))
+        (plist-put tc :ok (gethash id tool-results nil))))
+    (list :run_id run-id
+          :mode (dl-satan-tank--short-run run-id)
+          :status (dl-satan-tank--last-run-status events)
+          :start_ts start-ts
+          :end_ts end-ts
+          :duration_s (and start-ts end-ts
+                           (dl-satan-tank--iso-duration start-ts end-ts))
+          :tokens_in (and last-usage (plist-get last-usage :tokens_in))
+          :tokens_out (and last-usage (plist-get last-usage :tokens_out))
+          :tokens_total (and last-usage (plist-get last-usage :tokens_total))
+          :tool_calls tool-calls
+          :final_summary (and (listp final) (plist-get final :summary))
+          :final_actions (and (listp final)
+                              (length (plist-get final :actions)))
+          :error_msg err)))
+
+(defun dl-satan-tank--iso-duration (start end)
+  "Seconds between two ISO8601 timestamps START and END, or nil."
+  (ignore-errors
+    (- (float-time (date-to-time end))
+       (float-time (date-to-time start)))))
+
+(defun dl-satan-tank--gather-last-run ()
+  "Return the LAST RUN state plist for the newest non-empty run, or nil."
+  (let ((runs (dl-satan-tank--recent-runs))
+        result)
+    (cl-loop for r in runs
+             for events = (dl-satan-tank--read-run-events r)
+             when events
+             do (setq result (dl-satan-tank--last-run-state r events))
+             and return nil)
+    result))
+
 (defun dl-satan-tank--gather-events ()
   "Tail the last N events from the most recent runs, newest first."
   (let* ((runs (dl-satan-tank--recent-runs))
@@ -356,6 +512,8 @@ Each returned plist gains a `:run' (mode slug) and `:summary' field."
                    (dl-satan-tank--gather-evidence)))
           (insert (dl-satan-tank--render-traces
                    (dl-satan-tank--gather-traces)))
+          (insert (dl-satan-tank--render-last-run
+                   (dl-satan-tank--gather-last-run)))
           (insert (dl-satan-tank--render-events
                    (dl-satan-tank--gather-events)))
           (goto-char (min point-pos (point-max))))))))
