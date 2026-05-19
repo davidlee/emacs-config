@@ -165,6 +165,7 @@ missing — a tool without a description is a misconfiguration."
     ('boolean "boolean")
     ('number  "number")
     ('object  "object")
+    ('array   "array")
     (_ (error "SATAN: unsupported arg type: %S" sym))))
 
 (defun dl-satan-tool--args-schema-to-jsonschema (args-schema)
@@ -181,10 +182,20 @@ Recurses into `:shape' for nested object args."
              (enum (plist-get constraints :enum))
              (pattern (plist-get constraints :pattern))
              (shape (plist-get constraints :shape))
+             (items (plist-get constraints :items))
              (req  (plist-get constraints :required))
-             (prop (if (and (eq type 'object) shape)
-                       (dl-satan-tool--args-schema-to-jsonschema shape)
-                     (list :type (dl-satan-tool--jsonschema-type type)))))
+             (prop (cond
+                    ((and (eq type 'object) shape)
+                     (dl-satan-tool--args-schema-to-jsonschema shape))
+                    ((eq type 'array)
+                     (let ((p (list :type "array")))
+                       (when items
+                         (setq p (plist-put p :items
+                                            (list :type
+                                                  (dl-satan-tool--jsonschema-type
+                                                   items)))))
+                       p))
+                    (t (list :type (dl-satan-tool--jsonschema-type type))))))
         (when enum
           (setq prop (plist-put prop :enum (vconcat enum))))
         (when pattern

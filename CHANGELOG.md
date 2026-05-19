@@ -2,6 +2,47 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-20 — SATAN: memory step 9 — wire substrate into broker
+
+First shared-file touch since the memory work began.  Three modes
+admit the new tools; one new aggregator becomes the broker's single
+entry point for the substrate.
+
+- `satan/dl-satan-memory.el` (new): aggregator that requires the five
+  `dl-satan-memory-*` submodules + `dl-satan-tools-{memory,bough}`,
+  plus `my/satan-memory-resonate`, `my/satan-memory-show`, and
+  `my/satan-memory-status` interactive commands for poking the store
+  from Emacs.
+- `satan/dl-satan.el` requires the aggregator; the rest of the chain
+  resolves transitively.
+- `dl-satan-mode.el`: `morning` and `motd` admit `bough_read`,
+  `memory_mark`, `memory_resonate`, `memory_show_trace` (and declare
+  `memory-write` capability); `self-edit-mech` / `-mind` admit only
+  `bough_read`, `memory_resonate`, `memory_show_trace` (read-only —
+  no mark, no `memory-write`).
+- `dl-satan-tick.el`: tick-mode defaults inherit the same write-side
+  surface as morning, so `tick-pulse` can mark memories.
+- `dl-satan-tools.el`: lifted deferred-sweep item §1.  Array support
+  in the JSON Schema builder (`:type 'array` + optional `:items`
+  scalar) — forced now because the four array-shaped args on the
+  memory tools (`memory_mark.links`, `memory_resonate.kinds`,
+  `cue.handles`, `hints.topic`) previously declared empty constraints
+  and tripped `dl-satan-tool--jsonschema-type` with a nil type when
+  the broker built a real manifest.
+- `dl-satan-tools-memory.el`: declares the array shape explicitly on
+  those four args.
+- `test/dl-satan-test.el`: requires `dl-satan-memory` so the registry
+  has the new tools at test time; description stubs in the manifest
+  + budget-denied tests now cover all admitted tools; the self-edit
+  `:tools` assertion was relaxed from exact-list to `member` to keep
+  the test stable across future additive mode edits.
+
+Memory subsystem 109/109; phase-3 87/87 (no regression); integration
+1/1 against the fake harness; `nix build .#satan-jailed-gptel-harness`
+clean.  After this commit every memory tool is broker-dispatchable
+from a real run; step 10 (renormalize CLI) and step 11 (acceptance
+§9 pass + SATAN.md/CHANGELOG narrative) can run in either order.
+
 ## 2026-05-20 — SATAN: memory step 8 — memory_* tool handlers
 
 `satan/dl-satan-tools-memory.el` registers the three model-facing

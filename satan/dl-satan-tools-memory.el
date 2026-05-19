@@ -266,7 +266,7 @@ cannot express yet."
         (list 'kind        (list :type 'string
                                  :enum dl-satan-tools-memory--kind-values)
               'phase       (list :type 'string)
-              'topic       (list)
+              'topic       (list :type 'array :items 'string)
               'focal_app   (list :type 'string)
               'focal_bough_nanoid
                            (list :type 'string
@@ -275,7 +275,7 @@ cannot express yet."
                                  :enum dl-satan-tools-memory--valence-values)
               'outcome_for (list :type 'string)))
        (cue-shape
-        (list 'handles (list)
+        (list 'handles (list :type 'array :items 'string)
               'hints   (list :type 'object :shape hints-shape))))
 
   (dl-satan-tool-register
@@ -286,7 +286,7 @@ cannot express yet."
                'hints   (list :type 'object :shape hints-shape)
                'valence (list :type 'string
                               :enum dl-satan-tools-memory--valence-values)
-               'links   (list))
+               'links   (list :type 'array :items 'string))
          :modes nil
          :handler 'dl-satan-tool/memory-mark))
 
@@ -296,7 +296,7 @@ cannot express yet."
          :args-schema
          (list 'cue       (list :type 'object :shape cue-shape)
                'limit     (list :type 'integer)
-               'kinds     (list)
+               'kinds     (list :type 'array :items 'string)
                'min_score (list :type 'number))
          :modes nil
          :handler 'dl-satan-tool/memory-resonate))

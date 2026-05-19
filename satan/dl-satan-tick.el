@@ -70,8 +70,10 @@ The prompt file defaults to `<prompts>/tick/SHORT-NAME.txt'."
               :context-fn 'dl-satan-context-tick
               :tools '("org_read_context" "notify_send" "inbox_append"
                         "activity_read"
-                        "sway_border_set" "sway_border_reset")
-              :capabilities '(notify inbox-write)
+                        "sway_border_set" "sway_border_reset"
+                        "bough_read" "memory_mark" "memory_resonate"
+                        "memory_show_trace")
+              :capabilities '(notify inbox-write memory-write)
               :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
               :jail-profile 'specDev
               :provider 'openrouter

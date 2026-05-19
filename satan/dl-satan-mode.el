@@ -37,9 +37,11 @@ Dotfiles must not be the source of truth for prompt content.")
        :tools '("org_read_context" "org_update_owned_block"
                 "proposal_stage" "notify_send" "hippocampus_write"
                 "inbox_append" "agenda_read" "activity_read"
-                "sway_border_set" "sway_border_reset")
+                "sway_border_set" "sway_border_reset"
+                "bough_read" "memory_mark" "memory_resonate"
+                "memory_show_trace")
        :capabilities '(write-daily stage-proposal notify hippocampus-write
-                       inbox-write)
+                       inbox-write memory-write)
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
        :jail-profile 'specDev
        :provider 'openrouter
@@ -56,8 +58,10 @@ Dotfiles must not be the source of truth for prompt content.")
        :context-fn 'dl-satan-context-motd
        :tools '("org_read_context" "notify_send" "inbox_append"
                 "agenda_read" "activity_read"
-                "sway_border_set" "sway_border_reset")
-       :capabilities '(notify inbox-write)
+                "sway_border_set" "sway_border_reset"
+                "bough_read" "memory_mark" "memory_resonate"
+                "memory_show_trace")
+       :capabilities '(notify inbox-write memory-write)
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
        :jail-profile 'specDev
        :provider 'openrouter
@@ -73,7 +77,8 @@ Dotfiles must not be the source of truth for prompt content.")
        :prompt-file (expand-file-name "self-edit-mech.txt" dl-satan-prompts-dir)
        :context-fn 'dl-satan-context-self-edit
        :source-roots-var 'dl-satan-self-edit-mech-roots
-       :tools '("proposal_stage" "sway_border_set" "sway_border_reset")
+       :tools '("proposal_stage" "sway_border_set" "sway_border_reset"
+                "bough_read" "memory_resonate" "memory_show_trace")
        :capabilities '(stage-proposal)
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
        :jail-profile 'specDev
@@ -90,7 +95,8 @@ Dotfiles must not be the source of truth for prompt content.")
        :prompt-file (expand-file-name "self-edit-mind.txt" dl-satan-prompts-dir)
        :context-fn 'dl-satan-context-self-edit
        :source-roots-var 'dl-satan-self-edit-mind-roots
-       :tools '("proposal_stage" "sway_border_set" "sway_border_reset")
+       :tools '("proposal_stage" "sway_border_set" "sway_border_reset"
+                "bough_read" "memory_resonate" "memory_show_trace")
        :capabilities '(stage-proposal)
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
        :jail-profile 'specDev
