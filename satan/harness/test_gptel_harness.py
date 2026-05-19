@@ -44,7 +44,14 @@ def make_bundle(tmp: str, *, tools=None, **overrides) -> str:
     bundle = {
         "prompt": "test prompt",
         "mode": "morning",
-        "date": "2026-05-19",
+        "now": {
+            "iso_date": "2026-05-19",
+            "weekday": "Tuesday",
+            "iso_week": "2026-W21",
+            "time": "09:00",
+            "tz_offset": "+1000",
+            "tz_name": "AEST",
+        },
         "today_path": "/satan/notes/today.org",
         "today_text": "",
     }
@@ -197,6 +204,27 @@ class HarnessTests(unittest.TestCase):
         # Harness must not append any canonical termination prose.
         self.assertNotIn("satan_final", prompt)
 
+    def test_system_prompt_renders_now(self):
+        bundle = {
+            "prompt": "P",
+            "now": {
+                "iso_date": "2026-05-19",
+                "weekday": "Tuesday",
+                "iso_week": "2026-W21",
+                "time": "09:00",
+                "tz_offset": "+1000",
+                "tz_name": "AEST",
+            },
+        }
+        prompt = h.build_system_prompt(bundle)
+        self.assertIn("# Now", prompt)
+        self.assertIn("date: 2026-05-19 (Tuesday, ISO 2026-W21)", prompt)
+        self.assertIn("time: 09:00 +1000 AEST", prompt)
+
+    def test_system_prompt_skips_now_when_absent(self):
+        prompt = h.build_system_prompt({"prompt": "P"})
+        self.assertNotIn("# Now", prompt)
+
     def test_system_prompt_renders_sources(self):
         bundle = {
             "prompt": "P",
@@ -210,6 +238,47 @@ class HarnessTests(unittest.TestCase):
         self.assertIn("(provide 'x)", prompt)
         self.assertIn("## satan/y.py", prompt)
         self.assertIn("x = 1", prompt)
+
+
+class ProtocolFixtureTests(unittest.TestCase):
+    """Drive the python validator from protocol/fixtures.json.
+
+    Every valid fixture must validate clean; every invalid fixture must
+    fail with exactly the reason recorded in the fixture, so the python
+    and elisp validators stay in lockstep.
+    """
+
+    def test_fixtures_load(self):
+        fixtures = h.load_fixtures()
+        self.assertTrue(fixtures)
+
+    def test_valid_fixtures_pass(self):
+        for entry in h.load_fixtures():
+            if entry["kind"] != "valid":
+                continue
+            with self.subTest(name=entry["name"]):
+                reason = h.check(entry["direction"], entry["message"])
+                self.assertIsNone(reason)
+
+    def test_invalid_fixtures_fail_with_expected_reason(self):
+        for entry in h.load_fixtures():
+            if entry["kind"] != "invalid":
+                continue
+            with self.subTest(name=entry["name"]):
+                reason = h.check(entry["direction"], entry["message"])
+                self.assertIsNotNone(reason, f"{entry['name']} unexpectedly passed")
+                self.assertEqual(reason, entry["reason"])
+
+    def test_validate_raises_on_invalid(self):
+        with self.assertRaises(h.ProtocolError):
+            h.validate("in", {"type": "ready"})
+
+    def test_validate_passes_on_valid(self):
+        h.validate("in", {"type": "ready", "run_id": "x"})
+
+    def test_bad_direction_raises(self):
+        with self.assertRaises(ValueError):
+            h.check("sideways", {"type": "ready", "run_id": "x"})
 
 
 if __name__ == "__main__":

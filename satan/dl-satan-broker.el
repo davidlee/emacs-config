@@ -16,6 +16,7 @@
 (require 'dl-satan-audit)
 (require 'dl-satan-budget)
 (require 'dl-satan-jsonl)
+(require 'dl-satan-protocol)
 (require 'dl-satan-tools)
 (require 'dl-satan-tools-org)
 (require 'dl-satan-mode)
@@ -107,23 +108,23 @@ returns no vars, BASE-ENV is returned unchanged.  Direnv errors signal."
           :run-dir (dl-satan-run-dir run-ctx)
           :hippocampus-dir dl-satan-hippocampus-dir)))
 
-(defun dl-satan-broker--validate-final (obj)
-  "Return non-nil if OBJ is a well-formed `final' plist."
-  (let ((summary (plist-get obj :summary))
-        (actions (plist-get obj :actions)))
-    (and (stringp summary)
-         (or (eq actions :null)
-             (null actions)
-             (and (listp actions)
-                  (cl-every (lambda (a)
-                              (and (plist-get a :type)
-                                   (or (null (plist-get a :args))
-                                       (listp (plist-get a :args)))))
-                            actions))))))
-
 (defun dl-satan-broker--tee-stdout (path chunk)
   (let ((coding-system-for-write 'utf-8))
     (write-region chunk nil path 'append 'silent)))
+
+(defun dl-satan-broker--send-validated (run-ctx obj)
+  "Send OBJ to the harness, auditing a protocol error if it's malformed.
+Bad broker output is a bug, not a wire failure — we audit but still send
+so the harness sees something rather than blocking on stdin."
+  (let ((err (dl-satan-protocol-validate 'out obj)))
+    (when err
+      (dl-satan-audit-record
+       (dl-satan-run-audit run-ctx) 'broker 'protocol-error
+       (list :outbound t
+             :type (plist-get err :type)
+             :reason (plist-get err :reason)
+             :raw obj))))
+  (dl-satan-jsonl-send (dl-satan-run-process run-ctx) obj))
 
 (defun dl-satan-broker--on-tool-call (run-ctx obj)
   (let* ((mode (dl-satan-run-mode run-ctx))
@@ -137,7 +138,7 @@ returns no vars, BASE-ENV is returned unchanged.  Direnv errors signal."
                           :ok :false
                           :error "tool call budget exhausted")))
         (dl-satan-audit-record (dl-satan-run-audit run-ctx) 'broker 'tool-denied result)
-        (dl-satan-jsonl-send (dl-satan-run-process run-ctx) result)))
+        (dl-satan-broker--send-validated run-ctx result)))
      (t
       (setf (dl-satan-run-tool-calls-done run-ctx) (1+ done))
       (let* ((tool-ctx (dl-satan-broker--tool-ctx run-ctx))
@@ -145,21 +146,15 @@ returns no vars, BASE-ENV is returned unchanged.  Direnv errors signal."
                       obj (plist-get mode :tools) tool-ctx)))
         (dl-satan-audit-record
          (dl-satan-run-audit run-ctx)
-         (if (eq (plist-get result :ok) t) 'broker 'broker)
+         'broker
          (if (eq (plist-get result :ok) t) 'tool-result 'tool-denied)
          result)
         (dl-satan-audit-record (dl-satan-run-audit run-ctx) 'out 'tool-result result)
-        (dl-satan-jsonl-send (dl-satan-run-process run-ctx) result))))))
+        (dl-satan-broker--send-validated run-ctx result))))))
 
 (defun dl-satan-broker--on-final (run-ctx obj)
   (dl-satan-audit-record (dl-satan-run-audit run-ctx) 'in 'final obj)
-  (cond
-   ((dl-satan-broker--validate-final obj)
-    (setf (dl-satan-run-final run-ctx) obj))
-   (t
-    (dl-satan-audit-record (dl-satan-run-audit run-ctx) 'broker 'protocol-error
-                           (list :reason "invalid final"))
-    (setf (dl-satan-run-status run-ctx) 'invalid-protocol))))
+  (setf (dl-satan-run-final run-ctx) obj))
 
 (defun dl-satan-broker--on-log (run-ctx obj)
   (dl-satan-audit-record (dl-satan-run-audit run-ctx) 'in 'log obj))
@@ -169,17 +164,22 @@ returns no vars, BASE-ENV is returned unchanged.  Direnv errors signal."
   (setf (dl-satan-run-status run-ctx) 'failed))
 
 (defun dl-satan-broker--dispatch (run-ctx obj)
-  (let ((type (plist-get obj :type)))
-    (pcase type
-      ("ready"     (dl-satan-audit-record (dl-satan-run-audit run-ctx) 'in 'ready obj))
-      ("log"       (dl-satan-broker--on-log run-ctx obj))
-      ("tool_call" (dl-satan-broker--on-tool-call run-ctx obj))
-      ("final"     (dl-satan-broker--on-final run-ctx obj))
-      ("error"     (dl-satan-broker--on-error run-ctx obj))
-      (_ (dl-satan-audit-record
-          (dl-satan-run-audit run-ctx) 'broker 'protocol-error
-          (list :reason (format "unknown message type: %s" type)
-                :raw obj))))))
+  (let ((err (dl-satan-protocol-validate 'in obj)))
+    (cond
+     (err
+      (dl-satan-audit-record
+       (dl-satan-run-audit run-ctx) 'broker 'protocol-error
+       (list :type (plist-get err :type)
+             :reason (plist-get err :reason)
+             :raw obj))
+      (setf (dl-satan-run-status run-ctx) 'invalid-protocol))
+     (t
+      (pcase (plist-get obj :type)
+        ("ready"     (dl-satan-audit-record (dl-satan-run-audit run-ctx) 'in 'ready obj))
+        ("log"       (dl-satan-broker--on-log run-ctx obj))
+        ("tool_call" (dl-satan-broker--on-tool-call run-ctx obj))
+        ("final"     (dl-satan-broker--on-final run-ctx obj))
+        ("error"     (dl-satan-broker--on-error run-ctx obj)))))))
 
 (defun dl-satan-broker--make-filter (run-ctx)
   (let ((inner (dl-satan-jsonl-make-filter
