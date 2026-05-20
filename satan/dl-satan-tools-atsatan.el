@@ -381,7 +381,8 @@ item is the canonical user-facing surface for the result."
           "hippocampus_write"
           "memory_mark" "memory_resonate" "memory_show_trace"
           "bough_read"
-          "agenda_read")
+          "agenda_read"
+          "patch_job_create" "patch_job_status")
  :capabilities '(write-notes inbox-write memory-write)
  :budget-tokens 60000
  :budget-tool-calls 15

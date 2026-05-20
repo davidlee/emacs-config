@@ -110,7 +110,8 @@ Dotfiles must not be the source of truth for prompt content.")
        :context-fn 'dl-satan-context-self-edit
        :source-roots-var 'dl-satan-self-edit-mech-roots
        :tools '("proposal_stage" "sway_border_set" "sway_border_reset"
-                "bough_read" "memory_resonate" "memory_show_trace")
+                "bough_read" "memory_resonate" "memory_show_trace"
+                "patch_job_create" "patch_job_status")
        :capabilities '(stage-proposal)
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
        :jail-profile 'specDev
@@ -127,7 +128,8 @@ Dotfiles must not be the source of truth for prompt content.")
        :context-fn 'dl-satan-context-self-edit
        :source-roots-var 'dl-satan-self-edit-mind-roots
        :tools '("proposal_stage" "sway_border_set" "sway_border_reset"
-                "bough_read" "memory_resonate" "memory_show_trace")
+                "bough_read" "memory_resonate" "memory_show_trace"
+                "patch_job_create" "patch_job_status")
        :capabilities '(stage-proposal)
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
        :jail-profile 'specDev
