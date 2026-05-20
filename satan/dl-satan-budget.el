@@ -13,7 +13,7 @@
 (declare-function dl-satan-broker-run-dirs-for-date "dl-satan-broker"
                   (runs-dir date-prefix))
 
-(defcustom dl-satan-budget-daily-tokens 1000000
+(defcustom dl-satan-budget-daily-tokens 2000000
   "Maximum tokens SATAN may spend per local day across all runs.
 Set to nil to disable the gate."
   :type '(choice (integer :tag "Tokens") (const :tag "Disabled" nil))
