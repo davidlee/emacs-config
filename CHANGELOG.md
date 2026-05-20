@@ -2,6 +2,40 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-20 — SATAN: `@satan` claim render reshaped to was-here + quote block
+
+`notes_at_satan_done` no longer collapses run-id + comment into an
+inline `@satan-done(<run-id>,<comment>)` marker. It now writes
+`@satan-was-here` in place of the `@satan` token and inserts a quoted
+summary block on the following lines:
+
+```org
+@satan-was-here <preserved trailing text>
+#+BEGIN_QUOTE satan <run-id>[,<tag>]
+<body>
+#+END_QUOTE
+```
+
+Markdown files render the block as `> `-prefixed lines instead of the
+org quote pair. Block lines inherit the original line's leading
+whitespace so list items stay aligned.
+
+The `comment` argument is split on the first `:` — left half becomes a
+tag appended to the block header (after the run-id, comma-separated),
+right half becomes the body. A comment with no colon renders body-only.
+
+Scan exclusion regex now matches `@satan-was-here`; old
+`@satan-done(...)` lines are not recognized, so any pre-existing
+claims will resurface on the next scan (none in the wild yet —
+feature recently landed).
+
+New ert coverage: markdown blockquote rendering, no-colon comment,
+indent propagation. All seven `notes-at-satan-` tests pass.
+
+Docs updated: `AT-SATAN.md`, `satan/patch-harness.md`. Embedded code
+excerpts in `AT-SATAN.md` are now flagged as a snapshot; canonical
+source is `satan/dl-satan-tools-atsatan.el`.
+
 ## 2026-05-20 — SATAN: `@satan` agent-trigger tooling (AT-SATAN)
 
 New `tick-agent` tick mode that scans `~/notes/` for `@satan` directives

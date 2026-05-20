@@ -39,15 +39,21 @@
           (should (equal "* H" (plist-get m :headline)))
           ;; Done: claim it.
           (let ((done (dl-satan-tool/notes-at-satan-done
-                       (list :match-id id :comment "ok")
+                       (list :match-id id
+                             :comment "inbox_append: summarised 4 steps")
                        ctx)))
             (should (eq (car done) 'ok))
             (should (equal "done" (plist-get (cdr done) :status))))
-          ;; File now bears @satan-done with the run-id.
+          ;; File now bears @satan-was-here plus an org quote block
+          ;; carrying the run-id, tag, and body summary.
           (with-temp-buffer
             (insert-file-contents file)
-            (should (string-match-p "@satan-done(TEST-RUN,ok)"
-                                    (buffer-string))))
+            (let ((s (buffer-string)))
+              (should (string-match-p "@satan-was-here summarise me" s))
+              (should (string-match-p
+                       "#\\+BEGIN_QUOTE satan TEST-RUN,inbox_append" s))
+              (should (string-match-p "^summarised 4 steps$" s))
+              (should (string-match-p "#\\+END_QUOTE" s))))
           ;; Idempotent: second done is a no-op.
           (let ((done2 (dl-satan-tool/notes-at-satan-done
                         (list :match-id id) ctx)))
@@ -97,6 +103,62 @@
              (window (plist-get m :context)))
         (should (eq (car res) 'ok))
         (should (equal "l3\nl4\n@satan here\nl6\nl7" window))))))
+
+(ert-deftest notes-at-satan-done/markdown-blockquote ()
+  "Markdown files render the claim as a `> '-prefixed blockquote."
+  (dl-satan-tools-atsatan-test--with-root root
+    (let* ((file (expand-file-name "md-trip.md" root))
+           (ctx  (list :id "RUN-MD" :capabilities '(write-notes))))
+      (let ((coding-system-for-write 'utf-8))
+        (write-region "## H\n@satan act on this\n" nil file))
+      (let* ((res (dl-satan-tool/notes-at-satan-scan nil ctx))
+             (id  (plist-get (car (plist-get (cdr res) :matches)) :id)))
+        (dl-satan-tool/notes-at-satan-done
+         (list :match-id id :comment "memory_mark: noted gap") ctx)
+        (with-temp-buffer
+          (insert-file-contents file)
+          (let ((s (buffer-string)))
+            (should (string-match-p "@satan-was-here act on this" s))
+            (should (string-match-p "^> satan RUN-MD,memory_mark$" s))
+            (should (string-match-p "^> noted gap$" s))
+            (should-not (string-match-p "#\\+BEGIN_QUOTE" s))))))))
+
+(ert-deftest notes-at-satan-done/no-colon-comment ()
+  "A comment without a colon becomes the whole body; header has no tag."
+  (dl-satan-tools-atsatan-test--with-root root
+    (let* ((file (expand-file-name "no-colon.org" root))
+           (ctx  (list :id "RUN-NC" :capabilities '(write-notes))))
+      (let ((coding-system-for-write 'utf-8))
+        (write-region "@satan plain\n" nil file))
+      (let* ((res (dl-satan-tool/notes-at-satan-scan nil ctx))
+             (id  (plist-get (car (plist-get (cdr res) :matches)) :id)))
+        (dl-satan-tool/notes-at-satan-done
+         (list :match-id id :comment "just a summary") ctx)
+        (with-temp-buffer
+          (insert-file-contents file)
+          (let ((s (buffer-string)))
+            (should (string-match-p "^#\\+BEGIN_QUOTE satan RUN-NC$" s))
+            (should (string-match-p "^just a summary$" s))))))))
+
+(ert-deftest notes-at-satan-done/indent-propagates ()
+  "Leading whitespace on the @satan line propagates to every block line."
+  (dl-satan-tools-atsatan-test--with-root root
+    (let* ((file (expand-file-name "indent.org" root))
+           (ctx  (list :id "RUN-IN" :capabilities '(write-notes))))
+      (let ((coding-system-for-write 'utf-8))
+        (write-region "* H\n  - @satan nested\n" nil file))
+      (let* ((res (dl-satan-tool/notes-at-satan-scan nil ctx))
+             (id  (plist-get (car (plist-get (cdr res) :matches)) :id)))
+        (dl-satan-tool/notes-at-satan-done
+         (list :match-id id :comment "tool: did it") ctx)
+        (with-temp-buffer
+          (insert-file-contents file)
+          (let ((s (buffer-string)))
+            (should (string-match-p "  - @satan-was-here nested" s))
+            (should (string-match-p
+                     "^  #\\+BEGIN_QUOTE satan RUN-IN,tool$" s))
+            (should (string-match-p "^  did it$" s))
+            (should (string-match-p "^  #\\+END_QUOTE$" s))))))))
 
 (ert-deftest notes-at-satan-done/refuses-without-capability ()
   "Done refuses when ctx :capabilities lacks 'write-notes."

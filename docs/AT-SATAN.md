@@ -33,8 +33,19 @@ content (which lines are returned) is the document's natural context:
 the paragraph containing `@satan`, the headline/subtree, and a fixed
 window of adjacent lines.
 
-A line claimed by a previous run carries `@satan-done(<run-id>[,comment])`
-in place of the bare `@satan`. The scan filters these out.
+A line claimed by a previous run carries `@satan-was-here` in place of
+the bare `@satan`, followed by a quoted block holding the run-id and a
+summary comment. Org files use `#+BEGIN_QUOTE`/`#+END_QUOTE`; markdown
+files use `> `-prefixed lines. The scan filters claimed lines out.
+
+Render example (org):
+
+```org
+- @satan-was-here summarise the three points above this line
+  #+BEGIN_QUOTE satan 20260520T125209-tick-agent-259270,inbox_append
+  your 12:15 blood test already passed; today is packed; go tomorrow
+  #+END_QUOTE
+```
 
 ---
 
@@ -47,8 +58,8 @@ in place of the bare `@satan`. The scan filters these out.
 
 ;; Scans ~/notes/ for @satan references and returns excerpts with
 ;; context (`notes_at_satan_scan'); marks a directive done by replacing
-;; the @satan token with @satan-done(<run-id>,comment) on its line
-;; (`notes_at_satan_done').
+;; the @satan token with @satan-was-here and appending a quoted block
+;; carrying the run-id + summary comment (`notes_at_satan_done').
 ;;
 ;; Risk model:
 ;;   - notes_at_satan_scan : risk read; no capability required.
@@ -357,7 +368,7 @@ The `id` field is the stable anchor for the round-trip into
 | Arg | Type | Required | Description |
 |-----|------|----------|-------------|
 | `match-id` | string | yes | The `:id` from a `notes_at_satan_scan` entry. |
-| `comment`  | string | no  | Short summary embedded in the marker. |
+| `comment`  | string | no  | Short summary recorded in the claim block. Split on the first `:` — left becomes a tag appended to the block header (after the run-id, comma-separated), right becomes the body. No colon → whole string is body, header has no tag. |
 
 ### Handler (verbatim — the subtle bit)
 
@@ -447,20 +458,22 @@ Notes on the handler:
   always scans before claiming, so the lookup is populated. A morning
   run scans without claiming (write capability absent) and the index
   entries are harmless.
-- `replace-regexp-in-string` with `START` arg 1 replaces only the first
-  occurrence on the line. A line with multiple `@satan` tokens (rare;
-  malformed) claims one at a time.
-- Idempotency: a second call against a line that is already
-  `@satan-done` returns `:status "already-done"` without rewriting the
-  file.
+- Only the first `@satan` on the line is replaced. A line with
+  multiple `@satan` tokens (rare; malformed) claims one at a time.
+- Idempotency: a second call against a line that already bears
+  `@satan-was-here` returns `:status "already-done"` without rewriting
+  the file.
+- The embedded code excerpts in this section are a snapshot; the
+  canonical source is `satan/dl-satan-tools-atsatan.el`.
 
 ### Why not delete the line outright?
 
-1. **Audit trail.** `@satan-done(<run-id>)` lets a human grep for what
-   SATAN has processed, when, and (via the comment) what it did.
-2. **Idempotency.** Filtering out `@satan-done` lines at scan time is
-   load-bearing; deleting would make absence the only signal, which is
-   fragile against backups, undo, or re-imports.
+1. **Audit trail.** `@satan-was-here` plus the appended quote block
+   lets a human grep for what SATAN has processed, when (run-id), and
+   what it did (block body).
+2. **Idempotency.** Filtering out `@satan-was-here` lines at scan time
+   is load-bearing; deleting would make absence the only signal, which
+   is fragile against backups, undo, or re-imports.
 3. **User trust.** Replacing in place with a completion marker is
    honest and reversible. Deletion is not.
 
@@ -553,7 +566,7 @@ trace, stage a proposal). Then call `notes_at_satan_done` with the
 `id` to claim the directive. Do not claim a directive you did not
 actually act on.
 
-Lines already bearing `@satan-done(...)` are excluded automatically.
+Lines already bearing `@satan-was-here` are excluded automatically.
 If a directive is ambiguous, skip it — do not guess. If a directive
 needs a tool you do not have access to in this mode, write a
 hippocampus entry noting the gap and leave the directive unclaimed.
@@ -566,9 +579,21 @@ Mark a `@satan` directive as completed. Takes the `id` from a
 `notes_at_satan_scan` result entry and an optional `comment`
 summarising what you did.
 
-Effect: replaces `@satan` on the matched line with
-`@satan-done(<run-id>,comment)`, preserving the rest of the line. The
-directive will not appear in future `notes_at_satan_scan` results.
+Effect: replaces `@satan` on the matched line with `@satan-was-here`
+(preserving the rest of the line) and inserts a quoted summary block
+below it carrying the run-id and `comment`. The `comment` is split on
+the first `:` — left becomes a tag in the block header (after the
+run-id, comma-separated), right becomes the body. The directive will
+not appear in future `notes_at_satan_scan` results.
+
+Example: `comment = "inbox_append: noted three open items"` →
+
+```org
+@satan-was-here <rest of line>
+#+BEGIN_QUOTE satan <run-id>,inbox_append
+noted three open items
+#+END_QUOTE
+```
 
 Call this immediately after acting on the directive — do not batch
 claims at the end of your run. Claim only directives you have actually
@@ -662,8 +687,9 @@ User writes "@satan summarise the maintenance steps" in daily note.
         notes_at_satan_done(id, "summarised 4 maintenance steps")
                                 │
                                 ▼
-   File updated: "@satan-done(<run-id>,summarised 4 maintenance steps) …"
-   Next scan: excluded by @satan-done filter.
+   File updated: "@satan-was-here …" + quote block
+                  carrying run-id and "summarised 4 maintenance steps".
+   Next scan: excluded by the @satan-was-here filter.
 ```
 
 ---
@@ -734,10 +760,10 @@ careful timeout + truncation.
 | `rg` vs `fd`+`grep` | `rg --json -n --fixed-strings @satan` | rg already standard in the Nix env; JSON output avoids cascaded split bugs around colons/NULs. |
 | `rg --json` field map | path = `.data.path.text`; line = `.data.line_number`; content = `.data.lines.text`; filter `.type == "match"` | Locks the parse surface so the elisp doesn't drift on rg version bumps. |
 | Exclude `satan/` dir | `--glob '!satan/**'` (extensible via `dl-satan-tools-atsatan--exclude-globs`) | Single mechanism for exclusions; matches the `dl-satan-tools-notes--exclude` pattern. |
-| Exclude `@satan-done` lines | Post-parse elisp filter via `string-match-p` | Pipe-through-grep breaks NUL/JSON framing; PCRE lookahead is PCRE-only with `-P`. |
+| Exclude `@satan-was-here` lines | Post-parse elisp filter via `string-match-p` | Pipe-through-grep breaks NUL/JSON framing; PCRE lookahead is PCRE-only with `-P`. |
 | Context window | In-elisp line slice from the file buffer (±N around `:line`) | rg context records are fragile to re-associate; buffer already opened for headline walk-up. |
 | Headline walk-up | Regex `^\(\*+\|#+\) ` (org and markdown) | Single mechanism. Return sigil-inclusive text so the LLM sees the level. |
-| Concurrent claim of same line | Optimistic re-read; if already `@satan-done`, return `:status "already-done"` | Idempotent. No error on race. |
+| Concurrent claim of same line | Optimistic re-read; if already `@satan-was-here`, return `:status "already-done"` | Idempotent. No error on race. |
 | Concurrent edit of different lines in same file | Accepted limitation for v1 | Probability near zero under 30-min systemd timer. Future: `make-lock-file`. |
 | `write-notes` capability | New symbol, checked in handler via `(memq 'write-notes (plist-get ctx :capabilities))` | Matches `inbox-write` / `write-daily` pattern at `dl-satan-tools-inbox.el:51` and `dl-satan-tools-org.el:73-76`. Capabilities are symbols at the handler interface (broker propagates them at `dl-satan-broker.el:109`); they are stringified only for harness/LLM-facing JSON metadata at `dl-satan-broker.el:266-267`. |
 | Run-id source for marker | `(plist-get tool-ctx :id)` populated at `dl-satan-broker.el:107` | Avoids the green-implementer fumble looking for it in run-state or env. |
@@ -760,8 +786,9 @@ careful timeout + truncation.
    same line produce the same observable result (second is a no-op
    with `:status "already-done"`).
 3. **Claim is audit-traced.** Every claim leaves a visible
-   `@satan-done(<run-id>)` in the user's note and is logged in the
-   run's audit bundle. No silent state mutation.
+   `@satan-was-here` token plus a quote block carrying the run-id and
+   summary in the user's note, and is logged in the run's audit
+   bundle. No silent state mutation.
 4. **Scan is cheap.** `rg` over a notes corpus with <10K files takes
    under 500ms. The scan is one of the cheapest tool calls SATAN can
    make.
@@ -947,6 +974,6 @@ ls ~/notes/satan/runs/most-recent/
   directives".
 - A live `tick-agent` run with one seeded `@satan` directive: scan
   surfaces it, agent acts (writes inbox or hippocampus entry), claim
-  succeeds, file now bears `@satan-done(<run-id>,...)`, second tick
-  finds nothing.
+  succeeds, file now bears `@satan-was-here` + the quote block, second
+  tick finds nothing.
 - `CHANGELOG.md` carries a concise entry.

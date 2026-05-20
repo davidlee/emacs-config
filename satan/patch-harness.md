@@ -340,18 +340,29 @@ scan directive
 → report job/branch to inbox
 ```
 
-Possible markers:
+Possible markers (current scheme — see `dl-satan-tools-atsatan.el`):
 
-```text
-@satan-queued(<run-id>, patch-job:<id>)
-@satan-done(<run-id>, patch-job:<id>)
+```org
+@satan-was-here
+#+BEGIN_QUOTE satan <run-id>,patch-job
+queued: <patch-job-id>
+#+END_QUOTE
 ```
+
+Or for a completed claim, the body describes the completed action
+(branch name, review link, etc.) under the same `@satan-was-here`
+header plus quote block.
 
 Recommendation:
 
-Use `@satan-queued` if job execution is asynchronous or long-running.
+Reserve a `queued:` prefix in the comment body when job execution is
+asynchronous or long-running, so the model can later overwrite the
+block (or write a follow-up) when it completes.
 
-Use `@satan-done` only when SATAN has completed its responsibility for that directive. If the patch branch exists and the user has been told how to review it, `done` is acceptable, but `queued` is more semantically honest if the work has not completed yet.
+Only claim (`notes_at_satan_done`) when SATAN has completed its
+responsibility for that directive. If the patch branch exists and the
+user has been told how to review it, claiming is acceptable. Otherwise
+leave the directive unclaimed and surface progress via `inbox_append`.
 
 ---
 

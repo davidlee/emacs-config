@@ -2,8 +2,22 @@
 
 ;; Scans ~/notes/ for @satan references and returns excerpts with
 ;; context (`notes_at_satan_scan'); marks a directive done by replacing
-;; the @satan token with @satan-done(<run-id>,comment) on its line
-;; (`notes_at_satan_done').
+;; the @satan token with @satan-was-here on its line and appending a
+;; quoted block containing run-id + summary (`notes_at_satan_done').
+;;
+;; Render shape (org files):
+;;
+;;   @satan-was-here <preserved trailing text>
+;;   #+BEGIN_QUOTE satan <run-id>[,<tag>]
+;;   <body>
+;;   #+END_QUOTE
+;;
+;; Render shape (markdown files): a `> ' blockquote in place of the org
+;; quote block, same header + body lines.
+;;
+;; The optional `<tag>' is the part of the `comment' arg before the
+;; first colon; the body is the remainder. A comment with no colon
+;; renders header-only (run-id) plus the whole comment as body.
 ;;
 ;; Risk model:
 ;;   - notes_at_satan_scan : risk read; no capability required.
@@ -44,8 +58,10 @@ any `satan/' subtree regardless of depth.")
 (defconst dl-satan-tools-atsatan--mark "@satan"
   "Substring matching an active @satan directive.")
 
-(defconst dl-satan-tools-atsatan--done-re "@satan-done\\b"
-  "Regex marking a claimed @satan line; excluded from results.")
+(defconst dl-satan-tools-atsatan--claimed-re "@satan-was-here\\b"
+  "Regex marking a claimed @satan line; excluded from scan results.
+Lines bearing this marker were processed by a prior run and are
+followed by a quoted summary block.")
 
 (defconst dl-satan-tools-atsatan--headline-re
   "^\\(\\*+\\|#+\\) "
@@ -78,13 +94,43 @@ must round-trip the id within one scan-then-done cycle."
              (cons (plist-get m :file) (plist-get m :line))
              dl-satan-tools-atsatan--id-index)))
 
-(defun dl-satan-tools-atsatan--marker (run-id comment)
-  "Build `@satan-done(<run-id>[,<comment>])'. Strips parens/newlines from comment."
+(defun dl-satan-tools-atsatan--split-comment (comment)
+  "Split COMMENT into (TAG . BODY) on the first colon.
+TAG is the trimmed substring before `:'; BODY is the trimmed remainder.
+A comment with no colon yields (nil . trimmed-COMMENT).  An empty
+or all-whitespace COMMENT yields (nil . nil).  Newlines in either
+half collapse to single spaces."
   (let ((c (and comment
-                (replace-regexp-in-string "[()\n\r]" " " comment))))
-    (if (and c (not (string-empty-p (string-trim c))))
-        (format "@satan-done(%s,%s)" (or run-id "") (string-trim c))
-      (format "@satan-done(%s)" (or run-id "")))))
+                (replace-regexp-in-string "[\n\r]+" " " comment))))
+    (cond
+     ((or (null c) (string-empty-p (string-trim c)))
+      (cons nil nil))
+     ((string-match "\\`\\([^:]+\\):\\(.*\\)\\'" c)
+      (let ((tag  (string-trim (match-string 1 c)))
+            (body (string-trim (match-string 2 c))))
+        (cons (if (string-empty-p tag) nil tag)
+              (if (string-empty-p body) nil body))))
+     (t (cons nil (string-trim c))))))
+
+(defun dl-satan-tools-atsatan--render-block (file run-id comment)
+  "Return the claim block for FILE as a list of strings (one per line).
+RUN-ID identifies the producing tick; COMMENT is the model's summary,
+split into TAG/BODY by `dl-satan-tools-atsatan--split-comment'.
+Org files render an `#+BEGIN_QUOTE'/`#+END_QUOTE' pair; markdown files
+render a `> '-prefixed blockquote."
+  (let* ((ext   (downcase (or (file-name-extension file) "")))
+         (md    (equal ext "md"))
+         (split (dl-satan-tools-atsatan--split-comment comment))
+         (tag   (car split))
+         (body  (cdr split))
+         (header (concat "satan " (or run-id "")
+                         (if tag (concat "," tag) ""))))
+    (if md
+        (append (list (concat "> " header))
+                (and body (list (concat "> " body))))
+      (append (list (concat "#+BEGIN_QUOTE " header))
+              (and body (list body))
+              (list "#+END_QUOTE")))))
 
 (defun dl-satan-tools-atsatan--rg-argv (max-results path-glob)
   (let ((argv (list "--json" "-n" "--fixed-strings"
@@ -115,7 +161,7 @@ must round-trip the id within one scan-then-done cycle."
 
 (defun dl-satan-tools-atsatan--parse-matches (stdout)
   "Parse rg --json STDOUT into a list of (:file :line :content) plists.
-Skips non-match records and lines containing @satan-done."
+Skips non-match records and lines bearing the claimed marker."
   (let (out)
     (dolist (raw (split-string stdout "\n" t))
       (let* ((rec (ignore-errors
@@ -130,7 +176,7 @@ Skips non-match records and lines containing @satan-done."
                  (text (plist-get (plist-get data :lines) :text))
                  (content (and text (string-trim-right text))))
             (when (and path line content
-                       (not (string-match-p dl-satan-tools-atsatan--done-re
+                       (not (string-match-p dl-satan-tools-atsatan--claimed-re
                                             content)))
               (push (list :file path :line line :content content)
                     out))))))
@@ -173,11 +219,17 @@ Opens each unique file once; reads lines into a vector for slicing."
                        :id (dl-satan-tools-atsatan--hash file line)))))
      matches)))
 
-(defun dl-satan-tools-atsatan--rewrite-line (file line marker)
-  "Replace the first `@satan' on LINE of FILE with MARKER.
+(defun dl-satan-tools-atsatan--rewrite-line (file line run-id comment)
+  "Claim the @satan directive on LINE of FILE for RUN-ID with COMMENT.
+Replaces the first `@satan' on the line with `@satan-was-here',
+preserving any text on either side, and inserts the rendered claim
+block (see `dl-satan-tools-atsatan--render-block') immediately below.
+Block lines inherit the original line's leading whitespace so list
+items stay aligned.
+
 Optimistic re-read: if the line no longer contains a bare `@satan' (or
-already contains `@satan-done'), return :status \"already-done\". Other
-content on the line is preserved."
+already contains `@satan-was-here'), return :status \"already-done\"
+without writing."
   (let ((coding-system-for-read 'utf-8)
         (coding-system-for-write 'utf-8))
     (with-temp-buffer
@@ -189,7 +241,7 @@ content on the line is preserved."
              (current    (buffer-substring-no-properties line-start line-end))
              (id         (dl-satan-tools-atsatan--hash file line)))
         (cond
-         ((string-match-p dl-satan-tools-atsatan--done-re current)
+         ((string-match-p dl-satan-tools-atsatan--claimed-re current)
           (cons 'ok (list :match-id id :status "already-done")))
          ((not (string-match-p (regexp-quote dl-satan-tools-atsatan--mark)
                                current))
@@ -197,19 +249,24 @@ content on the line is preserved."
          (t
           ;; Replace the first @satan in `current'; preserve any
           ;; preceding text (e.g. a leading "- " list bullet).
-          ;; Note: spec's `(replace-regexp-in-string ... nil 1)' is
-          ;; wrong — non-nil START omits any text before START from the
-          ;; returned value, so the leading character gets eaten. Use
-          ;; explicit match + concat instead.
-          (let* ((mark   dl-satan-tools-atsatan--mark)
-                 (idx    (string-match (regexp-quote mark) current))
+          ;; Note: an older spec used `(replace-regexp-in-string ... nil 1)';
+          ;; non-nil START omits text before START from the return
+          ;; value, eating the leading character. Use explicit match +
+          ;; concat instead.
+          (let* ((mark    dl-satan-tools-atsatan--mark)
+                 (idx     (string-match (regexp-quote mark) current))
                  (replaced (concat (substring current 0 idx)
-                                   marker
-                                   (substring current
-                                              (+ idx (length mark))))))
+                                   "@satan-was-here"
+                                   (substring current (+ idx (length mark)))))
+                 (indent  (if (string-match "\\`\\([ \t]*\\)" current)
+                              (match-string 1 current) ""))
+                 (block   (dl-satan-tools-atsatan--render-block
+                           file run-id comment))
+                 (block-text (mapconcat (lambda (l) (concat indent l))
+                                        block "\n")))
             (delete-region line-start line-end)
             (goto-char line-start)
-            (insert replaced)
+            (insert replaced "\n" block-text)
             (write-region (point-min) (point-max) file nil 'silent)
             (cons 'ok (list :match-id id :status "done")))))))))
 
@@ -270,9 +327,8 @@ Idempotent: claiming an already-done line returns :status \"already-done\"."
       (cons 'error (format "file no longer exists: %s" (car pair))))
      (t
       (let* ((file (car pair))
-             (line (cdr pair))
-             (marker (dl-satan-tools-atsatan--marker run-id comment)))
-        (dl-satan-tools-atsatan--rewrite-line file line marker))))))
+             (line (cdr pair)))
+        (dl-satan-tools-atsatan--rewrite-line file line run-id comment))))))
 
 (dl-satan-tool-register
  (list :name "notes_at_satan_scan"
