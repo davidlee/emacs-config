@@ -81,7 +81,7 @@ The prompt file defaults to `<prompts>/tick/SHORT-NAME.txt'."
               :output-handler 'dl-satan-output/tick
               :auto-apply 'owned
               :timeout-seconds 60
-              :budget-tool-calls 4))
+              :budget-tool-calls 10))
           (spec defaults))
     (cl-loop for (k v) on overrides by #'cddr
       do (setq spec (plist-put spec k v)))

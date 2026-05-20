@@ -290,8 +290,8 @@
         "nixpkgs": "nixpkgs_4"
       },
       "locked": {
-        "lastModified": 1779108303,
-        "narHash": "sha256-D4F8g7+xAy88246isTgKmQsgeKzZbNKVNMXn4HrO3Fc=",
+        "lastModified": 1779235452,
+        "narHash": "sha256-CpFVx8l11+I+mQx/F8qOaua8+kl4NUg1ityQLGM/kbw=",
         "path": "/home/david/flakes/pub",
         "type": "path"
       },

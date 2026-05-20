@@ -205,6 +205,13 @@
             profile = "specDev";
             extraOptions = satanGptelJailOptions;
             workspaceDeps = [];
+            # Emacs broker pre-resolves op:// refs via `my/op-read-env'
+            # and caches in `my/op--cache' for the Emacs session, so the
+            # outer `op run' wrapper would prompt 1Password biometric on
+            # every tick. Disable it; keep `passApiKeysFromEnv' so the
+            # broker's plaintext env still flows into the jail.
+            useOpEnv = false;
+            passApiKeysFromEnv = true;
           };
           bubblewrap = pkgs.bubblewrap;
         };
