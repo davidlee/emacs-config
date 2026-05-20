@@ -31,7 +31,7 @@ The timer is created when `dl-satan-patch-runner-start-timer' is
 called; not started automatically at load time."
   :type 'integer :group 'dl-satan-patch)
 
-(defcustom dl-satan-patch-runner-enabled t
+(defcustom dl-satan-patch-runner-enabled nil
   "When non-nil, the elisp runner picks up queued patch jobs.
 Set to nil to hand the queue off to the satan-patcher daemon
 (see ~/dev/satan-patcher).  `dl-satan-patch-runner-tick',

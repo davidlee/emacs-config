@@ -13,6 +13,7 @@
 (require 'dl-satan-patch-runner)
 (require 'dl-satan-patch-adapter-pi)   ; auto-registers under "pi"
 (require 'dl-satan-patch-inbox)        ; adds runner-hook for inbox handoff
+(require 'dl-satan-patch-listener)     ; pg LISTEN → inbox handoff (opt-in)
 (require 'dl-satan-tools-patch)
 
 (provide 'dl-satan-patch)

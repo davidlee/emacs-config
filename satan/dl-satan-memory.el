@@ -15,6 +15,71 @@
 (require 'dl-satan-tools-bough)
 (require 'dl-satan-tools-memory)
 
+(defun my/satan-memory--recent-rows (limit)
+  "Return recent trace rows or signal on store error."
+  (pcase (dl-satan-memory-store-recent :limit limit)
+    (`(ok . ,rows) rows)
+    (`(error . ,msg) (error "recent failed: %s" msg))))
+
+(defun my/satan-memory--read-trace-id (prompt &optional limit)
+  "Read a trace id via `completing-read' over recent traces.
+LIMIT bounds the candidate pool (default 50).  Falls back to plain
+`read-string' when no recent traces exist."
+  (let* ((rows (my/satan-memory--recent-rows (or limit 50)))
+         (by-id (make-hash-table :test 'equal))
+         (cands (mapcar (lambda (r)
+                          (let ((id (plist-get r :trace_id)))
+                            (puthash id r by-id)
+                            id))
+                        rows)))
+    (if (null cands)
+        (read-string prompt)
+      (let* ((annotate
+              (lambda (id)
+                (when-let ((row (gethash id by-id)))
+                  (format "  %-18s  %s  %s"
+                          (plist-get row :kind)
+                          (plist-get row :observed_end_at)
+                          (plist-get row :payload)))))
+             (completion-extra-properties
+              (list :annotation-function annotate)))
+        (completing-read prompt cands nil nil nil nil (car cands))))))
+
+(defconst my/satan-memory-list--payload-preview-width 120
+  "Column width for the PAYLOAD preview in `my/satan-memory-list'.
+The store returns full payloads; this only caps the single-line
+table display.  Use `my/satan-memory-show' for the full body.")
+
+(defun my/satan-memory-list (&optional limit)
+  "List the LIMIT most recent traces (default 20) into `*satan-memory*'.
+With a prefix arg, use its numeric value as LIMIT.  Payload is
+shown as a single-line preview; `my/satan-memory-show' on the row
+yields the full text."
+  (interactive (list (if current-prefix-arg
+                         (prefix-numeric-value current-prefix-arg)
+                       20)))
+  (let ((rows (my/satan-memory--recent-rows limit))
+        (buf (get-buffer-create "*satan-memory*")))
+    (with-current-buffer buf
+      (let ((inhibit-read-only t))
+        (erase-buffer)
+        (special-mode)
+        (insert (format "recent: %d\n\n" (length rows)))
+        (if (null rows)
+            (insert "(no traces)\n")
+          (insert (format "%-36s  %-18s  %-20s  %s\n"
+                          "TRACE-ID" "KIND" "OBSERVED" "PAYLOAD"))
+          (dolist (row rows)
+            (insert (format "%-36s  %-18s  %-20s  %s\n"
+                            (plist-get row :trace_id)
+                            (plist-get row :kind)
+                            (plist-get row :observed_end_at)
+                            (truncate-string-to-width
+                             (or (plist-get row :payload) "")
+                             my/satan-memory-list--payload-preview-width
+                             nil nil "…")))))))
+    (pop-to-buffer buf)))
+
 (defun my/satan-memory-resonate (handles)
   "Resonate against HANDLES (whitespace-separated minibuffer input).
 Pop a `*satan-memory*' buffer listing the top matches as
@@ -40,8 +105,9 @@ TRACE-ID  SCORE  MATCHED-HANDLES."
     (`(error . ,msg) (error "resonate failed: %s" msg))))
 
 (defun my/satan-memory-show (trace-id)
-  "Pretty-print the trace identified by TRACE-ID into `*satan-memory*'."
-  (interactive (list (read-string "Trace id: ")))
+  "Pretty-print the trace identified by TRACE-ID into `*satan-memory*'.
+Interactively, completes against the most recent traces."
+  (interactive (list (my/satan-memory--read-trace-id "Trace id: ")))
   (pcase (dl-satan-memory-store-show trace-id)
     (`(ok . nil) (message "no trace: %s" trace-id))
     (`(ok . ,row)

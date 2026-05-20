@@ -322,8 +322,8 @@ KINDS is an optional list of trace-kind strings to filter on.
 GRAMMAR-VERSION is an optional smallint; when nil, all grammar
 versions are admitted (unlike `resonate', which scores against a
 single version's weights).  Payload newlines/tabs are collapsed
-to spaces and the field is truncated to 200 chars so the tab-split
-parser stays single-line."
+to spaces so the tab-split parser stays single-line; the full
+text is returned (no length cap)."
   (let* ((kinds-filter (when kinds " AND t.kind = ANY(:'kinds'::text[])"))
          (gv-filter (when grammar-version
                       (format " AND t.grammar_version = %d::smallint"
@@ -338,7 +338,7 @@ parser stays single-line."
                 "to_char(t.observed_end_at AT TIME ZONE 'UTC', "
                 "'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), "
                 "REPLACE(REPLACE("
-                "LEFT(t.payload, 200), E'\n', ' '), E'\t', ' '), "
+                "t.payload, E'\n', ' '), E'\t', ' '), "
                 "COALESCE("
                 "(SELECT string_agg(handle, ',' ORDER BY handle) "
                 "FROM trace_handles WHERE trace_id = t.id), '') "
