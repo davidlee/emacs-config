@@ -277,6 +277,12 @@ executable).  See `dl-satan-patch-adapter' for the protocol."
              :filter (dl-satan-patch-adapter-pi--filter state on-log)
              :sentinel (dl-satan-patch-adapter-pi--sentinel
                         state on-finish stderr-buf))))
+      ;; Pi with `--mode json -p DIRECTIVE' is non-interactive but still
+      ;; reads from stdin and blocks waiting for EOF.  CLI invocations
+      ;; pick this up via `< /dev/null'; `make-process' leaves stdin as
+      ;; an open pipe, so we close it explicitly here to unblock pi.
+      (when (process-live-p proc)
+        (process-send-eof proc))
       (when (and (integerp timeout) (> timeout 0))
         (run-with-timer
          timeout nil
