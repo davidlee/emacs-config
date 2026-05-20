@@ -31,6 +31,7 @@
      (list "-c"
            (concat
             "DROP TABLE IF EXISTS "
+            "patch_job_events, patch_jobs, "
             "trace_links, trace_handles, traces, "
             "handle_aliases, handle_weights, grammar_versions, "
             "schema_migrations CASCADE; "
@@ -459,6 +460,25 @@
       (should (= 1 (length rows)))
       (should (equal (plist-get (car rows) :kind) "intervention")))
      (err (ert-fail (format "recent failed: %S" err))))))
+
+(ert-deftest dl-satan-memory-store/recent-returns-full-payload ()
+  "Payload > 200 chars must round-trip unhewn — the tank wraps in elisp,
+so SQL must not LEFT()-truncate."
+  (dl-satan-memory-store-test--with-db
+   (let ((long (make-string 400 ?x)))
+     (dl-satan-memory-store-mark
+      :trace-id "20260519T120000-long01"
+      :kind "observation" :trace-origin "llm_mark" :source "t"
+      :observed-start-at "2026-05-19T11:50:00+10:00"
+      :observed-end-at   "2026-05-19T12:00:00+10:00"
+      :payload long :grammar-version 1
+      :handles (list (list :handle "app:firefox"
+                           :source (list :rule_id "r" :origin "observed"))))
+     (pcase (dl-satan-memory-store-recent :limit 1)
+       (`(ok . ,rows)
+        (should (= 400 (length (plist-get (car rows) :payload))))
+        (should (equal long (plist-get (car rows) :payload))))
+       (err (ert-fail (format "recent failed: %S" err)))))))
 
 (provide 'dl-satan-memory-store-test)
 ;;; dl-satan-memory-store-test.el ends here

@@ -55,12 +55,14 @@
 
 (defun dl-satan-tools-patch-test--create-job (repo &rest overrides)
   "Call the patch_job_create handler against REPO and return the result.
-OVERRIDES are merged onto the default args plist."
+OVERRIDES are merged onto the default args plist.  :start defaults to
+nil so the runner is not kicked from Phase-1 tests."
   (let ((args (append overrides
                       (list :directive "fix the thing"
                             :mode "self-edit-mech"
                             :repo repo
-                            :allowed_paths '("satan/" "test/")))))
+                            :allowed_paths '("satan/" "test/")
+                            :start nil))))
     (dl-satan-tool/patch-job-create args nil)))
 
 ;; ---------------------------------------------------------------------

@@ -119,6 +119,29 @@ base_ref."
                      :worktree_path wt
                      :allowed_paths (or allowed '())
                      :checks (or checks '())))))
+           ;; Exclude the manifest from this worktree's git status so a
+           ;; clean adapter run shows up as truly clean.  Per-worktree
+           ;; exclude lives in the linked worktree's gitdir.
+           (pcase (dl-satan-patch-worktree--git
+                   wt (list "rev-parse" "--git-path" "info/exclude"))
+             (`(ok . ,exclude-rel)
+              (let* ((exclude-path
+                      (expand-file-name (string-trim exclude-rel) wt))
+                     (entry ".satan-patch-manifest.json\n"))
+                (make-directory (file-name-directory exclude-path) t)
+                (with-temp-buffer
+                  (when (file-exists-p exclude-path)
+                    (insert-file-contents exclude-path))
+                  (unless (save-excursion
+                            (goto-char (point-min))
+                            (search-forward entry nil t))
+                    (goto-char (point-max))
+                    (unless (or (= (point) (point-min))
+                                (eq (char-before) ?\n))
+                      (insert "\n"))
+                    (insert entry)
+                    (write-region (point-min) (point-max)
+                                  exclude-path nil 'silent))))))
            (cons 'ok (list :worktree-path wt :branch branch)))))))))
 
 ;; ---------------------------------------------------------------------
@@ -169,6 +192,58 @@ Returns (ok . CHANGED) when every file is allowed, else
     (if bad
         (cons 'error bad)
       (cons 'ok changed))))
+
+;; ---------------------------------------------------------------------
+;; post-run inspection: commits, diffstat, status
+;; ---------------------------------------------------------------------
+
+(defun dl-satan-patch-worktree-commits (job-spec)
+  "Return (ok . LIST) of commits between base_ref and HEAD inside JOB-SPEC's
+worktree.  Each element is a plist (:sha STR :subject STR).  Returns
+\(error . MSG) on git failure."
+  (let* ((wt (plist-get job-spec :worktree_path))
+         (base (plist-get job-spec :base_ref)))
+    (pcase (dl-satan-patch-worktree--git
+            wt (list "log" "--pretty=format:%H%x00%s"
+                     (concat base "..HEAD")))
+      (`(ok . ,out)
+       (cons 'ok
+             (cl-loop for line in (split-string (string-trim out) "\n" t)
+                      for parts = (split-string line "\0")
+                      when (= 2 (length parts))
+                      collect (list :sha (car parts)
+                                    :subject (cadr parts)))))
+      (err err))))
+
+(defun dl-satan-patch-worktree-diffstat (job-spec)
+  "Return (ok PLIST) of files_changed/insertions/deletions or (error MSG).
+Computed from `git diff --shortstat base_ref..HEAD' inside the worktree."
+  (let* ((wt (plist-get job-spec :worktree_path))
+         (base (plist-get job-spec :base_ref)))
+    (pcase (dl-satan-patch-worktree--git
+            wt (list "diff" "--shortstat"
+                     (concat base "..HEAD")))
+      (`(ok . ,out)
+       (let* ((s (string-trim out))
+              (files (and (string-match "\\([0-9]+\\) files? changed" s)
+                          (string-to-number (match-string 1 s))))
+              (ins   (and (string-match "\\([0-9]+\\) insertions?" s)
+                          (string-to-number (match-string 1 s))))
+              (dels  (and (string-match "\\([0-9]+\\) deletions?" s)
+                          (string-to-number (match-string 1 s)))))
+         (cons 'ok (list :files_changed (or files 0)
+                         :insertions (or ins 0)
+                         :deletions (or dels 0)))))
+      (err err))))
+
+(defun dl-satan-patch-worktree-status-clean-p (job-spec)
+  "Non-nil iff JOB-SPEC's worktree has no untracked/staged/modified files.
+Returns nil also on git failure (treated as not-clean for safety)."
+  (let* ((wt (plist-get job-spec :worktree_path)))
+    (pcase (dl-satan-patch-worktree--git
+            wt (list "status" "--porcelain"))
+      (`(ok . ,out) (string-empty-p (string-trim out)))
+      (_ nil))))
 
 ;; ---------------------------------------------------------------------
 ;; cleanup

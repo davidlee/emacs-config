@@ -24,6 +24,7 @@
 (require 'dl-satan-tools)
 (require 'dl-satan-patch-store)
 (require 'dl-satan-patch-worktree)
+(require 'dl-satan-patch-runner)
 
 (defconst dl-satan-tools-patch--known-modes
   '("self-edit-mech" "self-edit-mind"
@@ -95,7 +96,10 @@ ARGS plist (keyword keys): :directive :mode :repo :allowed_paths
          (adapter    (or (plist-get args :adapter) "pi"))
          (source     (plist-get args :source))
          (context    (plist-get args :context))
-         (checks     (plist-get args :checks)))
+         (checks     (plist-get args :checks))
+         (start      (if (plist-member args :start)
+                         (plist-get args :start)
+                       t)))
     (cond
      ((not (file-directory-p repo))
       (cons 'error (format "repo missing: %s" repo)))
@@ -133,6 +137,8 @@ ARGS plist (keyword keys): :directive :mode :repo :allowed_paths
            (dl-satan-patch-store-event
             job-id "transition"
             (list :from nil :to "queued" :reason "created"))
+           (when start
+             (condition-case _err (dl-satan-patch-runner-kick) (error nil)))
            (cons 'ok (list :job_id job-id
                            :state "queued"
                            :branch branch
@@ -282,7 +288,8 @@ Phase 1 stub for the Phase 2 runner.  Returns (ok PLIST) or (error MSG)."
              'adapter      (list :type 'string :enum '("pi" "zerostack"))
              'source       (list :type 'object)
              'context      (list :type 'object)
-             'checks       (list :type 'array :items 'string))
+             'checks       (list :type 'array :items 'string)
+             'start        (list :type 'boolean))
        :modes nil
        :handler 'dl-satan-tool/patch-job-create))
 

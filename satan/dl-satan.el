@@ -27,6 +27,7 @@
 (require 'dl-satan-broker)
 (require 'dl-satan-tick)
 (require 'dl-satan-tools-atsatan)
+(require 'dl-satan-patch)
 (require 'dl-satan-tank)
 
 (defgroup dl-satan nil
