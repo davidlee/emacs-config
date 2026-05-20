@@ -2,6 +2,142 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-20 — SATAN: cap self-edit bundle size; report dropped files
+
+`dl-satan-context-self-edit` previously packed every matching
+file under the mode's roots verbatim into `:sources`.  As
+`~/.emacs.d/satan/` grew the mech bundle reached ~860k chars
+(~215k tokens), exceeding Anthropic's 200k context window with
+`400 - This endpoint's maximum context length is 200000 tokens`.
+
+New `dl-satan-self-edit-bundle-char-budget` (default 600000 ≈
+150k tokens) caps total `:sources` content.  Files are packed
+alphabetically; once adding the next file would push total
+content over budget, it (and all subsequent files) goes into a
+new `:dropped-files` bundle field instead.  The model sees what
+it didn't get and can recommend a narrower mode or use targeted
+reads.
+
+Budget is char-based not token-based to stay tokenizer-agnostic.
+600k × ¼ ≈ 150k tokens leaves ~50k headroom under a 200k window
+for tool schemas + model output.  Setting the defcustom to nil
+restores pack-everything (e.g. for batch runs against larger
+context windows).
+
+Tests: 100-char budget over three 60-char files keeps one drops
+two; nil budget includes everything.
+
+## 2026-05-20 — SATAN: syslog + streak-aware notify on run failure
+
+Every non-`done` terminal run now emits a
+`logger -t satan -p user.warn` line — visible via
+`journalctl --user -t satan -p warning`.  Format:
+
+```
+satan failed tick-pulse 20260520T143022-tick-pulse-…  child-exit-1
+satan budget-exceeded tick-pulse … 425510/400000
+```
+
+Plus a D-Bus desktop notification on the **first failure of a
+streak only**.  Streak = consecutive `.FAILED` run dirs walking
+newest-first; once the user has been told, subsequent failures
+stay quiet until at least one `done` run breaks the chain.  This
+keeps the notify channel useful when scheduled ticks fire every
+30 minutes and a budget-exhaustion or auth blip would otherwise
+spam the desktop.
+
+Two defcustoms toggle each channel independently:
+
+- `dl-satan-failure-syslog` (default t)
+- `dl-satan-failure-notify` (default t)
+
+Wired from both terminal paths (`--finalize` and the budget-
+denied pre-spawn gate).
+
+## 2026-05-20 — SATAN: date-bucketed run dirs + `.FAILED` suffix
+
+Run-dir layout under `~/notes/satan/runs/` changes from flat
+`<run-id>/` to bucketed `<YYYY-MM-DD>/<run-id>/`. After 74 runs in
+one day, the flat dir was already painful to `ls`; projected
+thousands of entries motivated splitting on the date stamp the
+run-id already carries.
+
+Terminal runs whose status is anything other than `done` now have
+their dir renamed to `<run-id>.FAILED`. Failures (broker timeouts,
+provider errors, budget-denied, invalid-protocol) are visible at
+a glance under each day's bucket without opening every `status`
+file. The `runs/most-recent` symlink is repointed after the
+rename so `cd $(readlink most-recent)` keeps working.
+
+Backward compatible: existing 74 flat-layout dirs continue to be
+read by budget enumeration and the tank's recent-events panel.
+New helpers in `dl-satan-broker.el` centralise enumeration:
+
+- `dl-satan-broker-list-run-dirs` — walks both layouts, skipping
+  `most-recent` and bucket-dir-itself; returns absolute paths.
+- `dl-satan-broker-run-dirs-for-date` — same, filtered to one day.
+- `dl-satan-broker-run-dir-for-id` — where a fresh run-id's dir
+  should be created (bucketed).
+- `dl-satan-broker-locate-run-dir` — find an existing dir given a
+  run-id, probing bucketed → bucketed-FAILED → legacy flat →
+  legacy-FAILED in order.
+
+`dl-satan-budget-today-total` and `dl-satan-tank--recent-runs` /
+`--read-run-events` now route through the helpers; ad-hoc
+`directory-files` scans gone.
+
+Tests: helper coverage for date-bucket extraction, FAILED-suffix
+stripping, list-run-dirs (both layouts + noise), locate-run-dir
+(all four fallback rungs).
+
+## 2026-05-20 — SATAN: scrub unresolved op:// refs from child env
+
+When the broker's primary key-resolution path fell through (op
+desktop locked, `op read` transiently failed), the explicit
+`provider-env` entry was skipped but the same `KEY=op://…` line
+still inherited from `process-environment` via the direnv merge,
+reaching the child harness verbatim. The provider then returned
+an opaque `401 Your api key: ****tial is invalid` — the tail of
+"credential". Survey of `~/notes/satan/runs/` found two such
+failures today (`14:24`, `14:59`), both after the 10:07 op heap-
+cache fix landed (which closed a different leak path).
+
+Belt-and-braces fix on both sides of the broker→harness boundary:
+
+- `dl-satan-broker--scrub-op-refs` filters `KEY=op://…` entries
+  out of the env list immediately before `make-process`. When
+  resolution succeeds the provider-env entry (earlier in the list)
+  is preserved; when it fails the child simply sees no key var
+  and the harness raises a clean `KEY not set`.
+- `build_provider` in `harness/providers/__init__.py` rejects any
+  key value starting with `op://` so the harness still fails
+  loudly if a ref slips through some other path in future.
+
+Tests: `dl-satan-broker/scrub-op-refs-drops-unresolved-keys`
+covers the elisp filter; `ProviderFactoryTests
+.test_unresolved_op_ref_key_raises` covers the python guard.
+
+## 2026-05-20 — SATAN: memory list command + drop payload truncation in store-recent
+
+`my/satan-memory-list` (new) pops `*satan-memory*' with the last N
+traces (default 20, prefix-arg overrides) as `TRACE-ID  KIND
+OBSERVED  PAYLOAD`. `my/satan-memory-show` now `completing-read`s
+over recent IDs with kind/time/payload annotation so picking an
+ID from the list is one keystroke; non-interactive callers
+unchanged.
+
+`dl-satan-memory-store-recent` previously SQL-truncated payloads
+at 200 chars (`LEFT(t.payload, 200)`). The original rationale
+("keep tab-split parser single-line") was already satisfied by the
+newline/tab → space replacement; the 200-char cap was redundant
+and produced the truncated bodies visible in `my/satan-tank`'s
+RECENT TRACES section. Cap removed; full payload returned. Tank
+already wraps via `fill-region`, so this just lets long
+observations render in full. The list command applies its own
+elisp-side preview cap (120 cols, ellipsis) so the one-line table
+stays readable. Regression test
+`recent-returns-full-payload` locks in 400-char round-trip.
+
 ## 2026-05-20 — SATAN: scaffold evidence discipline defines observable vs interpretation
 
 `system/scaffold.txt` Evidence discipline gains an inline definition:
