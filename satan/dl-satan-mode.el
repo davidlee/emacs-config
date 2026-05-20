@@ -70,7 +70,7 @@ Dotfiles must not be the source of truth for prompt content.")
        :tools '("org_read_context" "org_update_owned_block"
                 "proposal_stage" "notify_send" "hippocampus_write"
                 "inbox_append" "agenda_read" "activity_read"
-                "notes_recent"
+                "notes_recent" "notes_at_satan_scan"
                 "sway_border_set" "sway_border_reset"
                 "bough_read" "memory_mark" "memory_resonate"
                 "memory_show_trace")

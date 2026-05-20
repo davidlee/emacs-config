@@ -50,44 +50,43 @@
 
         # workspaceDeps = [ "/home/david/.emacs.d/" ];
         # workspaceDeps = [ "/home/david/flakes/" ];
-        workspaceDeps = [];
+        workspaceDeps = ["/home/david/notes"];
 
         # SATAN — phase-1 fake harness.  Emits ready, one tool_call, then
         # final with one org_update_owned_block action.  Used by the
         # broker (Emacs side) to validate the JSONL contract end-to-end
         # before swapping in a real model harness.
-        satanFakeHarness =
-          pkgs.writers.writePython3Bin "satan-fake-harness" {} ''
-            import json
-            import os
-            import sys
-            run_id = os.environ.get("SATAN_RUN_ID", "")
-            print(json.dumps({"type": "ready", "run_id": run_id}), flush=True)
-            print(json.dumps({
-                "type": "tool_call", "id": "c1",
-                "name": "org_read_context",
-                "args": {"scope": "today"},
-            }), flush=True)
-            sys.stdin.readline()
-            print(json.dumps({
-                "type": "final",
-                "summary": "fake harness ack",
-                "actions": [
-                    {"type": "org_update_owned_block",
-                     "args": {"target": "today", "block": "satan",
-                              "content": "SATAN was here.\n"}}
-                ],
-            }), flush=True)
-          '';
+        satanFakeHarness = pkgs.writers.writePython3Bin "satan-fake-harness" {} ''
+          import json
+          import os
+          import sys
+          run_id = os.environ.get("SATAN_RUN_ID", "")
+          print(json.dumps({"type": "ready", "run_id": run_id}), flush=True)
+          print(json.dumps({
+              "type": "tool_call", "id": "c1",
+              "name": "org_read_context",
+              "args": {"scope": "today"},
+          }), flush=True)
+          sys.stdin.readline()
+          print(json.dumps({
+              "type": "final",
+              "summary": "fake harness ack",
+              "actions": [
+                  {"type": "org_update_owned_block",
+                   "args": {"target": "today", "block": "satan",
+                            "content": "SATAN was here.\n"}}
+              ],
+          }), flush=True)
+        '';
 
         satanJailOptions = with jailLib.combinators; [
           (unsafe-add-raw-args ''--ro-bind "$HOME/notes" "/satan/notes"'')
           (unsafe-add-raw-args ''--bind "$HOME/notes/satan/hippocampus" "/satan/hippocampus"'')
           (unsafe-add-raw-args ''--bind "$SATAN_RUN_DIR" "/satan/run"'')
           (try-fwd-env "SATAN_RUN_ID")
-          (set-env "SATAN_NOTES_RO"    "/satan/notes")
+          (set-env "SATAN_NOTES_RO" "/satan/notes")
           (set-env "SATAN_HIPPOCAMPUS" "/satan/hippocampus")
-          (set-env "SATAN_RUN_DIR"     "/satan/run")
+          (set-env "SATAN_RUN_DIR" "/satan/run")
         ];
 
         # SATAN — phase-2 real harness.  Drives an OpenAI-compatible
@@ -96,55 +95,60 @@
         # Multi-file since phase 3B: protocol / bundle / runloop /
         # providers.  See ~/.emacs.d/satan/harness/__main__.py.
         satanGptelHarness = let
-          pythonEnv = pkgs.python3.withPackages (ps: [ ps.openai ]);
-        in pkgs.stdenv.mkDerivation {
-          pname = "satan-gptel-harness";
-          version = "0";
-          src = lib.cleanSourceWith {
-            src = ./satan/harness;
-            filter = path: type:
-              let base = baseNameOf (toString path); in
-              type == "directory"
-              || (lib.hasSuffix ".py" base
+          pythonEnv = pkgs.python3.withPackages (ps: [ps.openai]);
+        in
+          pkgs.stdenv.mkDerivation {
+            pname = "satan-gptel-harness";
+            version = "0";
+            src = lib.cleanSourceWith {
+              src = ./satan/harness;
+              filter = path: type: let
+                base = baseNameOf (toString path);
+              in
+                type
+                == "directory"
+                || (lib.hasSuffix ".py" base
                   && !(lib.hasPrefix "test_" base));
+            };
+            nativeBuildInputs = [pkgs.makeWrapper pkgs.ruff];
+            dontConfigure = true;
+            dontBuild = true;
+            doCheck = true;
+            checkPhase = ''
+              runHook preCheck
+              # Inherit the legacy writePython3Bin ignores that still
+              # apply to ruff: long lines (model descriptions) and
+              # __future__-first imports.  W503 (line break before binary
+              # op) and E704 (def one-liners) are dropped — ruff doesn't
+              # implement them; pycodestyle did.
+              ruff check --select E,F,W --ignore E501,E402 .
+              runHook postCheck
+            '';
+            installPhase = ''
+              runHook preInstall
+              mkdir -p $out/lib/satan-gptel-harness $out/bin
+              cp -r ./. $out/lib/satan-gptel-harness/
+              makeWrapper ${pythonEnv}/bin/python3 \
+                $out/bin/satan-gptel-harness \
+                --add-flags "$out/lib/satan-gptel-harness/__main__.py"
+              runHook postInstall
+            '';
+            meta.mainProgram = "satan-gptel-harness";
           };
-          nativeBuildInputs = [ pkgs.makeWrapper pkgs.ruff ];
-          dontConfigure = true;
-          dontBuild = true;
-          doCheck = true;
-          checkPhase = ''
-            runHook preCheck
-            # Inherit the legacy writePython3Bin ignores that still
-            # apply to ruff: long lines (model descriptions) and
-            # __future__-first imports.  W503 (line break before binary
-            # op) and E704 (def one-liners) are dropped — ruff doesn't
-            # implement them; pycodestyle did.
-            ruff check --select E,F,W --ignore E501,E402 .
-            runHook postCheck
-          '';
-          installPhase = ''
-            runHook preInstall
-            mkdir -p $out/lib/satan-gptel-harness $out/bin
-            cp -r ./. $out/lib/satan-gptel-harness/
-            makeWrapper ${pythonEnv}/bin/python3 \
-              $out/bin/satan-gptel-harness \
-              --add-flags "$out/lib/satan-gptel-harness/__main__.py"
-            runHook postInstall
-          '';
-          meta.mainProgram = "satan-gptel-harness";
-        };
 
         # Extra env passed through the bwrap jail for the real harness:
         # provider selection + cumulative token budget + per-provider keys.
-        satanGptelJailOptions = satanJailOptions ++ (with jailLib.combinators; [
-          (try-fwd-env "SATAN_PROVIDER")
-          (try-fwd-env "SATAN_MODEL")
-          (try-fwd-env "SATAN_BUDGET_TOKENS")
-          (try-fwd-env "OPENROUTER_API_KEY")
-          (try-fwd-env "ANTHROPIC_API_KEY")
-          (try-fwd-env "OPENAI_API_KEY")
-          (try-fwd-env "DEEPSEEK_API_KEY")
-        ]);
+        satanGptelJailOptions =
+          satanJailOptions
+          ++ (with jailLib.combinators; [
+            (try-fwd-env "SATAN_PROVIDER")
+            (try-fwd-env "SATAN_MODEL")
+            (try-fwd-env "SATAN_BUDGET_TOKENS")
+            (try-fwd-env "OPENROUTER_API_KEY")
+            (try-fwd-env "ANTHROPIC_API_KEY")
+            (try-fwd-env "OPENAI_API_KEY")
+            (try-fwd-env "DEEPSEEK_API_KEY")
+          ]);
 
         jailPkgs = lib.optionalAttrs isLinux {
           jailed-pi = jailLib.makeJailedPi {

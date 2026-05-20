@@ -2,6 +2,37 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-20 — SATAN: `@satan` agent-trigger tooling (AT-SATAN)
+
+New `tick-agent` tick mode that scans `~/notes/` for `@satan` directives
+and claims them in place. Two new tools in
+`satan/dl-satan-tools-atsatan.el`:
+
+- `notes_at_satan_scan` (`:risk read`): `rg --json` for `@satan`
+  substring, excludes `**/satan/**`, filters out `@satan-done` lines in
+  elisp, enriches each match with `±N` context lines, walks back to the
+  nearest org/markdown headline, returns a stable per-scan `id`.
+- `notes_at_satan_done` (`:risk low`, needs new `write-notes` capability):
+  rewrites the `@satan` token in place as
+  `@satan-done(<run-id>,<comment>)`. Optimistic re-read makes the claim
+  idempotent (`already-done` on a second call). Id index is per-Emacs
+  session; tick-agent always scans before claiming.
+
+Wiring: `morning` mode gains `notes_at_satan_scan` (read-only visibility,
+no write capability); `tick-agent` carries both tools plus a curated
+action set (inbox, hippocampus, memory, bough, agenda). Tick pool
+default rebalanced to `tick-pulse:5 / tick-agent:3`.
+
+Spec at `AT-SATAN.md`. Two deviations from the verbatim spec, both
+real bugs in the spec text caught by tests / live smoke:
+
+1. `--exclude-globs` is `!**/satan/**` not `!satan/**` — bare
+   `satan/**' does not exclude when rg traverses an absolute path.
+2. `--rewrite-line' uses explicit `string-match` + `substring` instead of
+   `(replace-regexp-in-string ... nil 1)` — non-nil START omits any text
+   before START from the returned value, which silently ate the leading
+   `- ` list bullet in live tests.
+
 ## 2026-05-20 — SATAN: in-session 1Password caching for jailed harness
 
 Per-tick 1Password biometric prompts for `my/satan-tick' are gone.

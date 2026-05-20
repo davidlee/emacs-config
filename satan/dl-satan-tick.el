@@ -14,7 +14,7 @@
 (require 'dl-satan-context)
 (require 'dl-satan-output)
 
-(defcustom dl-satan-tick-pool '(("tick-pulse" . 1))
+(defcustom dl-satan-tick-pool '(("tick-pulse" . 5) ("tick-agent" . 3))
   "Weighted alist of tick mode names.  Each entry is (MODE-NAME . WEIGHT).
 `dl-satan-tick-pick' samples by weight; total weight must be positive."
   :type '(alist :key-type string :value-type integer)
