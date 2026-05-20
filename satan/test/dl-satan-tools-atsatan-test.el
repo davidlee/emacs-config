@@ -77,6 +77,20 @@
         (should (eq (car res) 'ok))
         (should (zerop (plist-get (cdr res) :count)))))))
 
+(ert-deftest notes-at-satan-scan/excludes-legacy-done-token ()
+  "Lines bearing the legacy `@satan-done' claim marker are filtered.
+Pre-rename ticks wrote `@satan-done(...)' instead of the current
+`@satan-was-here'; historical notes still carry that token."
+  (dl-satan-tools-atsatan-test--with-root root
+    (let* ((file (expand-file-name "legacy.org" root))
+           (ctx  (list :id "TEST-RUN" :capabilities '(write-notes))))
+      (let ((coding-system-for-write 'utf-8))
+        (write-region "@satan-done(20260520T125209-tick-agent-259270, inbox_append: ok) follow-up?\n"
+                      nil file))
+      (let ((res (dl-satan-tool/notes-at-satan-scan nil ctx)))
+        (should (eq (car res) 'ok))
+        (should (zerop (plist-get (cdr res) :count)))))))
+
 (ert-deftest notes-at-satan-scan/markdown-headline ()
   "Markdown `## H' headings are returned in :headline."
   (dl-satan-tools-atsatan-test--with-root root

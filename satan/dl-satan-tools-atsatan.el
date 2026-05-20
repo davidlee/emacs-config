@@ -58,10 +58,14 @@ any `satan/' subtree regardless of depth.")
 (defconst dl-satan-tools-atsatan--mark "@satan"
   "Substring matching an active @satan directive.")
 
-(defconst dl-satan-tools-atsatan--claimed-re "@satan-was-here\\b"
+(defconst dl-satan-tools-atsatan--claimed-re
+  "@satan-\\(?:was-here\\|done\\)\\b"
   "Regex marking a claimed @satan line; excluded from scan results.
 Lines bearing this marker were processed by a prior run and are
-followed by a quoted summary block.")
+followed by a quoted summary block.  The `@satan-done' alternative
+is the legacy claim token used before the rename to
+`@satan-was-here'; kept here so historical claims in existing notes
+stay filtered.")
 
 (defconst dl-satan-tools-atsatan--headline-re
   "^\\(\\*+\\|#+\\) "
