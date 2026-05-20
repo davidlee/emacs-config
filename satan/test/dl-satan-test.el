@@ -644,6 +644,77 @@ inherit from `process-environment'.  The scrub closes that leak."
                               (string-prefix-p "BARE=" kv))
                             got))))
 
+(ert-deftest dl-satan-broker/date-bucket-extracted-from-run-id ()
+  (should (equal (dl-satan-broker--date-bucket-for-run-id
+                  "20260520T163446-tick-pulse-5e8018")
+                 "2026-05-20"))
+  (should (null (dl-satan-broker--date-bucket-for-run-id "garbage")))
+  (should (null (dl-satan-broker--date-bucket-for-run-id nil))))
+
+(ert-deftest dl-satan-broker/run-id-from-leaf-strips-failed-suffix ()
+  (should (equal (dl-satan-broker--run-id-from-leaf
+                  "20260520T163446-tick-pulse-5e8018.FAILED")
+                 "20260520T163446-tick-pulse-5e8018"))
+  (should (equal (dl-satan-broker--run-id-from-leaf
+                  "20260520T163446-tick-pulse-5e8018")
+                 "20260520T163446-tick-pulse-5e8018")))
+
+(ert-deftest dl-satan-broker/list-run-dirs-walks-both-layouts ()
+  "Enumerator returns paths for legacy flat and bucketed runs, plus FAILED."
+  (let ((root (make-temp-file "satan-runs-list-" t)))
+    (unwind-protect
+        (let ((legacy   (expand-file-name "20260519T100000-x-aaaaaa" root))
+              (legacy-f (expand-file-name "20260519T110000-x-bbbbbb.FAILED" root))
+              (bucket   (expand-file-name "2026-05-20" root))
+              (bucketed (expand-file-name
+                         "2026-05-20/20260520T120000-x-cccccc" root))
+              (bucketed-f (expand-file-name
+                           "2026-05-20/20260520T130000-x-dddddd.FAILED" root))
+              (noise    (expand-file-name "not-a-run-dir" root))
+              (noise-bucket-child
+               (expand-file-name "2026-05-20/scratch" root)))
+          (dolist (d (list legacy legacy-f bucket bucketed bucketed-f
+                           noise noise-bucket-child))
+            (make-directory d t))
+          (let ((got (dl-satan-broker-list-run-dirs root)))
+            (should (member legacy got))
+            (should (member legacy-f got))
+            (should (member bucketed got))
+            (should (member bucketed-f got))
+            (should-not (member noise got))
+            (should-not (member noise-bucket-child got))
+            (should-not (cl-find-if (lambda (p)
+                                      (equal (file-name-nondirectory p)
+                                             "2026-05-20"))
+                                    got))))
+      (delete-directory root t))))
+
+(ert-deftest dl-satan-broker/locate-run-dir-finds-failed-and-buckets ()
+  "Locator falls back through bucketed, bucketed-FAILED, legacy, legacy-FAILED."
+  (let ((root (make-temp-file "satan-runs-locate-" t)))
+    (unwind-protect
+        (progn
+          (let ((d (expand-file-name "2026-05-20/20260520T100000-x-aaaaaa"
+                                     root)))
+            (make-directory d t)
+            (should (equal (dl-satan-broker-locate-run-dir
+                            "20260520T100000-x-aaaaaa" root)
+                           d)))
+          (let ((d (expand-file-name
+                    "2026-05-20/20260520T110000-x-bbbbbb.FAILED" root)))
+            (make-directory d t)
+            (should (equal (dl-satan-broker-locate-run-dir
+                            "20260520T110000-x-bbbbbb" root)
+                           d)))
+          (let ((d (expand-file-name "20260520T120000-x-cccccc" root)))
+            (make-directory d t)
+            (should (equal (dl-satan-broker-locate-run-dir
+                            "20260520T120000-x-cccccc" root)
+                           d)))
+          (should (null (dl-satan-broker-locate-run-dir
+                         "20260520T999999-nope-zzzzzz" root))))
+      (delete-directory root t))))
+
 ;; ---------- dl-satan-broker manifest assembly ----------
 
 (ert-deftest dl-satan-broker/manifest-tools-shape ()
@@ -1323,8 +1394,9 @@ into `dl-satan-test--notes-fd-calls'."
              (dl-satan-test--write-transcript
               existing (list (dl-satan-test--usage-record 500000)))
              (let* ((run-id (dl-satan-broker-run "morning"))
-                    (dir (expand-file-name run-id root))
+                    (dir (dl-satan-broker-locate-run-dir run-id root))
                     (status-path (expand-file-name "status" dir)))
+               (should (string-suffix-p ".FAILED" dir))
                (should (file-directory-p dir))
                (should (file-readable-p status-path))
                (should (equal (string-trim

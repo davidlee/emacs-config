@@ -10,6 +10,9 @@
 (require 'subr-x)
 (require 'dl-satan-jsonl)
 
+(declare-function dl-satan-broker-run-dirs-for-date "dl-satan-broker"
+                  (runs-dir date-prefix))
+
 (defcustom dl-satan-budget-daily-tokens 800000
   "Maximum tokens SATAN may spend per local day across all runs.
 Set to nil to disable the gate."
@@ -53,15 +56,14 @@ out-of-order writes."
     max-total))
 
 (defun dl-satan-budget-today-total (runs-dir &optional time)
-  "Sum tokens charged today under RUNS-DIR.  TIME defaults to now."
+  "Sum tokens charged today under RUNS-DIR.  TIME defaults to now.
+Walks both the bucketed layout (`<runs>/<YYYY-MM-DD>/<run-id>') and the
+legacy flat layout (`<runs>/<run-id>') via
+`dl-satan-broker-run-dirs-for-date'."
   (let ((prefix (dl-satan-budget--today-prefix time))
-         (total 0))
-    (when (file-directory-p runs-dir)
-      (dolist (entry (directory-files runs-dir nil "\\`[^.]" t))
-        (when (string-prefix-p prefix entry)
-          (let ((dir (expand-file-name entry runs-dir)))
-            (when (file-directory-p dir)
-              (setq total (+ total (dl-satan-budget--run-tokens dir))))))))
+        (total 0))
+    (dolist (dir (dl-satan-broker-run-dirs-for-date runs-dir prefix))
+      (setq total (+ total (dl-satan-budget--run-tokens dir))))
     total))
 
 (defun dl-satan-budget-exceeded-p (runs-dir &optional time)

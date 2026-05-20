@@ -118,6 +118,123 @@ returns no vars, BASE-ENV is returned unchanged.  Direnv errors signal."
           name
           (random (expt 16 6))))
 
+(defconst dl-satan-broker--failed-suffix ".FAILED"
+  "Suffix appended to a run directory when its status is not `done'.
+Lets `ls' / glob users see failures at a glance without opening the
+`status' file.  Helpers in this file strip the suffix when deriving
+the run-id from a leaf directory name.")
+
+(defun dl-satan-broker--date-bucket-for-run-id (run-id)
+  "Return the YYYY-MM-DD date bucket parsed from RUN-ID's prefix.
+Returns nil if RUN-ID does not start with a YYYYMMDDT date stamp."
+  (when (and (stringp run-id)
+             (string-match
+              "\\`\\([0-9]\\{4\\}\\)\\([0-9]\\{2\\}\\)\\([0-9]\\{2\\}\\)T"
+              run-id))
+    (format "%s-%s-%s"
+            (match-string 1 run-id)
+            (match-string 2 run-id)
+            (match-string 3 run-id))))
+
+(defun dl-satan-broker--bucket-name-p (name)
+  "Return non-nil when NAME matches the YYYY-MM-DD bucket-dir pattern."
+  (and (stringp name)
+       (string-match-p "\\`[0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\}\\'" name)))
+
+(defun dl-satan-broker--legacy-run-name-p (name)
+  "Return non-nil when NAME matches the pre-bucket flat run-id layout.
+Pre-bucket runs sit directly under `dl-satan-runs-dir' with names like
+`20260520T163446-tick-pulse-5e8018'."
+  (and (stringp name)
+       (string-match-p "\\`[0-9]\\{8\\}T[0-9]\\{6\\}-" name)))
+
+(defun dl-satan-broker--run-id-from-leaf (name)
+  "Strip the trailing `.FAILED' suffix (if any) from a leaf dir NAME."
+  (if (and (stringp name)
+           (string-suffix-p dl-satan-broker--failed-suffix name))
+      (substring name 0 (- (length name)
+                           (length dl-satan-broker--failed-suffix)))
+    name))
+
+(defun dl-satan-broker-run-dir-for-id (run-id &optional runs-dir)
+  "Return the absolute dir path where RUN-ID's bucket lives.
+New runs go under `<runs>/<YYYY-MM-DD>/<run-id>/'.  If RUN-ID lacks
+a parsable date prefix (shouldn't happen for minted ids), falls back
+to the legacy flat layout."
+  (let* ((base (or runs-dir dl-satan-runs-dir))
+         (bucket (dl-satan-broker--date-bucket-for-run-id run-id)))
+    (if bucket
+        (expand-file-name (concat bucket "/" run-id) base)
+      (expand-file-name run-id base))))
+
+(defun dl-satan-broker-locate-run-dir (run-id &optional runs-dir)
+  "Return the on-disk dir for RUN-ID, or nil if no candidate exists.
+Probes (in order): bucketed/<run-id>, bucketed/<run-id>.FAILED,
+legacy flat <run-id>, legacy flat <run-id>.FAILED.  Used by readers
+that need to find a run regardless of layout migration or terminal
+status."
+  (let* ((base (or runs-dir dl-satan-runs-dir))
+         (bucket (dl-satan-broker--date-bucket-for-run-id run-id))
+         (failed dl-satan-broker--failed-suffix)
+         (candidates (delq nil
+                           (list
+                            (and bucket
+                                 (expand-file-name
+                                  (concat bucket "/" run-id) base))
+                            (and bucket
+                                 (expand-file-name
+                                  (concat bucket "/" run-id failed) base))
+                            (expand-file-name run-id base)
+                            (expand-file-name (concat run-id failed) base)))))
+    (cl-find-if #'file-directory-p candidates)))
+
+(defun dl-satan-broker-list-run-dirs (runs-dir)
+  "Return absolute paths of every run dir under RUNS-DIR.
+Walks both the bucketed layout (`<runs>/<YYYY-MM-DD>/<run-id>') and
+the legacy flat layout (`<runs>/<run-id>'), with or without the
+`.FAILED' suffix.  Non-run entries (the `most-recent' symlink, stray
+files, malformed names) are skipped.  Order is unspecified."
+  (let (acc)
+    (when (file-directory-p runs-dir)
+      (dolist (entry (directory-files runs-dir nil "\\`[^.]" t))
+        (let ((path (expand-file-name entry runs-dir)))
+          (when (file-directory-p path)
+            (cond
+             ((dl-satan-broker--bucket-name-p entry)
+              (dolist (child (directory-files path nil "\\`[^.]" t))
+                (let ((cpath (expand-file-name child path)))
+                  (when (and (file-directory-p cpath)
+                             (dl-satan-broker--legacy-run-name-p
+                              (dl-satan-broker--run-id-from-leaf child)))
+                    (push cpath acc)))))
+             ((dl-satan-broker--legacy-run-name-p
+               (dl-satan-broker--run-id-from-leaf entry))
+              (push path acc)))))))
+    acc))
+
+(defun dl-satan-broker-run-dirs-for-date (runs-dir date-prefix)
+  "Return absolute paths of run dirs under RUNS-DIR dated DATE-PREFIX.
+DATE-PREFIX is YYYYMMDDT (matching the run-id's stem).  Matches both
+the bucketed layout (looks under `<runs>/YYYY-MM-DD/') and the legacy
+flat layout (filters by prefix on the leaf name)."
+  (let ((iso-bucket
+         (and (stringp date-prefix)
+              (string-match "\\`\\([0-9]\\{4\\}\\)\\([0-9]\\{2\\}\\)\\([0-9]\\{2\\}\\)T"
+                            date-prefix)
+              (format "%s-%s-%s"
+                      (match-string 1 date-prefix)
+                      (match-string 2 date-prefix)
+                      (match-string 3 date-prefix)))))
+    (cl-remove-if-not
+     (lambda (path)
+       (let* ((leaf (file-name-nondirectory path))
+              (run-id (dl-satan-broker--run-id-from-leaf leaf))
+              (parent (file-name-nondirectory (directory-file-name
+                                               (file-name-directory path)))))
+         (or (and iso-bucket (equal parent iso-bucket))
+             (string-prefix-p date-prefix run-id))))
+     (dl-satan-broker-list-run-dirs runs-dir))))
+
 (defun dl-satan-broker--tool-ctx (run-ctx)
   (let* ((mode (dl-satan-run-mode run-ctx))
          (fmt "%Y-%m-%dT%T%:z")
@@ -247,7 +364,27 @@ so the harness sees something rather than blocking on stdin."
      (dl-satan-run-audit run-ctx)
      final
      (or partition (list :applied [] :staged [] :rejected [] :failed []))
-     status)))
+     status)
+    (dl-satan-broker--mark-failed-on-disk run-ctx)))
+
+(defun dl-satan-broker--mark-failed-on-disk (run-ctx)
+  "If RUN-CTX's status is not `done', rename its dir adding `.FAILED'.
+Lets `ls runs/<YYYY-MM-DD>/' surface failures without opening each
+`status' file.  Updates the in-memory dir on RUN-CTX and repoints
+`runs/most-recent' so the symlink survives the rename."
+  (let ((status (dl-satan-run-status run-ctx))
+        (dir (dl-satan-run-dir run-ctx))
+        (run-id (dl-satan-run-id run-ctx)))
+    (when (and dir
+               (not (eq status 'done))
+               (not (string-suffix-p dl-satan-broker--failed-suffix dir))
+               (file-directory-p dir))
+      (let ((new-dir (concat dir dl-satan-broker--failed-suffix)))
+        (unless (file-exists-p new-dir)
+          (rename-file dir new-dir)
+          (setf (dl-satan-run-dir run-ctx) new-dir)
+          (dl-satan-broker--update-most-recent
+           run-id dl-satan-broker--failed-suffix))))))
 
 (defun dl-satan-broker--make-sentinel (run-ctx)
   (lambda (_proc event)
@@ -291,16 +428,29 @@ The harness consumes `:tools' verbatim."
                                    (plist-get mode :name)
                                    (format-time-string "%Y-%m-%d" nil)))))
 
-(defun dl-satan-broker--update-most-recent (run-id)
-  "Repoint `dl-satan-runs-dir/most-recent' at RUN-ID.
+(defun dl-satan-broker--most-recent-target (run-id &optional leaf-suffix)
+  "Return the relative symlink target for RUN-ID's run dir.
+For a bucketed run-id (the normal case) this is `<bucket>/<run-id>'
+optionally with LEAF-SUFFIX appended (e.g. \".FAILED\").  For a run-id
+that does not parse as bucketed, returns just the leaf."
+  (let* ((bucket (dl-satan-broker--date-bucket-for-run-id run-id))
+         (leaf (concat run-id (or leaf-suffix ""))))
+    (if bucket (concat bucket "/" leaf) leaf)))
+
+(defun dl-satan-broker--update-most-recent (run-id &optional leaf-suffix)
+  "Repoint `dl-satan-runs-dir/most-recent' at RUN-ID's run dir.
+LEAF-SUFFIX, when non-nil, is appended to the run-id leaf so the link
+follows a post-status rename (e.g. `.FAILED').
+
 Best-effort: failures (read-only fs, race with a concurrent run) are
 swallowed so a busted symlink never aborts a run.  Target is stored
 relative so the runs dir stays portable."
-  (let ((link (expand-file-name "most-recent" dl-satan-runs-dir)))
+  (let ((link (expand-file-name "most-recent" dl-satan-runs-dir))
+        (target (dl-satan-broker--most-recent-target run-id leaf-suffix)))
     (ignore-errors
       (when (or (file-symlink-p link) (file-exists-p link))
         (delete-file link))
-      (make-symbolic-link run-id link t))))
+      (make-symbolic-link target link t))))
 
 (defun dl-satan-broker--write-budget-denied-run (mode run-id dir spent ceiling)
   "Write a slim audit bundle marking RUN-ID as budget-exceeded.
@@ -324,7 +474,13 @@ and a synthetic final summarising the gate decision."
                                  :tokens_ceiling ceiling))
     (dl-satan-audit-close audit final
                           (list :applied [] :staged [] :rejected [] :failed [])
-                          'budget-exceeded)))
+                          'budget-exceeded)
+    (let ((new-dir (concat dir dl-satan-broker--failed-suffix)))
+      (when (and (file-directory-p dir)
+                 (not (file-exists-p new-dir)))
+        (rename-file dir new-dir)
+        (dl-satan-broker--update-most-recent
+         run-id dl-satan-broker--failed-suffix)))))
 
 (defun dl-satan-broker-run (name)
   "Resolve MODE-NAME, spawn jailed harness, drive it to completion.
@@ -333,11 +489,11 @@ Returns the run-id.
 If today's spend has met or exceeded `dl-satan-budget-daily-tokens',
 the broker refuses to spawn: it mints a run-id, writes a minimal audit
 bundle with `status=budget-exceeded' under
-`dl-satan-runs-dir/<run-id>/', and returns the run-id without
-launching the child."
+`dl-satan-runs-dir/<YYYY-MM-DD>/<run-id>/', and returns the run-id
+without launching the child."
   (let* ((mode (dl-satan-mode-resolve name))
          (run-id (dl-satan-broker--mint-run-id name))
-         (dir (expand-file-name run-id dl-satan-runs-dir)))
+         (dir (dl-satan-broker-run-dir-for-id run-id)))
     (if (dl-satan-budget-exceeded-p dl-satan-runs-dir)
         (let ((spent (dl-satan-budget-today-total dl-satan-runs-dir)))
           (dl-satan-broker--write-budget-denied-run

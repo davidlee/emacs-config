@@ -341,30 +341,29 @@ Returns the state plist on success; nil if any read errors."
     (_ nil)))
 
 (defun dl-satan-tank--recent-runs ()
-  "Most recent N run dirs under `dl-satan-runs-dir', newest first.
-The `most-recent' convenience symlink is skipped so its target is
-not counted twice."
-  (when (file-directory-p dl-satan-runs-dir)
-    (let* ((entries (directory-files dl-satan-runs-dir nil "\\`[^.]" t))
-           (sorted (sort entries #'string-greaterp))
-           out)
-      (cl-loop for e in sorted
-               for dir = (expand-file-name e dl-satan-runs-dir)
-               while (< (length out) dl-satan-tank-event-window-runs)
-               when (and (not (equal e "most-recent"))
-                         (not (file-symlink-p dir))
-                         (file-directory-p dir))
-               do (push e out))
-      (nreverse out))))
+  "Most recent N run-ids under `dl-satan-runs-dir', newest first.
+Walks both the bucketed layout (`<runs>/<YYYY-MM-DD>/<run-id>') and
+the legacy flat layout, via `dl-satan-broker-list-run-dirs'.  The
+`.FAILED' suffix (if present on the on-disk leaf) is stripped from
+the returned run-ids; callers resolve to a dir via
+`dl-satan-broker-run-dir-for-id'."
+  (let* ((paths (dl-satan-broker-list-run-dirs dl-satan-runs-dir))
+         (ids (mapcar (lambda (p)
+                        (dl-satan-broker--run-id-from-leaf
+                         (file-name-nondirectory p)))
+                      paths))
+         (sorted (sort ids #'string-greaterp)))
+    (seq-take sorted dl-satan-tank-event-window-runs)))
 
 (defun dl-satan-tank--read-run-events (run-id)
   "Read transcript.jsonl from RUN-ID, return list of event plists.
 Each returned plist gains a `:run' (mode slug) and `:summary' field."
-  (let ((path (expand-file-name
-               (format "%s/transcript.jsonl" run-id) dl-satan-runs-dir))
+  (let ((path (let ((dir (dl-satan-broker-locate-run-dir
+                          run-id dl-satan-runs-dir)))
+                (and dir (expand-file-name "transcript.jsonl" dir))))
         (slug (dl-satan-tank--short-run run-id))
         out)
-    (when (file-readable-p path)
+    (when (and path (file-readable-p path))
       (let ((coding-system-for-read 'utf-8))
         (with-temp-buffer
           (insert-file-contents path)
