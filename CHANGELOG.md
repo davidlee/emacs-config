@@ -2,7 +2,46 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
-## 2026-05-20 — SATAN: `@satan` claim render reshaped to was-here + quote block
+## 2026-05-20 — SATAN: scaffold evidence discipline defines observable vs interpretation
+
+`system/scaffold.txt` Evidence discipline gains an inline definition:
+observable = what you directly read (tool result, file content, memory
+hit, panopticon segment); interpretation = inference from incomplete
+evidence. When acting on interpretation, the model must name the
+evidence it rests on. Tightens the prior "prefer observable cues"
+exhortation, which left the boundary undefined.
+
+Companion proposal "consolidate duplicated scaffold across mode
+prompts" rejected: premise was false — mode prompts (`morning.txt`
+30 lines, `motd.txt` 27, `self-edit-mind.txt` 52, `self-edit-mech.txt`
+47, `tick/pulse.txt` 55) contain mode-specific scope/flow only, not
+scaffold restatement. Broker already renders scaffold + mode prompt;
+consolidation already in place.
+
+## 2026-05-20 — SATAN: clarify owned-surface taxonomy (auto-apply vs proposal-first)
+
+Two self-edit-mind proposals accepted in `~/notes/satan/`:
+
+- `system/scaffold.txt` "Ownership and write boundaries" rewritten as
+  "Write boundaries" with an explicit two-bucket taxonomy: SATAN-owned
+  *auto-apply* surfaces (daily block, motd via `satan_final.summary`,
+  hippocampus, inbox, memory tools) vs *proposal-first* surfaces
+  (`~/notes/satan/proposals/` via `proposal_stage`). Each surface now
+  cites the tool that writes it. Rationale baked into the prompt:
+  auto-apply is working memory + inbox; proposals are the user-review
+  contract. Removes the confusion where staging-via-`proposal_stage`
+  could read as ownership instead of deferral.
+- `prompts/morning.txt` and `prompts/motd.txt` no longer say "do not
+  propose changes outside owned surfaces" (which conflicted with
+  scaffold treating proposals themselves as an owned surface). Both
+  now state that proposals are an available owned output and should be
+  used freely for risky edits / design questions / behavioural changes.
+
+Net effect: mode prompts and the scaffold now agree that proposals are
+SATAN-owned-but-deferred, and the model is encouraged to stage rather
+than second-guess whether staging is allowed.
+
+
 
 `notes_at_satan_done` no longer collapses run-id + comment into an
 inline `@satan-done(<run-id>,<comment>)` marker. It now writes
