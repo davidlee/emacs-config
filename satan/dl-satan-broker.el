@@ -273,11 +273,23 @@ The harness consumes `:tools' verbatim."
                                    (plist-get mode :name)
                                    (format-time-string "%Y-%m-%d" nil)))))
 
+(defun dl-satan-broker--update-most-recent (run-id)
+  "Repoint `dl-satan-runs-dir/most-recent' at RUN-ID.
+Best-effort: failures (read-only fs, race with a concurrent run) are
+swallowed so a busted symlink never aborts a run.  Target is stored
+relative so the runs dir stays portable."
+  (let ((link (expand-file-name "most-recent" dl-satan-runs-dir)))
+    (ignore-errors
+      (when (or (file-symlink-p link) (file-exists-p link))
+        (delete-file link))
+      (make-symbolic-link run-id link t))))
+
 (defun dl-satan-broker--write-budget-denied-run (mode run-id dir spent ceiling)
   "Write a slim audit bundle marking RUN-ID as budget-exceeded.
 No child is spawned; the run terminates with status `budget-exceeded'
 and a synthetic final summarising the gate decision."
   (unless (file-directory-p dir) (make-directory dir t))
+  (dl-satan-broker--update-most-recent run-id)
   (let* ((manifest (dl-satan-broker--build-manifest mode run-id))
          (bundle (list :budget-denied t
                        :tokens_spent spent
@@ -322,6 +334,7 @@ launching the child."
          (stderr-buf (generate-new-buffer
                       (format " *satan-stderr-%s*" run-id))))
     (unless (file-directory-p dir) (make-directory dir t))
+    (dl-satan-broker--update-most-recent run-id)
     (unless (file-directory-p dl-satan-hippocampus-dir)
       (make-directory dl-satan-hippocampus-dir t))
     (let* ((bundle (funcall (or (plist-get mode :context-fn) #'ignore) mode))

@@ -2,6 +2,32 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-20 — SATAN: in-session 1Password caching for jailed harness
+
+Per-tick 1Password biometric prompts for `my/satan-tick' are gone.
+Root cause: `satan-jailed-gptel-harness' was built with the default
+`useOpEnv = true', so its outer wrapper exec'd `op run --env-file=…'
+on every launch, re-resolving op:// refs and bypassing the Emacs
+broker's `my/op--cache' (which already caches resolved plaintext for
+the session).
+
+Fix in `~/flakes/pub/jailed-agents.nix': split secret injection into
+two flags. `useOpEnv' keeps controlling the outer `op run' wrapper;
+new `passApiKeysFromEnv' (defaults to `useOpEnv') controls the inner
+bwrap `--setenv VAR "$VAR"' forwarding. Long-lived callers that
+already cache resolved secrets can set `useOpEnv = false;
+passApiKeysFromEnv = true;' to keep the env forwarding without the
+per-launch biometric prompt.
+
+`~/.emacs.d/flake.nix': `satan-jailed-gptel-harness' now opts into
+that pattern. Broker pre-resolves via `my/op-read-env' once per
+Emacs session; subsequent ticks hit `my/op--cache' and never call
+`op'. `M-x my/op-forget' clears the cache (next tick re-prompts).
+
+Docs: `pub/README.md' gains a "Pre-resolved secrets" subsection and
+an options-table row; `_templates/agents/flake.nix' header and
+inline knob list mention the new flag.
+
 ## 2026-05-20 — SATAN: tank LAST RUN section
 
 Tank gains a fourth section between RECENT TRACES and RECENT EVENTS:

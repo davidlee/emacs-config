@@ -213,10 +213,12 @@ outside an active SATAN run.  Default is 30 minutes."
                (end (plist-get r :observed_end_at))
                (payload (plist-get r :payload))
                (handles (plist-get r :handles)))
-          (format "%s  %-12s %s\n  [%s]\n  %s\n"
+          (format "%s  %-12s %s\n  [%s]\n%s\n"
                   (or end "-") (or kind "?") (or val "·")
                   (mapconcat #'identity (or handles '()) " ")
-                  (dl-satan-tank--truncate (or payload "") 200))))
+                  (dl-satan-tank--wrap-paragraph
+                   (concat "  " (or payload ""))
+                   dl-satan-tank-last-run-summary-width))))
       rows "\n")))
    "\n"))
 
@@ -339,7 +341,9 @@ Returns the state plist on success; nil if any read errors."
     (_ nil)))
 
 (defun dl-satan-tank--recent-runs ()
-  "Most recent N run dirs under `dl-satan-runs-dir', newest first."
+  "Most recent N run dirs under `dl-satan-runs-dir', newest first.
+The `most-recent' convenience symlink is skipped so its target is
+not counted twice."
   (when (file-directory-p dl-satan-runs-dir)
     (let* ((entries (directory-files dl-satan-runs-dir nil "\\`[^.]" t))
            (sorted (sort entries #'string-greaterp))
@@ -347,7 +351,9 @@ Returns the state plist on success; nil if any read errors."
       (cl-loop for e in sorted
                for dir = (expand-file-name e dl-satan-runs-dir)
                while (< (length out) dl-satan-tank-event-window-runs)
-               when (file-directory-p dir)
+               when (and (not (equal e "most-recent"))
+                         (not (file-symlink-p dir))
+                         (file-directory-p dir))
                do (push e out))
       (nreverse out))))
 
