@@ -51,6 +51,7 @@ before spawning the child.  Set to nil to disable."
   "Map SATAN mode `:provider' symbol to its API-key env var name.")
 
 (declare-function my/op-read-env "dl-secret" (var &optional refresh))
+(declare-function notifications-notify "notifications" (&rest args))
 
 (defun dl-satan-broker--read-env (var)
   "Return VAR from the environment, resolving `op://' refs when possible.
@@ -371,7 +372,10 @@ so the harness sees something rather than blocking on stdin."
   "If RUN-CTX's status is not `done', rename its dir adding `.FAILED'.
 Lets `ls runs/<YYYY-MM-DD>/' surface failures without opening each
 `status' file.  Updates the in-memory dir on RUN-CTX and repoints
-`runs/most-recent' so the symlink survives the rename."
+`runs/most-recent' so the symlink survives the rename.
+
+Also dispatches a syslog warning + a streak-aware desktop notification
+via `dl-satan-broker--announce-failure'."
   (let ((status (dl-satan-run-status run-ctx))
         (dir (dl-satan-run-dir run-ctx))
         (run-id (dl-satan-run-id run-ctx)))
@@ -384,7 +388,76 @@ Lets `ls runs/<YYYY-MM-DD>/' surface failures without opening each
           (rename-file dir new-dir)
           (setf (dl-satan-run-dir run-ctx) new-dir)
           (dl-satan-broker--update-most-recent
-           run-id dl-satan-broker--failed-suffix))))))
+           run-id dl-satan-broker--failed-suffix)
+          (dl-satan-broker--announce-failure
+           run-id
+           (plist-get (dl-satan-run-mode run-ctx) :name)
+           status
+           (dl-satan-broker--failure-reason run-ctx)))))))
+
+(defun dl-satan-broker--failure-reason (run-ctx)
+  "Return a short reason string for RUN-CTX's failure.
+Pulls from the final plist when available, else the status symbol."
+  (let* ((final (dl-satan-run-final run-ctx))
+         (final-reason (and final (plist-get final :reason))))
+    (cond
+     ((and (stringp final-reason) (not (string-empty-p final-reason)))
+      final-reason)
+     (t (symbol-name (dl-satan-run-status run-ctx))))))
+
+(defcustom dl-satan-failure-syslog t
+  "When non-nil, broker emits a `logger -t satan -p user.warn' line per failure.
+Disable if `logger(1)' is absent or you don't want SATAN failures in
+the user journal (`journalctl --user -t satan')."
+  :type 'boolean :group 'dl-satan)
+
+(defcustom dl-satan-failure-notify t
+  "When non-nil, broker pops a D-Bus notification on the first failure of a streak.
+Suppressed once a streak is in progress (subsequent failures are quiet
+until at least one `done' run breaks the chain)."
+  :type 'boolean :group 'dl-satan)
+
+(defun dl-satan-broker--failure-streak-count (runs-dir)
+  "Count consecutive `.FAILED' run dirs from newest backward in RUNS-DIR.
+Walks both bucketed and legacy layouts via `dl-satan-broker-list-run-dirs'
+and sorts by the run-id leaf (date-stamped, so a string sort is
+monotonic-in-time enough for streak detection).  Returns 0 when the
+newest run is non-failed or no runs exist."
+  (let* ((paths (dl-satan-broker-list-run-dirs runs-dir))
+         (sorted (sort paths
+                       (lambda (a b)
+                         (string-greaterp
+                          (dl-satan-broker--run-id-from-leaf
+                           (file-name-nondirectory a))
+                          (dl-satan-broker--run-id-from-leaf
+                           (file-name-nondirectory b))))))
+         (streak 0))
+    (cl-loop for p in sorted
+             while (string-suffix-p dl-satan-broker--failed-suffix p)
+             do (cl-incf streak))
+    streak))
+
+(defun dl-satan-broker--announce-failure (run-id mode-slug status reason)
+  "Emit syslog + (streak-gated) notify-send for a failed run.
+RUN-ID, MODE-NAME, STATUS (symbol), REASON (short string) compose the
+log line and notification body."
+  (let ((line (format "%s %s %s %s"
+                      (symbol-name status) mode-slug run-id reason)))
+    (when dl-satan-failure-syslog
+      (ignore-errors
+        (call-process "logger" nil 0 nil
+                      "-t" "satan" "-p" "user.warn" line)))
+    (when (and dl-satan-failure-notify
+               (= 1 (dl-satan-broker--failure-streak-count
+                     dl-satan-runs-dir)))
+      (ignore-errors
+        (require 'notifications)
+        (notifications-notify
+         :app-name "SATAN"
+         :title (format "SATAN %s (%s)" (symbol-name status) mode-slug)
+         :body line
+         :urgency 'normal
+         :timeout 6000)))))
 
 (defun dl-satan-broker--make-sentinel (run-ctx)
   (lambda (_proc event)
@@ -480,7 +553,10 @@ and a synthetic final summarising the gate decision."
                  (not (file-exists-p new-dir)))
         (rename-file dir new-dir)
         (dl-satan-broker--update-most-recent
-         run-id dl-satan-broker--failed-suffix)))))
+         run-id dl-satan-broker--failed-suffix)
+        (dl-satan-broker--announce-failure
+         run-id (plist-get mode :name) 'budget-exceeded
+         (format "%d/%d tokens" spent ceiling))))))
 
 (defun dl-satan-broker-run (name)
   "Resolve MODE-NAME, spawn jailed harness, drive it to completion.

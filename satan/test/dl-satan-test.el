@@ -689,6 +689,94 @@ inherit from `process-environment'.  The scrub closes that leak."
                                     got))))
       (delete-directory root t))))
 
+(ert-deftest dl-satan-broker/failure-streak-counts-trailing-failed ()
+  "Counts consecutive .FAILED dirs back from the newest run-id."
+  (let ((root (make-temp-file "satan-runs-streak-" t)))
+    (unwind-protect
+        (progn
+          ;; Empty → 0.
+          (should (= 0 (dl-satan-broker--failure-streak-count root)))
+          ;; One done run → 0.
+          (make-directory
+           (expand-file-name "2026-05-20/20260520T100000-x-aaaaaa" root) t)
+          (should (= 0 (dl-satan-broker--failure-streak-count root)))
+          ;; Add a newer FAILED run → 1.
+          (make-directory
+           (expand-file-name
+            "2026-05-20/20260520T110000-x-bbbbbb.FAILED" root) t)
+          (should (= 1 (dl-satan-broker--failure-streak-count root)))
+          ;; And another → 2.
+          (make-directory
+           (expand-file-name
+            "2026-05-20/20260520T120000-x-cccccc.FAILED" root) t)
+          (should (= 2 (dl-satan-broker--failure-streak-count root)))
+          ;; A done run on top breaks the streak → 0.
+          (make-directory
+           (expand-file-name "2026-05-20/20260520T130000-x-dddddd" root) t)
+          (should (= 0 (dl-satan-broker--failure-streak-count root))))
+      (delete-directory root t))))
+
+(ert-deftest dl-satan-broker/announce-failure-syslog-and-streak-gate ()
+  "Always logs via syslog; only notifies on streak == 1."
+  (let* ((logged nil)
+         (notified 0)
+         (root (make-temp-file "satan-runs-announce-" t))
+         (dl-satan-runs-dir root)
+         (dl-satan-failure-syslog t)
+         (dl-satan-failure-notify t))
+    (unwind-protect
+        (cl-letf
+            (((symbol-function 'call-process)
+              (lambda (cmd &rest args)
+                (when (equal cmd "logger") (push args logged))
+                0))
+             ((symbol-function 'notifications-notify)
+              (lambda (&rest _args) (cl-incf notified) 42)))
+          ;; No prior runs → streak == 0 before rename; the just-renamed
+          ;; dir is what bumps it to 1.  Emulate by creating that dir
+          ;; first, then calling announce.
+          (make-directory
+           (expand-file-name
+            "2026-05-20/20260520T100000-tick-pulse-aaaaaa.FAILED" root) t)
+          (dl-satan-broker--announce-failure
+           "20260520T100000-tick-pulse-aaaaaa" "tick-pulse"
+           'failed "child-exit-1")
+          (should (= 1 (length logged)))
+          (should (= 1 notified))
+          ;; Second consecutive failure → still logged, NOT notified.
+          (make-directory
+           (expand-file-name
+            "2026-05-20/20260520T110000-tick-pulse-bbbbbb.FAILED" root) t)
+          (dl-satan-broker--announce-failure
+           "20260520T110000-tick-pulse-bbbbbb" "tick-pulse"
+           'failed "child-exit-1")
+          (should (= 2 (length logged)))
+          (should (= 1 notified)))
+      (delete-directory root t))))
+
+(ert-deftest dl-satan-broker/announce-failure-respects-disables ()
+  "Both syslog and notify are gated by their respective defcustom flags."
+  (let* ((logged 0) (notified 0)
+         (root (make-temp-file "satan-runs-announce2-" t))
+         (dl-satan-runs-dir root)
+         (dl-satan-failure-syslog nil)
+         (dl-satan-failure-notify nil))
+    (unwind-protect
+        (cl-letf
+            (((symbol-function 'call-process)
+              (lambda (&rest _args) (cl-incf logged) 0))
+             ((symbol-function 'notifications-notify)
+              (lambda (&rest _args) (cl-incf notified) 42)))
+          (make-directory
+           (expand-file-name
+            "2026-05-20/20260520T100000-tick-pulse-aaaaaa.FAILED" root) t)
+          (dl-satan-broker--announce-failure
+           "20260520T100000-tick-pulse-aaaaaa" "tick-pulse"
+           'failed "child-exit-1")
+          (should (= 0 logged))
+          (should (= 0 notified)))
+      (delete-directory root t))))
+
 (ert-deftest dl-satan-broker/locate-run-dir-finds-failed-and-buckets ()
   "Locator falls back through bucketed, bucketed-FAILED, legacy, legacy-FAILED."
   (let ((root (make-temp-file "satan-runs-locate-" t)))
