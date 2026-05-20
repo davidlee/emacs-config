@@ -438,6 +438,75 @@ from every root in MODE-SPEC's :source-roots."
               (should (equal (plist-get a :content) "(provide 'a)")))))
       (delete-directory tmp t))))
 
+(ert-deftest dl-satan-self-edit/bundle-budget-drops-overflow ()
+  "When sources exceed `dl-satan-self-edit-bundle-char-budget' the
+bundle keeps as much as fits in alphabetical order and reports the
+rest under :dropped-files."
+  (let* ((tmp (make-temp-file "satan-se-budget-" t))
+         (root (expand-file-name "r" tmp))
+         (dl-satan-prompts-dir (expand-file-name "prompts/" tmp))
+         (dl-satan-system-scaffold-file
+          (expand-file-name "system/scaffold.txt" tmp))
+         (dl-satan-system-framing-file
+          (expand-file-name "system/framing.txt" tmp))
+         (dl-satan-self-edit-bundle-char-budget 100))
+    (unwind-protect
+        (progn
+          (make-directory root t)
+          (make-directory (expand-file-name "prompts" tmp))
+          (make-directory (expand-file-name "system" tmp))
+          (with-temp-file dl-satan-system-scaffold-file (insert "S"))
+          (dl-satan-test--write-framing dl-satan-system-framing-file)
+          (with-temp-file (expand-file-name "prompts/se.txt" tmp) (insert "P"))
+          ;; Three 60-char files, alphabetical: a, b, c.  Budget = 100.
+          ;; a (60) packed.  a+b (120) would overflow → b dropped.
+          ;; a+c (120) likewise → c dropped.  Only a fits.
+          (with-temp-file (expand-file-name "a.el" root) (insert (make-string 60 ?a)))
+          (with-temp-file (expand-file-name "b.el" root) (insert (make-string 60 ?b)))
+          (with-temp-file (expand-file-name "c.el" root) (insert (make-string 60 ?c)))
+          (let* ((spec (list :name "self-edit-mech"
+                             :prompt-file (expand-file-name "prompts/se.txt" tmp)
+                             :source-roots (list root)))
+                 (bundle (dl-satan-context-self-edit spec))
+                 (sources (plist-get bundle :sources))
+                 (dropped (plist-get bundle :dropped-files)))
+            (should (= 1 (length sources)))
+            (should (dl-satan-test--path-suffix-p "/a.el" sources))
+            (should (= 2 (length dropped)))
+            (should (cl-some (lambda (p) (string-suffix-p "/b.el" p)) dropped))
+            (should (cl-some (lambda (p) (string-suffix-p "/c.el" p)) dropped))))
+      (delete-directory tmp t))))
+
+(ert-deftest dl-satan-self-edit/bundle-budget-nil-packs-everything ()
+  "With the budget set to nil every file is included; :dropped-files is empty."
+  (let* ((tmp (make-temp-file "satan-se-nobudget-" t))
+         (root (expand-file-name "r" tmp))
+         (dl-satan-prompts-dir (expand-file-name "prompts/" tmp))
+         (dl-satan-system-scaffold-file
+          (expand-file-name "system/scaffold.txt" tmp))
+         (dl-satan-system-framing-file
+          (expand-file-name "system/framing.txt" tmp))
+         (dl-satan-self-edit-bundle-char-budget nil))
+    (unwind-protect
+        (progn
+          (make-directory root t)
+          (make-directory (expand-file-name "prompts" tmp))
+          (make-directory (expand-file-name "system" tmp))
+          (with-temp-file dl-satan-system-scaffold-file (insert "S"))
+          (dl-satan-test--write-framing dl-satan-system-framing-file)
+          (with-temp-file (expand-file-name "prompts/se.txt" tmp) (insert "P"))
+          (with-temp-file (expand-file-name "a.el" root) (insert (make-string 5000 ?a)))
+          (with-temp-file (expand-file-name "b.el" root) (insert (make-string 5000 ?b)))
+          (let* ((spec (list :name "self-edit-mech"
+                             :prompt-file (expand-file-name "prompts/se.txt" tmp)
+                             :source-roots (list root)))
+                 (bundle (dl-satan-context-self-edit spec))
+                 (sources (plist-get bundle :sources))
+                 (dropped (plist-get bundle :dropped-files)))
+            (should (= 2 (length sources)))
+            (should (null dropped))))
+      (delete-directory tmp t))))
+
 (ert-deftest dl-satan-self-edit/source-roots-var-indirection ()
   "When :source-roots is absent, context-fn dereferences :source-roots-var."
   (let* ((tmp (make-temp-file "satan-se-" t))

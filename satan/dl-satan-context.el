@@ -232,6 +232,16 @@ model-facing text under `~/notes/satan/' that shapes behaviour."
   "Regexp matching files to skip in self-edit bundles."
   :type 'regexp :group 'dl-satan)
 
+(defcustom dl-satan-self-edit-bundle-char-budget 600000
+  "Maximum total character count for `:sources' in a self-edit bundle.
+Roughly 1 token per 4 chars in English text + code, so the default
+caps at ~150k input tokens — leaving ~50k headroom under typical
+200k provider context windows for the tool schemas and the model's
+own output.  Files are packed alphabetically until the budget is
+exhausted; overflow lands in `:dropped-files' so the model sees
+what it didn't get."
+  :type 'integer :group 'dl-satan)
+
 (defun dl-satan-context-self-edit--list-files (root)
   "Return absolute paths of source files under ROOT, sorted."
   (let ((all (and (file-directory-p root)
@@ -243,28 +253,56 @@ model-facing text under `~/notes/satan/' that shapes behaviour."
            all)
           #'string<)))
 
+(defun dl-satan-context-self-edit--pack-budgeted (files budget)
+  "Pack FILES into a (sources . dropped) cons, capped at BUDGET chars.
+SOURCES is a list of (:path ABBREVIATED :content STR); DROPPED is a
+list of abbreviated paths that did not fit.  Greedy by alphabetical
+order: keep until adding the next file would push total content
+length over BUDGET.  Files larger than BUDGET themselves are skipped
+into DROPPED rather than partially included (truncation is lossy
+without context).  When BUDGET is nil, packs everything."
+  (let ((spent 0) sources dropped)
+    (dolist (f files)
+      (let* ((content (dl-satan-context--read-file-or-empty f))
+             (len (length content))
+             (path (abbreviate-file-name f)))
+        (cond
+         ((null budget)
+          (push (list :path path :content content) sources)
+          (setq spent (+ spent len)))
+         ((<= (+ spent len) budget)
+          (push (list :path path :content content) sources)
+          (setq spent (+ spent len)))
+         (t (push path dropped)))))
+    (cons (nreverse sources) (nreverse dropped))))
+
 (defun dl-satan-context-self-edit (mode-spec)
   "Bundle for a self-edit mode: prompt + every source file under each
 root in MODE-SPEC's `:source-roots' list, each as
 \(:path ABBREVIATED :content STR).  Paths are abbreviated with `~/'
 so the model sees `~/notes/satan/...' / `~/.emacs.d/satan/...' rather
-than long relative dotwalks."
+than long relative dotwalks.
+
+Total `:sources' content is capped by
+`dl-satan-self-edit-bundle-char-budget'; anything that didn't fit
+lands in `:dropped-files' so the model can see what it's missing
+and (e.g.) recommend a narrower mode or a targeted read."
   (let* ((roots (or (plist-get mode-spec :source-roots)
                     (let ((var (plist-get mode-spec :source-roots-var)))
                       (and (symbolp var) (boundp var) (symbol-value var)))))
          (files (cl-loop for root in roots
                          append (dl-satan-context-self-edit--list-files root)))
-         (sources
-          (mapcar (lambda (f)
-                    (list :path    (abbreviate-file-name f)
-                          :content (dl-satan-context--read-file-or-empty f)))
-                  files))
+         (packed (dl-satan-context-self-edit--pack-budgeted
+                  files dl-satan-self-edit-bundle-char-budget))
+         (sources (car packed))
+         (dropped (cdr packed))
          (assembled (dl-satan-context--assemble-prompt mode-spec))
          (bundle (list :prompt  ""
                        :mode    (plist-get mode-spec :name)
                        :now     (dl-satan-context-now)
                        :roots   (mapcar #'abbreviate-file-name roots)
-                       :sources sources)))
+                       :sources sources
+                       :dropped-files dropped)))
     (dl-satan-context--finalize-prompt bundle assembled)))
 
 (provide 'dl-satan-context)
