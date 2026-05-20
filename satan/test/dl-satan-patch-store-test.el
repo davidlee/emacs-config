@@ -214,6 +214,72 @@
 ;; event log
 ;; ---------------------------------------------------------------------
 
+;; ---------------------------------------------------------------------
+;; NOTIFY on insert (queued rows wake satan-patcher daemon LISTEN)
+;; ---------------------------------------------------------------------
+
+(defun dl-satan-patch-store-test--listen (channel sleep-sec)
+  "Start a backgrounded psql session that LISTENs on CHANNEL for SLEEP-SEC.
+Returns (PROC . BUFFER).  stdin is /dev/null so psql does not block on EOF."
+  (let* ((buf (generate-new-buffer
+               (format "*satan-patch-listen-%s*" channel)))
+         (cmd (format "exec %s -h %s -d %s --no-psqlrc -X -c %s -c %s < /dev/null"
+                      (shell-quote-argument dl-satan-patch-store-psql-program)
+                      (shell-quote-argument dl-satan-patch-store-host)
+                      (shell-quote-argument dl-satan-patch-store-test--db)
+                      (shell-quote-argument
+                       (format "LISTEN %s;" channel))
+                      (shell-quote-argument
+                       (format "SELECT pg_sleep(%s);" sleep-sec))))
+         (proc (make-process
+                :name "satan-patch-listen"
+                :buffer buf
+                :stderr buf
+                :noquery t
+                :command (list shell-file-name "-c" cmd))))
+    (cons proc buf)))
+
+(defun dl-satan-patch-store-test--drain (proc buf timeout)
+  (with-timeout (timeout nil)
+    (while (process-live-p proc) (sit-for 0.05)))
+  (with-current-buffer buf (buffer-string)))
+
+(ert-deftest dl-satan-patch-store/insert-fires-notify ()
+  (dl-satan-patch-store-test--with-db
+   (skip-unless (executable-find "psql"))
+   (pcase-let ((`(,proc . ,buf)
+                (dl-satan-patch-store-test--listen "patch_jobs_new" 1.5)))
+     (unwind-protect
+         (progn
+           (sleep-for 0.3)
+           (apply #'dl-satan-patch-store-insert
+                  (dl-satan-patch-store-test--basic-spec))
+           (let ((out (dl-satan-patch-store-test--drain proc buf 4)))
+             (should (string-match-p
+                      "Asynchronous notification.*patch_jobs_new" out))
+             (should (string-match-p "patch_20260520T190122_test" out))))
+       (when (process-live-p proc) (kill-process proc))
+       (kill-buffer buf)))))
+
+(ert-deftest dl-satan-patch-store/insert-non-queued-does-not-notify ()
+  ;; Non-queued inserts (e.g. seeded history rows) must not wake the runner.
+  (dl-satan-patch-store-test--with-db
+   (skip-unless (executable-find "psql"))
+   (pcase-let ((`(,proc . ,buf)
+                (dl-satan-patch-store-test--listen "patch_jobs_new" 1.2)))
+     (unwind-protect
+         (progn
+           (sleep-for 0.3)
+           (dl-satan-patch-store-insert
+            :job-id "patch_seeded" :mode "m" :directive "d"
+            :repo "/r" :base_ref "main" :branch "b" :worktree_path "/wt/s"
+            :allowed_paths '("/") :state "failed")
+           (let ((out (dl-satan-patch-store-test--drain proc buf 3)))
+             (should-not (string-match-p
+                          "Asynchronous notification" out))))
+       (when (process-live-p proc) (kill-process proc))
+       (kill-buffer buf)))))
+
 (ert-deftest dl-satan-patch-store/events-roundtrip ()
   (dl-satan-patch-store-test--with-db
    (apply #'dl-satan-patch-store-insert

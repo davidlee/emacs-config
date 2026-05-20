@@ -2,6 +2,32 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-20 — SATAN: patch-agent companion for satan-patcher daemon
+
+Two small changes prepare the elisp side for the runner extraction at
+`~/dev/satan-patcher`:
+
+- `dl-satan-patch-store-insert` now wraps its INSERT in a CTE that
+  fires `pg_notify('patch_jobs_new', $id)` for queued rows only.  The
+  satan-patcher daemon's `LISTEN patch_jobs_new` wakes immediately
+  without polling.  Non-queued inserts (seeded history) deliberately
+  suppress the NOTIFY so the daemon doesn't chase already-terminal rows.
+- New `dl-satan-patch-runner-enabled` defcustom (default `t`).  Flip
+  to `nil` to hand the queue off to the daemon; `tick`, `kick`, and
+  `start-timer` all short-circuit when nil so the elisp side stops
+  competing for `claim-next` rows.
+
+Tests: 2 new store tests (NOTIFY fires + suppressed-when-non-queued
+via an async psql LISTEN session) and 1 new runner test
+(disabled-short-circuits leaves the row queued).  All 248 satan tests
+pass; the pre-existing grammar/db-sync-current-version failure is
+unrelated.
+
+The runner stays the default execution path until the daemon has been
+side-by-side validated against `satan_memory`.  See
+`~/dev/satan-patcher/docs/handover.md` and
+`satan/patch-harness.handover.md` for the full cutover plan.
+
 ## 2026-05-20 — SATAN: cap self-edit bundle size; report dropped files
 
 `dl-satan-context-self-edit` previously packed every matching

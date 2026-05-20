@@ -297,6 +297,20 @@ BEHAVIOR is one of:
       (should (equal "needs_review" (plist-get captured :state))))))
 
 ;; ---------------------------------------------------------------------
+;; runner-enabled=nil short-circuits tick (daemon handoff)
+;; ---------------------------------------------------------------------
+
+(ert-deftest dl-satan-patch-runner/disabled-short-circuits ()
+  (dl-satan-patch-runner-test--with-fixture repo
+    (dl-satan-patch-runner-test--register-fake :success-commit)
+    (let* ((dl-satan-patch-runner-enabled nil)
+           (job-id (dl-satan-patch-runner-test--enqueue repo)))
+      (should (null (dl-satan-patch-runner-tick)))
+      (should (null (dl-satan-patch-runner-active-p)))
+      (let ((row (dl-satan-patch-runner-test--row job-id)))
+        (should (equal "queued" (plist-get row :state)))))))
+
+;; ---------------------------------------------------------------------
 ;; gated real-pi integration: SATAN_PATCH_LIVE=1 to opt in
 ;; ---------------------------------------------------------------------
 

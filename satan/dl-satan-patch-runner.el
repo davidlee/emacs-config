@@ -31,6 +31,14 @@ The timer is created when `dl-satan-patch-runner-start-timer' is
 called; not started automatically at load time."
   :type 'integer :group 'dl-satan-patch)
 
+(defcustom dl-satan-patch-runner-enabled t
+  "When non-nil, the elisp runner picks up queued patch jobs.
+Set to nil to hand the queue off to the satan-patcher daemon
+(see ~/dev/satan-patcher).  `dl-satan-patch-runner-tick',
+`-kick', and `-start-timer' all short-circuit when nil so the
+elisp side stops competing for `claim-next' rows."
+  :type 'boolean :group 'dl-satan-patch)
+
 (defvar dl-satan-patch-runner--active nil
   "Job id of the job this Emacs is currently running, or nil.")
 
@@ -50,8 +58,10 @@ a terminal state.  Used by the SATAN inbox/memory handoff in Phase 3.")
 ;; ---------------------------------------------------------------------
 
 (defun dl-satan-patch-runner-start-timer ()
-  "Start the idle timer that periodically pokes the runner."
-  (unless dl-satan-patch-runner--idle-timer
+  "Start the idle timer that periodically pokes the runner.
+No-op when `dl-satan-patch-runner-enabled' is nil."
+  (when (and dl-satan-patch-runner-enabled
+             (null dl-satan-patch-runner--idle-timer))
     (setq dl-satan-patch-runner--idle-timer
           (run-with-idle-timer
            dl-satan-patch-runner-idle-seconds t
@@ -248,9 +258,11 @@ Returns (ok . ROW') with the row reloaded after transition, or
 
 (defun dl-satan-patch-runner-tick ()
   "Drive one queued patch job through to a terminal state.
-Idempotent: no-op when another job is already in flight in this Emacs.
+Idempotent: no-op when another job is already in flight in this
+Emacs, or when `dl-satan-patch-runner-enabled' is nil.
 Returns the claimed job-id, or nil if nothing was picked up."
-  (when (null dl-satan-patch-runner--active)
+  (when (and dl-satan-patch-runner-enabled
+             (null dl-satan-patch-runner--active))
     (pcase (dl-satan-patch-store-claim-next)
       (`(ok . nil) nil)
       (`(error . ,msg)

@@ -190,18 +190,27 @@ Optional: JOB-ID (else minted from current time), STATE (default
     (error "dl-satan-patch-store-insert: missing required field"))
   (let* ((now (format-time-string "%Y-%m-%dT%H:%M:%S%z"))
          (id (or job-id (dl-satan-patch-store-job-id-new now)))
+         ;; CTE fires NOTIFY in the same transaction as the INSERT so the
+         ;; satan-patcher daemon's LISTEN sees the new row without polling.
+         ;; If pg_notify raises (rare), the row rolls back too -- daemon's
+         ;; idle-tick fallback is independent.
          (sql (concat
-               "INSERT INTO patch_jobs ("
-               "id, state, mode, directive, repo, base_ref, branch,"
-               " worktree_path, adapter, source_json, context_json,"
-               " allowed_paths_json, checks_json"
-               ") VALUES ("
-               ":'id', :'state', :'mode', :'directive',"
-               " :'repo', :'base_ref', :'branch', :'worktree_path',"
-               " :'adapter',"
-               " :'source'::jsonb, :'context'::jsonb,"
-               " :'allowed'::jsonb, :'checks'::jsonb"
-               ")"))
+               "WITH ins AS ("
+               " INSERT INTO patch_jobs ("
+               "  id, state, mode, directive, repo, base_ref, branch,"
+               "  worktree_path, adapter, source_json, context_json,"
+               "  allowed_paths_json, checks_json"
+               " ) VALUES ("
+               "  :'id', :'state', :'mode', :'directive',"
+               "  :'repo', :'base_ref', :'branch', :'worktree_path',"
+               "  :'adapter',"
+               "  :'source'::jsonb, :'context'::jsonb,"
+               "  :'allowed'::jsonb, :'checks'::jsonb"
+               " ) RETURNING id, state"
+               ") "
+               "SELECT CASE WHEN state = 'queued' "
+               "            THEN pg_notify('patch_jobs_new', id) END "
+               "FROM ins"))
          (vars `(("id"            . ,id)
                  ("state"         . ,state)
                  ("mode"          . ,mode)
