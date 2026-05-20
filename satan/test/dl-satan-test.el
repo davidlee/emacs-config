@@ -22,6 +22,7 @@
 (require 'dl-satan-tools-agenda)
 (require 'dl-satan-tools-activity)
 (require 'dl-satan-tools-notes)
+(require 'dl-satan-tools-atsatan)
 (require 'dl-satan-tools-sway)
 (require 'dl-satan-memory)
 (require 'dl-satan-context)
@@ -614,6 +615,35 @@ populated from ALIST `((NAME . CONTENT) …)'."
              "\\`[0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\}T[0-9]\\{2\\}:[0-9]\\{2\\}:[0-9]\\{2\\}"
              (plist-get tool-ctx :time-now)))))
 
+(ert-deftest dl-satan-broker/scrub-op-refs-drops-unresolved-keys ()
+  "Env-list scrub removes any KEY=op://… entries before child spawn.
+
+A literal `op://…' ref reaching the child shows up as an opaque
+401 `****tial' from the provider.  When op resolution fails the
+explicit provider-env entry is absent but the same key can still
+inherit from `process-environment'.  The scrub closes that leak."
+  (let* ((input '("PATH=/usr/bin"
+                  "SATAN_RUN_ID=abc"
+                  "DEEPSEEK_API_KEY=op://API_KEYS/DEEPSEEK_API_KEY/credential"
+                  "OPENAI_API_KEY=sk-real"
+                  "OPENROUTER_API_KEY=op://x/y/z"
+                  "BARE=op://still-a-secret"
+                  "EMPTY="))
+         (got (dl-satan-broker--scrub-op-refs input)))
+    (should (member "PATH=/usr/bin" got))
+    (should (member "SATAN_RUN_ID=abc" got))
+    (should (member "OPENAI_API_KEY=sk-real" got))
+    (should (member "EMPTY=" got))
+    (should-not (cl-find-if (lambda (kv)
+                              (string-prefix-p "DEEPSEEK_API_KEY=" kv))
+                            got))
+    (should-not (cl-find-if (lambda (kv)
+                              (string-prefix-p "OPENROUTER_API_KEY=" kv))
+                            got))
+    (should-not (cl-find-if (lambda (kv)
+                              (string-prefix-p "BARE=" kv))
+                            got))))
+
 ;; ---------- dl-satan-broker manifest assembly ----------
 
 (ert-deftest dl-satan-broker/manifest-tools-shape ()
@@ -628,6 +658,7 @@ populated from ALIST `((NAME . CONTENT) …)'."
      ("agenda_read"            . "Read the agenda.")
      ("activity_read"          . "Read the user's recent activity.")
      ("notes_recent"           . "List recently changed notes files.")
+     ("notes_at_satan_scan"    . "Scan @satan directives.")
      ("sway_border_set"        . "Retint sway window borders.")
      ("sway_border_reset"      . "Restore sway borders.")
      ("bough_read"             . "Read from bough.")
@@ -727,7 +758,7 @@ populated from ALIST `((NAME . CONTENT) …)'."
   "tick-pulse is registered with the documented budget defaults."
   (let ((mode (dl-satan-mode-resolve "tick-pulse")))
     (should (equal (plist-get mode :budget-tokens) 40000))
-    (should (equal (plist-get mode :budget-tool-calls) 4))
+    (should (equal (plist-get mode :budget-tool-calls) 10))
     (should (equal (plist-get mode :timeout-seconds) 60))
     (should (eq (plist-get mode :output-handler) 'dl-satan-output/tick))
     (should (member "notify_send" (plist-get mode :tools)))
@@ -1272,6 +1303,7 @@ into `dl-satan-test--notes-fd-calls'."
      ("agenda_read"            . "Read agenda.")
      ("activity_read"          . "Read activity.")
      ("notes_recent"           . "List recent notes.")
+     ("notes_at_satan_scan"    . "Scan @satan directives.")
      ("sway_border_set"        . "Retint sway borders.")
      ("sway_border_reset"      . "Restore sway borders.")
      ("bough_read"             . "Read bough.")

@@ -59,6 +59,24 @@ Falls back to `getenv' if `my/op-read-env' is unavailable."
       (my/op-read-env var)
     (getenv var)))
 
+(defun dl-satan-broker--scrub-op-refs (env)
+  "Drop any KEY=op://… entries from ENV.
+
+When op resolution fails (desktop locked, daemon down, transient
+error) the broker's primary key-resolution path falls through and
+the child harness can otherwise inherit a literal `op://…' ref
+from `process-environment'.  Shipping that to a provider yields an
+opaque 401 whose error message ends in `****tial' (the tail of
+\"credential\").  Scrubbing here turns that failure into a clean
+\"KEY not set\" at the harness boundary, where it's diagnosable."
+  (cl-remove-if (lambda (kv)
+                  (and (stringp kv)
+                       (let ((eq (string-match "=" kv)))
+                         (and eq
+                              (string-prefix-p "op://"
+                                               (substring kv (1+ eq)))))))
+                env))
+
 (cl-defstruct dl-satan-run
   id mode start-time dir bundle-path process
   pending-tool-calls tool-calls-done
@@ -379,12 +397,13 @@ launching the child."
                                   (when (and key-var key-val)
                                     (format "%s=%s" key-var key-val)))))
              (direnv-env (dl-satan-broker--direnv-env process-environment))
-             (env (append (list (format "SATAN_RUN_ID=%s" run-id)
-                                (format "SATAN_RUN_DIR=%s" dir)
-                                (format "SATAN_BUNDLE=%s" bundle-path))
-                          provider-env
-                          (plist-get (plist-get mode :harness) :env)
-                          direnv-env))
+             (env (dl-satan-broker--scrub-op-refs
+                   (append (list (format "SATAN_RUN_ID=%s" run-id)
+                                 (format "SATAN_RUN_DIR=%s" dir)
+                                 (format "SATAN_BUNDLE=%s" bundle-path))
+                           provider-env
+                           (plist-get (plist-get mode :harness) :env)
+                           direnv-env)))
              (process-environment env)
              (exec-path (dl-satan-broker--exec-path-from-env env))
              (proc

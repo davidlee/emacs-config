@@ -384,6 +384,23 @@ class ProviderFactoryTests(unittest.TestCase):
             self._build({"SATAN_PROVIDER": "deepseek",
                          "SATAN_MODEL": "deepseek-chat"})
 
+    def test_unresolved_op_ref_key_raises(self):
+        """Literal op:// reference must be rejected, not sent to provider.
+
+        The broker has a scrubber that strips these before spawn; this
+        is the harness-side belt-and-braces in case anything slips through.
+        Without this guard a transient op-resolution failure produces an
+        opaque provider 401 (`****tial`) rather than a diagnosable error.
+        """
+        with self.assertRaisesRegex(RuntimeError,
+                                    "unresolved op:// reference"):
+            self._build({
+                "SATAN_PROVIDER": "deepseek",
+                "SATAN_MODEL": "deepseek-chat",
+                "DEEPSEEK_API_KEY":
+                    "op://API_KEYS/DEEPSEEK_API_KEY/credential",
+            })
+
 
 if __name__ == "__main__":
     unittest.main()

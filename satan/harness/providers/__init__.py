@@ -32,6 +32,11 @@ def build_provider() -> tuple[Provider, str]:
     key = os.environ.get(key_var)
     if not key:
         raise RuntimeError(f"{key_var} not set")
+    if key.startswith("op://"):
+        raise RuntimeError(
+            f"{key_var} is an unresolved op:// reference; "
+            "broker should have resolved this before spawn"
+        )
     return cls(key), model
 
 
