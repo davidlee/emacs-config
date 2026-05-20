@@ -11,6 +11,7 @@
 (require 'ert)
 (require 'cl-lib)
 (require 'json)
+(require 'dl-secret)
 (require 'dl-satan-jsonl)
 (require 'dl-satan-protocol)
 (require 'dl-satan-block)
@@ -684,7 +685,7 @@ populated from ALIST `((NAME . CONTENT) …)'."
              "\\`[0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\}T[0-9]\\{2\\}:[0-9]\\{2\\}:[0-9]\\{2\\}"
              (plist-get tool-ctx :time-now)))))
 
-(ert-deftest dl-satan-broker/scrub-op-refs-drops-unresolved-keys ()
+(ert-deftest dl-secret/scrub-op-refs-env-drops-unresolved-keys ()
   "Env-list scrub removes any KEY=op://… entries before child spawn.
 
 A literal `op://…' ref reaching the child shows up as an opaque
@@ -698,7 +699,7 @@ inherit from `process-environment'.  The scrub closes that leak."
                   "OPENROUTER_API_KEY=op://x/y/z"
                   "BARE=op://still-a-secret"
                   "EMPTY="))
-         (got (dl-satan-broker--scrub-op-refs input)))
+         (got (my/scrub-op-refs-env input)))
     (should (member "PATH=/usr/bin" got))
     (should (member "SATAN_RUN_ID=abc" got))
     (should (member "OPENAI_API_KEY=sk-real" got))

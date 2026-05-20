@@ -158,6 +158,16 @@
             extraPkgs = projectPkgs;
             extraOptions = jailEnvOptions;
             inherit workspaceDeps;
+            # Patch-agent adapter pre-resolves op:// refs via
+            # `my/op-read-env' (Emacs session cache) and exports the
+            # plaintext into `process-environment' before spawning, so
+            # skip the outer `op run' wrapper that would prompt
+            # biometric per launch.  `passApiKeysFromEnv = true' keeps
+            # the bwrap `--setenv VAR "$VAR"' forwarding so the
+            # caller-side env still flows into the jail.  Same path
+            # `satan-jailed-gptel-harness' uses.
+            useOpEnv = false;
+            passApiKeysFromEnv = true;
           };
           jailed-pi-research = jailLib.makeJailedPi {
             name = "pi-research";

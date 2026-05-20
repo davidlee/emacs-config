@@ -51,6 +51,7 @@ before spawning the child.  Set to nil to disable."
   "Map SATAN mode `:provider' symbol to its API-key env var name.")
 
 (declare-function my/op-read-env "dl-secret" (var &optional refresh))
+(declare-function my/scrub-op-refs-env "dl-secret" (env))
 (declare-function notifications-notify "notifications" (&rest args))
 
 (defun dl-satan-broker--read-env (var)
@@ -59,24 +60,6 @@ Falls back to `getenv' if `my/op-read-env' is unavailable."
   (if (fboundp 'my/op-read-env)
       (my/op-read-env var)
     (getenv var)))
-
-(defun dl-satan-broker--scrub-op-refs (env)
-  "Drop any KEY=op://… entries from ENV.
-
-When op resolution fails (desktop locked, daemon down, transient
-error) the broker's primary key-resolution path falls through and
-the child harness can otherwise inherit a literal `op://…' ref
-from `process-environment'.  Shipping that to a provider yields an
-opaque 401 whose error message ends in `****tial' (the tail of
-\"credential\").  Scrubbing here turns that failure into a clean
-\"KEY not set\" at the harness boundary, where it's diagnosable."
-  (cl-remove-if (lambda (kv)
-                  (and (stringp kv)
-                       (let ((eq (string-match "=" kv)))
-                         (and eq
-                              (string-prefix-p "op://"
-                                               (substring kv (1+ eq)))))))
-                env))
 
 (cl-defstruct dl-satan-run
   id mode start-time dir bundle-path process
@@ -629,7 +612,7 @@ without launching the child."
                                   (when (and key-var key-val)
                                     (format "%s=%s" key-var key-val)))))
              (direnv-env (dl-satan-broker--direnv-env process-environment))
-             (env (dl-satan-broker--scrub-op-refs
+             (env (my/scrub-op-refs-env
                    (append (list (format "SATAN_RUN_ID=%s" run-id)
                                  (format "SATAN_RUN_DIR=%s" dir)
                                  (format "SATAN_BUNDLE=%s" bundle-path))

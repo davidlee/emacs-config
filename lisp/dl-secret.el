@@ -14,6 +14,7 @@
 ;;; Code:
 
 (require 'auth-source)
+(require 'cl-lib)
 
 ;;;; Auth-source
 
@@ -79,6 +80,24 @@ unset. With non-nil REFRESH, bypass the op cache."
   "Clear cached 1Password secrets for this Emacs session."
   (interactive)
   (clrhash my/op--cache))
+
+(defun my/scrub-op-refs-env (env)
+  "Drop any KEY=op://… entries from ENV (a `process-environment' list).
+
+When op resolution fails (desktop locked, daemon down, transient
+error) callers' primary key-resolution path falls through and a
+child process can otherwise inherit a literal `op://…' ref from
+`process-environment'.  Shipping that to a provider yields an
+opaque 401 whose error message ends in `****tial' (the tail of
+\"credential\").  Scrubbing here turns that failure into a clean
+\"KEY not set\" at the boundary, where it's diagnosable."
+  (cl-remove-if (lambda (kv)
+                  (and (stringp kv)
+                       (let ((eq (string-match "=" kv)))
+                         (and eq
+                              (string-prefix-p "op://"
+                                               (substring kv (1+ eq)))))))
+                env))
 
 ;;;; Env-file sourcing
 ;;
