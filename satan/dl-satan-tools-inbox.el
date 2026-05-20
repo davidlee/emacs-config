@@ -36,6 +36,36 @@
     ("urgent" ":urgent:")
     (_        nil)))
 
+(cl-defun dl-satan-tools-inbox-write
+    (&key title body urgency properties)
+  "Append one inbox headline.  Pure mechanism — no capability check.
+TITLE and BODY are required strings.  URGENCY may be \"low\", \"normal\",
+or \"urgent\".  PROPERTIES is an extra plist of (KEYWORD . STRING-VAL)
+merged after the default :RUN_ID/:MODE pair.  Returns (ok :path P) or
+\(error MSG)."
+  (cond
+   ((not (and (stringp title) (stringp body)))
+    (cons 'error "title and body must be strings"))
+   (t
+    (dl-satan-tools-inbox--ensure-file)
+    (let* ((ts (format-time-string "[%Y-%m-%d %a %H:%M]" nil))
+           (extra (dl-satan-tools-inbox--urgency-tag urgency))
+           (tags (if extra (concat ":unread:satan" extra) ":unread:satan:"))
+           (coding-system-for-write 'utf-8))
+      (with-temp-buffer
+        (insert "\n* " ts " " title "  " tags "\n")
+        (insert ":PROPERTIES:\n")
+        (cl-loop for (k v) on properties by #'cddr
+                 when (and k v)
+                 do (insert (format ":%s: %s\n"
+                                    (upcase (substring (symbol-name k) 1))
+                                    v)))
+        (insert ":END:\n")
+        (insert body)
+        (unless (string-suffix-p "\n" body) (insert "\n"))
+        (append-to-file (point-min) (point-max) dl-satan-inbox-file))
+      (cons 'ok (list :path dl-satan-inbox-file))))))
+
 (defun dl-satan-tool/inbox-append (args ctx)
   "Implements inbox_append.
 ARGS: (:title STR :body STR :urgency low|normal|urgent).  Refused unless
@@ -50,24 +80,13 @@ mutates existing headlines.  Returns (ok :path P) | (error MSG)."
     (cond
      ((not (memq 'inbox-write caps))
       (cons 'error "mode lacks capability inbox-write"))
-     ((not (and (stringp title) (stringp body)))
-      (cons 'error "title and body must be strings"))
      (t
-      (dl-satan-tools-inbox--ensure-file)
-      (let* ((ts (format-time-string "[%Y-%m-%d %a %H:%M]" nil))
-             (extra (dl-satan-tools-inbox--urgency-tag urgency))
-             (tags (if extra (concat ":unread:satan" extra) ":unread:satan:"))
-             (coding-system-for-write 'utf-8))
-        (with-temp-buffer
-          (insert "\n* " ts " " title "  " tags "\n")
-          (insert ":PROPERTIES:\n")
-          (insert ":RUN_ID: " (or run-id "") "\n")
-          (insert ":MODE: "   (or mode-str "") "\n")
-          (insert ":END:\n")
-          (insert body)
-          (unless (string-suffix-p "\n" body) (insert "\n"))
-          (append-to-file (point-min) (point-max) dl-satan-inbox-file))
-        (cons 'ok (list :path dl-satan-inbox-file)))))))
+      (dl-satan-tools-inbox-write
+       :title title
+       :body body
+       :urgency urgency
+       :properties (list :run_id (or run-id "")
+                         :mode   (or mode-str "")))))))
 
 (dl-satan-tool-register
  (list :name "inbox_append"

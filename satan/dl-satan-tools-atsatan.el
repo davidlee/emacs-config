@@ -307,12 +307,33 @@ without writing."
                     :truncated truncated
                     :matches enriched)))))))
 
+(defun dl-satan-tools-atsatan--patch-job-comment (job-id existing)
+  "Compose the comment string when :patch-job=JOB-ID is set.
+EXISTING is the model-supplied :comment (or nil).  Returns the
+final tagged comment passed to the renderer."
+  (let ((base (format "patch-job: queued %s" job-id)))
+    (if (and existing
+             (not (string-empty-p (string-trim existing))))
+        (concat base "\n" (string-trim existing))
+      base)))
+
 (defun dl-satan-tool/notes-at-satan-done (args ctx)
   "Implements notes_at_satan_done. Returns (ok PLIST) | (error STR).
 Refused unless TOOL-CTX `:capabilities' includes `write-notes'.
-Idempotent: claiming an already-done line returns :status \"already-done\"."
+Idempotent: claiming an already-done line returns :status \"already-done\".
+
+When ARGS contains `:patch-job', the on-disk block is prefixed with a
+`patch-job: queued <id>' tag; subsequent scans skip the line as
+already-claimed (per `@satan-was-here').  The line is *not*
+auto-rewritten when the patch later completes — the patch-ready inbox
+item is the canonical user-facing surface for the result."
   (let* ((id      (plist-get args :match-id))
          (comment (plist-get args :comment))
+         (patch-job (plist-get args :patch-job))
+         (effective-comment
+          (if patch-job
+              (dl-satan-tools-atsatan--patch-job-comment patch-job comment)
+            comment))
          (caps    (plist-get ctx :capabilities))
          (run-id  (plist-get ctx :id))
          (pair    (gethash id dl-satan-tools-atsatan--id-index)))
@@ -328,7 +349,7 @@ Idempotent: claiming an already-done line returns :status \"already-done\"."
      (t
       (let* ((file (car pair))
              (line (cdr pair)))
-        (dl-satan-tools-atsatan--rewrite-line file line run-id comment))))))
+        (dl-satan-tools-atsatan--rewrite-line file line run-id effective-comment))))))
 
 (dl-satan-tool-register
  (list :name "notes_at_satan_scan"
@@ -342,8 +363,9 @@ Idempotent: claiming an already-done line returns :status \"already-done\"."
 (dl-satan-tool-register
  (list :name "notes_at_satan_done"
        :risk 'low
-       :args-schema '(match-id (:type string :required t)
-                      comment  (:type string :required nil))
+       :args-schema '(match-id  (:type string :required t)
+                      comment   (:type string :required nil)
+                      patch-job (:type string :required nil))
        :modes '("tick-agent")
        :handler 'dl-satan-tool/notes-at-satan-done))
 

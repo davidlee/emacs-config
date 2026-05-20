@@ -160,6 +160,28 @@
             (should (string-match-p "^  did it$" s))
             (should (string-match-p "^  #\\+END_QUOTE$" s))))))))
 
+(ert-deftest notes-at-satan-done/patch-job-arg-renders-queued-block ()
+  "Passing :patch-job synthesises the queued-tag block.
+The line is marked @satan-was-here so subsequent scans skip it; the
+quoted block carries the patch-job tag and queued-<id> body."
+  (dl-satan-tools-atsatan-test--with-root root
+    (let* ((file (expand-file-name "patch-job.org" root))
+           (ctx  (list :id "RUN-PJ" :capabilities '(write-notes))))
+      (let ((coding-system-for-write 'utf-8))
+        (write-region "* H\n@satan rewrite this\n" nil file))
+      (let* ((res (dl-satan-tool/notes-at-satan-scan nil ctx))
+             (id  (plist-get (car (plist-get (cdr res) :matches)) :id)))
+        (dl-satan-tool/notes-at-satan-done
+         (list :match-id id :patch-job "patch_20260520T120000_abcd") ctx)
+        (with-temp-buffer
+          (insert-file-contents file)
+          (let ((s (buffer-string)))
+            (should (string-match-p "@satan-was-here rewrite this" s))
+            (should (string-match-p
+                     "^#\\+BEGIN_QUOTE satan RUN-PJ,patch-job$" s))
+            (should (string-match-p
+                     "^queued patch_20260520T120000_abcd$" s))))))))
+
 (ert-deftest notes-at-satan-done/refuses-without-capability ()
   "Done refuses when ctx :capabilities lacks 'write-notes."
   (dl-satan-tools-atsatan-test--with-root root

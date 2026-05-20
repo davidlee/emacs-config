@@ -9,8 +9,10 @@
 (require 'dl-satan-patch-worktree)
 (require 'dl-satan-patch-adapter)
 (require 'dl-satan-patch-prompt)
+(require 'dl-satan-patch-classify)
 (require 'dl-satan-patch-runner)
 (require 'dl-satan-patch-adapter-pi)   ; auto-registers under "pi"
+(require 'dl-satan-patch-inbox)        ; adds runner-hook for inbox handoff
 (require 'dl-satan-tools-patch)
 
 (provide 'dl-satan-patch)
