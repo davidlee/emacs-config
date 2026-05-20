@@ -11,7 +11,7 @@
 ;;     [--provider <P>] [--model <M>]
 ;;     --mode json --no-session --no-context-files
 ;;     --tools read,write,edit,bash,grep,find,ls
-;;     --system-prompt-file <PROMPT>
+;;     --system-prompt <PROMPT-CONTENTS>
 ;;     -p <DIRECTIVE>
 ;;
 ;; The jail itself is the safety boundary; pi inside the jail cannot
@@ -149,8 +149,15 @@ and feeds parsed JSON lines through ON-LOG."
            "--no-session"
            "--no-context-files"
            "--tools" dl-satan-patch-adapter-pi-tools)
+     ;; Pi 0.75.x dropped --system-prompt-file; the supported flag is
+     ;; --system-prompt <text>.  Read the file contents and pass them
+     ;; inline so the patch-agent's harness prompt fully replaces pi's
+     ;; default coding-assistant prompt (mirrors prior semantics).
      (when (and prompt-file (file-readable-p prompt-file))
-       (list "--system-prompt-file" prompt-file))
+       (list "--system-prompt"
+             (with-temp-buffer
+               (insert-file-contents prompt-file)
+               (buffer-string))))
      dl-satan-patch-adapter-pi-extra-args
      (list "-p" directive))))
 
@@ -176,6 +183,9 @@ stderr."
              (summary (plist-get state :last-assistant-text))
              (error-event (plist-get state :error-event))
              (timed-out (plist-get state :timed-out))
+             (stderr-path
+              (let ((p (plist-get state :log-path)))
+                (and p (concat (file-name-sans-extension p) ".stderr.log"))))
              (status (cond
                       (timed-out 'failure)
                       (error-event 'failure)
@@ -206,6 +216,11 @@ stderr."
                                  "adapter_error_event"))
                             ((not (zerop exit-code))
                              (format "pi exit %s" exit-code))))))
+        (when (and stderr-path stderr-text
+                   (not (string-empty-p stderr-text)))
+          (ignore-errors
+            (with-temp-file stderr-path
+              (insert stderr-text))))
         (when (buffer-live-p stderr-buf) (kill-buffer stderr-buf))
         (when on-finish (funcall on-finish result))))))
 
