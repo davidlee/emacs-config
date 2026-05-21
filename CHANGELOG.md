@@ -2,6 +2,42 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-21 — SATAN: recent-runs awareness block for tick modes
+
+Tick runs were amnesic between invocations — useful for keeping
+prompts uncontaminated, but it left them prone to looping on the
+same hypothesis or re-issuing the same `inbox_append`. Filling that
+gap: a `# Recent SATAN runs` block now lands in the rendered prompt
+when a mode-spec carries `:recent-runs N`. Default `N = 5` for both
+`tick-pulse` and `tick-agent` via `dl-satan-tick-register` defaults;
+other modes unchanged.
+
+- `dl-satan-context.el` — new `--list-recent-runs`,
+  `--summarize-run`, `--tally-tool-calls`, `--render-recent-runs`
+  helpers. Walks `dl-satan-runs-dir` date buckets descending,
+  reads each leaf's `final.json` (summary, clipped to 280 chars)
+  and `transcript.jsonl` (tool-call tally, excluding
+  `satan_final`). Block rendered alongside now/today/sources
+  via the existing framing-key mechanism. Silent skip when the
+  runs dir is missing or empty.
+- `~/notes/satan/system/framing.txt` — adds optional
+  `recent_runs=# Recent SATAN runs` header. Renderer falls back
+  to the default header if absent so missing-framing isn't
+  load-bearing.
+- `dl-satan-tick.el` — `:recent-runs 5` added to
+  `dl-satan-tick-register` defaults; opt-out by passing
+  `:recent-runs nil` in overrides.
+- `satan/test/dl-satan-context-test.el` — new ert file (12 tests):
+  list ordering, bucket / non-bucket filtering, summarizer
+  extraction (time / mode / status / summary / tools), summary
+  clipping with ellipsis, FAILED-without-final handling,
+  `satan_final` exclusion, end-to-end tick context-fn emits or
+  omits the block based on `:recent-runs`.
+
+Standing verification: 12/12 new + 112/112 phase-3 unchanged. Live
+smoke (one tick → bundle.json carries the block) and a side-by-side
+behavioural check still pending the next scheduled tick.
+
 ## 2026-05-21 — docs: reshape satan + AGENTS docs into linked chunks
 
 Consolidated satan documentation under `docs/satan/` and slimmed

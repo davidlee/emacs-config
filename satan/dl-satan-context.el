@@ -5,8 +5,12 @@
 ;; it is also frozen for audit.
 
 (require 'subr-x)
+(require 'cl-lib)
+(require 'json)
 (require 'dl-notes-paths)
 (require 'dl-denote-journal)
+
+(defvar dl-satan-runs-dir)              ; defined in dl-satan-broker.el
 
 (defcustom dl-satan-system-scaffold-file
   (expand-file-name "satan/system/scaffold.txt" dl-notes-root)
@@ -134,11 +138,166 @@ Returns nil when NOW is empty."
           (push "```" lines)))
       (nreverse lines))))
 
+(defconst dl-satan-context--run-id-regexp
+  "\\`\\([0-9]\\{4\\}\\)\\([0-9]\\{2\\}\\)\\([0-9]\\{2\\}\\)T\\([0-9]\\{2\\}\\)\\([0-9]\\{2\\}\\)[0-9]\\{2\\}-\\([a-z0-9-]+?\\)-[A-Za-z0-9]+\\(\\.FAILED\\)?\\'"
+  "Match a SATAN run-id leaf name; capture groups: YYYY MM DD HH MM mode FAILED?")
+
+(defconst dl-satan-context--bucket-regexp
+  "\\`[0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\}\\'"
+  "Match a SATAN runs date-bucket directory name.")
+
+(defconst dl-satan-context--summary-clip 280
+  "Max characters of `final.json' summary kept in the recent-runs block.")
+
+(defun dl-satan-context--list-recent-runs (n)
+  "Return up to N most recent SATAN run directories, newest-first.
+Globs `dl-satan-runs-dir' for `YYYY-MM-DD' buckets in descending
+order and collects run leaves until N entries are gathered.  Stray
+files at the runs root (e.g. the `most-recent' symlink) are skipped.
+Returns nil when the runs dir is missing or empty."
+  (when (and (boundp 'dl-satan-runs-dir)
+             dl-satan-runs-dir
+             (file-directory-p dl-satan-runs-dir))
+    (let* ((buckets (cl-remove-if-not
+                     (lambda (name)
+                       (and (string-match-p
+                             dl-satan-context--bucket-regexp name)
+                            (file-directory-p
+                             (expand-file-name name dl-satan-runs-dir))))
+                     (directory-files dl-satan-runs-dir nil nil t)))
+           (buckets (sort buckets #'string>))
+           collected)
+      (cl-loop
+       for bucket in buckets
+       while (< (length collected) n)
+       for bucket-dir = (expand-file-name bucket dl-satan-runs-dir)
+       for leaves = (sort
+                     (cl-remove-if-not
+                      (lambda (name)
+                        (and (string-match-p
+                              dl-satan-context--run-id-regexp name)
+                             (file-directory-p
+                              (expand-file-name name bucket-dir))))
+                      (directory-files bucket-dir nil nil t))
+                     #'string>)
+       do (cl-loop for leaf in leaves
+                   while (< (length collected) n)
+                   do (push (expand-file-name leaf bucket-dir) collected)))
+      (nreverse collected))))
+
+(defun dl-satan-context--clip (s n)
+  "Return S clipped to N chars with a trailing ellipsis when truncated."
+  (if (<= (length s) n) s (concat (substring s 0 (max 0 (1- n))) "…")))
+
+(defun dl-satan-context--tally-tool-calls (transcript-path)
+  "Return alist (NAME . COUNT) of tool calls in TRANSCRIPT-PATH.
+Excludes `satan_final'.  Returns nil when the file is missing or
+contains no tool-call lines.  Counts are in first-occurrence order."
+  (when (file-readable-p transcript-path)
+    (let ((counts nil))
+      (with-temp-buffer
+        (let ((coding-system-for-read 'utf-8))
+          (insert-file-contents transcript-path))
+        (goto-char (point-min))
+        (while (not (eobp))
+          (let ((line (buffer-substring-no-properties
+                       (point) (line-end-position))))
+            (when (and (not (string-empty-p (string-trim line)))
+                       (string-match-p "\"event\"[ \t]*:[ \t]*\"tool-call\""
+                                       line))
+              (let* ((obj (ignore-errors
+                            (json-parse-string line
+                                               :object-type 'plist
+                                               :array-type 'list
+                                               :null-object nil
+                                               :false-object nil)))
+                     (name (and obj (plist-get
+                                     (plist-get obj :payload) :name))))
+                (when (and name (not (equal name "satan_final")))
+                  (let ((cell (assoc name counts)))
+                    (if cell (cl-incf (cdr cell))
+                      (setq counts (append counts (list (cons name 1))))))))))
+          (forward-line 1)))
+      counts)))
+
+(defun dl-satan-context--summarize-run (run-dir)
+  "Return a recent-runs entry plist for RUN-DIR.
+Keys: :when, :mode, :status (\"ok\" / \"FAILED\"), :summary (or nil),
+:tools (alist of (NAME . COUNT))."
+  (let* ((leaf (file-name-nondirectory (directory-file-name run-dir))))
+    (when (string-match dl-satan-context--run-id-regexp leaf)
+      (let* ((yyyy (match-string 1 leaf))
+             (mm   (match-string 2 leaf))
+             (dd   (match-string 3 leaf))
+             (hh   (match-string 4 leaf))
+             (mi   (match-string 5 leaf))
+             (mode (match-string 6 leaf))
+             (failed (match-string 7 leaf))
+             (final-path (expand-file-name "final.json" run-dir))
+             (summary
+              (when (file-readable-p final-path)
+                (ignore-errors
+                  (with-temp-buffer
+                    (let ((coding-system-for-read 'utf-8))
+                      (insert-file-contents final-path))
+                    (goto-char (point-min))
+                    (let ((obj (json-parse-buffer
+                                :object-type 'plist
+                                :array-type 'list
+                                :null-object nil
+                                :false-object nil)))
+                      (plist-get obj :summary))))))
+             (summary-clipped
+              (and summary
+                   (dl-satan-context--clip
+                    (replace-regexp-in-string
+                     "[\r\n]+" " " (string-trim summary))
+                    dl-satan-context--summary-clip)))
+             (tools (dl-satan-context--tally-tool-calls
+                     (expand-file-name "transcript.jsonl" run-dir))))
+        (list :when (format "%s-%s-%s %s:%s" yyyy mm dd hh mi)
+              :mode mode
+              :status (if failed "FAILED" "ok")
+              :summary summary-clipped
+              :tools tools)))))
+
+(defun dl-satan-context--recent-runs (n)
+  "Return up to N summarized recent-run entries, newest-first."
+  (delq nil (mapcar #'dl-satan-context--summarize-run
+                    (dl-satan-context--list-recent-runs n))))
+
+(defun dl-satan-context--render-recent-runs (framing entries)
+  "Return rendered `# Recent SATAN runs' block as a list of lines, or nil."
+  (when entries
+    (let ((header (or (cdr (assoc "recent_runs" framing))
+                      "# Recent SATAN runs"))
+          (lines nil))
+      (push header lines)
+      (dolist (e entries)
+        (let* ((status (plist-get e :status))
+               (mode (plist-get e :mode))
+               (summary (plist-get e :summary))
+               (tools (plist-get e :tools))
+               (head (format "[%s] %s%s%s"
+                             (plist-get e :when)
+                             mode
+                             (if (equal status "ok") "" (format " (%s)" status))
+                             (if summary (format ": %s" summary) ""))))
+          (push head lines)
+          (when tools
+            (push (concat "  tools: "
+                          (mapconcat (lambda (kv)
+                                       (format "%s×%d" (car kv) (cdr kv)))
+                                     tools ", "))
+                  lines))))
+      (nreverse lines))))
+
 (defun dl-satan-context--render-prompt (assembled bundle)
   "Return the fully-rendered system prompt for the harness.
 ASSEMBLED is the scaffold + mode-prompt string (no framing yet).
-BUNDLE is the context plist providing `:now', `:today_text', `:sources'.
-Missing framing.txt signals — there is no canonical fallback."
+BUNDLE is the context plist providing `:now', `:today_text', `:sources',
+`:recent_runs'.  Missing framing.txt signals — there is no canonical
+fallback."
   (let* ((framing (dl-satan-context--framing))
          (parts (list (string-trim-right assembled)))
          (blocks (delq nil
@@ -148,7 +307,9 @@ Missing framing.txt signals — there is no canonical fallback."
                         (dl-satan-context--render-today
                          framing (plist-get bundle :today_text))
                         (dl-satan-context--render-sources
-                         framing (plist-get bundle :sources))))))
+                         framing (plist-get bundle :sources))
+                        (dl-satan-context--render-recent-runs
+                         framing (plist-get bundle :recent_runs))))))
     (dolist (block blocks)
       (push "" parts)
       (dolist (line block)
@@ -195,12 +356,20 @@ for audit but are no longer read by the harness."
                        :now    (dl-satan-context-now))))
     (dl-satan-context--finalize-prompt bundle assembled)))
 
+(defun dl-satan-context--recent-runs-for-spec (mode-spec)
+  "Return the recent-runs entry list for MODE-SPEC, or nil when disabled."
+  (let ((n (plist-get mode-spec :recent-runs)))
+    (when (and (integerp n) (> n 0))
+      (dl-satan-context--recent-runs n))))
+
 (defun dl-satan-context-tick (mode-spec)
-  "Bundle for a tick mode.  Same shape as motd."
+  "Bundle for a tick mode.  Same shape as motd, plus optional recent-runs."
   (let* ((assembled (dl-satan-context--assemble-prompt mode-spec))
-         (bundle (list :prompt ""
-                       :mode   (plist-get mode-spec :name)
-                       :now    (dl-satan-context-now))))
+         (bundle (list :prompt       ""
+                       :mode         (plist-get mode-spec :name)
+                       :now          (dl-satan-context-now)
+                       :recent_runs  (dl-satan-context--recent-runs-for-spec
+                                      mode-spec))))
     (dl-satan-context--finalize-prompt bundle assembled)))
 
 (defcustom dl-satan-self-edit-mech-roots
