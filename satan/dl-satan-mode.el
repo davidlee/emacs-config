@@ -73,7 +73,8 @@ Dotfiles must not be the source of truth for prompt content.")
                 "notes_recent" "notes_at_satan_scan"
                 "sway_border_set" "sway_border_reset"
                 "bough_read" "memory_mark" "memory_resonate"
-                "memory_show_trace")
+                "memory_show_trace"
+                "docs_list" "docs_search" "docs_read")
        :capabilities '(write-daily stage-proposal notify hippocampus-write
                        inbox-write memory-write)
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
@@ -111,7 +112,8 @@ Dotfiles must not be the source of truth for prompt content.")
        :source-roots-var 'dl-satan-self-edit-mech-roots
        :tools '("proposal_stage" "sway_border_set" "sway_border_reset"
                 "bough_read" "memory_resonate" "memory_show_trace"
-                "patch_job_create" "patch_job_status")
+                "patch_job_create" "patch_job_status"
+                "docs_list" "docs_search" "docs_read")
        :capabilities '(stage-proposal)
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
        :jail-profile 'specDev
@@ -129,7 +131,8 @@ Dotfiles must not be the source of truth for prompt content.")
        :source-roots-var 'dl-satan-self-edit-mind-roots
        :tools '("proposal_stage" "sway_border_set" "sway_border_reset"
                 "bough_read" "memory_resonate" "memory_show_trace"
-                "patch_job_create" "patch_job_status")
+                "patch_job_create" "patch_job_status"
+                "docs_list" "docs_search" "docs_read")
        :capabilities '(stage-proposal)
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
        :jail-profile 'specDev

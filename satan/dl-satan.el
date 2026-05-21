@@ -19,6 +19,7 @@
 (require 'dl-satan-tools-agenda)
 (require 'dl-satan-tools-activity)
 (require 'dl-satan-tools-notes)
+(require 'dl-satan-tools-docs)
 (require 'dl-satan-tools-sway)
 (require 'dl-satan-memory)
 (require 'dl-satan-mode)

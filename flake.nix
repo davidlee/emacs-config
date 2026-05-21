@@ -240,6 +240,11 @@
           packages = projectPkgs ++ lib.optionals isLinux (lib.attrValues jailPkgs);
           commands = [
             {
+              name = "jpi";
+              help = "op run -- jailed-pi";
+              command = "op run -- jailed-pi";
+            }
+            {
               name = "jcl";
               help = "jailed-claude --dangerously-skip-permissions";
               command = "jailed-claude --dangerously-skip-permissions $@";

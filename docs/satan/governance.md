@@ -120,7 +120,7 @@ Dotfiles contain mechanism.
 |---|---|
 | ROM/system prompt, mode prompts | `~/notes/satan/prompts/<mode>.txt` |
 | shared system scaffold | `~/notes/satan/system/scaffold.txt` |
-| bundle-section headers (`# Now`, `# Today (raw)`, `# Source files`) | `~/notes/satan/system/framing.txt` |
+| bundle-section headers (`# Now`, `# Today (raw)`, `# Source files`, `# Recent SATAN runs`) | `~/notes/satan/system/framing.txt` |
 | per-tool description (model-facing) | `~/notes/satan/tools/<tool-name>.md` |
 | `satan_final` description (synthetic terminal tool) | `~/notes/satan/tools/satan_final.md` |
 | examples / few-shot snippets, style instructions, hippocampus policy | `~/notes/satan/` |
@@ -351,6 +351,7 @@ justification):
 | `dl-satan-tools-activity.el` | `activity_read` (panopticon's `~/.local/state/behaviour/` → histogram or focus segments); read-only. |
 | `dl-satan-tools-bough.el` | `bough_read` (shell-out to `bough --json` for `node`, `recent_changes`, `active`, `day`, `week`, `project_subtree`); only path SATAN uses to read bough. |
 | `dl-satan-tools-memory.el` | `memory_mark`, `memory_resonate`, `memory_show_trace` — LLM-facing tools over the memory substrate. |
+| `dl-satan-tools-docs.el` | `docs_list`, `docs_search`, `docs_read` — lazy lookup over the frontmatter-stamped chunks under `docs/satan/` + `docs/emacs/`. |
 | `dl-satan-memory.el` | Substrate aggregator + `my/satan-memory-{resonate,show,status}` interactive surface. |
 | `dl-satan-memory-grammar.el` | Closed-world enums, alias seed, default weights for grammar v1 (mirrored in `memory/migrations/0002_grammar_v1.sql`). |
 | `dl-satan-memory-canon.el` | Pure canonicalizer + rule registry; emits handles + per-handle source. Purity grep-lint enforced. |
@@ -362,7 +363,7 @@ justification):
 | `memory/migrations/0003_memory_functions.sql` | `memory_mark_trace`, `memory_resonate`, `memory_show_trace`, `handle_weight_for`. |
 | `memory/migrations/0004_grammar_v2_fixture.sql` | Operator-applied fixture bump exercising the renormalize CLI (adds `planning -> phase:orientation`). |
 | `docs/satan/memory/design.md` | Substrate design (§§0–11). |
-| `dl-satan-context.el` | Per-mode bundle assembly; strict `--read-required`; scaffold assembly. |
+| `dl-satan-context.el` | Per-mode bundle assembly; strict `--read-required`; scaffold assembly; recent-runs block via `:recent-runs N` mode-spec key. |
 | `dl-satan-output.el` | Mode output handlers (`morning`, `motd`, `tick`, `self-edit`; the last is shared by both `self-edit-{mech,mind}` lanes). |
 | `dl-satan-block.el` | Owned-block find/replace. |
 | `dl-satan-jsonl.el` | Line-buffered filter + writer + `dl-satan-jsonl-prepare`. |
@@ -425,6 +426,9 @@ justification):
     memory_mark.md
     memory_resonate.md
     memory_show_trace.md
+    docs_list.md
+    docs_search.md
+    docs_read.md
     satan_final.md                   # synthetic harness-side tool, canonical desc here
   motd.txt
   inbox.org                          # append-only headlines, tagged :unread:satan:
@@ -445,11 +449,11 @@ justification):
 
 | Mode | Tools | Auto-apply | Budget tokens / tool-calls / wall |
 |---|---|---|---|
-| `morning` | `org_read_context`, `org_update_owned_block`, `proposal_stage`, `notify_send`, `hippocampus_write`, `inbox_append`, `agenda_read`, `activity_read`, `sway_border_set`, `sway_border_reset`, `bough_read`, `memory_mark`, `memory_resonate`, `memory_show_trace` | `owned` | 20000 / 8 / 90s |
+| `morning` | `org_read_context`, `org_update_owned_block`, `proposal_stage`, `notify_send`, `hippocampus_write`, `inbox_append`, `agenda_read`, `activity_read`, `sway_border_set`, `sway_border_reset`, `bough_read`, `memory_mark`, `memory_resonate`, `memory_show_trace`, `docs_list`, `docs_search`, `docs_read` | `owned` | 20000 / 8 / 90s |
 | `motd` | `org_read_context`, `notify_send`, `inbox_append`, `agenda_read`, `activity_read`, `sway_border_set`, `sway_border_reset`, `bough_read`, `memory_mark`, `memory_resonate`, `memory_show_trace` | `owned` (motd surface owned by output handler; written from `satan_final.summary`) | 10000 / 4 / 45s |
 | `tick-*` | `org_read_context`, `notify_send`, `inbox_append`, `sway_border_set`, `sway_border_reset`, `bough_read`, `memory_mark`, `memory_resonate`, `memory_show_trace` | `owned` (only `inbox_append`) | 3000 / 4 / 30s |
-| `self-edit-mech` | `proposal_stage`, `sway_border_set`, `sway_border_reset`, `bough_read`, `memory_resonate`, `memory_show_trace` | `none` | 50000 / 20 / 180s |
-| `self-edit-mind` | `proposal_stage`, `sway_border_set`, `sway_border_reset`, `bough_read`, `memory_resonate`, `memory_show_trace` | `none` | 50000 / 20 / 180s |
+| `self-edit-mech` | `proposal_stage`, `sway_border_set`, `sway_border_reset`, `bough_read`, `memory_resonate`, `memory_show_trace`, `docs_list`, `docs_search`, `docs_read` | `none` | 50000 / 20 / 180s |
+| `self-edit-mind` | `proposal_stage`, `sway_border_set`, `sway_border_reset`, `bough_read`, `memory_resonate`, `memory_show_trace`, `docs_list`, `docs_search`, `docs_read` | `none` | 50000 / 20 / 180s |
 
 Capabilities: `morning` and `motd` (and `tick-*`) carry `memory-write` so
 the memory_mark + hippocampus cross-ref hook are admitted; `self-edit-*`
@@ -475,6 +479,9 @@ Override per-mode in `dl-satan-mode.el`: `:provider`, `:model`,
 | `memory_mark` | low | capability `memory-write` | Persist an `observation` trace into `satan_memory`. The broker canonicalizes evidence deterministically; the LLM supplies typed hints (no raw handles).  Stamped `trace_origin = llm_mark`. |
 | `memory_resonate` | read | — | Inverted-index lookup over `trace_handles`; returns matches scored by `weight * trace.strength`.  No state mutation in v1. |
 | `memory_show_trace` | read | — | Round-trip a trace by id (handles, sources, links). |
+| `docs_list` | read | — | List every chunk under `docs/satan/` + `docs/emacs/` as `{name, description, path, type, topic, status}` — no bodies. |
+| `docs_search` | read | — | Filter doc chunks by frontmatter (`topic`/`type`/`status`) and/or a literal case-insensitive `query` substring against the body. Returns the skinny entry shape; pair with `docs_read`. |
+| `docs_read` | read | — | Full body of one chunk by `name` slug. |
 
 The python harness intercepts a synthetic `satan_final(summary,
 actions[])` tool call as the terminal signal and emits the broker's
@@ -525,6 +532,31 @@ assembled prompt and any `today_text` / source-file sections (see
 `dl-satan-context--render-prompt` and `~/notes/satan/system/framing.txt`),
 so the model always sees the same date/time/tz framing regardless of
 mode. Single source of truth — never set `:date`/`:time` separately.
+
+### Bundle `:recent_runs` block (tick modes)
+
+A mode-spec carrying `:recent-runs N` opts into a `# Recent SATAN runs`
+block listing the N most recent runs newest-first, regardless of mode
+(cross-mode visibility — a recent `self-edit-*` or `morning` matters
+to the next tick). Each entry: `[YYYY-MM-DD HH:MM] mode[(FAILED)]:
+summary` (summary clipped to 280 chars, replaced with ellipsis when
+truncated; omitted on FAILED runs without a `final.json`), plus a
+`tools: name×N, …` tally line from `transcript.jsonl` (excludes
+`satan_final`).
+
+`dl-satan-tick-register` defaults to `:recent-runs 5`, so both
+`tick-pulse` and `tick-agent` carry the block. Other modes leave
+the key unset and see no change. The block is silently omitted
+when `dl-satan-runs-dir` is missing or empty — same convention as
+the other render-* helpers. Helpers live in `dl-satan-context.el`
+(`--list-recent-runs`, `--summarize-run`, `--tally-tool-calls`,
+`--render-recent-runs`).
+
+Rationale: tick modes fire roughly every 30 minutes and were
+otherwise amnesic between invocations — prone to looping on the
+same hypothesis or re-issuing the same `inbox_append`. `memory_resonate`
+answers a different question ("similar moment?"); this block
+answers "what did I, SATAN, last try?".
 
 ### Owned-block syntax
 

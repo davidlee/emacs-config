@@ -2,6 +2,50 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-21 — SATAN: `docs_*` lazy lookup over chunked docs
+
+Follow-up to the 03398479 reshape: SATAN can now pull its own docs
+on demand instead of relying on an eager canon ingest. Three new
+read-only tools register through the standard broker surface:
+
+- `docs_list` — every chunk under `docs/satan/` + `docs/emacs/` as
+  `{name, description, path, type, topic, status}`; no bodies.
+- `docs_search :query? :topic? :type? :status?` — same skinny shape,
+  filtered by frontmatter exact-match plus a case-insensitive literal
+  substring grep on the body. With no filters, returns all chunks.
+- `docs_read :name` — full body for one slug.
+
+Files:
+
+- `satan/dl-satan-tools-docs.el` — purpose-local frontmatter parser
+  (no YAML lib; shape is fixed and tiny), corpus walker over
+  `dl-satan-tools-docs-roots` (default `docs/satan` + `docs/emacs`,
+  resolved against `user-emacs-directory`), three handlers + three
+  registrations.
+- `satan/test/dl-satan-tools-docs-test.el` — 23 ert tests against a
+  fixture tree under `satan/test/docs-fixtures/{satan,emacs}/`
+  covering parser (happy + malformed), walker, schema validation,
+  and each handler. 23/23 green.
+- `satan/dl-satan.el` — `(require 'dl-satan-tools-docs)`.
+- `satan/dl-satan-mode.el` — adds `docs_list`, `docs_search`,
+  `docs_read` to `:tools` for `morning`, `self-edit-mech`, and
+  `self-edit-mind`. `motd` and `tick-*` deliberately skipped.
+- `~/notes/satan/tools/docs_list.md`, `docs_search.md`, `docs_read.md`
+  — model-facing descriptions (mind/mechanism split per governance
+  §Ownership): when to use each tool, params, return shape, enum
+  values for `topic`/`type`/`status`. Notes repo; committed
+  separately.
+- `docs/satan/governance.md` — Tools table + Modes table + file map
+  + notes-tree section refreshed.
+
+Out of scope (deliberate): bumping `verified_at` on chunks not
+re-read; updating `satan/dl-satan-patch-*.el` comment refs to the
+old md paths; migrating loose `docs/*.md` into the frontmatter
+scheme; Claude-side skill / settings.json wiring.
+
+Live sanity: real-corpus `docs_list` smoke returns 17 chunks
+matching the post-reshape `fd` count.
+
 ## 2026-05-21 — SATAN: recent-runs awareness block for tick modes
 
 Tick runs were amnesic between invocations — useful for keeping
