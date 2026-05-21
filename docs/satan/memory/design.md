@@ -1,10 +1,21 @@
+---
+name: satan-memory-design
+description: SATAN memory substrate design — grammar, canonicalizer, evidence window, persistence schema
+metadata:
+  type: design
+  topic: satan-memory
+  status: canon
+  updated_at: pending
+  verified_at: pending
+---
+
 # SATAN — Memory Substrate (Design)
 
 Status: design draft, pre-implementation.
 Prerequisites:
 
 - `~/.emacs.d/memory.brief.md` — substrate principles and addressing rules
-- `~/.emacs.d/SATAN.md` — broker invariants and ownership model
+- `~/.emacs.d/docs/satan/governance.md` — broker invariants and ownership model
 - `~/notes/20260519T003129--satan__agent_emacs_project.org` — organism framing
 
 This document is the more-grounded plan that follows the brief and the
@@ -554,7 +565,7 @@ Implementation: subprocess `bough --json --workspace <ws> <scope> …`,
 parse JSON, return as plist. Standard timeouts and size caps.
 
 (Write surfaces — `bough_propose_*` — are out of scope for the memory
-design. When added, stage as proposals per `SATAN.md`.)
+design. When added, stage as proposals per [[satan-governance]].)
 
 ## 6. Persistence
 
@@ -987,7 +998,7 @@ Bough-side issues to file (do not block v1):
 
 Decision tree per R1 followed: gap → degrade scope to loosened
 semantics in v1 + file bough issue, do **not** write parallel read
-logic against the bough DB (B1 of `SATAN.md` enforced by grep-lint).
+logic against the bough DB (B1 of [[satan-governance]] enforced by grep-lint).
 
 This unblocks step 3 (`bough_read` tool wrapper).
 
@@ -1070,7 +1081,7 @@ producers are anticipated.
   bough_read.md
 ```
 
-Naming follows `AGENTS.md`: module symbols `dl-satan-memory-*`, public
+Naming follows [docs/emacs/naming.md](../../emacs/naming.md): module symbols `dl-satan-memory-*`, public
 internals `dl-satan-memory-<name>`, private `dl-satan-memory--<name>`,
 user commands `my/satan-memory-*`.
 

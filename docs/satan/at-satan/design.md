@@ -1,3 +1,14 @@
+---
+name: at-satan-design
+description: AT-SATAN — `@satan` agent-trigger tooling design
+metadata:
+  type: design
+  topic: satan-at
+  status: draft
+  updated_at: pending
+  verified_at: pending
+---
+
 # AT-SATAN: `@satan` agent-trigger tooling
 
 ## Overview

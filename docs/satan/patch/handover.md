@@ -1,6 +1,17 @@
+---
+name: satan-patch-handover
+description: SATAN patch-agent handover — current state (Phase-3 content + op-cache port + pi fixes)
+metadata:
+  type: handover
+  topic: satan-patch
+  status: living
+  updated_at: pending
+  verified_at: pending
+---
+
 # SATAN patch-agent — Handover (Phase-3-content + op-cache port)
 
-Builds on `patch-harness.handover.md` (Phase-3 mechanism).  Read that
+Builds on [archive/handover-phase3-mechanism.md](archive/handover-phase3-mechanism.md) (Phase-3 mechanism).  Read that
 first; this file is a delta.
 
 This session shipped the Phase-3 *content* + four bug fixes that
@@ -248,7 +259,7 @@ runner *does* work today with the bugs identified above patched.
 ## What the next agent should do, in order
 
 1. **Read this file + the original
-   `patch-harness.handover.md' + the plan §4.3-4.6.**
+   `archive/handover-phase3-mechanism.md' + the plan §4.3-4.6.**
 
 2. **Confirm `home-manager switch' has been run** so `jailed-pi'
    is the rebuilt no-op-run wrapper.  Quick check inside
@@ -288,7 +299,7 @@ runner *does* work today with the bugs identified above patched.
 ## Don't
 
 (In addition to the originals in
-`patch-harness.handover.md::Don't`.)
+`archive/handover-phase3-mechanism.md::Don't`.)
 
 - Don't `setq dl-satan-patch-adapter-pi-program` to a `/nix/store`
   path and commit it — paths change with every rebuild.  A

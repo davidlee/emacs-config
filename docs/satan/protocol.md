@@ -1,3 +1,14 @@
+---
+name: satan-protocol
+description: SATAN JSONL protocol — canonical message-type spec for the broker/harness membrane
+metadata:
+  type: design
+  topic: satan
+  status: canon
+  updated_at: pending
+  verified_at: pending
+---
+
 # SATAN JSONL protocol
 
 Canonical spec for the membrane between broker (trusted) and harness

@@ -1,3 +1,14 @@
+---
+name: satan-governance
+description: SATAN governance + reference — philosophy, policy, file map, modes, tools, ops, gotchas
+metadata:
+  type: governance
+  topic: satan
+  status: canon
+  updated_at: pending
+  verified_at: pending
+---
+
 # SATAN — Scheduled Agent for Textual Attention and Notes
 
 Living document. Covers both governing architecture and current
@@ -59,7 +70,7 @@ across those changes.
 | 2D — `self-edit` mode | ✅ | landed 2026-05-19, SATAN-only scope |
 | 2E — mind/mechanism split | ✅ | landed 2026-05-19, prompts + tool descs in `~/notes/satan/` |
 | Wired into Sleipnir (`satan.nix`) | ✅ | timers `satan-morning` 09:00, `satan-motd` 07:00 |
-| 3A — protocol reification | ✅ | landed 2026-05-19; `protocol/PROTOCOL.md` + fixtures + validators on both sides |
+| 3A — protocol reification | ✅ | landed 2026-05-19; `protocol.md` + fixtures + validators on both sides |
 
 `M-x my/satan-run RET morning` writes a SATAN-owned block into today's
 daily note and a full audit bundle under `~/notes/satan/runs/<run-id>/`.
@@ -87,73 +98,10 @@ emacsclient --eval '(dl-satan-audit-verify-run "/home/david/notes/satan/runs/<RU
 The wrapper script `~/.emacs.d/satan/bin/satan-run <mode>` invokes
 `emacsclient --eval` and is what the systemd units call.
 
-## Architectural center of gravity
+## Architecture
 
-```text
-systemd / manual invocation
-        ↓
-Emacs broker            (trusted authority)
-        ↓
-jailed harness/model    (untrusted reasoning)
-        ↓
-JSONL protocol          (membrane)
-        ↓
-broker-owned tools and output handlers
-        ↓
-org/denote/bough/local surfaces
-```
-
-Emacs is the trusted local broker. Org/Denote are the canonical
-personal text substrate. `bough` is a graph/cache/metadata/index layer
-around that substrate, not the primary owner of reality. The model is
-a reasoning engine, not trusted with direct authority.
-
-## Conceptual layers
-
-### Invocation
-Defines when and why SATAN runs (morning, evening, MOTD, weekly review,
-manual self-edit). Explicit, scheduled, inspectable, boring. SATAN does
-not decide for itself when to wake up except through mechanisms the
-user has explicitly installed.
-
-### Broker
-Trusted authority. Owns mode resolution, context assembly,
-prompt/hippocampus loading, permission profile selection, process
-lifecycle, JSONL handling, tool dispatch, action validation, output
-handling, audit logging. The broker enforces policy; the model
-proposes.
-
-### Harness adapter
-Talks to a model or model-running environment (OpenRouter, gptel,
-pi.dev, zerostack, local model runner, fake test harness).
-Replaceable. Translates between the SATAN protocol and the
-harness-specific interface. No adapter should become the canonical
-definition of SATAN behaviour.
-
-### Model
-Performs reasoning. Receives model-facing prompts, relevant hippocampus,
-selected context, tool manifest, output contract. Emits tool calls,
-logs, final structured output. Must not receive ambient authority;
-can only request named capabilities through the broker.
-
-### Tool
-Broker-owned capability. Not "whatever shell command the model wants."
-Named, validated operation with risk level, capability requirement,
-argument schema, mode allowlist, implementation handler, model-facing
-description. The description is advisory; the broker-side handler and
-policy are authoritative.
-
-### Output
-Final model output is not automatically trusted. The output handler
-validates, classifies, and routes requested effects: apply low-risk
-owned writes; stage proposals; reject invalid actions; record failures;
-notify locally if permitted; update audit artifacts. Mode-specific.
-
-### State
-Local, text-first, inspectable. ROM prompt fragments, mode prompts,
-tool descriptions, hippocampus, proposals, run logs, owned daily-note
-blocks, MOTD/status surfaces. Favour files the user can read, diff,
-grep, review, and version.
+Trust-and-data flow, broker/harness/model/tool/output/state layers:
+[[satan-architecture]].
 
 ## Ownership: mind vs mechanism
 
@@ -274,8 +222,8 @@ transcript scraping; no free-text command parsing; structured tool
 calls, results, finals; auditable transcript; strict validation at the
 broker boundary.
 
-The canonical message spec is `protocol/PROTOCOL.md`. Shared exemplars
-live at `protocol/fixtures.json` and drive validator tests on both
+The canonical message spec is [protocol.md](protocol.md). Shared exemplars
+live at `~/.emacs.d/satan/protocol/fixtures.json` and drive validator tests on both
 sides — the elisp validator (`dl-satan-protocol-validate` in
 `dl-satan-protocol.el`) and the python validator (`harness/protocol.py`)
 must remain in lockstep. Adding a message
@@ -397,7 +345,7 @@ justification):
 | `dl-satan-tools.el` | Tool registry, dispatch, schema validator, JSON-Schema builder (from notes descriptions). |
 | `dl-satan-tools-org.el` | Handlers: `org_read_context`, `org_update_owned_block`, `proposal_stage`. |
 | `dl-satan-tools-notify.el` | `notify_send` (D-Bus). |
-| `dl-satan-tools-hippocampus.el` | `hippocampus_write`; `my/satan-hippocampus`. Emits an `auto_rule` memory observation when called from a `memory-write` mode (cross-ref hook, §10.7 of `satan/memory.design.md`). |
+| `dl-satan-tools-hippocampus.el` | `hippocampus_write`; `my/satan-hippocampus`. Emits an `auto_rule` memory observation when called from a `memory-write` mode (cross-ref hook, [[satan-memory-design]] §10.7). |
 | `dl-satan-tools-inbox.el` | `inbox_append`; `my/satan-inbox`; `my/satan-inbox-unread-count`. |
 | `dl-satan-tools-agenda.el` | `agenda_read` (gcalcli → text); timeout-wrapped; calendar id from `$WORK_EMAIL`. |
 | `dl-satan-tools-activity.el` | `activity_read` (panopticon's `~/.local/state/behaviour/` → histogram or focus segments); read-only. |
@@ -406,20 +354,20 @@ justification):
 | `dl-satan-memory.el` | Substrate aggregator + `my/satan-memory-{resonate,show,status}` interactive surface. |
 | `dl-satan-memory-grammar.el` | Closed-world enums, alias seed, default weights for grammar v1 (mirrored in `memory/migrations/0002_grammar_v1.sql`). |
 | `dl-satan-memory-canon.el` | Pure canonicalizer + rule registry; emits handles + per-handle source. Purity grep-lint enforced. |
-| `dl-satan-memory-evidence.el` | Impure evidence-window assembly (panopticon + `bough_read` + git/fs) per `memory.design.md` §4; deterministic truncation. |
+| `dl-satan-memory-evidence.el` | Impure evidence-window assembly (panopticon + `bough_read` + git/fs) per [[satan-memory-design]] §4; deterministic truncation. |
 | `dl-satan-memory-store.el` | `mark` / `resonate` / `show` against `satan_memory` via `psql` subprocess. |
 | `dl-satan-memory-migrate.el` | Forward-only migration runner; `dl-satan-memory-renormalize` (§7 grammar-bump replay) + `-status`. |
 | `memory/migrations/0001_init.sql` | Substrate schema (§6.2). |
 | `memory/migrations/0002_grammar_v1.sql` | v1 grammar seed (aliases + namespace weights). |
 | `memory/migrations/0003_memory_functions.sql` | `memory_mark_trace`, `memory_resonate`, `memory_show_trace`, `handle_weight_for`. |
 | `memory/migrations/0004_grammar_v2_fixture.sql` | Operator-applied fixture bump exercising the renormalize CLI (adds `planning -> phase:orientation`). |
-| `satan/memory.design.md` | Substrate design (§§0–11). |
+| `docs/satan/memory/design.md` | Substrate design (§§0–11). |
 | `dl-satan-context.el` | Per-mode bundle assembly; strict `--read-required`; scaffold assembly. |
 | `dl-satan-output.el` | Mode output handlers (`morning`, `motd`, `tick`, `self-edit`; the last is shared by both `self-edit-{mech,mind}` lanes). |
 | `dl-satan-block.el` | Owned-block find/replace. |
 | `dl-satan-jsonl.el` | Line-buffered filter + writer + `dl-satan-jsonl-prepare`. |
 | `dl-satan-protocol.el` | Validator for the JSONL membrane; fixture loader; constants. |
-| `protocol/PROTOCOL.md` | Canonical message-type spec. |
+| `docs/satan/protocol.md` | Canonical message-type spec. |
 | `protocol/fixtures.json` | Shared valid/invalid exemplars consumed by both ert and python tests. |
 | `dl-satan-audit.el` | Append-only artifact writer + 6-predicate verifier. |
 | `dl-satan-budget.el` | Daily token ceiling: enumerates today's `runs/`, sums per-run `usage.tokens_total`, gates the broker pre-spawn. |
@@ -688,8 +636,8 @@ doesn't crash the run. Resolved plaintext is forwarded into the jail.
 
 ### Four traps from the Nix integration
 
-(See `AGENTS.md` for the full table. Repeated here for SATAN-specific
-relevance.)
+(See [docs/emacs/traps.md](../emacs/traps.md) for the full table. Repeated
+here for SATAN-specific relevance.)
 
 1. **Flake builds see only git-tracked files** — `git add` new `.el` or
    `harness/*.py` before `home-manager switch` or

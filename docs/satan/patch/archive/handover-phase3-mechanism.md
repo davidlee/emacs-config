@@ -1,3 +1,14 @@
+---
+name: satan-patch-handover-phase3-mechanism
+description: SATAN patch-agent handover — superseded; covers Phase-3 mechanism landing
+metadata:
+  type: handover
+  topic: satan-patch
+  status: archive
+  updated_at: pending
+  verified_at: pending
+---
+
 # SATAN patch-agent — Handover (post-Phase-3-mechanism)
 
 > **Direction change (post-handover-2)**: the runner has been
@@ -35,10 +46,10 @@ but only smoke-tested live behind `SATAN_PATCH_LIVE=1`.
 
 ## Read in order
 
-1. `satan/patch-harness.md` — brief (21 §).  What + why.
-2. `satan/patch-harness.plan.md` — plan (§0 decisions, §1 file plan,
+1. `../brief.md` — brief (21 §).  What + why.
+2. `../plan.md` — plan (§0 decisions, §1 file plan,
    §3 Phase 2, §4 Phase 3, §5 risks, §6 commit cadence).
-3. `~/.emacs.d/AGENTS.md` — Nix wiring traps.  Trap #1 (untracked .el
+3. `~/.emacs.d/docs/emacs/traps.md` — Nix wiring traps.  Trap #1 (untracked .el
    invisible to flake) still bites every new file.
 4. `~/.emacs.d/CLAUDE.md` + `~/.claude/projects/-home-david/memory/MEMORY.md`.
 5. This file.

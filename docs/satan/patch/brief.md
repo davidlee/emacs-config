@@ -1,3 +1,14 @@
+---
+name: satan-patch-brief
+description: SATAN patch-agent extension — technical brief (scope, safety model, lifecycle, tool surface)
+metadata:
+  type: design
+  topic: satan-patch
+  status: canon
+  updated_at: pending
+  verified_at: pending
+---
+
 # Technical Brief: SATAN Patch-Agent Extension
 
 ## Purpose

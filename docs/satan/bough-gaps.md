@@ -1,3 +1,14 @@
+---
+name: satan-bough-gaps
+description: Bough CLI gaps surfaced by SATAN's memory substrate (tracking; B1 closed, B2 open)
+metadata:
+  type: tracking
+  topic: satan
+  status: living
+  updated_at: pending
+  verified_at: pending
+---
+
 # Bough CLI gaps surfaced by SATAN memory substrate
 
 One read-side capability remains missing from bough as of 2026-05-21
@@ -96,7 +107,7 @@ JSON (D10).
    `status-transitions` for the full "what's new + what moved" view;
    initial-status assignments never appear in the transitions feed
    (DR-116 D2).
-4. Close this section (B1) and update `memory.design.md` §10.2.
+4. Close this section (B1) and update `memory/design.md` §10.2.
 
 ---
 

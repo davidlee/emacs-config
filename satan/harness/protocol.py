@@ -2,7 +2,7 @@
 
 Single-file source of truth for the message-shape contract on the
 harness side. Keep in lockstep with `../dl-satan-protocol.el` and
-`../protocol/PROTOCOL.md`. Shared fixtures at `../protocol/fixtures.json`
+`../../docs/satan/protocol.md`. Shared fixtures at `../protocol/fixtures.json`
 drive both this validator's tests and the elisp validator's tests.
 """
 

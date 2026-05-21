@@ -1,8 +1,19 @@
-# Plan: Rewrite AT-SATAN.md as two-stage deliverable (B → A)
+---
+name: at-satan-plan
+description: AT-SATAN — rewrite plan (two-stage B→A deliverable)
+metadata:
+  type: plan
+  topic: satan-at
+  status: draft
+  updated_at: pending
+  verified_at: pending
+---
+
+# Plan: Rewrite design.md as two-stage deliverable (B → A)
 
 ## Overview
 
-The existing `AT-SATAN.md` (588 lines) is a thorough design document with
+The existing `design.md` (588 lines) is a thorough design document with
 pseudo-code, but has several loose ends and inaccurate code references.
 Two-phase deliverable:
 
@@ -80,7 +91,7 @@ numbers. Implementer should not later treat the id as a cross-run anchor.
 
 | Wrong | Right |
 |---|---|
-| 'add `("tick-agent" . 3)` … weighted below `"tick-pulse"`' | Current default is `'(("tick-pulse" . 1))`. Setting agent=3, pulse=1 makes agent *higher* than pulse, not lower. The AT-SATAN.md draft sets pulse=5, agent=3. Either change both, or pick coherent numbers. |
+| 'add `("tick-agent" . 3)` … weighted below `"tick-pulse"`' | Current default is `'(("tick-pulse" . 1))`. Setting agent=3, pulse=1 makes agent *higher* than pulse, not lower. The design.md draft sets pulse=5, agent=3. Either change both, or pick coherent numbers. |
 
 Decision: keep pulse=5, agent=3 (matches existing draft). Phase A modifies
 both entries of the `dl-satan-tick-pool` defcustom default. Note that this
@@ -340,7 +351,7 @@ emacsclient --eval '(my/satan-run "tick-agent")'
 ls ~/notes/satan/runs/most-recent/
 ```
 
-## What this plan does NOT change in AT-SATAN.md
+## What this plan does NOT change in design.md
 
 - The `background_enqueue` and `web_fetch` sketches — they remain "future
   tools, design sketch, not v1".
@@ -372,8 +383,8 @@ ls ~/notes/satan/runs/most-recent/
 
 ## Constraints
 
-- One file: `./AT-SATAN.md`. No code changes in this plan's deliverable.
-- AT-SATAN.md stays self-contained as a design + implementation spec.
+- One file: `./design.md`. No code changes in this plan's deliverable.
+- design.md stays self-contained as a design + implementation spec.
 - Existing section ordering preserved so anyone who has read the doc
   before can still find their place.
 - No new external dependency: `rg` and `fd` are already in the Nix env;

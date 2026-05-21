@@ -1,5 +1,23 @@
 # AGENTS.md — orientation for future agents
 
+
+when searching:
+- use rg | fd, not find | grep
+- don't search / or ~/
+- ~/flakes/ has the nixOS and home-manager configuration
+- ./elpa/ has packaged installs - hidden by .gitignore so use eg fd -I
+
+keep exploration bounded:
+- before exploring: define stopping conditions, positive and negative
+
+provide the user with choices, exposing important tradeoffs.
+
+don't assume. ask questions to clarify. perform bounded exploration where necessary to frame the right questions.
+
+when implementation is successful / committed, update CHANGELOG.md with concise notes.
+
+CHANGELOG.md is very large, sip it.
+
 This config is wired into Nix. Editing `.el` files alone is not always enough — some
 things only take effect after `home-manager switch`, and a few traps are specific to
 the Nix integration.
@@ -22,111 +40,7 @@ Emacs. To get a new package: add a `use-package` form, `git add` the file, run
 `home-manager switch`.
 
 The user's systemd `services.emacs` unit is **disabled** — the server is started
-from `init.el`. Don't suggest the daemon workflow.
-
-## The four traps
-
-### 1. Flake builds see only git-tracked files
-
-`~/flakes` is a flake input of type `git+file://...`. Untracked `.el` files do
-**not** appear in the concatenated config the parser sees, so their
-`use-package` forms are silently ignored and the package isn't installed.
-`Cannot load X` after adding a use-package form usually means the file is still
-untracked.
-
-```
-git -C ~/.emacs.d status --short    # ?? marks invisible files
-git -C ~/.emacs.d add path/to/new.el
-```
-
-Staged (uncommitted) is enough — the "Git tree is dirty" warning is benign.
-
-### 2. `:ensure nil` is a "don't install" signal
-
-The emacs-overlay parser respects `:ensure nil` and refuses to install the
-package. If the package isn't otherwise present (it isn't, since no MELPA at
-runtime), `use-package` fails to load it. Either remove `:ensure nil` or add
-the package to `extraEmacsPackages` in `emacs.nix`.
-
-### 3. Never `setq` the preloaded native-comp vars — append
-
-The Nix emacs build pre-populates `native-comp-driver-options` with `-B` flags
-that point at libgccjit / glibc / gcc-libgcc / binutils:
-
-```elisp
-("-B/nix/store/.../libgccjit/lib"
- "-B/nix/store/.../glibc/lib"
- "-B/nix/store/.../gcc-libgcc/lib"
- ...)
-```
-
-Without these the linker can't find `Scrt1.o`, `crti.o`, `-lgcc_s` and native
-compilation fails with `libgccjit.so: error: error invoking gcc driver`.
-**Overwriting with `setq` breaks every subsequent native-compile.** Always:
-
-```elisp
-(require 'comp)    ; the vars are defined in comp.el, not autoloaded
-(setq native-comp-driver-options
-      (append native-comp-driver-options '("-Wl,-O2" "-Wl,--as-needed")))
-```
-
-See `core/dl-compile.el`.
-
-### 4. `trusted-content` entries must be `~/` form
-
-`trusted-content-p` in `files.el` runs `(abbreviate-file-name
-buffer-file-truename)` before matching, so it compares `~/.emacs.d/foo/bar.el`
-against your trusted entries via `string-prefix-p`. Entries built from
-`expand-file-name` (`/home/david/...`) never match. Wrap in
-`abbreviate-file-name` — see `core/dl-path.el:my/expand-emacs-dir`.
-
-## Naming conventions
-
-| Bucket | Prefix | Example |
-| --- | --- | --- |
-| File / `provide` symbol | `dl-MODULE` | `dl-faces`, `dl-shpool` |
-| Module's public internals (vars, defcustoms, defface, helpers) | `dl-MODULE-name` | `dl-shpool-command`, `dl-meow-indicator-inactive` |
-| Module's private internals | `dl-MODULE--name` | `dl-shpool--attach-args` |
-| Personal command (user-callable) | `my/name` | `my/apply-fonts`, `my/journal-note` |
-| Helper or variable supporting a `my/` command | `my/name` | `my/font-name`, `my/auto-save-idle-timer` |
-
-Rules of thumb:
-
-- **Role beats file.** A `my/` command living in a `dl-MODULE` file is fine
-  (`my/apply-fonts` in `dl-faces.el`).
-- **`my/` propagates through the helper family.** `my/shpool--candidate-status`
-  is correct even though `dl-shpool` is the file — it's plumbing for the
-  `my/shpool*` commands.
-- **Defcustoms are always module-owned** → `dl-MODULE-...`.
-- **Private gets `--`** regardless of bucket (`dl-shpool--attach-args`,
-  `my/foo--helper`).
-
-Grandfathered exceptions:
-
-- **`my-X-map` keymaps** (`my-window-map`, `my-file-map`, `my-term-map`, …).
-  `my/bind` and the meow leader-mirror discover maps by this name — renaming
-  means updating the maps *and* the dispatch code, and the names straddle
-  multiple modules. Cheaper to grandfather.
-- **`meow-setup` in `dl-meow.el`.** The meow docs tell users to define a
-  function by this exact name; it's an external API contract.
-
-## Common debugging commands
-
-```sh
-# What packages did the Nix wrapper actually install?
-deps=$(strings $(readlink ~/.nix-profile/bin/emacs) | grep -oE '/nix/store/[a-z0-9]+-emacs-packages-deps' | head -1)
-ls "$deps/share/emacs/site-lisp/elpa/" | grep -i NAME
-
-# Rebuild after editing .el or emacs.nix
-cd ~/flakes && home-manager switch --flake .#david
-
-# Inspect the running emacs from outside
-emacsclient --eval '(boundp (quote trusted-content))'
-emacsclient --eval '(getenv "LIBRARY_PATH")'
-
-# Reset native-comp cache after a failed compile leaves .eln.tmp files
-rm ~/.emacs.d/eln-cache/30.2-*/*.tmp
-```
+from `init.el`.
 
 ## When a change requires what
 
@@ -138,57 +52,21 @@ rm ~/.emacs.d/eln-cache/30.2-*/*.tmp
 | Edit `emacs.nix` | `home-manager switch` |
 | Set `:ensure nil` + want package available | Add to `extraEmacsPackages` in `emacs.nix` |
 
-## Secrets and env vars (1Password)
+## The four traps (summary)
 
-API keys are not stored on disk in plaintext. They live in 1Password and are
-referenced by `op://vault/item/field` strings.
+1. **Flake builds see only git-tracked files** — untracked `.el` is invisible to the parser.
+2. **`:ensure nil`** — emacs-overlay refuses to install. Use `extraEmacsPackages` instead.
+3. **Never `setq` preloaded native-comp vars** — `append` to `native-comp-driver-options`.
+4. **`trusted-content` entries must be in `~/` form** — `abbreviate-file-name` before adding.
 
-### The flow
+Full detail: [docs/emacs/traps.md](docs/emacs/traps.md).
 
-- `~/.config/zsh/env.zsh` exports each key with its **ref**:
-  ```
-  export OPENROUTER_API_KEY="op://API_KEYS/OPENROUTER_API_KEY/credential"
-  ```
-- Terminal sessions: `op` plugin / `op run` wraps the shell so the ref is
-  resolved by 1Password (biometric/desktop unlock) before any tool sees it.
-- Sway/desktop launchers: zsh init never runs, so Emacs starts with **no**
-  env. `lisp/dl-secret.el` parses `~/.config/zsh/env.zsh` at load and
-  `setenv`s each declared var **only if unset**. Terminal-launched Emacs
-  (already resolved values) wins over launcher-started Emacs (op:// refs).
+## More
 
-### `dl-secret.el` API
-
-| Function | Use |
-| --- | --- |
-| `(my/op-read REF &optional REFRESH)` | Resolve `op://...` to plaintext. Cached per session. |
-| `(my/op-read-env "VAR")` | Read env var; if value starts with `op://`, resolve. Else return as-is. |
-| `(my/op-forget)` | Clear the session cache (after rotation). |
-| `(my/auth-source-secret &rest SPEC)` | Generic `auth-source-search` wrapper that returns the secret string, handling lambda secrets and utf-8 encoding. |
-
-### Wiring a package
-
-Prefer `:key` (or equivalent) as a **lambda** so the secret is re-resolved
-per request — never the resolved string:
-
-```elisp
-(gptel-make-openai "OpenRouter"
-  :host "openrouter.ai"
-  :endpoint "/api/v1/chat/completions"
-  :key (lambda () (my/op-read-env "OPENROUTER_API_KEY"))
-  :stream t)
-```
-
-### Pitfalls
-
-- `op read` needs the 1Password desktop app running + unlocked. Headless
-  Emacs (batch) errors with `authorization timeout` — expected.
-- Negative auth-source results cache for the Emacs session. After
-  changing a keyring entry, `M-x auth-source-forget-all-cached`.
-- Do **not** `setenv` `OPENROUTER_API_KEY` etc. in elisp directly — the
-  env file is the single source of truth.
-- Older path used gnome-keyring via `auth-source`/`secrets-create-item`.
-  Still works (`my/auth-source-secret` is the helper) but the 1Password
-  path is preferred for new keys.
+- [docs/emacs/naming.md](docs/emacs/naming.md) — `dl-MODULE` / `my/` / `--private` conventions.
+- [docs/emacs/secrets.md](docs/emacs/secrets.md) — 1Password env-var flow, `dl-secret.el` API.
+- [docs/emacs/debug-commands.md](docs/emacs/debug-commands.md) — rebuild, inspect, cache reset.
+- [docs/satan/INDEX.md](docs/satan/INDEX.md) — SATAN agent runtime (governance, memory, patch-agent, …).
 
 ## What we know about this user's setup
 

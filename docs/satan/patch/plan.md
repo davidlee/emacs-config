@@ -1,6 +1,17 @@
+---
+name: satan-patch-plan
+description: SATAN patch-agent implementation plan — phases, file plan, migrations, acceptance gates
+metadata:
+  type: plan
+  topic: satan-patch
+  status: living
+  updated_at: pending
+  verified_at: pending
+---
+
 # Patch-Agent Extension — Implementation Plan
 
-Companion to `patch-harness.md` (the brief). Brief = what + why; this = how + sequence.
+Companion to [brief.md](brief.md). Brief = what + why; this = how + sequence.
 
 ## 0. Settled decisions
 
@@ -405,7 +416,7 @@ Add iff doing so doesn't blow scope.
 4. **Repo as worktree target with `~/.emacs.d` open in user's Emacs.** Creating a worktree off `~/.emacs.d` is fine (git supports many worktrees of one repo). But `home-manager switch` from the user's session vs concurrent commits from the worktree could race during nix evaluation. Not a correctness problem (separate working trees), but worth a note.
 5. **Pi vs zerostack feature parity.** Pi has clear headless mode. Zerostack adapter is TUI-first; if/when we need it, plan to use its ACP server (`--features acp`) and speak ACP. Out of scope for v1.
 6. **Slug derivation for branch names.** Mode and a 6-char nanoid suffice; the human-readable slug is optional. Keep simple: `satan/<mode>/<timestamp>-<job-suffix>`.
-7. **Migration order in test DB.** `satan_memory_test` migration 0004 status is "pending operator-applied" per HANDOVER.md. 0005 must not assume 0004 ran. Make 0005 independent of 0004's content.
+7. **Migration order in test DB.** `satan_memory_test` migration 0004 status is "pending operator-applied" per [../memory/handover.md](../memory/handover.md). 0005 must not assume 0004 ran. Make 0005 independent of 0004's content.
 8. **No-op detection.** Pi may emit a "no changes were needed" final message without writes. Detect via `git status --porcelain` in worktree post-run, not just adapter self-report.
 
 ## 6. Suggested commit cadence
