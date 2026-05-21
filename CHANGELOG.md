@@ -2,6 +2,28 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-22 — Journal links: idempotent `* Links` navigation section
+
+New idempotent `* Links` section in daily and weekly journal notes
+(both personal and work).  Inserted automatically on note creation
+and updated on open.
+
+- `my/journal--insert-links` — finds or creates `* Links` heading,
+  replaces content with prev/next day (or week) links, the parent
+  week link, and the cross-realm counterpart (personal↔work).
+- All links use `file:` with absolute paths, not `denote:`, because
+  both realms share the same `YYYYMMDDT000000` identifier for the
+  same date, making bare `denote:` links ambiguous.
+- Backed by new helpers: `my/journal--buffer-realm`,
+  `my/journal--parse-basename`, `my/journal--slug-date`,
+  `my/journal--slug-iso-week`, `my/journal--iso-week-monday`,
+  `my/journal--other-file`, `my/journal--construct-path`,
+  `my/journal--links-string-for-file`, `my/journal--links-string`.
+- Hooked into `my/journal--ensure-file` (capture-template path) and
+  `my/journal--open` (interactive path + existing-note backfill).
+
+File: `org/dl-denote-journal.el`.
+
 ## 2026-05-20 — SATAN: patch-agent companion for satan-patcher daemon
 
 Two small changes prepare the elisp side for the runner extraction at
