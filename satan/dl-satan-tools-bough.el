@@ -7,7 +7,8 @@
 ;;
 ;; Six scopes:
 ;;   node              by nanoid; full node + annotations + parent chain
-;;   recent_changes    nodes with updated_at >= since  (proxy; B1)
+;;   recent_changes    status transitions + newly-created nodes since
+;;                     a window start (DR-116; closes bough gap B1)
 ;;   active            current active tasks
 ;;   day               today's day_entry + linked items
 ;;   week              current week (Mon..Sun day list + entries)
@@ -171,19 +172,33 @@ Root node is depth 0."
                               :parent_chain chain))))))))))
 
 (defun dl-satan-bough--scope-recent-changes (args)
-  "recent_changes scope: nodes with updated_at >= since (B1 proxy)."
+  "recent_changes scope: peer feeds of status transitions and newly-created
+nodes since SINCE.  Composes `bough --json node status-transitions
+--since SINCE' with `bough --json node created --since SINCE'
+(DR-116 §D18).  Both feeds DESC by `(at, seq)' / `at'."
   (let* ((since (plist-get args :since))
          (ws    (or (plist-get args :workspace)
                     dl-satan-bough-default-workspace))
-         (r (dl-satan-bough--invoke
-             ws "node" "tree" "--after" (format "updated_at=%s" since))))
-    (pcase r
+         (limit (plist-get args :limit))
+         (extra (when limit (list "--limit" (number-to-string limit))))
+         (trans-r (apply #'dl-satan-bough--invoke
+                         ws "node" "status-transitions" "--since" since
+                         extra)))
+    (pcase trans-r
       (`(error . ,msg) (cons 'error msg))
-      (`(ok . ,tree)
-       (cons 'ok (list :scope "recent_changes"
-                       :since since
-                       :semantics "nodes whose updated_at >= since"
-                       :nodes tree))))))
+      (`(ok . ,trans)
+       (let ((created-r (apply #'dl-satan-bough--invoke
+                               ws "node" "created" "--since" since
+                               extra)))
+         (pcase created-r
+           (`(error . ,msg) (cons 'error msg))
+           (`(ok . ,created)
+            (cons 'ok (list :scope "recent_changes"
+                            :since since
+                            :semantics
+                            "status transitions and newly-created nodes since"
+                            :transitions (or trans '())
+                            :created (or created '()))))))))))
 
 (defun dl-satan-bough--scope-active (args)
   "active scope: current active tasks (status in todo/doing/blocked)."

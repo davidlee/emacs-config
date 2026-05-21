@@ -1,18 +1,32 @@
 # Bough CLI gaps surfaced by SATAN memory substrate
 
-Two read-side capabilities are missing from `bough 0.1.0` that SATAN's
-memory substrate works around in elisp. Both workarounds are stable;
-neither blocks v1. Filing here so they can land at bough's pace.
+One read-side capability remains missing from bough as of 2026-05-21
+(B2 — `--max-depth N` on `node subtree`).  SATAN works around it in
+elisp.  B1 (per-status-transition history) closed by bough DR-116
+on 2026-05-21; SATAN's `recent_changes` scope now consumes
+`node status-transitions` + `node created` directly.
 
 Context: SATAN consumes bough exclusively via `bough --json` (no
 direct PG access; enforced by grep-lint). The `bough_read` tool in
 SATAN exposes six scopes — `node`, `recent_changes`, `active`, `day`,
 `week`, `project_subtree` — and maps each to one or more CLI calls.
-The two gaps below land in `recent_changes` and `project_subtree`.
 
 ---
 
-## B1. Per-status-transition history
+## B1. Per-status-transition history  — CLOSED 2026-05-21
+
+Closed by bough DR-116 (subcommands `node status-history <NANOID>`,
+`node status-transitions`, `node created`).  SATAN's `recent_changes`
+scope now invokes `bough --json node status-transitions --since` +
+`bough --json node created --since` and emits two peer arrays
+(`:transitions`, `:created`).  The evidence assembler synthesizes
+`:event "status_changed"` per transition row and `:event "created"`
+per created row, which wakes the previously-dormant canon rule
+`bough.recent_status_change`.
+
+Historical brief retained below for context.
+
+### Original brief
 
 **Today**
 

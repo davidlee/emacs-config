@@ -2,6 +2,30 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-21 — SATAN: DR-116 follow-up — recent_changes consumes status_log
+
+Bough DR-116 shipped (`node status-transitions` + `node created`).
+SATAN's `recent_changes` scope drops the `updated_at` proxy and now
+composes the two peer event feeds.
+
+- `dl-satan-bough--scope-recent-changes` invokes
+  `bough --json node status-transitions --since SINCE` and
+  `bough --json node created --since SINCE`; returns
+  `(:scope "recent_changes" :since :transitions [...] :created [...])`.
+- `dl-satan-memory-evidence--bough-recent` synthesizes
+  `:event "status_changed"` per transition row and
+  `:event "created"` per created row; emits a flat list with
+  transitions first.  The canon rule `bough.recent_status_change`
+  (`dl-satan-memory-canon.el:357`) — previously dormant since the
+  substrate shipped — now fires on real status moves.
+- `satan/bough-gaps.md` B1 closed; `memory.design.md` §10.2 mapping
+  row flipped from "degraded" to "composable".
+
+Files: `satan/dl-satan-tools-bough.el`,
+`satan/dl-satan-memory-evidence.el`,
+`satan/test/dl-satan-tools-bough-test.el` (+2 ert),
+`satan/test/dl-satan-memory-evidence-test.el` (+3 ert).
+
 ## 2026-05-22 — Journal links: idempotent `* Links` navigation section
 
 New idempotent `* Links` section in daily and weekly journal notes

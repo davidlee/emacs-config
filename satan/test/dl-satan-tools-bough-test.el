@@ -69,6 +69,64 @@
   (should-not (dl-satan-bough--validate-scope-args "day" nil))
   (should-not (dl-satan-bough--validate-scope-args "week" nil)))
 
+;; ---------- recent_changes scope (mocked invoke) ----------
+
+(ert-deftest dl-satan-bough/recent-changes-composes-transitions-and-created ()
+  "After DR-116, `recent_changes' shells out to BOTH
+`node status-transitions --since' and `node created --since', and
+returns each as its own array under `:transitions' / `:created'."
+  (let* ((calls nil)
+         (since "2026-05-19T00:00:00Z")
+         (transitions-payload
+          '((:seq 7 :nanoid "abc1234" :from_status "todo"
+                  :to_status "doing" :at "2026-05-20T09:00:00Z"
+                  :actor nil)))
+         (created-payload
+          '((:nanoid "def5678" :kind "task" :title "x"
+                     :status "todo" :parent_nanoid "PARENT0"
+                     :at "2026-05-20T08:00:00Z"
+                     :deleted :json-false :archived :json-false))))
+    (cl-letf (((symbol-function 'dl-satan-bough--invoke)
+               (lambda (_ws &rest args)
+                 (push args calls)
+                 (cond
+                  ((member "status-transitions" args)
+                   (cons 'ok transitions-payload))
+                  ((member "created" args)
+                   (cons 'ok created-payload))
+                  (t (cons 'error "unexpected invocation"))))))
+      (let* ((res (dl-satan-tool/bough-read
+                   (list :scope "recent_changes" :since since)
+                   nil))
+             (payload (cdr res)))
+        (should (eq 'ok (car res)))
+        (should (equal "recent_changes" (plist-get payload :scope)))
+        (should (equal since (plist-get payload :since)))
+        (should (equal transitions-payload (plist-get payload :transitions)))
+        (should (equal created-payload (plist-get payload :created)))
+        ;; Both CLI invocations actually fired with --since.
+        (should (cl-some (lambda (a)
+                           (and (member "status-transitions" a)
+                                (member since a)))
+                         calls))
+        (should (cl-some (lambda (a)
+                           (and (member "created" a)
+                                (member since a)))
+                         calls))))))
+
+(ert-deftest dl-satan-bough/recent-changes-propagates-transition-error ()
+  (cl-letf (((symbol-function 'dl-satan-bough--invoke)
+             (lambda (_ws &rest args)
+               (if (member "status-transitions" args)
+                   (cons 'error "bough exit 1: boom")
+                 (cons 'ok nil)))))
+    (let ((res (dl-satan-tool/bough-read
+                (list :scope "recent_changes"
+                      :since "2026-05-19T00:00:00Z")
+                nil)))
+      (should (eq 'error (car res)))
+      (should (string-match-p "boom" (cdr res))))))
+
 ;; ---------- week-bounds (pure) ----------
 
 (ert-deftest dl-satan-bough/week-bounds-monday ()

@@ -95,6 +95,76 @@
                  nil)))
 
 ;; ---------------------------------------------------------------------
+;; bough-recent: synthesize :event per transition/created row (DR-116)
+;; ---------------------------------------------------------------------
+
+(ert-deftest dl-satan-memory-evidence/bough-recent-synthesizes-events ()
+  "Transitions become `:event \"status_changed\"' entries; created nodes
+become `:event \"created\"' entries.  Output is one flat list with
+status_changed rows first (the canon-relevant ones)."
+  (cl-letf (((symbol-function 'dl-satan-memory-evidence--bough-call)
+             (lambda (scope &rest _args)
+               (when (equal scope "recent_changes")
+                 (list :scope "recent_changes"
+                       :since "X"
+                       :transitions
+                       (list (list :seq 7 :nanoid "abc1234"
+                                   :from_status "todo"
+                                   :to_status "doing"
+                                   :at "2026-05-20T09:00:00Z"
+                                   :actor nil))
+                       :created
+                       (list (list :nanoid "def5678"
+                                   :kind "task"
+                                   :title "x"
+                                   :status "todo"
+                                   :parent_nanoid "PARENT0"
+                                   :at "2026-05-20T08:00:00Z"
+                                   :deleted :json-false
+                                   :archived :json-false)))))))
+    (let* ((flat (dl-satan-memory-evidence--bough-recent
+                  "2026-05-20T00:00:00Z" nil 50))
+           (events (mapcar (lambda (e) (plist-get e :event)) flat)))
+      (should (equal events '("status_changed" "created")))
+      (let ((row (car flat)))
+        (should (equal "abc1234" (plist-get row :nanoid)))
+        (should (equal "todo"    (plist-get row :from)))
+        (should (equal "doing"   (plist-get row :to)))
+        (should (equal "2026-05-20T09:00:00Z" (plist-get row :at)))
+        (should (= 7 (plist-get row :seq))))
+      (let ((row (cadr flat)))
+        (should (equal "def5678" (plist-get row :nanoid)))
+        (should (equal "task"    (plist-get row :kind)))
+        (should (equal "todo"    (plist-get row :status)))
+        (should (equal "PARENT0" (plist-get row :parent_nanoid)))))))
+
+(ert-deftest dl-satan-memory-evidence/bough-recent-honours-limit ()
+  "LIMIT caps the total emitted rows."
+  (cl-letf (((symbol-function 'dl-satan-memory-evidence--bough-call)
+             (lambda (_scope &rest _args)
+               (list :transitions
+                     (cl-loop for i from 0 below 5
+                              collect (list :seq i :nanoid (format "n%d" i)
+                                            :from_status "todo"
+                                            :to_status "doing"
+                                            :at "2026-05-20T09:00:00Z"))
+                     :created
+                     (cl-loop for i from 0 below 5
+                              collect (list :nanoid (format "c%d" i)
+                                            :kind "task" :title "y"
+                                            :status "todo"
+                                            :at "2026-05-20T08:00:00Z"))))))
+    (let ((flat (dl-satan-memory-evidence--bough-recent
+                 "2026-05-20T00:00:00Z" nil 3)))
+      (should (= 3 (length flat))))))
+
+(ert-deftest dl-satan-memory-evidence/bough-recent-empty-payload ()
+  (cl-letf (((symbol-function 'dl-satan-memory-evidence--bough-call)
+             (lambda (&rest _) nil)))
+    (should (equal '() (dl-satan-memory-evidence--bough-recent
+                        "2026-05-20T00:00:00Z" nil 50)))))
+
+;; ---------------------------------------------------------------------
 ;; Truncation
 ;; ---------------------------------------------------------------------
 

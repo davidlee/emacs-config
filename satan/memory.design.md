@@ -970,7 +970,7 @@ ship loosened semantics in v1 and file a bough issue.
 | Design scope (§5.4) | Status | Invocation(s) | Notes |
 |---------------------|--------|---------------|-------|
 | `node`             | composable | `bough --json node get NANOID` + `bough --json node annotations NANOID` + walk `parent_nanoid` upward via repeated `node get` until `null` | `node get` returns the node with `parent_nanoid` but no chain and no annotations. Compose all three in `dl-satan-tools-bough.el`; cache chain walk per call. |
-| `recent_changes`   | degraded   | `bough --json node tree --after updated_at=<SINCE>` | No `status_at` / per-status-transition history exposed by CLI; only `updated_at` and `created_at` filterable. v1 semantics: "nodes whose `updated_at >= window_start`", not literal status transitions. Document in tool description. **Bough gap B1**. |
+| `recent_changes`   | composable | `bough --json node status-transitions --since <SINCE>` + `bough --json node created --since <SINCE>` (DR-116) | Peer event feeds: status transitions (`{seq, nanoid, from_status, to_status, at, actor}`) and newly-created nodes. Evidence assembler synthesizes `:event "status_changed"` / `:event "created"` rows for canon. **Bough gap B1 closed 2026-05-21**. |
 | `active`           | exists     | `bough --json node tree --kind task --status doing,todo,blocked` | Comma-separated `--status` confirmed. Add `--workspace` passthrough. |
 | `day`              | exists     | `bough --json day show -d YYYY-MM-DD` | Returns `error: day not found` when no day entry exists; tool wrapper must translate to `ok { scope:"day", day:null }` rather than error. |
 | `week`             | composable | `bough --json day list <MONDAY> <SUNDAY>` followed by per-non-empty-day `bough --json day show -d <D>` | No `bough week` subcommand. `day list` returns the date set; iterate for entries. |
@@ -978,10 +978,10 @@ ship loosened semantics in v1 and file a bough issue.
 
 Bough-side issues to file (do not block v1):
 
-- **B1**. Add per-status-transition history: e.g. `bough --json node
-  history --since ISO8601` returning `{nanoid, from_status, to_status,
-  at}` rows, or a `status_at` filterable field on `node tree`. v1 ships
-  with the `updated_at` proxy.
+- ~~**B1**~~ Closed 2026-05-21 by bough DR-116: `node status-transitions`
+  + `node created` shipped. SATAN's `recent_changes` scope consumes
+  both peer feeds directly; assembler synthesizes
+  `:event "status_changed"` / `:event "created"` rows.
 - **B2**. Add `--max-depth N` to `bough node subtree`. v1 prunes in
   elisp.
 

@@ -158,10 +158,36 @@ each emitted plist.  Accept nil for NODES."
     (nreverse acc)))
 
 (defun dl-satan-memory-evidence--bough-recent (start workspace limit)
+  "Return a flat list of bough events since START.  Each transition row
+becomes `(:event \"status_changed\" :nanoid :from :to :at :seq :actor)';
+each created row becomes `(:event \"created\" :nanoid :kind :title
+:status :parent_nanoid :at)'.  Transitions precede creations.  LIMIT
+caps the combined output."
   (let* ((payload (dl-satan-memory-evidence--bough-call
                    "recent_changes" :since start :workspace workspace))
-         (flat (dl-satan-memory-evidence--flatten-tree
-                (and payload (plist-get payload :nodes)))))
+         (transitions
+          (mapcar
+           (lambda (row)
+             (list :event "status_changed"
+                   :nanoid (plist-get row :nanoid)
+                   :from (plist-get row :from_status)
+                   :to (plist-get row :to_status)
+                   :at (plist-get row :at)
+                   :seq (plist-get row :seq)
+                   :actor (plist-get row :actor)))
+           (and payload (plist-get payload :transitions))))
+         (created
+          (mapcar
+           (lambda (row)
+             (list :event "created"
+                   :nanoid (plist-get row :nanoid)
+                   :kind (plist-get row :kind)
+                   :title (plist-get row :title)
+                   :status (plist-get row :status)
+                   :parent_nanoid (plist-get row :parent_nanoid)
+                   :at (plist-get row :at)))
+           (and payload (plist-get payload :created))))
+         (flat (append transitions created)))
     (if (and limit (< limit (length flat)))
         (cl-subseq flat 0 limit)
       flat)))
