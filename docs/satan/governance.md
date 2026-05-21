@@ -5,8 +5,8 @@ metadata:
   type: governance
   topic: satan
   status: canon
-  updated_at: 03398479
-  verified_at: 03398479
+  updated_at: 9bacace5
+  verified_at: 9bacace5
 ---
 
 # SATAN — Scheduled Agent for Textual Attention and Notes
