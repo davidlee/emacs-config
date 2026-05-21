@@ -2,6 +2,38 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-21 — docs: reshape satan + AGENTS docs into linked chunks
+
+Consolidated satan documentation under `docs/satan/` and slimmed
+`AGENTS.md` to ~80L. Every chunk now carries YAML frontmatter
+(`name`, `description`, `metadata.{type,topic,status,updated_at,verified_at}`)
+matching the claude-memory convention, so a future satan/claude
+doc-search tool can discriminate without re-reading prose.
+
+- `docs/SATAN.md` → split into `docs/satan/governance.md`
+  (philosophy + file map + modes/tools/ops) and
+  `docs/satan/architecture.md` (trust flow + 7 conceptual layers).
+- `satan/HANDOVER.md` (was gitignored, memory-substrate-specific) →
+  `docs/satan/memory/handover.md` (tracked).
+- `satan/memory.design.md` → `docs/satan/memory/design.md`.
+- `satan/patch-harness{,.plan,.handover.2}.md` →
+  `docs/satan/patch/{brief,plan,handover}.md`; the older
+  `patch-harness.handover.md` → `patch/archive/handover-phase3-mechanism.md`.
+- `satan/protocol/PROTOCOL.md` → `docs/satan/protocol.md`.
+- `satan/bough-gaps.md` → `docs/satan/bough-gaps.md`.
+- `docs/{AT-SATAN,PLAN-AT-SATAN}.md` → `docs/satan/at-satan/{design,plan}.md`.
+- New: `docs/satan/INDEX.md` (one-liner per chunk, canon-eligible).
+- `AGENTS.md` opening doctrine preserved; trap detail, naming,
+  secrets, debug commands carved out to `docs/emacs/`. AGENTS keeps
+  trap names + when-change-requires-what table + link list. SATAN
+  gets a top-level pointer to `docs/satan/INDEX.md`.
+- `satan/harness/protocol.py` docstring path updated.
+- SHAs stamped in immediate follow-up commit `6f017819`.
+
+No elisp changes. No satan reader tooling. No content rewrites beyond
+frontmatter and specific cross-ref path fixes. Section anchors
+(`§N.M`) untouched — heading text unchanged.
+
 ## 2026-05-21 — SATAN: DR-116 follow-up — recent_changes consumes status_log
 
 Bough DR-116 shipped (`node status-transitions` + `node created`).
