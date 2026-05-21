@@ -5,8 +5,8 @@ metadata:
   type: design
   topic: satan-patch
   status: canon
-  updated_at: pending
-  verified_at: pending
+  updated_at: 03398479
+  verified_at: 03398479
 ---
 
 # Technical Brief: SATAN Patch-Agent Extension

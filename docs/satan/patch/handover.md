@@ -5,8 +5,8 @@ metadata:
   type: handover
   topic: satan-patch
   status: living
-  updated_at: pending
-  verified_at: pending
+  updated_at: 03398479
+  verified_at: 03398479
 ---
 
 # SATAN patch-agent — Handover (Phase-3-content + op-cache port)

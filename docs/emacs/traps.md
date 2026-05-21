@@ -5,8 +5,8 @@ metadata:
   type: reference
   topic: emacs
   status: canon
-  updated_at: pending
-  verified_at: pending
+  updated_at: 03398479
+  verified_at: 03398479
 ---
 
 # Nix-integration traps

@@ -5,8 +5,8 @@ metadata:
   type: tracking
   topic: satan
   status: living
-  updated_at: pending
-  verified_at: pending
+  updated_at: 03398479
+  verified_at: 03398479
 ---
 
 # Bough CLI gaps surfaced by SATAN memory substrate

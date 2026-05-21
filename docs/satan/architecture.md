@@ -5,8 +5,8 @@ metadata:
   type: design
   topic: satan
   status: canon
-  updated_at: pending
-  verified_at: pending
+  updated_at: 03398479
+  verified_at: 03398479
 ---
 
 # SATAN — Architecture
