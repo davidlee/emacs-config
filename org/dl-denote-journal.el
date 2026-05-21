@@ -274,19 +274,22 @@ Does nothing if the buffer isn't a journal file."
 
 ;;; Skeletons
 
-(defun my/journal--day-skeleton (tags)
+(defun my/journal--day-skeleton (tags &optional time)
   "Return the skeleton string for a newly-created daily journal file.
-TAGS is the `#+filetags:' line value (e.g. \":journal:\")."
-  (let ((now (current-time)))
-    (concat "#+title:    " (format-time-string "%Y-%m-%d %A" now) "\n"
+TAGS is the `#+filetags:' line value (e.g. \":journal:\").
+When TIME is non-nil, use it as the reference date; otherwise use `current-time'."
+  (let ((t0 (or time (current-time))))
+    (concat "#+title:    " (format-time-string "%Y-%m-%d %A" t0) "\n"
       "#+filetags: " tags "\n"
-      "#+date:     " (format-time-string "[%Y-%m-%d %a]" now) "\n\n"
+      "#+date:     " (format-time-string "[%Y-%m-%d %a]" t0) "\n\n"
       "* Focus\n\n* Notes\n\n* Log\n")))
 
-(defun my/journal--week-skeleton (tags)
+(defun my/journal--week-skeleton (tags &optional time)
   "Return the skeleton string for a newly-created weekly journal file.
-TAGS is the `#+filetags:' line value (e.g. \":weekly:journal:\")."
-  (let ((monday (my/journal--iso-monday (current-time))))
+TAGS is the `#+filetags:' line value (e.g. \":weekly:journal:\").
+When TIME is non-nil, shift it to the ISO Monday and use as reference;
+otherwise use `current-time'."
+  (let ((monday (my/journal--iso-monday (or time (current-time)))))
     (concat "#+title:    " (format-time-string "Week %G-W%V" monday) "\n"
       "#+filetags: " tags "\n"
       "#+date:     " (format-time-string "[%Y-%m-%d %a]" monday) "\n\n"
@@ -565,6 +568,50 @@ LABEL is a key in `dl-journal-quick-capture-targets'; defaults to `personal'."
   "Quick-capture into today's work daily journal."
   (interactive)
   (my/journal-quick-capture 'work))
+
+;;; find-file-hook — auto-populate non-existent journal files
+
+(defun my/journal--populate-if-empty ()
+  "When visiting a non-existent journal file, insert skeleton and :NAV: drawer.
+Works for all six journal types (personal/work × daily/weekly).
+Harmless for existing files, non-journal paths, and already-populated buffers.
+Intended for use in `find-file-hook'."
+  (when (and (buffer-file-name)
+             (not (file-exists-p (buffer-file-name)))
+             (not (save-excursion
+                    (goto-char (point-min))
+                    (re-search-forward ":NAV:" nil t))))
+    (when-let* ((realm-type (my/journal--buffer-realm))
+                 (realm (car realm-type))
+                 (type (cadr realm-type))
+                 (basename (file-name-nondirectory (buffer-file-name)))
+                 (parsed (my/journal--parse-basename basename))
+                 (slug (nth 1 parsed)))
+      (let* ((tags (pcase (cons realm type)
+                     ('(personal . daily)  ":journal:")
+                     ('(work . daily)      ":work:journal:")
+                     ('(personal . weekly) ":weekly:journal:")
+                     ('(work . weekly)     ":work:weekly:journal:")))
+             (time (pcase type
+                     ('daily  (my/journal--slug-date slug))
+                     ('weekly (when-let* ((yw (my/journal--slug-iso-week slug))
+                                          (year (car yw))
+                                          (week (cadr yw)))
+                                (my/journal--iso-week-monday year week)))))
+             (skeleton (if (eq type 'daily)
+                           (my/journal--day-skeleton tags time)
+                         (my/journal--week-skeleton tags time))))
+        (insert skeleton)
+        (when-let ((links (my/journal--links-string)))
+          (goto-char (point-min))
+          (if (re-search-forward "^\\* " nil t)
+              (progn
+                (forward-line -1)
+                (insert "\n" links))
+            (goto-char (point-max))
+            (insert "\n" links)))))))
+
+(add-hook 'find-file-hook #'my/journal--populate-if-empty)
 
 ;; Bindings (`C-c n j', `C-c n w', `C-c n W j', `C-c n W w', etc.) live
 ;; in `core/dl-keymap.el' under `my-notes-map' and `my-notes-work-map'.

@@ -53,11 +53,20 @@ convention so that `my/journal--buffer-realm' and friends work."
          ,@body))))
 
 (defun my/journal--nav-string ()
-  "Return the inner content of the :NAV: drawer from current buffer.
+  "Return the first line of the :NAV: drawer content from current buffer.
 Helper for tests: calls `my/journal--links-string' and parses out the
-single pipe-separated line between the drawer boundaries."
+first pipe-separated line between the drawer boundaries.
+For weeklies, a second line with day links is available via
+`my/journal--nav-day-links'."
   (when-let ((drawer (my/journal--links-string)))
-    (when (string-match ":NAV:\n\\(.*\\)\n:END:" drawer)
+    (when (string-match ":NAV:\n\\([^\n]+\\)" drawer)
+      (match-string 1 drawer))))
+
+(defun my/journal--nav-day-links ()
+  "Return the second line (day links) of the :NAV: drawer content.
+Returns nil if there's only one line (i.e. daily notes)."
+  (when-let ((drawer (my/journal--links-string)))
+    (when (string-match ":NAV:\n[^\n]+\n\\([^\n]+\\)" drawer)
       (match-string 1 drawer))))
 
 ;;; Personal daily
@@ -111,7 +120,8 @@ single pipe-separated line between the drawer boundaries."
 (ert-deftest dl-denote-journal/personal-weekly-nav ()
   "Personal weekly links: prev-week | *Personal* | Work | next-week"
   (with-journal-buffer (personal weekly)
-    (let ((nav (my/journal--nav-string)))
+    (let ((nav (my/journal--nav-string))
+          (day-links (my/journal--nav-day-links)))
       (should nav)
       (let ((parts (split-string nav " | ")))
         (should (= (length parts) 4))
@@ -119,14 +129,26 @@ single pipe-separated line between the drawer boundaries."
         (should (equal (nth 1 parts) "*Personal*"))
         (should (string-match "\\[\\[file:.*work/weekly/20260518.*\\]\\[Work\\]\\]"
                               (nth 2 parts)))
-        (should (string-match "\\[\\[file:.*\\]\\[Wk22 →\\]\\]" (nth 3 parts)))))))
+        (should (string-match "\\[\\[file:.*\\]\\[Wk22 →\\]\\]" (nth 3 parts))))
+      ;; Second row: day links for Mon–Sun of this week
+      (should day-links)
+      (let ((day-parts (split-string day-links " | ")))
+        (should (= (length day-parts) 7))
+        (should (string-match "\\[\\[file:.*journal/20260518.*\\]\\[Mon 18\\]\\]" (nth 0 day-parts)))
+        (should (string-match "\\[\\[file:.*journal/20260519.*\\]\\[Tue 19\\]\\]" (nth 1 day-parts)))
+        (should (string-match "\\[\\[file:.*journal/20260520.*\\]\\[Wed 20\\]\\]" (nth 2 day-parts)))
+        (should (string-match "\\[\\[file:.*journal/20260521.*\\]\\[Thu 21\\]\\]" (nth 3 day-parts)))
+        (should (string-match "\\[\\[file:.*journal/20260522.*\\]\\[Fri 22\\]\\]" (nth 4 day-parts)))
+        (should (string-match "\\[\\[file:.*journal/20260523.*\\]\\[Sat 23\\]\\]" (nth 5 day-parts)))
+        (should (string-match "\\[\\[file:.*journal/20260524.*\\]\\[Sun 24\\]\\]" (nth 6 day-parts)))))))
 
 ;;; Work weekly
 
 (ert-deftest dl-denote-journal/work-weekly-nav ()
   "Work weekly links: prev-week | *Work* | Personal | next-week"
   (with-journal-buffer (work weekly)
-    (let ((nav (my/journal--nav-string)))
+    (let ((nav (my/journal--nav-string))
+          (day-links (my/journal--nav-day-links)))
       (should nav)
       (let ((parts (split-string nav " | ")))
         (should (= (length parts) 4))
@@ -134,7 +156,18 @@ single pipe-separated line between the drawer boundaries."
         (should (equal (nth 1 parts) "*Work*"))
         (should (string-match "\\[\\[file:.*weekly/20260518.*\\]\\[Personal\\]\\]"
                               (nth 2 parts)))
-        (should (string-match "\\[\\[file:.*\\]\\[Wk22 →\\]\\]" (nth 3 parts)))))))
+        (should (string-match "\\[\\[file:.*\\]\\[Wk22 →\\]\\]" (nth 3 parts))))
+      ;; Second row: work daily links for Mon–Sun
+      (should day-links)
+      (let ((day-parts (split-string day-links " | ")))
+        (should (= (length day-parts) 7))
+        (should (string-match "\\[\\[file:.*work/journal/20260518.*\\]\\[Mon 18\\]\\]" (nth 0 day-parts)))
+        (should (string-match "\\[\\[file:.*work/journal/20260519.*\\]\\[Tue 19\\]\\]" (nth 1 day-parts)))
+        (should (string-match "\\[\\[file:.*work/journal/20260520.*\\]\\[Wed 20\\]\\]" (nth 2 day-parts)))
+        (should (string-match "\\[\\[file:.*work/journal/20260521.*\\]\\[Thu 21\\]\\]" (nth 3 day-parts)))
+        (should (string-match "\\[\\[file:.*work/journal/20260522.*\\]\\[Fri 22\\]\\]" (nth 4 day-parts)))
+        (should (string-match "\\[\\[file:.*work/journal/20260523.*\\]\\[Sat 23\\]\\]" (nth 5 day-parts)))
+        (should (string-match "\\[\\[file:.*work/journal/20260524.*\\]\\[Sun 24\\]\\]" (nth 6 day-parts)))))))
 
 ;;; Buffer-realm detection
 
@@ -153,6 +186,90 @@ single pipe-separated line between the drawer boundaries."
 (ert-deftest dl-denote-journal/buffer-realm-work-weekly ()
   (with-journal-buffer (work weekly)
     (should (equal (my/journal--buffer-realm) '(work weekly)))))
+
+;;; find-file-hook — populating non-existent journal files
+
+(ert-deftest dl-denote-journal/populate-empty-daily ()
+  "Empty personal daily buffer gets skeleton + :NAV: drawer from hook."
+  (let ((dl-notes-journal-dir (make-temp-file "test-journal-" t))
+        (path nil))
+    (unwind-protect
+        (progn
+          (setq path (expand-file-name
+                      "20260521T000000--2026-05-21-thursday__journal.org"
+                      dl-notes-journal-dir))
+          (with-temp-buffer
+            (setq buffer-file-name path)
+            (should (= (point-max) 1))
+            (should (not (file-exists-p path)))
+            (my/journal--populate-if-empty)
+            (should (> (point-max) 1))
+            (should (string-match "^#\\+title:" (buffer-string)))
+            (should (string-match ":NAV:" (buffer-string)))))
+      (when path (delete-file path))
+      (delete-directory dl-notes-journal-dir t))))
+
+(ert-deftest dl-denote-journal/populate-empty-weekly ()
+  "Empty personal weekly buffer gets skeleton + :NAV: drawer from hook."
+  (let ((dl-notes-weekly-dir (make-temp-file "test-weekly-" t))
+        (path nil))
+    (unwind-protect
+        (progn
+          (setq path (expand-file-name
+                      "20260518T000000--2026-w21__weekly_journal.org"
+                      dl-notes-weekly-dir))
+          (with-temp-buffer
+            (setq buffer-file-name path)
+            (my/journal--populate-if-empty)
+            (should (> (point-max) 1))
+            (should (string-match "^#\\+title:" (buffer-string)))
+            (should (string-match ":NAV:" (buffer-string)))
+            (should (string-match "Mon 18" (buffer-string)))))
+      (when path (ignore-errors (delete-file path)))
+      (delete-directory dl-notes-weekly-dir t))))
+
+(ert-deftest dl-denote-journal/populate-empty-work-daily ()
+  "Empty work daily buffer gets skeleton + :NAV: drawer from hook."
+  (let ((dl-notes-work-journal-dir (make-temp-file "test-work-journal-" t))
+        (path nil))
+    (unwind-protect
+        (progn
+          (setq path (expand-file-name
+                      "20260521T000000--2026-05-21-thursday__work_journal.org"
+                      dl-notes-work-journal-dir))
+          (with-temp-buffer
+            (setq buffer-file-name path)
+            (my/journal--populate-if-empty)
+            (should (> (point-max) 1))
+            (should (string-match "^#\\+title:" (buffer-string)))
+            (should (string-match ":NAV:" (buffer-string)))
+            (should (string-match "\\*Work\\*" (buffer-string)))))
+      (when path (ignore-errors (delete-file path)))
+      (delete-directory dl-notes-work-journal-dir t))))
+
+(ert-deftest dl-denote-journal/populate-existing-noop ()
+  "Visiting an existing journal file does not trigger population."
+  (let* ((dl-notes-journal-dir (make-temp-file "test-journal-" t))
+         (path (expand-file-name
+                "20260521T000000--2026-05-21-thursday__journal.org"
+                dl-notes-journal-dir)))
+    (unwind-protect
+        (progn
+          (with-temp-file path (insert "#+title: existing\n"))
+          (with-temp-buffer
+            (setq buffer-file-name path)
+            (insert "#+title: existing\n")
+            (my/journal--populate-if-empty)
+            (should (equal (buffer-string) "#+title: existing\n"))))
+      (when path (ignore-errors (delete-file path)))
+      (delete-directory dl-notes-journal-dir t))))
+
+(ert-deftest dl-denote-journal/populate-non-journal-noop ()
+  "Empty buffer for non-journal path is not modified."
+  (with-temp-buffer
+    (setq buffer-file-name "/tmp/some-random-file.org")
+    (my/journal--populate-if-empty)
+    (should (equal (buffer-string) ""))))
 
 (provide 'dl-denote-journal-test)
 ;;; dl-denote-journal-test.el ends here
