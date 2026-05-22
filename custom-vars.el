@@ -27,12 +27,12 @@
        lambda-line lua-mode magit marginalia markdown-toc meow-vterm
        modus-themes multiple-cursors nano nano-emacs
        nerd-icons-completion nerd-icons-dired nix-mode olivetti
-       orderless org-roam otpp package-lint-flymake project-x puni
-       rainbow-mode ready-player shut-up slack spacious-padding
-       suggest tempel terraform-mode treesit-auto undo-fu
-       undo-fu-session use-package use-package-ensure-system-package
-       vertico-prescient visual-fill-column vundo which-key ws-butler
-       yaml-mode zig-mode))
+       orderless org-pomodoro org-roam otpp package-lint-flymake
+       project-x puni rainbow-mode ready-player shut-up slack
+       spacious-padding suggest tempel terraform-mode treesit-auto
+       undo-fu undo-fu-session use-package
+       use-package-ensure-system-package vertico-prescient
+       visual-fill-column vundo which-key ws-butler yaml-mode zig-mode))
  '(package-vc-selected-packages
     '((otpp :url "https://github.com/abougouffa/one-tab-per-project.git")
        (project-x :url "https://github.com/vmargb/project-x.git")
