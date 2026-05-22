@@ -10,6 +10,7 @@
 (require 'dl-notes-paths)
 (require 'dl-denote-journal)
 (require 'dl-satan-percept)
+(require 'dl-satan-resonance)
 
 (defvar dl-satan-runs-dir)              ; defined in dl-satan-broker.el
 
@@ -297,10 +298,10 @@ Keys: :when, :mode, :status (\"ok\" / \"FAILED\"), :summary (or nil),
   "Return the fully-rendered system prompt for the harness.
 ASSEMBLED is the scaffold + mode-prompt string (no framing yet).
 BUNDLE is the context plist providing `:now', `:today_text', `:sources',
-`:recent_runs', `:percept'.  Missing framing.txt signals — there is no
-canonical fallback.  The percept block falls between `# Now' and any
-mode-specific blocks (today / sources / recent runs); absent or
-empty-handle percepts produce no block (acceptance §A6)."
+`:recent_runs', `:percept', `:resonance'.  Missing framing.txt signals
+— there is no canonical fallback.  Block order: `# Now' → percept →
+resonance → mode-specific (today / sources / recent runs).  Each
+block self-suppresses when its source is empty/absent (A4, A6)."
   (let* ((framing (dl-satan-context--framing))
          (parts (list (string-trim-right assembled)))
          (blocks (delq nil
@@ -309,6 +310,8 @@ empty-handle percepts produce no block (acceptance §A6)."
                          framing (plist-get bundle :now))
                         (dl-satan-percept-render-block
                          framing (plist-get bundle :percept))
+                        (dl-satan-resonance-render-block
+                         framing (plist-get bundle :resonance))
                         (dl-satan-context--render-today
                          framing (plist-get bundle :today_text))
                         (dl-satan-context--render-sources

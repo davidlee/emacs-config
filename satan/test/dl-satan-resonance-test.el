@@ -262,5 +262,102 @@ section.  Guards against silent fallback to a hardcoded header."
     (should (null (dl-satan-resonance-render-block
                    framing (list :status 'gate-skip :matches nil))))))
 
+;; ---------------------------------------------------------------------
+;; Capsule integration (2.3) — block lands between percept and today
+;; ---------------------------------------------------------------------
+
+(require 'dl-satan-context)
+
+(defmacro dl-satan-resonance-test--with-framing (tmp-sym &rest body)
+  "Bind a tmp dir to TMP-SYM and seed minimal scaffold + framing + prompt
+files under it; rebind `dl-satan-system-scaffold-file' and
+`dl-satan-system-framing-file' for BODY's dynamic extent.  Framing
+includes the resonance + percept headers so render-prompt has both
+to inject."
+  (declare (indent 1))
+  `(let* ((,tmp-sym (make-temp-file "satan-resonance-cap-" t))
+          (dl-satan-system-scaffold-file
+           (expand-file-name "system/scaffold.txt" ,tmp-sym))
+          (dl-satan-system-framing-file
+           (expand-file-name "system/framing.txt" ,tmp-sym)))
+     (unwind-protect
+         (progn
+           (make-directory (expand-file-name "prompts" ,tmp-sym))
+           (make-directory (expand-file-name "system" ,tmp-sym))
+           (with-temp-file dl-satan-system-scaffold-file (insert "SCAFFOLD"))
+           (with-temp-file dl-satan-system-framing-file
+             (insert "now=# Now\n"
+                     "percept_block_header=# Percept\n"
+                     "resonance_block_header=# Resonance\n"
+                     "today=# Today (raw)\n"
+                     "sources=# Source files\n"
+                     "recent_runs=# Recent SATAN runs\n"))
+           (with-temp-file (expand-file-name "prompts/motd.txt" ,tmp-sym)
+             (insert "PROMPT"))
+           ,@body)
+       (delete-directory ,tmp-sym t))))
+
+(ert-deftest dl-satan-resonance/capsule-renders-resonance-block-from-prepare ()
+  "A4 — when PREPARE carries a `:resonance' with status `ok' and ≥1
+match, the rendered prompt contains a `# Resonance' header.  The
+block lands between `# Percept' and `# Today (raw)' per design §S2."
+  (dl-satan-resonance-test--with-framing tmp
+    (let* ((spec (list :name "motd"
+                       :prompt-file
+                       (expand-file-name "prompts/motd.txt" tmp)))
+           (prepare (list :run_id "rid-x"
+                          :time_now "2026-05-19T10:00:00+10:00"
+                          :percept '(:handles ("app:firefox"))
+                          :resonance
+                          (list :status 'ok
+                                :cue '("app:firefox")
+                                :matches
+                                '((:trace_id "20260518T120000-aaa"
+                                   :score 11.2
+                                   :matched_handles ("app:firefox"
+                                                     "domain_kind:docs"))))))
+           (bundle (dl-satan-context-motd spec prepare))
+           (prompt (plist-get bundle :prompt))
+           (idx-percept (string-match "^# Percept$" prompt))
+           (idx-resonance (string-match "^# Resonance$" prompt))
+           (idx-today (or (string-match "^# Today (raw)$" prompt)
+                          most-positive-fixnum)))
+      (should idx-percept)
+      (should idx-resonance)
+      (should (< idx-percept idx-resonance))
+      (should (< idx-resonance idx-today))
+      (should (string-match-p "^- 20260518T120000-aaa  score 11.2$" prompt))
+      (should (string-match-p
+               "^    matched: app:firefox, domain_kind:docs$" prompt)))))
+
+(ert-deftest dl-satan-resonance/capsule-omits-resonance-on-gate-skip ()
+  "Gate-skip status → no `# Resonance' header in the prompt."
+  (dl-satan-resonance-test--with-framing tmp
+    (let* ((spec (list :name "motd"
+                       :prompt-file
+                       (expand-file-name "prompts/motd.txt" tmp)))
+           (prepare (list :run_id "rid-y"
+                          :time_now "2026-05-19T10:00:00+10:00"
+                          :resonance (list :status 'gate-skip
+                                           :cue nil :matches nil)))
+           (bundle (dl-satan-context-motd spec prepare))
+           (prompt (plist-get bundle :prompt)))
+      (should-not (string-match-p "^# Resonance$" prompt)))))
+
+(ert-deftest dl-satan-resonance/capsule-omits-resonance-when-memory-unreachable ()
+  "psql-down → no `# Resonance' header (handover watch-out)."
+  (dl-satan-resonance-test--with-framing tmp
+    (let* ((spec (list :name "motd"
+                       :prompt-file
+                       (expand-file-name "prompts/motd.txt" tmp)))
+           (prepare (list :run_id "rid-z"
+                          :time_now "2026-05-19T10:00:00+10:00"
+                          :resonance (list :status 'memory-unreachable
+                                           :cue '("app:firefox")
+                                           :matches nil)))
+           (bundle (dl-satan-context-motd spec prepare))
+           (prompt (plist-get bundle :prompt)))
+      (should-not (string-match-p "^# Resonance$" prompt)))))
+
 (provide 'dl-satan-resonance-test)
 ;;; dl-satan-resonance-test.el ends here
