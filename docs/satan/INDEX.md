@@ -33,3 +33,4 @@ metadata:
 
 ## Tracking
 - [bough-gaps](bough-gaps.md) — bough CLI gaps surfaced by SATAN
+- [follow-ups](follow-ups.md) — durable cleanup / audit items deferred during perceptual-layer v0
