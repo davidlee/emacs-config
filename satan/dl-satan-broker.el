@@ -22,6 +22,7 @@
 (require 'dl-satan-mode)
 (require 'dl-satan-context)
 (require 'dl-satan-output)
+(require 'dl-satan-percept)
 
 (defcustom dl-satan-runs-dir
   (expand-file-name "satan/runs" (or (bound-and-true-p dl-notes-root)
@@ -636,6 +637,17 @@ Returns the run-id."
     (dl-satan-broker--update-most-recent run-id)
     (unless (file-directory-p dl-satan-hippocampus-dir)
       (make-directory dl-satan-hippocampus-dir t))
+    ;; Phase 1.1+1.2 — percept builder + persist.  §S1's pre-bundle
+    ;; sequence: evidence.assemble → percept.build → percept.persist,
+    ;; then context-fn assembles bundle.json with the percept block
+    ;; rendered in.  Threaded into PREPARE so the context-fn can read
+    ;; `:percept' instead of re-deriving it.
+    (let* ((percept (dl-satan-percept-build prepare mode))
+           (_persisted (dl-satan-percept-persist dir percept))
+           (prepare (plist-put
+                     (plist-put prepare :evidence
+                                (plist-get percept :evidence_window))
+                     :percept percept)))
     (let* ((bundle (funcall (or (plist-get mode :context-fn) #'ignore)
                             mode prepare))
            (manifest (dl-satan-broker--build-manifest mode run-id))
@@ -723,7 +735,7 @@ Returns the run-id."
                                nil 'silent)))
              (funcall existing p e)
              (when (buffer-live-p stderr-buf) (kill-buffer stderr-buf)))))
-        run-id))))
+        run-id)))))
 
 (provide 'dl-satan-broker)
 ;;; dl-satan-broker.el ends here

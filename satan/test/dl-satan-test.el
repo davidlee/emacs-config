@@ -33,6 +33,7 @@
 (require 'dl-satan-budget)
 (require 'dl-satan-mode)
 (require 'dl-satan-tick)
+(require 'dl-satan-percept-test)
 
 ;; ---------- dl-satan-jsonl ----------
 
