@@ -2,6 +2,75 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-22 — SATAN: perceptual-layer v0 Phase 4 (sensor alerts)
+
+Closes §S6 of the perceptual design.  Every run's evidence assembler
+now computes a per-source freshness check; the broker dispatches a
+loud notification through the existing `notify_send` tool handler
+when a sensor degrades (cooldown + quiet-hours gated).  Each fired
+or suppressed alert is recorded under a new `pre_spawn` key on the
+run's `actions.json`, so the audit shows what was held back as well
+as what fired.
+
+- **4.1 freshness check** — `dl-satan-memory-evidence-assemble`
+  gains per-source probes that tag the assembled evidence with a
+  JSON-friendly `:sensor_status' plist:
+  `(:current_window "ok"|"stale-Nm"|"missing"|"malformed"
+    :focus … :browser … :bough "ok"|"unreachable")`.
+  Stale slices are dropped from the evidence (set nil / '()) so
+  the canonicalizer never sees stale data; the status entry
+  remains so the dispatcher can see the cause.  Thresholds are
+  `dl-satan-memory-evidence-current-window-stale-seconds` (5 min)
+  and `--segment-stale-seconds` (30 min).  Bough reachability is
+  derived from dynamic counters bumped inside `--bough-call'.
+- **4.2 sensor_status threading + capsule sensor block** — new
+  `satan/dl-satan-sensor-alerts.el' owns the §S6 render side:
+  `dl-satan-sensor-render-block FRAMING SENSOR-STATUS' emits
+  `# Sensors' / `sensors: current=ok focus=ok browser=ok bough=ok'
+  with degraded statuses in uppercase (`STALE(28m)' /
+  `UNREACHABLE' / etc.).  `broker--spawn' extracts `:sensor_status'
+  out of the evidence and attaches it to PREPARE;
+  `dl-satan-context--with-prepare' mirrors it; `--render-prompt'
+  places the block between `# Motive' and `# Today (raw)'.
+  Self-suppresses when framing key or status plist are absent
+  (same shape as percept / resonance / motive blocks).
+- **4.3 sensor-alerts dispatcher** — public entry
+  `dl-satan-sensor-alerts-check' returns the list of pre_spawn
+  entries for the run.  Per-cause cooldown (defcustom
+  `--cooldown-seconds', default 24h) and quiet-hours suppression
+  (via `dl-satan-tick-quiet-p', resolved lazily to keep the
+  require graph acyclic) gate dispatch.  Dispatch routes through
+  `dl-satan-tool-dispatch' on a synthetic `notify_send' tool_call
+  so the capability rail enforces `notify' — removing the
+  capability from the mode produces a `suppressed: true, reason:
+  capability_denied' entry (A17).  Bough fires only after the
+  consecutive-unreachable streak hits the threshold (defcustom,
+  default 3); below it the entry records as
+  `streak_below_threshold'.  Cooldown state lives in
+  `~/.local/state/satan/notified.json' under `:causes' (alert
+  state) + `:streaks' (bookkeeping); writes are atomic
+  tmp+rename.
+- **4.4 actions.json `pre_spawn' integration** — `broker--spawn'
+  invokes `sensor-alerts-check' alongside percept/resonance/motive
+  and attaches the entries to PREPARE `:pre_spawn'.
+  `broker--finalize' threads them into the actions plist passed
+  to `dl-satan-audit-close' so the run's `actions.json' carries
+  the new key (Phase 0.3 already accepted it; Phase 4.4 is the
+  first real producer).  A16 one-to-one — every entry stamps the
+  cause's `:last_evaluated_at' in `:causes' so the invariant holds
+  regardless of dispatch outcome.
+
+`docs/satan/perceptual-design.md` §8 A15 + A16 + A17 + A18 green.
+Front-matter `status:` flipped from `phase-3-shipped` to
+`phase-4-shipped`.
+
+Mind seed: `system/framing.txt` += `sensor_block_header=# Sensors'
+(lands in the ~/notes repo separately — mind owns its own commit
+cadence).
+
+Tests: 296/298 ert (same two pre-Phase-0 failures), 26/26 python
+unittest.  Byte-compile clean.
+
 ## 2026-05-22 — SATAN: perceptual-layer v0 Phase 3 (motive file)
 
 Picks up where Phase 2 stopped.  A small, bounded prose file
