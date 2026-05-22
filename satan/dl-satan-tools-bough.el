@@ -60,6 +60,29 @@ does not need to encode that.")
 
 ;; ---------- shell out + JSON parse ----------
 
+(defun dl-satan-bough--parse-one (str)
+  "Parse one JSON document from STR.  Return parsed value or signal."
+  (json-parse-string str
+                     :object-type 'plist
+                     :array-type 'list
+                     :null-object nil
+                     :false-object :json-false))
+
+(defun dl-satan-bough--parse-json-output (stdout)
+  "Parse bough STDOUT as either a single JSON document or NDJSON.
+`bough --json day list' returns one JSON object per line; other
+commands return a single document (object or array).  Return
+(ok . PARSED) or (error . MSG)."
+  (condition-case _
+      (cons 'ok (dl-satan-bough--parse-one stdout))
+    (error
+     (condition-case err
+         (let ((rows
+                (cl-loop for line in (split-string stdout "\n" t "[ \t\r]+")
+                         collect (dl-satan-bough--parse-one line))))
+           (cons 'ok rows))
+       (error (cons 'error (format "bough JSON parse: %S" err)))))))
+
 (defun dl-satan-bough--invoke (workspace &rest args)
   "Run `bough --json [--workspace WS] ARGS...'.
 Return (ok . PARSED) or (error . MSG).  PARSED is the JSON output
@@ -88,14 +111,7 @@ decoded with plist objects and list arrays."
              ((string-empty-p (string-trim stdout))
               (cons 'ok nil))
              (t
-              (condition-case err
-                  (cons 'ok
-                        (json-parse-string stdout
-                                           :object-type 'plist
-                                           :array-type 'list
-                                           :null-object nil
-                                           :false-object :json-false))
-                (error (cons 'error (format "bough JSON parse: %S" err))))))))
+              (dl-satan-bough--parse-json-output stdout)))))
       (ignore-errors (delete-file stderr-file)))))
 
 (defun dl-satan-bough--day-not-found-p (msg)
