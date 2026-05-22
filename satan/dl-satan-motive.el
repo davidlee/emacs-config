@@ -440,5 +440,146 @@ Used by the tool handler to ship one line back through the
                (other (format "%s" other)))))
     (other (format "motive validation failed: %s" other))))
 
+;; ---------------------------------------------------------------------
+;; Footer rewriter (Phase 5.5)
+;;
+;; Observer correlates an intervention to a motive (5.4 + 5.7), then
+;; the broker (5.6+5.8) credits the motive by bumping
+;; `:worked_count:' and stamping `:last_intervention_at:'.  The
+;; rewriter is text-level: it edits the footer fields in place and
+;; preserves prose, ruminations, other footer fields, indentation,
+;; and section ordering verbatim.  Re-rendering through the parser
+;; would lose all of those.
+;; ---------------------------------------------------------------------
+
+(defun dl-satan-motive--heading-id-from-line (line)
+  "Return the motive id when LINE is a `* HEADING'; else nil."
+  (when (string-match "\\`\\* +\\(.+?\\)[ \t]*\\'" line)
+    (dl-satan-motive--motive-id (match-string 1 line))))
+
+(defun dl-satan-motive--section-bounds (buf id)
+  "Return `(START . END)' char positions for motive ID's section in BUF.
+START is the BOL of the section's heading; END is the BOL of the
+next `* ' heading or `point-max'.  Returns nil when no section
+matches.  ID is the motive identifier as `--motive-id' parses it."
+  (with-current-buffer buf
+    (save-excursion
+      (goto-char (point-min))
+      (let (start)
+        (while (and (null start)
+                    (re-search-forward "^\\* +\\(.+?\\)[ \t]*$" nil t))
+          (when (equal (dl-satan-motive--motive-id (match-string 1)) id)
+            (setq start (line-beginning-position))))
+        (when start
+          (goto-char start)
+          (forward-line 1)
+          (let ((end (if (re-search-forward "^\\* " nil t)
+                         (line-beginning-position)
+                       (point-max))))
+            (cons start end)))))))
+
+(defun dl-satan-motive--rewrite-section-footer
+    (buf section-start section-end worked-count last-at)
+  "Rewrite footer fields in BUF's [SECTION-START, SECTION-END).
+Sets `:worked_count:' = WORKED-COUNT and `:last_intervention_at:'
+= LAST-AT.  Existing lines are replaced (indentation + spacing
+preserved on the key/colon prefix; only the value changes).
+Missing lines are appended after the last existing footer line
+(or at section end when no footer exists).  Returns nothing
+useful — mutation is in BUF."
+  (with-current-buffer buf
+    (let ((end-marker (copy-marker section-end nil))
+          (last-footer-marker nil)
+          (wc-set nil)
+          (la-set nil))
+      (save-excursion
+        (goto-char section-start)
+        (forward-line 1)  ; past heading
+        (while (< (point) end-marker)
+          (cond
+           ((and (not wc-set)
+                 (looking-at "^\\([ \t]*\\):worked_count:\\(.*\\)$"))
+            (replace-match
+             (format "\\1:worked_count: %d" worked-count)
+             nil nil)
+            (setq wc-set t
+                  last-footer-marker (copy-marker (line-end-position))))
+           ((and (not la-set)
+                 (looking-at "^\\([ \t]*\\):last_intervention_at:\\(.*\\)$"))
+            (replace-match
+             (format "\\1:last_intervention_at: %s" last-at)
+             nil nil)
+            (setq la-set t
+                  last-footer-marker (copy-marker (line-end-position))))
+           ((looking-at "^[ \t]*:[A-Za-z_][A-Za-z0-9_]*:")
+            ;; Some other footer line — track for insert position.
+            (setq last-footer-marker (copy-marker (line-end-position)))))
+          (forward-line 1)))
+      ;; Append any missing fields.
+      (when (or (not wc-set) (not la-set))
+        (cond
+         (last-footer-marker
+          (goto-char last-footer-marker)
+          (unless wc-set
+            (insert (format "\n:worked_count: %d" worked-count)))
+          (unless la-set
+            (insert (format "\n:last_intervention_at: %s" last-at))))
+         (t
+          ;; No footer line existed at all (rare — active motives
+          ;; require `:cue:' so an active motive always has ≥1 footer).
+          ;; Insert at the very end of the section content, leaving the
+          ;; trailing newline between this section and the next intact.
+          (goto-char end-marker)
+          (if (= (point) (point-min))
+              ;; Empty buffer — shouldn't happen since we found a
+              ;; heading, but defensive.
+              (progn
+                (unless wc-set
+                  (insert (format ":worked_count: %d\n" worked-count)))
+                (unless la-set
+                  (insert (format ":last_intervention_at: %s\n" last-at))))
+            (backward-char 1)
+            (unless wc-set
+              (insert (format "\n:worked_count: %d" worked-count)))
+            (unless la-set
+              (insert (format "\n:last_intervention_at: %s" last-at))))))))))
+
+(defun dl-satan-motive--write-atomic (path text)
+  "Atomically replace PATH's contents with TEXT.
+Writes to PATH.tmp + rename; ensures parent dir exists; uses utf-8."
+  (let ((dir (file-name-directory path)))
+    (unless (file-directory-p dir) (make-directory dir t)))
+  (let ((tmp (concat path ".tmp"))
+        (coding-system-for-write 'utf-8))
+    (with-temp-file tmp (insert text))
+    (rename-file tmp path t)))
+
+(defun dl-satan-motive-touch-footer (id worked-count last-at &optional path)
+  "Rewrite PATH so motive ID's footer carries WORKED-COUNT + LAST-AT.
+WORKED-COUNT is an integer (absolute, not delta — caller computes
+old+1 from `dl-satan-motive-parse').  LAST-AT is an ISO8601 string.
+PATH defaults to `dl-satan-motive-file'.
+
+Text-level mutation: prose, ruminations, other footer fields,
+ordering, and indentation are preserved verbatim.  Existing
+`:worked_count:' / `:last_intervention_at:' lines are replaced in
+place; missing lines are appended after the section's last
+footer line (or at section end when no footer exists).
+
+Atomic: tmp file + rename.  Returns t when ID matched a section,
+nil when PATH is missing/unreadable or ID didn't match."
+  (let ((path (or path dl-satan-motive-file)))
+    (when (and path (file-readable-p path))
+      (with-temp-buffer
+        (let ((coding-system-for-read 'utf-8))
+          (insert-file-contents path))
+        (let ((bounds (dl-satan-motive--section-bounds (current-buffer) id)))
+          (when bounds
+            (dl-satan-motive--rewrite-section-footer
+             (current-buffer) (car bounds) (cdr bounds)
+             worked-count last-at)
+            (dl-satan-motive--write-atomic path (buffer-string))
+            t))))))
+
 (provide 'dl-satan-motive)
 ;;; dl-satan-motive.el ends here

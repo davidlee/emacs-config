@@ -603,5 +603,159 @@ block.  Matches the §S3 file-tolerated / capsule-invisible split."
     (should (equal "2026-05-22T10:00:00+10:00"
                    (plist-get bundle :time_now)))))
 
+;; ---------------------------------------------------------------------
+;; Phase 5.5 — footer rewriter
+;; ---------------------------------------------------------------------
+
+(defmacro dl-satan-motive-test--with-tmp-file (var text &rest body)
+  "Bind VAR to a temp file containing TEXT; clean up after BODY."
+  (declare (indent 2))
+  `(let* ((,var (make-temp-file "satan-motive-touch-" nil ".org"))
+          (coding-system-for-write 'utf-8))
+     (unwind-protect
+         (progn
+           (with-temp-file ,var (insert ,text))
+           ,@body)
+       (when (file-exists-p ,var) (delete-file ,var))
+       (when (file-exists-p (concat ,var ".tmp"))
+         (delete-file (concat ,var ".tmp"))))))
+
+(defun dl-satan-motive-test--read (path)
+  (with-temp-buffer
+    (let ((coding-system-for-read 'utf-8))
+      (insert-file-contents path))
+    (buffer-string)))
+
+(ert-deftest dl-satan-motive/touch-footer-replaces-worked-count-in-place ()
+  "Existing `:worked_count:' line is replaced; indentation preserved."
+  (dl-satan-motive-test--with-tmp-file path
+      dl-satan-motive-test--well-formed
+    (should (dl-satan-motive-touch-footer
+             "docs-after-error" 7 "2026-05-22T10:30:00+1000" path))
+    (let ((out (dl-satan-motive-test--read path)))
+      (should (string-match-p "  :worked_count: 7\n" out))
+      (should-not (string-match-p ":worked_count: 0" out))
+      ;; Indentation preserved (`  ' two-space prefix on existing line).
+      (should (string-match-p "\n  :worked_count: 7\n" out)))))
+
+(ert-deftest dl-satan-motive/touch-footer-replaces-last-intervention-at ()
+  "Existing `:last_intervention_at:' line gets the new ISO."
+  (dl-satan-motive-test--with-tmp-file path
+      dl-satan-motive-test--well-formed
+    (dl-satan-motive-touch-footer
+     "docs-after-error" 1 "2026-05-22T10:30:00+1000" path)
+    (let ((out (dl-satan-motive-test--read path)))
+      (should (string-match-p
+               "  :last_intervention_at: 2026-05-22T10:30:00\\+1000\n"
+               out))
+      (should-not (string-match-p "2026-05-21T14:02Z" out)))))
+
+(ert-deftest dl-satan-motive/touch-footer-appends-missing-fields ()
+  "Motive lacking both fields gets them inserted after the last
+existing footer line."
+  (dl-satan-motive-test--with-tmp-file path
+      dl-satan-motive-test--well-formed
+    ;; bough-status-drift has no :worked_count: 4 line above, actually
+    ;; check the fixture — it has worked_count but no last_intervention_at.
+    (dl-satan-motive-touch-footer
+     "bough-status-drift" 5 "2026-05-22T10:30:00+1000" path)
+    (let ((out (dl-satan-motive-test--read path)))
+      (should (string-match-p ":worked_count: 5" out))
+      (should (string-match-p
+               ":last_intervention_at: 2026-05-22T10:30:00\\+1000"
+               out))
+      ;; Inserted last_intervention_at should land after the existing
+      ;; worked_count line within the same section, not in
+      ;; docs-after-error's section.
+      (should (string-match-p
+               (concat ":worked_count: 5\n"
+                       ":last_intervention_at: 2026-05-22T10:30:00\\+1000")
+               out)))))
+
+(ert-deftest dl-satan-motive/touch-footer-preserves-prose-and-ruminations ()
+  "Prose, ruminations, and ordering must round-trip verbatim."
+  (dl-satan-motive-test--with-tmp-file path
+      dl-satan-motive-test--well-formed
+    (dl-satan-motive-touch-footer
+     "docs-after-error" 9 "2026-05-22T10:30:00+1000" path)
+    (let ((out (dl-satan-motive-test--read path)))
+      ;; Prose lines verbatim.
+      (should (string-match-p
+               "Docs after terminal error often substitute orientation for contact\\."
+               out))
+      (should (string-match-p
+               "When bough status changes accumulate without user attention\\."
+               out))
+      ;; Ruminations verbatim.
+      (should (string-match-p
+               "- 2026-05-22  docs-after-error often artifactless when project is emacs\\.d"
+               out))
+      ;; Sibling motive's footer untouched.
+      (should (string-match-p ":cooldown_s: 3600\n  :worked_count: 4\n"
+                              out)))))
+
+(ert-deftest dl-satan-motive/touch-footer-only-mutates-target-section ()
+  "An update on docs-after-error must not touch bough-status-drift's
+worked_count, even though both sections have one."
+  (dl-satan-motive-test--with-tmp-file path
+      dl-satan-motive-test--well-formed
+    (dl-satan-motive-touch-footer
+     "docs-after-error" 42 "2026-05-22T10:30:00+1000" path)
+    (let ((out (dl-satan-motive-test--read path)))
+      (should (string-match-p ":worked_count: 42" out))
+      ;; Sibling unchanged.
+      (should (string-match-p ":worked_count: 4\n" out))
+      (should-not (string-match-p ":worked_count: 4 *2026" out)))))
+
+(ert-deftest dl-satan-motive/touch-footer-unknown-id-returns-nil ()
+  "Unknown motive id yields nil and leaves the file untouched."
+  (dl-satan-motive-test--with-tmp-file path
+      dl-satan-motive-test--well-formed
+    (let ((before (dl-satan-motive-test--read path)))
+      (should-not (dl-satan-motive-touch-footer
+                   "nonexistent-motive" 1 "2026-05-22T10:30:00+1000" path))
+      (should (equal before (dl-satan-motive-test--read path))))))
+
+(ert-deftest dl-satan-motive/touch-footer-missing-file-returns-nil ()
+  "Missing file is a valid state; rewriter is silent."
+  (let ((path "/tmp/satan-motive-test-does-not-exist.org"))
+    (when (file-exists-p path) (delete-file path))
+    (should-not (dl-satan-motive-touch-footer
+                 "anything" 1 "2026-05-22T10:30:00+1000" path))))
+
+(ert-deftest dl-satan-motive/touch-footer-roundtrips-through-parse ()
+  "After touch-footer, `dl-satan-motive-parse' on the file yields the
+expected updated values."
+  (dl-satan-motive-test--with-tmp-file path
+      dl-satan-motive-test--well-formed
+    (dl-satan-motive-touch-footer
+     "docs-after-error" 11 "2026-05-22T10:30:00+1000" path)
+    (let* ((parsed (dl-satan-motive-parse (dl-satan-motive-test--read path)))
+           (target (cl-find "docs-after-error"
+                            (plist-get parsed :motives)
+                            :key (lambda (m) (plist-get m :id))
+                            :test #'equal))
+           (sibling (cl-find "bough-status-drift"
+                             (plist-get parsed :motives)
+                             :key (lambda (m) (plist-get m :id))
+                             :test #'equal)))
+      (should (= 11 (plist-get target :worked_count)))
+      (should (equal "2026-05-22T10:30:00+1000"
+                     (plist-get target :last_intervention_at)))
+      (should (= 4 (plist-get sibling :worked_count))))))
+
+(ert-deftest dl-satan-motive/touch-footer-no-trailing-newline-handled ()
+  "Files without a trailing newline still rewrite cleanly — common
+on hand-edited org files."
+  (dl-satan-motive-test--with-tmp-file path
+      (substring dl-satan-motive-test--well-formed 0
+                 (1- (length dl-satan-motive-test--well-formed)))
+    (should (dl-satan-motive-touch-footer
+             "docs-after-error" 3 "2026-05-22T10:30:00+1000" path))
+    (let ((parsed (dl-satan-motive-parse
+                   (dl-satan-motive-test--read path))))
+      (should (= 3 (plist-get (car (plist-get parsed :motives))
+                              :worked_count))))))
+
 (provide 'dl-satan-motive-test)
 ;;; dl-satan-motive-test.el ends here
