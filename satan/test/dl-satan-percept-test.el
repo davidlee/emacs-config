@@ -214,5 +214,79 @@ hardcoded header in elisp."
          (percept '(:handles ("app:firefox"))))
     (should (null (dl-satan-percept-render-block framing percept)))))
 
+;; ---------------------------------------------------------------------
+;; Capsule render through dl-satan-context (1.3)
+;; ---------------------------------------------------------------------
+
+(require 'dl-satan-context)
+
+(ert-deftest dl-satan-percept/capsule-renders-percept-block-from-prepare ()
+  "A4 — when PREPARE carries a `:percept' with handles, the rendered
+prompt includes a `# Percept' header followed by handle lines.
+The header text is supplied by framing.txt, not hardcoded."
+  (let* ((tmp (make-temp-file "satan-percept-cap-" t))
+         (dl-satan-prompts-dir (expand-file-name "prompts/" tmp))
+         (dl-satan-system-scaffold-file
+          (expand-file-name "system/scaffold.txt" tmp))
+         (dl-satan-system-framing-file
+          (expand-file-name "system/framing.txt" tmp)))
+    (unwind-protect
+        (progn
+          (make-directory (expand-file-name "prompts" tmp))
+          (make-directory (expand-file-name "system" tmp))
+          (with-temp-file dl-satan-system-scaffold-file (insert "SCAFFOLD"))
+          (with-temp-file dl-satan-system-framing-file
+            (insert "now=# Now\n"
+                    "today=# Today (raw)\n"
+                    "sources=# Source files\n"
+                    "percept_block_header=# Percept\n"))
+          (with-temp-file (expand-file-name "prompts/motd.txt" tmp)
+            (insert "PROMPT"))
+          (let* ((spec (list :name "motd"
+                             :prompt-file
+                             (expand-file-name "prompts/motd.txt" tmp)))
+                 (prepare (list :run_id "rid-x"
+                                :time_now "2026-05-19T10:00:00+10:00"
+                                :percept '(:handles ("app:firefox"
+                                                     "surface:browser"))))
+                 (bundle (dl-satan-context-motd spec prepare))
+                 (prompt (plist-get bundle :prompt)))
+            (should (string-match-p "^# Percept$" prompt))
+            (should (string-match-p "^- app:firefox$" prompt))
+            (should (string-match-p "^- surface:browser$" prompt))
+            (should (equal (plist-get bundle :run_id) "rid-x"))
+            (should (equal (plist-get bundle :time_now)
+                           "2026-05-19T10:00:00+10:00"))))
+      (delete-directory tmp t))))
+
+(ert-deftest dl-satan-percept/capsule-omits-percept-block-when-no-prepare ()
+  "Without a PREPARE plist (legacy callers, or budget-denied paths),
+the capsule renders cleanly with no `# Percept' artefact."
+  (let* ((tmp (make-temp-file "satan-percept-cap-empty-" t))
+         (dl-satan-prompts-dir (expand-file-name "prompts/" tmp))
+         (dl-satan-system-scaffold-file
+          (expand-file-name "system/scaffold.txt" tmp))
+         (dl-satan-system-framing-file
+          (expand-file-name "system/framing.txt" tmp)))
+    (unwind-protect
+        (progn
+          (make-directory (expand-file-name "prompts" tmp))
+          (make-directory (expand-file-name "system" tmp))
+          (with-temp-file dl-satan-system-scaffold-file (insert "SCAFFOLD"))
+          (with-temp-file dl-satan-system-framing-file
+            (insert "now=# Now\n"
+                    "today=# Today (raw)\n"
+                    "sources=# Source files\n"
+                    "percept_block_header=# Percept\n"))
+          (with-temp-file (expand-file-name "prompts/motd.txt" tmp)
+            (insert "PROMPT"))
+          (let* ((spec (list :name "motd"
+                             :prompt-file
+                             (expand-file-name "prompts/motd.txt" tmp)))
+                 (bundle (dl-satan-context-motd spec nil))
+                 (prompt (plist-get bundle :prompt)))
+            (should-not (string-match-p "^# Percept$" prompt))))
+      (delete-directory tmp t))))
+
 (provide 'dl-satan-percept-test)
 ;;; dl-satan-percept-test.el ends here

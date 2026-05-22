@@ -9,6 +9,7 @@
 (require 'json)
 (require 'dl-notes-paths)
 (require 'dl-denote-journal)
+(require 'dl-satan-percept)
 
 (defvar dl-satan-runs-dir)              ; defined in dl-satan-broker.el
 
@@ -296,14 +297,18 @@ Keys: :when, :mode, :status (\"ok\" / \"FAILED\"), :summary (or nil),
   "Return the fully-rendered system prompt for the harness.
 ASSEMBLED is the scaffold + mode-prompt string (no framing yet).
 BUNDLE is the context plist providing `:now', `:today_text', `:sources',
-`:recent_runs'.  Missing framing.txt signals — there is no canonical
-fallback."
+`:recent_runs', `:percept'.  Missing framing.txt signals — there is no
+canonical fallback.  The percept block falls between `# Now' and any
+mode-specific blocks (today / sources / recent runs); absent or
+empty-handle percepts produce no block (acceptance §A6)."
   (let* ((framing (dl-satan-context--framing))
          (parts (list (string-trim-right assembled)))
          (blocks (delq nil
                        (list
                         (dl-satan-context--render-now
                          framing (plist-get bundle :now))
+                        (dl-satan-percept-render-block
+                         framing (plist-get bundle :percept))
                         (dl-satan-context--render-today
                          framing (plist-get bundle :today_text))
                         (dl-satan-context--render-sources
@@ -336,10 +341,23 @@ The harness consumes `:prompt' verbatim; other bundle keys remain
 for audit but are no longer read by the harness."
   (plist-put bundle :prompt (dl-satan-context--render-prompt assembled bundle)))
 
-(defun dl-satan-context-morning (mode-spec &optional _run-ctx)
+(defun dl-satan-context--with-prepare (bundle prepare)
+  "Mirror PREPARE's identity + percept slots into BUNDLE.
+Phase 1 acceptance A2 requires `bundle.json' and `percept.json' to
+carry the same `:run_id' and `:time_now'.  This helper does the
+threading once so the per-mode context-fns don't each have to
+re-fish those fields out of the prepare plist."
+  (when (plistp prepare)
+    (dolist (k '(:run_id :time_now :percept))
+      (setq bundle (plist-put bundle k (plist-get prepare k)))))
+  bundle)
+
+(defun dl-satan-context-morning (mode-spec &optional run-ctx)
   "Bundle for the morning mode: prompt + today's note text.
-_RUN-CTX is the prepare-phase run_ctx plist (Phase 0.1); unused in v0,
-reserved for the percept + auto-resonance + motive layers (Phase 1+)."
+RUN-CTX is the prepare-phase run_ctx plist (Phase 0.1) — when present,
+its `:run_id' `:time_now' `:percept' slots are mirrored into the
+bundle so audit artifacts agree (A2) and the capsule renders the
+percept block."
   (let* ((today (progn (my/journal--ensure-today)
                        (my/journal--today-file dl-notes-journal-dir "journal")))
          (assembled (dl-satan-context--assemble-prompt mode-spec))
@@ -348,16 +366,19 @@ reserved for the percept + auto-resonance + motive layers (Phase 1+)."
                        :now        (dl-satan-context-now)
                        :today_path today
                        :today_text (dl-satan-context--read-file-or-empty today))))
-    (dl-satan-context--finalize-prompt bundle assembled)))
+    (dl-satan-context--finalize-prompt
+     (dl-satan-context--with-prepare bundle run-ctx) assembled)))
 
-(defun dl-satan-context-motd (mode-spec &optional _run-ctx)
+(defun dl-satan-context-motd (mode-spec &optional run-ctx)
   "Bundle for the motd mode.
-_RUN-CTX is the prepare-phase run_ctx plist (Phase 0.1); unused in v0."
+RUN-CTX is the prepare-phase run_ctx plist (Phase 0.1) — see
+`dl-satan-context-morning' for what gets threaded through."
   (let* ((assembled (dl-satan-context--assemble-prompt mode-spec))
          (bundle (list :prompt ""
                        :mode   (plist-get mode-spec :name)
                        :now    (dl-satan-context-now))))
-    (dl-satan-context--finalize-prompt bundle assembled)))
+    (dl-satan-context--finalize-prompt
+     (dl-satan-context--with-prepare bundle run-ctx) assembled)))
 
 (defun dl-satan-context--recent-runs-for-spec (mode-spec)
   "Return the recent-runs entry list for MODE-SPEC, or nil when disabled."
@@ -365,16 +386,18 @@ _RUN-CTX is the prepare-phase run_ctx plist (Phase 0.1); unused in v0."
     (when (and (integerp n) (> n 0))
       (dl-satan-context--recent-runs n))))
 
-(defun dl-satan-context-tick (mode-spec &optional _run-ctx)
+(defun dl-satan-context-tick (mode-spec &optional run-ctx)
   "Bundle for a tick mode.  Same shape as motd, plus optional recent-runs.
-_RUN-CTX is the prepare-phase run_ctx plist (Phase 0.1); unused in v0."
+RUN-CTX is the prepare-phase run_ctx plist (Phase 0.1); see
+`dl-satan-context-morning' for what gets threaded through."
   (let* ((assembled (dl-satan-context--assemble-prompt mode-spec))
          (bundle (list :prompt       ""
                        :mode         (plist-get mode-spec :name)
                        :now          (dl-satan-context-now)
                        :recent_runs  (dl-satan-context--recent-runs-for-spec
                                       mode-spec))))
-    (dl-satan-context--finalize-prompt bundle assembled)))
+    (dl-satan-context--finalize-prompt
+     (dl-satan-context--with-prepare bundle run-ctx) assembled)))
 
 (defcustom dl-satan-self-edit-mech-roots
   (list (expand-file-name "satan" user-emacs-directory))
@@ -449,14 +472,15 @@ without context).  When BUDGET is nil, packs everything."
          (t (push path dropped)))))
     (cons (nreverse sources) (nreverse dropped))))
 
-(defun dl-satan-context-self-edit (mode-spec &optional _run-ctx)
+(defun dl-satan-context-self-edit (mode-spec &optional run-ctx)
   "Bundle for a self-edit mode: prompt + every source file under each
 root in MODE-SPEC's `:source-roots' list, each as
 \(:path ABBREVIATED :content STR).  Paths are abbreviated with `~/'
 so the model sees `~/notes/satan/...' / `~/.emacs.d/satan/...' rather
 than long relative dotwalks.
 
-_RUN-CTX is the prepare-phase run_ctx plist (Phase 0.1); unused in v0.
+RUN-CTX is the prepare-phase run_ctx plist (Phase 0.1); see
+`dl-satan-context-morning' for what gets threaded through.
 
 Total `:sources' content is capped by
 `dl-satan-self-edit-bundle-char-budget'; anything that didn't fit
@@ -478,7 +502,8 @@ and (e.g.) recommend a narrower mode or a targeted read."
                        :roots   (mapcar #'abbreviate-file-name roots)
                        :sources sources
                        :dropped-files dropped)))
-    (dl-satan-context--finalize-prompt bundle assembled)))
+    (dl-satan-context--finalize-prompt
+     (dl-satan-context--with-prepare bundle run-ctx) assembled)))
 
 (provide 'dl-satan-context)
 ;;; dl-satan-context.el ends here
