@@ -46,6 +46,7 @@ Returns (ok :id N) | (error MSG)."
 (dl-satan-tool-register
  (list :name "notify_send"
        :risk 'low
+       :capability 'notify
        :args-schema '(title   (:type string :required t)
                       body    (:type string :required t)
                       urgency (:type string :required nil

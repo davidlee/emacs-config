@@ -138,9 +138,22 @@ ITEMS is either a TYPE symbol (e.g. `string') or a constraints plist."
         (setq schema (cddr schema))))
     err))
 
+(defun dl-satan-tool--capability-denied-p (spec run-ctx)
+  "Return the required capability when SPEC's `:capability' is unmet by RUN-CTX.
+Returns nil when SPEC declares no capability, or when the capability
+is present in RUN-CTX's `:capabilities' (the tool-ctx plist threaded
+through the broker)."
+  (let ((required (plist-get spec :capability))
+        (caps (and run-ctx (plist-get run-ctx :capabilities))))
+    (when (and required (not (memq required caps)))
+      required)))
+
 (defun dl-satan-tool-dispatch (call mode-tools run-ctx)
   "Dispatch a `tool_call' plist CALL.  Return a `tool_result' plist.
-MODE-TOOLS is the current mode's allowlist.  RUN-CTX is passed to the handler."
+MODE-TOOLS is the current mode's allowlist.  RUN-CTX is the tool-ctx
+plist; the capability guard (Phase 0.2) reads `:capabilities' from it
+and rejects the call BEFORE invoking the handler when the tool's
+declared `:capability' is absent."
   (let* ((id   (plist-get call :id))
          (name (plist-get call :name))
          (args (plist-get call :args))
@@ -152,6 +165,11 @@ MODE-TOOLS is the current mode's allowlist.  RUN-CTX is passed to the handler."
      ((not (dl-satan-tool-allowed-p name mode-tools))
       (list :type "tool_result" :id id :ok :false
             :error (format "tool not allowed in this mode: %s" name)))
+     ((let ((cap (dl-satan-tool--capability-denied-p spec run-ctx)))
+        (when cap
+          (list :type "tool_result" :id id :ok :false
+                :error (format "capability denied: tool %s requires %s"
+                               name cap)))))
      (t
       (let ((schema-err (dl-satan-tool-validate-args spec args)))
         (if schema-err

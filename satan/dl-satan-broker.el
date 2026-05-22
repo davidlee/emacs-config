@@ -283,6 +283,15 @@ so the harness sees something rather than blocking on stdin."
              :raw obj))))
   (dl-satan-jsonl-send (dl-satan-run-process run-ctx) obj))
 
+(defun dl-satan-broker--failed-action-payload (obj reason)
+  "Return the canonical failed-action plist for tool-call OBJ + REASON.
+Shape is `(:action (:type NAME :args ARGS) :reason MSG)' — see the
+failed-action shape note in AGENTS.md.  Used by `--on-tool-call' to
+audit every denied dispatch in a structure consumers can grep."
+  (list :action (list :type (plist-get obj :name)
+                      :args (or (plist-get obj :args) '()))
+        :reason reason))
+
 (defun dl-satan-broker--on-tool-call (run-ctx obj)
   (let* ((mode (dl-satan-run-mode run-ctx))
          (budget (plist-get mode :budget-tool-calls))
@@ -290,22 +299,32 @@ so the harness sees something rather than blocking on stdin."
     (dl-satan-audit-record (dl-satan-run-audit run-ctx) 'in 'tool-call obj)
     (cond
      ((and (integerp budget) (>= done budget))
-      (let ((result (list :type "tool_result"
-                          :id (plist-get obj :id)
-                          :ok :false
-                          :error "tool call budget exhausted")))
+      (let* ((reason "tool call budget exhausted")
+             (result (list :type "tool_result"
+                           :id (plist-get obj :id)
+                           :ok :false
+                           :error reason)))
         (dl-satan-audit-record (dl-satan-run-audit run-ctx) 'broker 'tool-denied result)
+        (dl-satan-audit-record
+         (dl-satan-run-audit run-ctx) 'broker 'action-failed
+         (dl-satan-broker--failed-action-payload obj reason))
         (dl-satan-broker--send-validated run-ctx result)))
      (t
       (setf (dl-satan-run-tool-calls-done run-ctx) (1+ done))
       (let* ((tool-ctx (dl-satan-broker--tool-ctx run-ctx))
              (result (dl-satan-tool-dispatch
-                      obj (plist-get mode :tools) tool-ctx)))
+                      obj (plist-get mode :tools) tool-ctx))
+             (ok-p (eq (plist-get result :ok) t)))
         (dl-satan-audit-record
          (dl-satan-run-audit run-ctx)
          'broker
-         (if (eq (plist-get result :ok) t) 'tool-result 'tool-denied)
+         (if ok-p 'tool-result 'tool-denied)
          result)
+        (unless ok-p
+          (dl-satan-audit-record
+           (dl-satan-run-audit run-ctx) 'broker 'action-failed
+           (dl-satan-broker--failed-action-payload
+            obj (plist-get result :error))))
         (dl-satan-audit-record (dl-satan-run-audit run-ctx) 'out 'tool-result result)
         (dl-satan-broker--send-validated run-ctx result))))))
 
