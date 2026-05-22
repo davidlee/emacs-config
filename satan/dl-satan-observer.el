@@ -519,6 +519,79 @@ combine themselves until then."
             (list :verdict "none")))))))))
 
 ;; ---------------------------------------------------------------------
+;; Multi-motive correlation (Phase 5.7) — overlap + file-order tiebreak
+;; ---------------------------------------------------------------------
+
+(defun dl-satan-observer--intervention-percept-handles (intervention)
+  "Return the percept handle list persisted with INTERVENTION's run.
+Reads `bundle.json' → `:percept' → `:handles'.  Nil when bundle is
+missing or lacks the slot (budget-denied / pre_spawn-denied
+runs)."
+  (let* ((run-dir (plist-get intervention :run_dir))
+         (path (and run-dir (expand-file-name "bundle.json" run-dir)))
+         (bundle (and path (dl-satan-observer--read-json-object path)))
+         (percept (and bundle (plist-get bundle :percept))))
+    (and percept (plist-get percept :handles))))
+
+(defun dl-satan-observer--rank-motives-by-overlap (motives percept-handles)
+  "Rank MOTIVES by `|:cue ∩ PERCEPT-HANDLES|', descending.
+Ties resolved by ascending position in MOTIVES (file order — §S5
+deterministic tiebreaker so re-running the observer over the same
+state yields the same correlation).  Dormant motives are skipped
+(A14 — they have no usable cue).  Motives with zero overlap are
+dropped — `dl-satan-observer-classify-for-motives' treats that as
+`:reason :no_correlation' rather than a positive on a phantom
+motive.
+
+Returns list of `(:motive PLIST :order INT :overlap INT)' plists."
+  (let* ((scored
+          (cl-loop for m in motives
+                   for idx upfrom 0
+                   unless (plist-get m :dormant)
+                   collect
+                   (list :motive m
+                         :order idx
+                         :overlap
+                         (cl-count-if
+                          (lambda (h) (member h (plist-get m :cue)))
+                          percept-handles))))
+         (matches (cl-remove-if (lambda (r) (zerop (plist-get r :overlap)))
+                                scored)))
+    (sort matches
+          (lambda (a b)
+            (let ((oa (plist-get a :overlap))
+                  (ob (plist-get b :overlap)))
+              (cond
+               ((> oa ob) t)
+               ((< oa ob) nil)
+               (t (< (plist-get a :order) (plist-get b :order)))))))))
+
+(defun dl-satan-observer-classify-for-motives (intervention motives)
+  "Pick the strongest-correlated motive in MOTIVES, then classify.
+Reads INTERVENTION's `:run_dir'/bundle.json for percept handles;
+intersects each motive's `:cue' against them; highest count wins,
+file-order breaks ties.
+
+Returns the 5.4 verdict plist augmented with `:motive_id':
+  (:motive_id STR :verdict STR :predicate KW-or-nil :reason KW-or-nil)
+
+When no motive overlaps with the intervention's percept handles
+(or motives list is empty / bundle missing percept handles),
+returns `(:motive_id nil :verdict \"none\" :reason :no_correlation)'
+— no work for `persist-verdict' to do beyond dedup (5.8 will
+still call mark-classified to record the result)."
+  (let* ((handles (dl-satan-observer--intervention-percept-handles
+                   intervention))
+         (ranked (dl-satan-observer--rank-motives-by-overlap motives handles)))
+    (if (null ranked)
+        (list :motive_id nil
+              :verdict "none"
+              :reason :no_correlation)
+      (let* ((winner (plist-get (car ranked) :motive))
+             (verdict (dl-satan-observer-classify intervention winner)))
+        (plist-put verdict :motive_id (plist-get winner :id))))))
+
+;; ---------------------------------------------------------------------
 ;; Verdict persistence (Phase 5.6) — counter + trace + dedup
 ;; ---------------------------------------------------------------------
 

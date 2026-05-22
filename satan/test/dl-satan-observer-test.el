@@ -1154,5 +1154,149 @@ still records dedup so the broker doesn't waste cycles re-checking."
                    :memory-mark-fn mark-fn))
             (should (null (dl-satan-observer-pending now root spath))))))))))
 
+;; ---------------------------------------------------------------------
+;; Phase 5.7 — multi-motive resolver (overlap + file-order tiebreak)
+;; ---------------------------------------------------------------------
+
+(defun dl-satan-observer-test--write-bundle-with-handles (dir handles)
+  (dl-satan-observer-test--write-bundle
+   dir (list :percept
+             (list :handles handles
+                   :evidence_window
+                   (list :git_state (list :head_short "h"
+                                          :remote "r")
+                         :fs_state (list :cwd "/x" :recent_files nil)
+                         :focus_segments nil
+                         :bough_recent nil)))))
+
+(ert-deftest dl-satan-observer/rank-empty-percept-handles-no-matches ()
+  "Empty percept handles → no motive ranks."
+  (let ((motives (list (list :id "m1" :cue (list "app:firefox")))))
+    (should (null (dl-satan-observer--rank-motives-by-overlap motives nil)))))
+
+(ert-deftest dl-satan-observer/rank-highest-overlap-wins ()
+  "Motive sharing more handles outranks one sharing fewer."
+  (let* ((motives (list (list :id "low"
+                              :cue (list "app:firefox"))
+                        (list :id "high"
+                              :cue (list "app:firefox" "domain_kind:docs"
+                                         "topic:satan"))))
+         (handles (list "app:firefox" "domain_kind:docs" "topic:satan"))
+         (ranked (dl-satan-observer--rank-motives-by-overlap motives handles)))
+    (should (= 2 (length ranked)))
+    (should (equal "high" (plist-get (plist-get (car ranked) :motive) :id)))
+    (should (= 3 (plist-get (car ranked) :overlap)))))
+
+(ert-deftest dl-satan-observer/rank-tie-broken-by-file-order ()
+  "Two motives with identical overlap: the one earlier in file
+order wins (§S5 deterministic tiebreaker)."
+  (let* ((motives (list (list :id "first"  :cue (list "app:firefox"))
+                        (list :id "second" :cue (list "app:firefox"))))
+         (handles (list "app:firefox"))
+         (ranked (dl-satan-observer--rank-motives-by-overlap motives handles)))
+    (should (equal "first" (plist-get (plist-get (car ranked) :motive) :id)))))
+
+(ert-deftest dl-satan-observer/rank-skips-dormant-motives ()
+  "A dormant motive with high overlap is filtered before ranking."
+  (let* ((motives (list (list :id "dormant"
+                              :cue (list "app:firefox" "domain_kind:docs")
+                              :dormant t)
+                        (list :id "active"
+                              :cue (list "app:firefox"))))
+         (handles (list "app:firefox" "domain_kind:docs"))
+         (ranked (dl-satan-observer--rank-motives-by-overlap motives handles)))
+    (should (= 1 (length ranked)))
+    (should (equal "active" (plist-get (plist-get (car ranked) :motive) :id)))))
+
+(ert-deftest dl-satan-observer/rank-drops-zero-overlap ()
+  "Motives with no shared handles drop from the ranking."
+  (let* ((motives (list (list :id "no-overlap"
+                              :cue (list "topic:other"))))
+         (handles (list "app:firefox")))
+    (should (null (dl-satan-observer--rank-motives-by-overlap
+                   motives handles)))))
+
+(ert-deftest dl-satan-observer/classify-for-motives-no-bundle-no-correlation ()
+  "Missing bundle.json (no percept handles to intersect) →
+:verdict \"none\" :reason :no_correlation."
+  (dl-satan-observer-test--in-tmp
+   (lambda (root)
+     (let* ((dir (expand-file-name "20260522T100000-tick-aaa" root))
+            (_ (make-directory dir t))
+            (iv (plist-put (dl-satan-observer-test--intervention)
+                           :run_dir dir))
+            (motives (list (list :id "m" :cue (list "app:firefox"))))
+            (out (dl-satan-observer-classify-for-motives iv motives)))
+       (should (null (plist-get out :motive_id)))
+       (should (equal "none" (plist-get out :verdict)))
+       (should (eq :no_correlation (plist-get out :reason)))))))
+
+(ert-deftest dl-satan-observer/classify-for-motives-no-overlap-no-correlation ()
+  "Bundle present + percept handles + no motive overlaps → :no_correlation."
+  (dl-satan-observer-test--in-tmp
+   (lambda (root)
+     (let* ((dir (expand-file-name "20260522T100000-tick-aaa" root))
+            (_ (dl-satan-observer-test--write-bundle-with-handles
+                dir (list "app:slack")))
+            (iv (plist-put (dl-satan-observer-test--intervention)
+                           :run_dir dir))
+            (motives (list (list :id "m" :cue (list "app:firefox"))))
+            (out (dl-satan-observer-classify-for-motives iv motives)))
+       (should (eq :no_correlation (plist-get out :reason)))))))
+
+(ert-deftest dl-satan-observer/classify-for-motives-picks-best-and-classifies ()
+  "End-to-end — bundle has handles overlapping two motives at
+different counts.  Winner gets `:motive_id'; verdict propagates
+from `dl-satan-observer-classify' (positive via P2 here)."
+  (dl-satan-observer-test--in-tmp
+   (lambda (root)
+     (let* ((dir (expand-file-name "20260522T100000-tick-aaa" root))
+            (baseline-ev
+             (list :git_state (list :head_short "aaaaaaa" :remote "r")
+                   :fs_state (list :cwd "/x" :recent_files nil)
+                   :focus_segments nil :bough_recent nil))
+            (_ (dl-satan-observer-test--write-bundle
+                dir (list :percept
+                          (list :handles (list "app:firefox"
+                                               "domain_kind:docs"
+                                               "topic:satan")
+                                :evidence_window baseline-ev))))
+            (iv (plist-put (dl-satan-observer-test--intervention)
+                           :run_dir dir))
+            (motives
+             (list (list :id "weak" :cue (list "app:firefox"))
+                   (list :id "strong"
+                         :cue (list "app:firefox"
+                                    "domain_kind:docs"
+                                    "topic:satan")))))
+       (dl-satan-observer-test--with-stubbed-after-state
+           (list :git_state (list :head_short "bbbbbbb" :remote "r")
+                 :fs_state (list :cwd "/x" :recent_files nil)
+                 :focus_segments nil :bough_recent nil)
+         (let ((out (dl-satan-observer-classify-for-motives iv motives)))
+           (should (equal "strong" (plist-get out :motive_id)))
+           (should (equal "positive" (plist-get out :verdict)))
+           (should (eq :git_head_changed (plist-get out :predicate)))))))))
+
+(ert-deftest dl-satan-observer/classify-for-motives-tie-file-order ()
+  "Two motives equally overlap with the intervention's handles; file
+order wins.  Verdict still calls `classify' against the winner."
+  (dl-satan-observer-test--in-tmp
+   (lambda (root)
+     (let* ((dir (expand-file-name "20260522T100000-tick-aaa" root))
+            (_ (dl-satan-observer-test--write-bundle-with-handles
+                dir (list "app:firefox")))
+            (iv (plist-put (dl-satan-observer-test--intervention)
+                           :run_dir dir))
+            (motives (list (list :id "first"  :cue (list "app:firefox"))
+                           (list :id "second" :cue (list "app:firefox")))))
+       (dl-satan-observer-test--with-stubbed-after-state
+           ;; stable after-state — all four predicates inert
+           (list :git_state nil :fs_state nil
+                 :focus_segments nil :bough_recent nil)
+         (let ((out (dl-satan-observer-classify-for-motives iv motives)))
+           (should (equal "first" (plist-get out :motive_id)))
+           (should (equal "none" (plist-get out :verdict)))))))))
+
 (provide 'dl-satan-observer-test)
 ;;; dl-satan-observer-test.el ends here
