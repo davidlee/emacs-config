@@ -2,6 +2,74 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-22 — SATAN: perceptual-layer v0 Phase 5.4 (positive predicate)
+
+Observer gains the classification half — given a mature, undeduped
+intervention and a motive, return a verdict via four substrate-derived
+predicates (§S5).  Pure: no state writes (5.5 / 5.6 ship persistence).
+
+Cross-repo work landed first:
+- `~/dev/panopticon@9912e57` — `focus_segment` events now carry an
+  optional `last_title` field (the title observed at segment close).
+  Boundaries still collapse on `(app_id, workspace)`; window_title
+  events still don't split.  175/171 pytest, ruff clean.  Old
+  on-disk segments without the field are tolerated (P1 skips).
+- `core/dl-interface.el` — `frame-title-format` switches `%b` for
+  `(buffer-file-name)` when visiting a file, falling back to `%b`
+  otherwise.  Panopticon's sway watcher captures the title; the
+  observer parses the leading path back out.
+
+Four new private helpers in `dl-satan-observer.el`:
+- `--baseline-read RUN-DIR` reads RUN-DIR/`bundle.json` →
+  `:percept` → `:evidence_window`.  Nil on missing / malformed /
+  no-percept (budget-denied or pre_spawn-denied runs).
+- `--window-end-iso INTERVENTION` adds
+  `window-mature-seconds' (30 min) to `:intervention_emitted_at'.
+- `--window-crosses-midnight-p INTERVENTION` guards the §S5
+  watch-out — assemble-with-bounds derives `today = (substring END
+  0 10)' for the panopticon segment file lookup, so multi-day
+  windows would miss most of the after-state.
+- `--after-state INTERVENTION MOTIVE` calls
+  `dl-satan-memory-evidence-assemble-with-bounds' scoped to the
+  30-min window and the motive's `:project_cwd' (default-directory
+  when absent).
+
+Four predicate primitives, all pure, all signature
+`(BASELINE AFTER MOTIVE INTERVENTION)':
+- P1 `--predicate-editor-edit-in-window' — editor `focus_segment'
+  whose `:start_ts' is strictly after `:intervention_emitted_at'
+  and whose `:last_title' resolves under `:project_cwd'.  Skips
+  when `:project_cwd' absent or `:last_title' missing.  Title
+  suffix is a defcustom (`dl-satan-observer-emacs-title-suffix-re')
+  so users tweaking `frame-title-format' can keep parsing without
+  editing code.
+- P2 `--predicate-git-head-changed' — `:head_short' differs AND
+  `:remote' matches (same-repo identity check).  Different remote
+  means the probes saw different repos; comparison meaningless.
+- P3 `--predicate-fs-recent-delta' — new entry under
+  `:project_cwd' in AFTER's `:recent_files' absent from BASELINE's.
+  Compares absolute paths (`--abs-recent') so baseline/after cwd
+  mismatch is handled.  recentf semantics tracks visits not edits;
+  documented v0 looseness.
+- P4 `--predicate-bough-event-match' — AFTER's `:bough_recent'
+  carries an event whose `:nanoid' matches a `bough_node:' or
+  `bough_project:' handle in MOTIVE's `:cue'.  Fires regardless of
+  `:project_cwd' (handle-only correlation per §S5).
+
+Public surface: `dl-satan-observer-classify INTERVENTION MOTIVE'
+returns `(:verdict STR :predicate KW-or-nil :reason KW-or-nil)'.
+Guard order: dormant motive (A14) → midnight-crossing → missing
+baseline → P1/P2/P3/P4 in declaration order, first fire wins.
+Single-motive only; multi-motive overlap + file-order tiebreak
+lands in 5.7.
+
+Thirty-one new ert pin baseline-read variants, window arithmetic
+including midnight rollover, every predicate's fire + skip
+branches (including A12 no-coincidence invariants and silent
+skips on missing `:project_cwd' / `:last_title' / cue handles),
+and end-to-end classifier behaviour including a stubbed-after-state
+positive via P2.  362/362 ert.
+
 ## 2026-05-22 — SATAN: perceptual-layer v0 Phase 5.3 (window-mature + dedup)
 
 Observer gains the gating + persistence half it needs before the
