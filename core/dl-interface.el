@@ -15,6 +15,12 @@
   (inhibit-startup-message t)
   (inhibit-startup-echo-area-message t)
 
+  ;; Frame title carries the buffer's file path (when visiting one)
+  ;; so panopticon's sway segments get a path-scoped signal for the
+  ;; SATAN observer's positive predicate (perceptual-design §S5 P1).
+  (frame-title-format
+   '((:eval (or (buffer-file-name) "%b")) " - GNU Emacs at " system-name))
+
   (tooltip-use-echo-area t)
 
   (use-file-dialog nil)
