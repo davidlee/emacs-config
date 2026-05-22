@@ -278,7 +278,7 @@ class ProtocolFixtureTests(unittest.TestCase):
 
     def test_valid_fixtures_pass(self):
         for entry in protocol.load_fixtures():
-            if entry["kind"] != "valid":
+            if entry["kind"] != "valid" or entry["direction"] not in ("in", "out"):
                 continue
             with self.subTest(name=entry["name"]):
                 reason = protocol.check(entry["direction"], entry["message"])
@@ -286,12 +286,48 @@ class ProtocolFixtureTests(unittest.TestCase):
 
     def test_invalid_fixtures_fail_with_expected_reason(self):
         for entry in protocol.load_fixtures():
-            if entry["kind"] != "invalid":
+            if entry["kind"] != "invalid" or entry["direction"] not in ("in", "out"):
                 continue
             with self.subTest(name=entry["name"]):
                 reason = protocol.check(entry["direction"], entry["message"])
                 self.assertIsNotNone(reason, f"{entry['name']} unexpectedly passed")
                 self.assertEqual(reason, entry["reason"])
+
+    def test_valid_actions_fixtures_pass(self):
+        seen = 0
+        for entry in protocol.load_fixtures():
+            if entry["kind"] != "valid" or entry["direction"] != "actions":
+                continue
+            seen += 1
+            with self.subTest(name=entry["name"]):
+                reason = protocol.check_actions_json(entry["message"])
+                self.assertIsNone(reason)
+        self.assertGreater(seen, 0,
+                           "actions fixture suite is empty — fixtures.json regression?")
+
+    def test_invalid_actions_fixtures_fail_with_expected_reason(self):
+        seen = 0
+        for entry in protocol.load_fixtures():
+            if entry["kind"] != "invalid" or entry["direction"] != "actions":
+                continue
+            seen += 1
+            with self.subTest(name=entry["name"]):
+                reason = protocol.check_actions_json(entry["message"])
+                self.assertIsNotNone(reason, f"{entry['name']} unexpectedly passed")
+                self.assertEqual(reason, entry["reason"])
+        self.assertGreater(seen, 0,
+                           "invalid actions fixture suite is empty — fixtures.json regression?")
+
+    def test_validate_actions_json_raises_on_invalid(self):
+        with self.assertRaises(protocol.ProtocolError):
+            protocol.validate_actions_json({"applied": "nope",
+                                            "staged": [], "rejected": [], "failed": []})
+
+    def test_validate_actions_json_passes_with_pre_spawn(self):
+        protocol.validate_actions_json({
+            "applied": [], "staged": [], "rejected": [], "failed": [],
+            "pre_spawn": [{"kind": "sensor_alert"}],
+        })
 
     def test_validate_raises_on_invalid(self):
         with self.assertRaises(protocol.ProtocolError):

@@ -208,6 +208,74 @@
       "name": "ready-wrong-direction",
       "reason": "type ready not valid for direction out",
       "message": {"type": "ready", "run_id": "x"}
+    },
+
+    {
+      "kind": "valid",
+      "direction": "actions",
+      "name": "actions-empty-partitions",
+      "message": {"applied": [], "staged": [], "rejected": [], "failed": []}
+    },
+    {
+      "kind": "valid",
+      "direction": "actions",
+      "name": "actions-with-pre-spawn-sensor-alert",
+      "message": {
+        "applied": [], "staged": [], "rejected": [], "failed": [],
+        "pre_spawn": [{"kind": "sensor_alert",
+                       "cause": "panopticon_current_stale",
+                       "severity": "warning",
+                       "message": "panopticon current_window stale (28m).",
+                       "remediation": "systemctl --user status panopticon-sway",
+                       "suppressed": false,
+                       "dispatched_at": "2026-05-22T11:13Z"}]
+      }
+    },
+    {
+      "kind": "valid",
+      "direction": "actions",
+      "name": "actions-with-pre-spawn-unknown-kind",
+      "message": {
+        "applied": [], "staged": [], "rejected": [], "failed": [],
+        "pre_spawn": [{"kind": "future_thing_v2", "payload": "whatever"}]
+      }
+    },
+    {
+      "kind": "invalid",
+      "direction": "actions",
+      "name": "actions-pre-spawn-missing-kind",
+      "reason": "pre_spawn[0] missing kind",
+      "message": {
+        "applied": [], "staged": [], "rejected": [], "failed": [],
+        "pre_spawn": [{"cause": "no_kind"}]
+      }
+    },
+    {
+      "kind": "invalid",
+      "direction": "actions",
+      "name": "actions-pre-spawn-kind-not-string",
+      "reason": "pre_spawn[0] kind must be string",
+      "message": {
+        "applied": [], "staged": [], "rejected": [], "failed": [],
+        "pre_spawn": [{"kind": 7}]
+      }
+    },
+    {
+      "kind": "invalid",
+      "direction": "actions",
+      "name": "actions-pre-spawn-entry-not-object",
+      "reason": "pre_spawn[0] must be object",
+      "message": {
+        "applied": [], "staged": [], "rejected": [], "failed": [],
+        "pre_spawn": ["not-an-object"]
+      }
+    },
+    {
+      "kind": "invalid",
+      "direction": "actions",
+      "name": "actions-applied-not-array",
+      "reason": "applied must be array",
+      "message": {"applied": "nope", "staged": [], "rejected": [], "failed": []}
     }
   ]
 }

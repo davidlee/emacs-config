@@ -2126,19 +2126,27 @@ the actions.json shape — usable from fixtures without touching disk."
 (defun dl-satan-test--protocol-fixture-direction (entry)
   (intern (plist-get entry :direction)))
 
+(defun dl-satan-test--wire-fixture-p (entry)
+  "Non-nil when ENTRY is a wire-protocol fixture (direction in|out).
+Skips Phase-0.4 `actions' fixtures which are validated by
+`dl-satan-audit-validate-actions', not the wire protocol module."
+  (member (plist-get entry :direction) '("in" "out")))
+
 (ert-deftest dl-satan-protocol/fixtures-valid-pass ()
-  "Every fixture marked `valid' validates clean."
+  "Every wire fixture marked `valid' validates clean."
   (dolist (entry (dl-satan-protocol-fixtures))
-    (when (string= (plist-get entry :kind) "valid")
+    (when (and (string= (plist-get entry :kind) "valid")
+               (dl-satan-test--wire-fixture-p entry))
       (let* ((direction (dl-satan-test--protocol-fixture-direction entry))
              (msg (plist-get entry :message))
              (err (dl-satan-protocol-validate direction msg)))
         (should (null err))))))
 
 (ert-deftest dl-satan-protocol/fixtures-invalid-fail ()
-  "Every fixture marked `invalid' validates to a reason matching the fixture's reason."
+  "Every wire fixture marked `invalid' validates to a matching reason."
   (dolist (entry (dl-satan-protocol-fixtures))
-    (when (string= (plist-get entry :kind) "invalid")
+    (when (and (string= (plist-get entry :kind) "invalid")
+               (dl-satan-test--wire-fixture-p entry))
       (let* ((direction (dl-satan-test--protocol-fixture-direction entry))
              (msg (plist-get entry :message))
              (expected (plist-get entry :reason))
@@ -2148,6 +2156,37 @@ the actions.json shape — usable from fixtures without touching disk."
         (should
          (equal expected (plist-get err :reason)))
         (ignore name)))))
+
+(ert-deftest dl-satan-audit/fixtures-actions-valid-pass ()
+  "Every actions fixture marked `valid' passes `validate-actions'.
+Asserts the suite is non-empty so a fixture-file regression is loud."
+  (let ((seen 0))
+    (dolist (entry (dl-satan-protocol-fixtures))
+      (when (and (string= (plist-get entry :kind) "valid")
+                 (string= (plist-get entry :direction) "actions"))
+        (cl-incf seen)
+        (let* ((msg (plist-get entry :message))
+               (err (dl-satan-audit-validate-actions msg))
+               (name (plist-get entry :name)))
+          (should (null err))
+          (ignore name))))
+    (should (> seen 0))))
+
+(ert-deftest dl-satan-audit/fixtures-actions-invalid-fail ()
+  "Every actions fixture marked `invalid' fails with the fixture's reason."
+  (let ((seen 0))
+    (dolist (entry (dl-satan-protocol-fixtures))
+      (when (and (string= (plist-get entry :kind) "invalid")
+                 (string= (plist-get entry :direction) "actions"))
+        (cl-incf seen)
+        (let* ((msg (plist-get entry :message))
+               (expected (plist-get entry :reason))
+               (name (plist-get entry :name))
+               (err (dl-satan-audit-validate-actions msg)))
+          (should (stringp err))
+          (should (equal expected err))
+          (ignore name))))
+    (should (> seen 0))))
 
 (ert-deftest dl-satan-protocol/rejects-bad-direction ()
   (should-error (dl-satan-protocol-validate 'sideways

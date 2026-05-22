@@ -140,6 +140,55 @@ def validate(direction: str, obj: dict) -> None:
         raise ProtocolError(obj.get("type") if isinstance(obj, dict) else None, reason)
 
 
+# ----- actions.json shape (Phase 0.3 / 0.4) -----
+#
+# Mirror of `dl-satan-audit-validate-actions` on the elisp side. The four
+# model-action partition keys (`applied`, `staged`, `rejected`, `failed`)
+# are each arrays of objects; missing keys are treated as empty (audit-close
+# always writes them, but the validator stays lenient so fixtures can omit
+# defaults). Optional `pre_spawn` is an array of objects each carrying a
+# `kind` string discriminator. Unknown discriminant values are accepted
+# gracefully (forward compatibility); only malformed STRUCTURE is rejected.
+
+
+_ACTION_PARTITIONS = ("applied", "staged", "rejected", "failed")
+
+
+def _check_pre_spawn(val: Any) -> str | None:
+    if not isinstance(val, list):
+        return "pre_spawn must be array"
+    for i, entry in enumerate(val):
+        if not isinstance(entry, dict):
+            return f"pre_spawn[{i}] must be object"
+        if "kind" not in entry:
+            return f"pre_spawn[{i}] missing kind"
+        if not isinstance(entry["kind"], str):
+            return f"pre_spawn[{i}] kind must be string"
+    return None
+
+
+def check_actions_json(obj: Any) -> str | None:
+    """Return None on valid actions.json shape, else a reason string."""
+    if not isinstance(obj, dict):
+        return "actions must be object"
+    for key in _ACTION_PARTITIONS:
+        v = obj.get(key, [])
+        if not isinstance(v, list):
+            return f"{key} must be array"
+        for i, entry in enumerate(v):
+            if not isinstance(entry, dict):
+                return f"{key}[{i}] must be object"
+    if "pre_spawn" in obj:
+        return _check_pre_spawn(obj["pre_spawn"])
+    return None
+
+
+def validate_actions_json(obj: Any) -> None:
+    reason = check_actions_json(obj)
+    if reason is not None:
+        raise ProtocolError(None, reason)
+
+
 def fixtures_path() -> str:
     here = os.path.dirname(os.path.abspath(__file__))
     return os.path.normpath(os.path.join(here, "..", "protocol", "fixtures.json"))
