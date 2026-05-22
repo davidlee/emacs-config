@@ -1298,5 +1298,177 @@ order wins.  Verdict still calls `classify' against the winner."
            (should (equal "first" (plist-get out :motive_id)))
            (should (equal "none" (plist-get out :verdict)))))))))
 
+;; ---------------------------------------------------------------------
+;; Phase 5.8 — observer.process broker entry
+;; ---------------------------------------------------------------------
+
+(ert-deftest dl-satan-observer/process-empty-pending-yields-zero ()
+  "No pending interventions → processed 0, positive 0, no verdicts."
+  (dl-satan-observer-test--in-tmp
+   (lambda (root)
+     (dl-satan-observer-test--with-state-path spath
+       (dl-satan-motive-test--with-tmp-file
+        mpath dl-satan-motive-test--well-formed
+        (let ((out (dl-satan-observer-process
+                    (list :time_now "2026-05-22T10:00:00+1000")
+                    (list :motive-path mpath
+                          :state-path spath
+                          :runs-dir root))))
+          (should (= 0 (plist-get out :processed)))
+          (should (= 0 (plist-get out :positive)))
+          (should (null (plist-get out :verdicts)))))))))
+
+(ert-deftest dl-satan-observer/process-no-correlation-records-dedup-only ()
+  "Pending intervention exists but no motive overlaps — still dedups."
+  (dl-satan-observer-test--in-tmp
+   (lambda (root)
+     (dl-satan-observer-test--with-state-path spath
+       (let* ((run-id "20260522T080000-tick-aa")
+              (run-dir (dl-satan-observer-test--make-run
+                       root run-id
+                       (list (dl-satan-observer-test--applied-record
+                              "2026-05-22T08:00:00.000000+1000"
+                              "notify_send" '(:title "x")))))
+              ;; Bundle with handles that won't overlap any motive cue.
+              (_ (dl-satan-observer-test--write-bundle-with-handles
+                  run-dir (list "topic:nothing-matches")))
+              ;; A motive file with cue that doesn't overlap.
+              (mfile "")  ;; empty motive file → no motives
+              (now "2026-05-22T10:00:00+1000"))
+         (dl-satan-motive-test--with-tmp-file mpath mfile
+           (let ((out (dl-satan-observer-process
+                       (list :time_now now)
+                       (list :motive-path mpath
+                             :state-path spath
+                             :runs-dir root))))
+             (should (= 1 (plist-get out :processed)))
+             (should (= 0 (plist-get out :positive)))
+             (let ((v (car (plist-get out :verdicts))))
+               (should (null (plist-get v :motive_id)))
+               (should (equal "none" (plist-get v :verdict)))
+               (should (eq :no_correlation (plist-get v :reason))))
+             ;; Dedup written so next process is empty.
+             (let ((out2 (dl-satan-observer-process
+                          (list :time_now now)
+                          (list :motive-path mpath
+                                :state-path spath
+                                :runs-dir root))))
+               (should (= 0 (plist-get out2 :processed)))))))))))
+
+(ert-deftest dl-satan-observer/process-positive-bumps-motive-and-counts ()
+  "End-to-end through process: an intervention whose bundle handles
+overlap a motive's cue and whose git head changed yields a positive
+verdict; motive footer bumps via the rewriter."
+  (dl-satan-observer-test--in-tmp
+   (lambda (root)
+     (dl-satan-observer-test--with-state-path spath
+       (dl-satan-motive-test--with-tmp-file
+        mpath dl-satan-motive-test--well-formed
+        (let* ((run-id "20260522T080000-tick-cc")
+               (run-dir (dl-satan-observer-test--make-run
+                        root run-id
+                        (list (dl-satan-observer-test--applied-record
+                               "2026-05-22T08:00:00.000000+1000"
+                               "notify_send" '(:title "x")))))
+               ;; Bundle's percept handles overlap docs-after-error's
+               ;; :cue exactly.
+               (baseline-ev
+                (list :git_state (list :head_short "aaaaaaa" :remote "r")
+                      :fs_state (list :cwd "/x" :recent_files nil)
+                      :focus_segments nil :bough_recent nil))
+               (_ (dl-satan-observer-test--write-bundle
+                   run-dir
+                   (list :percept
+                         (list :handles
+                               (list "project:emacs.d"
+                                     "surface_transition:terminal->browser"
+                                     "domain_kind:docs")
+                               :evidence_window baseline-ev))))
+               (now "2026-05-22T10:00:00+1000"))
+          (dl-satan-observer-test--capture-mark captured
+            (dl-satan-observer-test--with-stubbed-after-state
+                (list :git_state (list :head_short "bbbbbbb" :remote "r")
+                      :fs_state (list :cwd "/x" :recent_files nil)
+                      :focus_segments nil :bough_recent nil)
+              (let ((out (dl-satan-observer-process
+                          (list :time_now now)
+                          (list :motive-path mpath
+                                :state-path spath
+                                :runs-dir root
+                                :memory-mark-fn mark-fn))))
+                (should (= 1 (plist-get out :processed)))
+                (should (= 1 (plist-get out :positive)))
+                (let ((v (car (plist-get out :verdicts))))
+                  (should (equal "docs-after-error"
+                                 (plist-get v :motive_id)))
+                  (should (equal "positive" (plist-get v :verdict)))
+                  (should (eq :git_head_changed
+                              (plist-get v :predicate))))
+                ;; Trace was written.
+                (should (= 1 (length captured)))
+                ;; Motive footer bumped from 0 → 1.
+                (let* ((parsed (dl-satan-motive-parse
+                                (dl-satan-motive-test--read mpath)))
+                       (target (cl-find "docs-after-error"
+                                        (plist-get parsed :motives)
+                                        :key (lambda (m) (plist-get m :id))
+                                        :test #'equal)))
+                  (should (= 1 (plist-get target :worked_count)))))))))))))
+
+(ert-deftest dl-satan-observer/process-error-on-one-iv-does-not-abort ()
+  "If one intervention's persist signals, the loop captures the
+error and continues with the next."
+  (dl-satan-observer-test--in-tmp
+   (lambda (root)
+     (dl-satan-observer-test--with-state-path spath
+       (dl-satan-motive-test--with-tmp-file
+        mpath dl-satan-motive-test--well-formed
+        ;; Two interventions, both mature, both with bundles.
+        (let* ((rid1 "20260522T080000-tick-dd1")
+               (rid2 "20260522T080100-tick-dd2")
+               (d1 (dl-satan-observer-test--make-run
+                    root rid1
+                    (list (dl-satan-observer-test--applied-record
+                           "2026-05-22T08:00:00.000000+1000"
+                           "notify_send" '(:title "x")))))
+               (d2 (dl-satan-observer-test--make-run
+                    root rid2
+                    (list (dl-satan-observer-test--applied-record
+                           "2026-05-22T08:01:00.000000+1000"
+                           "notify_send" '(:title "y")))))
+               (_ (dl-satan-observer-test--write-bundle-with-handles
+                   d1 (list "project:emacs.d"
+                            "surface_transition:terminal->browser"
+                            "domain_kind:docs")))
+               (_ (dl-satan-observer-test--write-bundle-with-handles
+                   d2 (list "project:emacs.d"
+                            "surface_transition:terminal->browser"
+                            "domain_kind:docs")))
+               (call-count 0)
+               (failing-touch
+                (lambda (&rest _args)
+                  (setq call-count (1+ call-count))
+                  (if (= call-count 1)
+                      (error "synthetic touch failure")
+                    t)))
+               (mark-fn (lambda (&rest _args) (cons 'ok "tid"))))
+          (dl-satan-observer-test--with-stubbed-after-state
+              (list :git_state (list :head_short "bbbbbbb" :remote "r")
+                    :fs_state (list :cwd "/x" :recent_files nil)
+                    :focus_segments nil :bough_recent nil)
+            (let ((out (dl-satan-observer-process
+                        (list :time_now "2026-05-22T10:00:00+1000")
+                        (list :motive-path mpath
+                              :state-path spath
+                              :runs-dir root
+                              :touch-footer-fn failing-touch
+                              :memory-mark-fn mark-fn))))
+              (should (= 2 (plist-get out :processed)))
+              ;; First IV errored, second proceeded.
+              (let ((errors (cl-remove-if-not
+                             (lambda (v) (plist-get v :error))
+                             (plist-get out :verdicts))))
+                (should (= 1 (length errors))))))))))))
+
 (provide 'dl-satan-observer-test)
 ;;; dl-satan-observer-test.el ends here

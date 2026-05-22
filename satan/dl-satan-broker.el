@@ -25,6 +25,7 @@
 (require 'dl-satan-percept)
 (require 'dl-satan-resonance)
 (require 'dl-satan-motive)
+(require 'dl-satan-observer)
 (require 'dl-satan-sensor-alerts)
 
 (defcustom dl-satan-runs-dir
@@ -74,7 +75,7 @@ Falls back to `getenv' if `my/op-read-env' is unavailable."
   ;; Phase 0.1: the run_ctx plist built by `dl-satan-broker--prepare'.
   ;; Carries the frozen `:time_now', `:run_id', `:start_time' and v0
   ;; placeholder slots (`:evidence' `:percept' `:sensor_status'
-  ;; `:pre_spawn' `:motive') that later phases populate.
+  ;; `:pre_spawn' `:motive' `:observer') that later phases populate.
   prepare)
 
 (declare-function envrc--export "envrc" (env-dir))
@@ -119,8 +120,9 @@ returns no vars, BASE-ENV is returned unchanged.  Direnv errors signal."
 The plist is the single source of truth for the run's identity and
 the frozen `time_now' that the percept builder, observer, and tool
 handlers all read.  Phase-1+ slots (`:evidence' `:percept'
-`:sensor_status' `:pre_spawn' `:motive') are present-with-nil so later
-phases can `plist-put' without keyword-arg ordering surprises."
+`:sensor_status' `:pre_spawn' `:motive' `:observer') are present-with-
+nil so later phases can `plist-put' without keyword-arg ordering
+surprises."
   (let* ((name (plist-get mode :name))
          (start (current-time))
          (run-id (dl-satan-broker--mint-run-id name start))
@@ -133,7 +135,8 @@ phases can `plist-put' without keyword-arg ordering surprises."
           :percept nil
           :sensor_status nil
           :pre_spawn nil
-          :motive nil)))
+          :motive nil
+          :observer nil)))
 
 (defconst dl-satan-broker--failed-suffix ".FAILED"
   "Suffix appended to a run directory when its status is not `done'.
@@ -403,10 +406,13 @@ audit every denied dispatch in a structure consumers can grep."
         (dl-satan-audit-record (dl-satan-run-audit run-ctx) 'broker 'action-failed a)))
     (let* ((prepare (dl-satan-run-prepare run-ctx))
            (pre-spawn (and prepare (plist-get prepare :pre_spawn)))
+           (observer (and prepare (plist-get prepare :observer)))
            (actions (or partition
                         (list :applied [] :staged [] :rejected [] :failed []))))
       (when pre-spawn
         (setq actions (plist-put actions :pre_spawn pre-spawn)))
+      (when observer
+        (setq actions (plist-put actions :observer observer)))
       (dl-satan-audit-close
        (dl-satan-run-audit run-ctx) final actions status))
     (dl-satan-broker--mark-failed-on-disk run-ctx)))
@@ -659,7 +665,18 @@ Returns the run-id."
     ;; attaches to PREPARE :motive.  Missing file is a valid state —
     ;; `dl-satan-motive-read' returns an empty parse and the capsule
     ;; renderer self-suppresses the block (§S3 silent omission).
-    (let* ((percept (dl-satan-percept-build prepare mode))
+    ;;
+    ;; Phase 5.8 — observer.process runs BEFORE the motive read so the
+    ;; in-tick motive snapshot sees freshly-incremented `:worked_count'
+    ;; and updated `:last_intervention_at' from prior-run interventions
+    ;; whose 30-minute attribution window has matured.  Errors are
+    ;; caught so a stale bundle / postgres outage cannot fail the
+    ;; tick — the run proceeds without an observer pass when it does.
+    (let* ((observer (condition-case _err
+                         (dl-satan-observer-process prepare)
+                       (error nil)))
+           (prepare (plist-put prepare :observer observer))
+           (percept (dl-satan-percept-build prepare mode))
            (_persisted (dl-satan-percept-persist dir percept))
            (resonance (dl-satan-resonance-derive percept))
            (motive (dl-satan-motive-read dl-satan-motive-file))

@@ -707,6 +707,87 @@ Returns plist:
           :trace_result (and result (plist-get result :trace_result))
           :new_worked_count (and result (plist-get result :new_worked_count)))))
 
+;; ---------------------------------------------------------------------
+;; Broker entry (Phase 5.8) — observer.process(run_ctx)
+;; ---------------------------------------------------------------------
+
+(defun dl-satan-observer--lookup-motive (motive-id motives)
+  "Return the motive plist with id MOTIVE-ID from MOTIVES, or nil."
+  (and motive-id
+       (cl-find motive-id motives
+                :key (lambda (m) (plist-get m :id))
+                :test #'equal)))
+
+(defun dl-satan-observer-process (run-ctx &optional opts)
+  "Phase 5.8 — classify + persist every pending intervention.
+RUN-CTX is the broker prepare plist; `:time_now' supplies NOW.
+
+Sequence:
+  1. Read motive file (default `dl-satan-motive-file').
+  2. Get pending interventions (5.3) — past maturity gate, not yet
+     in dedup state.
+  3. For each pending intervention, run
+     `dl-satan-observer-classify-for-motives' (5.7) then
+     `dl-satan-observer-persist-verdict' (5.6).
+
+Errors during a single intervention's persist are caught and
+captured into that entry's `:error' slot; the loop continues so
+one bad bundle (or postgres outage) does not block the rest of
+the tick.
+
+OPTS forwards to the lower-level helpers (used in tests):
+  :motive-path        override `dl-satan-motive-file'
+  :state-path         override `dl-satan-observer-state-file'
+  :runs-dir           override `dl-satan-runs-dir'
+  :motive-fn          stub `dl-satan-motive-read'
+  :memory-mark-fn     stub `dl-satan-memory-store-mark'
+  :touch-footer-fn    stub `dl-satan-motive-touch-footer'
+
+Returns a summary plist for audit visibility:
+  (:processed N
+   :positive  N
+   :verdicts  LIST-OF (:run_id :applied_index :motive_id :verdict
+                       :predicate :reason :error-or-nil))"
+  (let* ((opts (or opts '()))
+         (now (or (plist-get run-ctx :time_now)
+                  (format-time-string "%Y-%m-%dT%T%:z")))
+         (motive-path (or (plist-get opts :motive-path)
+                          dl-satan-motive-file))
+         (state-path (plist-get opts :state-path))
+         (runs-dir (plist-get opts :runs-dir))
+         (motive-fn (or (plist-get opts :motive-fn)
+                        #'dl-satan-motive-read))
+         (parsed (funcall motive-fn motive-path))
+         (motives (plist-get parsed :motives))
+         (pending (condition-case _err
+                      (dl-satan-observer-pending now runs-dir state-path)
+                    (error nil)))
+         (verdicts nil)
+         (positive 0))
+    (dolist (iv pending)
+      (condition-case err
+          (let* ((verdict (dl-satan-observer-classify-for-motives iv motives))
+                 (motive (dl-satan-observer--lookup-motive
+                          (plist-get verdict :motive_id) motives)))
+            (dl-satan-observer-persist-verdict iv motive verdict now opts)
+            (when (equal "positive" (plist-get verdict :verdict))
+              (setq positive (1+ positive)))
+            (push (list :run_id (plist-get iv :run_id)
+                        :applied_index (plist-get iv :applied_index)
+                        :motive_id (plist-get verdict :motive_id)
+                        :verdict (plist-get verdict :verdict)
+                        :predicate (plist-get verdict :predicate)
+                        :reason (plist-get verdict :reason))
+                  verdicts))
+        (error
+         (push (list :run_id (plist-get iv :run_id)
+                     :applied_index (plist-get iv :applied_index)
+                     :error (error-message-string err))
+               verdicts))))
+    (list :processed (length pending)
+          :positive positive
+          :verdicts (nreverse verdicts))))
+
 (defun dl-satan-observer-scan-prior-interventions (now &optional runs-dir)
   "Return a flat list of intervention plists drawn from prior runs.
 Walks every run under RUNS-DIR (default `dl-satan-runs-dir') whose

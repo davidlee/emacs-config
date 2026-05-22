@@ -76,11 +76,15 @@ DIR ∈ in|out|broker.  EVENT is a symbol.  PAYLOAD is a plist/list/string."
 (defun dl-satan-audit-close (handle final actions status)
   "Finalize the run.
 FINAL is a plist (or nil).  ACTIONS is a plist with the four model-action
-partition keys (:applied :staged :rejected :failed) and an OPTIONAL
-:pre_spawn key (Phase 0.3) for entries the broker emitted before the
-model had a turn (e.g. sensor alerts).  STATUS is a symbol."
+partition keys (:applied :staged :rejected :failed) and OPTIONAL
+keys for broker-emitted pre-spawn material:
+  :pre_spawn  Phase 0.3 — sensor-alert dispatches and suppressions.
+  :observer   Phase 5.8 — outcome observer summary (per-tick
+              classification of prior-run interventions).
+STATUS is a symbol."
   (let ((dir (dl-satan-audit-handle-dir handle))
-        (pre-spawn (plist-get actions :pre_spawn)))
+        (pre-spawn (plist-get actions :pre_spawn))
+        (observer  (plist-get actions :observer)))
     (dl-satan-audit--write-json
      (expand-file-name "final.json" dir)
      (or final (list :status "invalid")))
@@ -91,7 +95,8 @@ model had a turn (e.g. sensor alerts).  STATUS is a symbol."
             :staged   (or (plist-get actions :staged)   [])
             :rejected (or (plist-get actions :rejected) [])
             :failed   (or (plist-get actions :failed)   []))
-      (when pre-spawn (list :pre_spawn pre-spawn))))
+      (when pre-spawn (list :pre_spawn pre-spawn))
+      (when observer  (list :observer  observer))))
     (let ((coding-system-for-write 'utf-8))
       (write-region (concat (symbol-name status) "\n") nil
                     (expand-file-name "status" dir) nil 'silent))))
