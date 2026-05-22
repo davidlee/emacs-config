@@ -409,7 +409,9 @@ Returns a fresh list; original NODES is not modified."
 (defun dl-satan-memory-evidence--truncate (ev target hard-cap)
   "Apply deterministic truncation passes until EV fits TARGET (best
 effort) or HARD-CAP (mandatory).  Returns EV with :truncated_at set
-to a list of pass names that fired, or nil if none did."
+to a list of pass-name strings that fired, or nil if none did.  Names
+are strings (not symbols) so the result survives `json-serialize'
+when carried into `percept.json' / `bundle.json' / tool results."
   (let ((dropped nil)
         (cur ev))
     ;; Pass 1: drop bough_day body, keep linked-items only.
@@ -421,7 +423,7 @@ to a list of pass names that fired, or nil if none did."
                   (plist-put cur :bough_day
                              (list :linked (or linked '())
                                    :body_dropped t)))
-            (push 'bough_day_bodies dropped)))))
+            (push "bough_day_bodies" dropped)))))
     ;; Pass 2: middle-drop browser segments.
     (when (> (dl-satan-memory-evidence--encode-bytes cur) target)
       (let ((segs (plist-get cur :browser_segments)))
@@ -429,7 +431,7 @@ to a list of pass names that fired, or nil if none did."
           (setq cur (plist-put cur :browser_segments
                                (dl-satan-memory-evidence--truncate-segments-middle
                                 segs)))
-          (push 'browser_segments_middle dropped))))
+          (push "browser_segments_middle" dropped))))
     ;; Pass 3: middle-drop focus segments.
     (when (> (dl-satan-memory-evidence--encode-bytes cur) target)
       (let ((segs (plist-get cur :focus_segments)))
@@ -437,7 +439,7 @@ to a list of pass names that fired, or nil if none did."
           (setq cur (plist-put cur :focus_segments
                                (dl-satan-memory-evidence--truncate-segments-middle
                                 segs)))
-          (push 'focus_segments_middle dropped))))
+          (push "focus_segments_middle" dropped))))
     ;; Pass 4: shrink long bough_active annotations.
     (when (> (dl-satan-memory-evidence--encode-bytes cur) target)
       (let ((act (plist-get cur :bough_active)))
@@ -445,11 +447,11 @@ to a list of pass names that fired, or nil if none did."
           (setq cur (plist-put cur :bough_active
                                (dl-satan-memory-evidence--shrink-annotations
                                 act 256)))
-          (push 'bough_active_annotation_bodies dropped))))
+          (push "bough_active_annotation_bodies" dropped))))
     ;; Pass 5 (hard cap): drop bough_recent entirely.
     (when (> (dl-satan-memory-evidence--encode-bytes cur) hard-cap)
       (setq cur (plist-put cur :bough_recent nil))
-      (push 'bough_recent dropped))
+      (push "bough_recent" dropped))
     (when dropped
       (setq cur (plist-put cur :truncated_at (nreverse dropped))))
     cur))

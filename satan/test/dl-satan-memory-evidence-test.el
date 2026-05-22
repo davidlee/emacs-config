@@ -179,7 +179,7 @@ status_changed rows first (the canon-relevant ones)."
                    :bough_day (list :linked (list (list :nanoid "n1"))
                                     :body big)))
          (out (dl-satan-memory-evidence--truncate ev 1024 65536)))
-    (should (member 'bough_day_bodies (plist-get out :truncated_at)))
+    (should (member "bough_day_bodies" (plist-get out :truncated_at)))
     (should (plist-get (plist-get out :bough_day) :body_dropped))
     (should (equal (plist-get (plist-get out :bough_day) :linked)
                    (list (list :nanoid "n1"))))))
@@ -192,7 +192,7 @@ status_changed rows first (the canon-relevant ones)."
                                              (make-list 200 "x")))))
          (ev (list :browser_segments segs))
          (out (dl-satan-memory-evidence--truncate ev 256 65536)))
-    (should (member 'browser_segments_middle (plist-get out :truncated_at)))
+    (should (member "browser_segments_middle" (plist-get out :truncated_at)))
     (let* ((kept (plist-get out :browser_segments))
            (sentinel (cl-find-if (lambda (s) (plist-get s :truncated)) kept)))
       (should sentinel)
@@ -205,7 +205,7 @@ status_changed rows first (the canon-relevant ones)."
                    (list (list :nanoid "n1" :annotation huge-ann))))
          (out (dl-satan-memory-evidence--truncate ev 256 65536))
          (n1  (car (plist-get out :bough_active))))
-    (should (member 'bough_active_annotation_bodies
+    (should (member "bough_active_annotation_bodies"
                     (plist-get out :truncated_at)))
     (should (<= (length (plist-get n1 :annotation)) 260))
     (should (= 500 (plist-get n1 :annotation_len_original)))))
@@ -214,8 +214,22 @@ status_changed rows first (the canon-relevant ones)."
   (let* ((huge (apply #'concat (make-list 200000 "x")))
          (ev (list :bough_recent (list (list :nanoid "n1" :note huge))))
          (out (dl-satan-memory-evidence--truncate ev 4096 8192)))
-    (should (member 'bough_recent (plist-get out :truncated_at)))
+    (should (member "bough_recent" (plist-get out :truncated_at)))
     (should (null (plist-get out :bough_recent)))))
+
+(ert-deftest dl-satan-memory-evidence/truncate-output-json-serializes ()
+  "`:truncated_at' entries must survive `json-serialize'.  Symbols
+fail `json-value-p' once `dl-satan-audit--write-json' (percept.json,
+bundle.json) or `dl-satan-jsonl-send' (tool results) carries the
+truncated evidence."
+  (require 'dl-satan-jsonl)
+  (let* ((huge-ann (apply #'concat (make-list 500 "y")))
+         (ev (list :bough_active
+                   (list (list :nanoid "n1" :annotation huge-ann))))
+         (out (dl-satan-memory-evidence--truncate ev 256 65536)))
+    (should (stringp (json-serialize (dl-satan-jsonl-prepare out)
+                                     :null-object :null
+                                     :false-object :false)))))
 
 ;; ---------------------------------------------------------------------
 ;; Assemble (impure; tmp fixtures + non-existent bough binary)

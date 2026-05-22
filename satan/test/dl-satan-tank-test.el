@@ -86,7 +86,7 @@
              (:status "todo" :title "renormalize cli" :nanoid "def67890"))
             :git_state (:head_short "4bd198f6" :dirty t)
             :fs_state (:cwd "/home/david/.emacs.d")
-            :truncated_at (focus_segments_middle)))
+            :truncated_at ("focus_segments_middle")))
          (out (dl-satan-tank--render-evidence state)))
     (should (string-match-p "firefox" out))
     (should (string-match-p "ws=09" out))
