@@ -2,6 +2,19 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-22 — SATAN: perceptual-layer v0 Phase 5.0 (motive `:project_cwd:`)
+
+Schema bump on `motives.org` footer ahead of the Phase 5 outcome
+observer.  `dl-satan-motive-parse` now recognises an optional
+`:project_cwd:` field, expands `~/` at parse, and exposes the
+absolute path as `:project_cwd` on the motive plist.  Empty values
+normalise to nil.  The capsule renderer is unchanged — the field
+is observer-only metadata, never surfaced to the model.  Existing
+motives without the field continue to parse cleanly and remain
+correlatable; only the path-scoped sub-predicates of the
+forthcoming observer (file edits + git ref in the motive's cwd)
+will skip for them.  Five new ert (303/303 green).
+
 ## 2026-05-22 — SATAN: perceptual-layer v0 Phase 4 (sensor alerts)
 
 Closes §S6 of the perceptual design.  Every run's evidence assembler

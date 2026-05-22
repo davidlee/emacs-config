@@ -21,6 +21,13 @@
 ;;   :cooldown_s:            integer seconds.
 ;;   :worked_count:          integer; informational only (A9).
 ;;   :last_intervention_at:  ISO8601.
+;;   :project_cwd:           absolute path (or `~/...').  Optional;
+;;                           consumed by the Phase-5 observer to scope
+;;                           its positive-signal predicate.  Absent ->
+;;                           motive remains correlatable by handle
+;;                           overlap, but path-scoped sub-predicates
+;;                           (file edits, git ref) do not fire for it.
+;;                           Capsule renderer omits this field.
 ;;
 ;; `:ceiling:' is NOT a v0 field — the parser flags it and the
 ;; write-side guard rejects it (A8).
@@ -172,6 +179,7 @@ HEADING is the org heading (without leading `* '); LINES is the body."
         (cue nil) (cue-raw nil)
         (cooldown nil) (worked 0)
         (last-at nil)
+        (project-cwd nil)
         (ceiling-flagged nil)
         (in-footer nil))
     (dolist (raw-line lines)
@@ -190,6 +198,13 @@ HEADING is the org heading (without leading `* '); LINES is the body."
             ("last_intervention_at"
              (setq last-at (and (not (string-empty-p (cdr field)))
                                 (cdr field))))
+            ("project_cwd"
+             ;; Phase 5.0 — observer scopes its positive predicate to
+             ;; files under this cwd.  Expanded at parse so callers see
+             ;; an absolute path; empty values normalise to nil.
+             (setq project-cwd
+                   (and (not (string-empty-p (cdr field)))
+                        (expand-file-name (cdr field)))))
             ((pred (equal dl-satan-motive--ceiling-field))
              (setq ceiling-flagged t))))
          ((not in-footer)
@@ -213,6 +228,7 @@ HEADING is the org heading (without leading `* '); LINES is the body."
             :cooldown_s cooldown
             :worked_count worked
             :last_intervention_at last-at
+            :project_cwd project-cwd
             :dormant dormant
             :dormant_reason dormant-reason
             :ceiling_field ceiling-flagged))))

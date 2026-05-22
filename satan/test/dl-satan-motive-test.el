@@ -63,6 +63,18 @@
 "
   "Fixture: well-formed handles but none in the admit set.")
 
+(defconst dl-satan-motive-test--with-project-cwd
+  "* test: emacs-config-work
+  Active editing of the emacs config.
+  :cue: project:emacs.d app:emacs
+  :cooldown_s: 1800
+  :project_cwd: ~/.emacs.d
+"
+  "Fixture: well-formed motive carrying the Phase-5 `:project_cwd:'
+footer field.  The observer needs an absolute cwd to scope its
+positive-signal predicate; declaring it in the footer avoids any
+reverse-lookup from the canonical `project:slug' handle.")
+
 (defconst dl-satan-motive-test--four-actives
   "* test: a
   :cue: app:firefox
@@ -163,6 +175,64 @@ handle the motive triggers on every tick — defeats cooldown."
          (_ (delete-file tmp))
          (parsed (dl-satan-motive-read tmp)))
     (should (null (plist-get parsed :motives)))))
+
+;; ---------------------------------------------------------------------
+;; Phase 5.0 — :project_cwd: footer field
+;; ---------------------------------------------------------------------
+
+(ert-deftest dl-satan-motive/parse-extracts-project-cwd ()
+  "Phase 5.0 — `:project_cwd:' is parsed onto the motive plist as an
+absolute path.  The observer's positive-signal predicate (§S5) uses
+it to scope edit-detection to files under the motive's project; the
+predicate cannot fire path-scoped sub-predicates without it."
+  (let* ((parsed (dl-satan-motive-parse
+                  dl-satan-motive-test--with-project-cwd))
+         (m (car (plist-get parsed :motives))))
+    (should (equal (expand-file-name "~/.emacs.d")
+                   (plist-get m :project_cwd)))
+    (should-not (plist-get m :dormant))))
+
+(ert-deftest dl-satan-motive/parse-absent-project-cwd-is-nil ()
+  "Motives that don't declare `:project_cwd:' parse with the slot
+explicitly nil.  Such motives are still correlatable by handle
+overlap; only the path-scoped sub-predicates (edits + git in the
+motive's cwd) are skipped for them."
+  (let* ((parsed (dl-satan-motive-parse
+                  dl-satan-motive-test--well-formed))
+         (m (car (plist-get parsed :motives))))
+    (should (null (plist-get m :project_cwd)))))
+
+(ert-deftest dl-satan-motive/parse-empty-project-cwd-is-nil ()
+  "An empty `:project_cwd:' value is treated as absent (mirrors the
+existing handling of `:last_intervention_at:').  Prevents an empty
+string from being passed to file-name predicates as `/'."
+  (let* ((text "* test: x\n  :cue: app:firefox\n  :cooldown_s: 1800\n  :project_cwd: \n")
+         (m (car (plist-get (dl-satan-motive-parse text) :motives))))
+    (should (null (plist-get m :project_cwd)))))
+
+(ert-deftest dl-satan-motive/write-accepts-project-cwd ()
+  "Phase 5.0 — the write-side guard accepts the new field."
+  (should (null (dl-satan-motive-validate-for-write
+                 dl-satan-motive-test--with-project-cwd))))
+
+(ert-deftest dl-satan-motive/render-block-omits-project-cwd ()
+  "`:project_cwd:' is observer-only metadata — capsule renderer does
+not surface it to the model (avoids leaking host paths into prompts
+and keeps the cooldown_s/worked_count line stable)."
+  (let* ((framing '(("motive_block_header" . "# Motive")))
+         (block (dl-satan-motive-render-block
+                 framing
+                 (dl-satan-motive-parse
+                  dl-satan-motive-test--with-project-cwd))))
+    (should block)
+    (should-not (cl-some (lambda (l)
+                           (string-match-p "project_cwd" l))
+                         block))
+    (should-not (cl-some (lambda (l)
+                           (string-match-p (regexp-quote
+                                            (expand-file-name "~/.emacs.d"))
+                                           l))
+                         block))))
 
 ;; ---------------------------------------------------------------------
 ;; A9 — worked_count is informational
