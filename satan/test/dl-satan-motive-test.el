@@ -327,6 +327,91 @@ but capsule-invisible."
     (should (null (dl-satan-motive-render-block framing parsed)))))
 
 ;; ---------------------------------------------------------------------
+;; Render — cooldown floor (Phase 6, §S4)
+;; ---------------------------------------------------------------------
+
+(defconst dl-satan-motive-test--cooldown-fixture
+  "* test: docs-after-error
+  Docs after terminal error often substitute orientation for contact.
+  :cue: project:emacs.d surface_transition:terminal->browser domain_kind:docs
+  :cooldown_s: 1800
+  :worked_count: 0
+  :last_intervention_at: 2026-05-23T10:00:00+1000
+"
+  "Single-motive fixture with `:cooldown_s: 1800' and a fixed
+`:last_intervention_at:'.  Tests vary NOW relative to this baseline.")
+
+(ert-deftest dl-satan-motive/render-block-cooling-down-annotates-header ()
+  "§S4 — within cooldown, the motive's `## id' header gains a
+`[cooling-down (Nm remaining)]' tag while prose / cue / footer stay
+intact.  Baseline last_intervention_at + 12m → 18m remaining of 30m."
+  (let* ((framing '(("motive_block_header" . "# Motive")))
+         (parsed (dl-satan-motive-parse dl-satan-motive-test--cooldown-fixture))
+         (now    "2026-05-23T10:12:00+1000")
+         (block  (dl-satan-motive-render-block framing parsed now)))
+    (should (cl-some (lambda (l)
+                       (string-match-p
+                        "^## docs-after-error  \\[cooling-down (18m remaining)\\]$"
+                        l))
+                     block))
+    (should (member
+             "  cue: project:emacs.d surface_transition:terminal->browser domain_kind:docs"
+             block))
+    (should (cl-some (lambda (l)
+                       (string-match-p
+                        "^  cooldown_s: 1800  worked_count: 0  last_intervention_at: 2026-05-23T10:00:00\\+1000$"
+                        l))
+                     block))))
+
+(ert-deftest dl-satan-motive/render-block-cooldown-elapsed-renders-actionable ()
+  "§S4 — once `(now - last_intervention_at) >= cooldown_s', the motive
+renders actionable (no annotation, bare `## id' header)."
+  (let* ((framing '(("motive_block_header" . "# Motive")))
+         (parsed (dl-satan-motive-parse dl-satan-motive-test--cooldown-fixture))
+         (now    "2026-05-23T10:31:00+1000")
+         (block  (dl-satan-motive-render-block framing parsed now)))
+    (should (member "## docs-after-error" block))
+    (should-not (cl-some (lambda (l)
+                           (string-match-p "cooling-down" l))
+                         block))))
+
+(ert-deftest dl-satan-motive/render-block-no-last-intervention-renders-actionable ()
+  "A motive that has never fired has no floor to enforce — even with
+NOW supplied, the header is bare."
+  (let* ((framing '(("motive_block_header" . "# Motive")))
+         (text   "* test: never-fired
+  Has not yet correlated to any intervention.
+  :cue: project:emacs.d surface_transition:terminal->browser
+  :cooldown_s: 1800
+  :worked_count: 0
+")
+         (parsed (dl-satan-motive-parse text))
+         (now    "2026-05-23T10:12:00+1000")
+         (block  (dl-satan-motive-render-block framing parsed now)))
+    (should (member "## never-fired" block))
+    (should-not (cl-some (lambda (l)
+                           (string-match-p "cooling-down" l))
+                         block))))
+
+(ert-deftest dl-satan-motive/render-block-no-cooldown-renders-actionable ()
+  "Without `:cooldown_s:' the floor is unconfigured — the motive
+remains actionable regardless of NOW or `:last_intervention_at:'."
+  (let* ((framing '(("motive_block_header" . "# Motive")))
+         (text   "* test: floor-less
+  Author has not declared a cooldown.
+  :cue: project:emacs.d surface_transition:terminal->browser
+  :worked_count: 0
+  :last_intervention_at: 2026-05-23T10:00:00+1000
+")
+         (parsed (dl-satan-motive-parse text))
+         (now    "2026-05-23T10:12:00+1000")
+         (block  (dl-satan-motive-render-block framing parsed now)))
+    (should (member "## floor-less" block))
+    (should-not (cl-some (lambda (l)
+                           (string-match-p "cooling-down" l))
+                         block))))
+
+;; ---------------------------------------------------------------------
 ;; A7 — write-side bounds
 ;; ---------------------------------------------------------------------
 

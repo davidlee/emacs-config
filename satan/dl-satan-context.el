@@ -316,7 +316,9 @@ when its source is empty/absent (A4, A6, A8, A15)."
                         (dl-satan-resonance-render-block
                          framing (plist-get bundle :resonance))
                         (dl-satan-motive-render-block
-                         framing (plist-get bundle :motive))
+                         framing
+                         (plist-get bundle :motive)
+                         (plist-get bundle :time_now))
                         (dl-satan-sensor-render-block
                          framing (plist-get bundle :sensor_status))
                         (dl-satan-context--render-today

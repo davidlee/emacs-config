@@ -313,27 +313,68 @@ never hardcodes the header (governance §Mind/mechanism).")
   (cl-remove-if (lambda (m) (plist-get m :dormant))
                 (plist-get parsed :motives)))
 
-(defun dl-satan-motive-render-block (framing parsed)
+(defun dl-satan-motive--cooling-down-remaining (motive now-t)
+  "Return remaining cooldown seconds (positive number) when MOTIVE's
+floor has not yet elapsed at NOW-T, else nil.
+
+NOW-T is an emacs time value.  Returns nil when MOTIVE lacks a positive
+`:cooldown_s', lacks `:last_intervention_at', the timestamp fails to
+parse, or the window has already elapsed (motive is actionable)."
+  (let ((cooldown (plist-get motive :cooldown_s))
+        (last-at  (plist-get motive :last_intervention_at)))
+    (when (and (integerp cooldown)
+               (> cooldown 0)
+               (stringp last-at)
+               (not (string-empty-p last-at)))
+      (let ((last-t (condition-case _ (date-to-time last-at) (error nil))))
+        (when last-t
+          (let ((remaining (- cooldown
+                              (float-time (time-subtract now-t last-t)))))
+            (when (> remaining 0) remaining)))))))
+
+(defun dl-satan-motive--coerce-time (now)
+  "Coerce NOW (nil / ISO string / emacs time value) to an emacs time
+value or nil.  Malformed ISO strings yield nil (caller treats as
+\"no cooldown check\")."
+  (cond
+   ((null now) nil)
+   ((stringp now) (condition-case _ (date-to-time now) (error nil)))
+   (t now)))
+
+(defun dl-satan-motive-render-block (framing parsed &optional now)
   "Return the rendered `# Motive' block as a list of lines, or nil.
 FRAMING is the parsed framing alist; PARSED is `dl-satan-motive-parse'
 output.  Returns nil when no active motive is present (block self-
 suppresses — capsule placement is between resonance and today per §S1).
 
+NOW is the frozen tick time (ISO string or emacs time value).  When
+supplied, motives whose `(now - :last_intervention_at) < :cooldown_s'
+are annotated `cooling-down (Nm remaining)' on their `## id' header
+per §S4 (Phase 6 cooldown floor).  Nil NOW disables the check.
+
 Each motive renders as:
 
-  ## <id>
+  ## <id>[  [cooling-down (Nm remaining)]]
     <prose-first-line>
     cue: handle1 handle2 …
     cooldown_s: N  worked_count: N  last_intervention_at: ISO
 
 `:worked_count:' is exposed (A9 — informational, observable) but does
 not influence ordering: motives render in file order."
-  (let ((header (cdr (assoc dl-satan-motive--framing-key framing)))
-        (actives (dl-satan-motive--active-motives parsed)))
+  (let ((header  (cdr (assoc dl-satan-motive--framing-key framing)))
+        (actives (dl-satan-motive--active-motives parsed))
+        (now-t   (dl-satan-motive--coerce-time now)))
     (when (and header actives)
       (let ((lines (list header)))
         (dolist (m actives)
-          (push (format "## %s" (plist-get m :id)) lines)
+          (let* ((remaining (and now-t
+                                 (dl-satan-motive--cooling-down-remaining
+                                  m now-t)))
+                 (suffix (if remaining
+                             (format "  [cooling-down (%dm remaining)]"
+                                     (ceiling (/ remaining 60.0)))
+                           "")))
+            (push (format "## %s%s" (plist-get m :id) suffix) lines))
           (let ((prose (plist-get m :prose)))
             (unless (string-empty-p prose)
               (dolist (pline (split-string prose "\n"))

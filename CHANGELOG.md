@@ -2,6 +2,36 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-23 — SATAN: perceptual-layer v0 Phase 6 (cooldown floor)
+
+Read-side enforcement of §S4.  When the broker renders the capsule's
+motive block, motives whose `(now - :last_intervention_at:) <
+:cooldown_s:` are flagged off-budget to the model rather than offered
+as actionable pressure.
+
+- **`dl-satan-motive--cooling-down-remaining MOTIVE NOW-T`** —
+  pure helper returning remaining cooldown seconds (positive number)
+  or nil.  Nil when `:cooldown_s:` is absent / non-positive,
+  `:last_intervention_at:` is absent or unparseable, or the window
+  has elapsed (motive is actionable).
+- **`dl-satan-motive-render-block`** now takes an optional `NOW`
+  argument (nil / ISO string / emacs time value).  When supplied,
+  cooling-down motives have their `## <id>` header annotated
+  `  [cooling-down (Nm remaining)]`; prose, cue, and the
+  `cooldown_s / worked_count / last_intervention_at` footer line
+  stay intact.  Nil NOW disables the check (legacy callers unchanged).
+- **`dl-satan-context--render-prompt`** passes `(plist-get bundle
+  :time_now)` to the renderer.  Bundle already mirrors `:time_now`
+  from the broker's frozen `run_ctx`, so no new plumbing.
+- Duration formats as `Nm`, ceil-rounded to minutes per design
+  doc §7 Phase 6 verbatim.  Cooldowns >60 m render `120m remaining`.
+- Four new ert covering: annotated header within window, bare
+  header once elapsed, motives lacking `:last_intervention_at:`
+  (never fired), motives lacking `:cooldown_s:` (no floor).
+
+Total ert 394/394.  Pure render-side change — no schema bump, no
+write path, no audit / observer change.
+
 ## 2026-05-22 — SATAN: perceptual-layer v0 Phase 5 complete
 
 Phase 5 (outcome observer) is now end-to-end.  Sub-phases 5.5–5.8
