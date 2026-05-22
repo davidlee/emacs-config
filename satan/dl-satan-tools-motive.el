@@ -18,25 +18,8 @@
 
 (require 'cl-lib)
 (require 'subr-x)
-(require 'dl-notes-paths)
 (require 'dl-satan-tools)
 (require 'dl-satan-motive)
-
-(defcustom dl-satan-motive-file
-  (expand-file-name "satan/motives.org" dl-notes-root)
-  "Path to the SATAN motive file.
-Mind owns the content; the broker reads on every tick and the
-`motive_replace' tool writes atomically.  Missing file is a valid
-state — the capsule omits the block and the model sees zero
-active motives in the `motive_read' summary."
-  :type 'file :group 'dl-satan)
-
-(defcustom dl-satan-motive-archive-file
-  (expand-file-name "satan/motives.archive.org" dl-notes-root)
-  "Append-only archive companion to `dl-satan-motive-file'.
-Not auto-written in v0 — the author moves text here by hand when
-retiring a motive.  Reserved for a future archive helper."
-  :type 'file :group 'dl-satan)
 
 ;; ---------------------------------------------------------------------
 ;; motive_read

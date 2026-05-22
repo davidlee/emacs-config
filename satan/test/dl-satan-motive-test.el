@@ -322,5 +322,122 @@ The write path tolerates it; the read path renders it dormant."
   (let ((text "* test: drafting\n  Prose only.\n  :cooldown_s: 1800\n"))
     (should (null (dl-satan-motive-validate-for-write text)))))
 
+;; ---------------------------------------------------------------------
+;; Capsule integration (Phase 3.3) — block lands between resonance and today
+;; ---------------------------------------------------------------------
+
+(require 'dl-satan-context)
+
+(defmacro dl-satan-motive-test--with-framing (tmp-sym &rest body)
+  "Bind TMP-SYM to a tmp dir; seed scaffold + framing (with motive
+key) + a motd prompt; rebind the framing/scaffold defcustoms for
+BODY's dynamic extent.  Mirrors the resonance-test framing fixture
+so the two block tests use parallel scaffolding."
+  (declare (indent 1))
+  `(let* ((,tmp-sym (make-temp-file "satan-motive-cap-" t))
+          (dl-satan-system-scaffold-file
+           (expand-file-name "system/scaffold.txt" ,tmp-sym))
+          (dl-satan-system-framing-file
+           (expand-file-name "system/framing.txt" ,tmp-sym)))
+     (unwind-protect
+         (progn
+           (make-directory (expand-file-name "prompts" ,tmp-sym))
+           (make-directory (expand-file-name "system" ,tmp-sym))
+           (with-temp-file dl-satan-system-scaffold-file (insert "SCAFFOLD"))
+           (with-temp-file dl-satan-system-framing-file
+             (insert "now=# Now\n"
+                     "percept_block_header=# Percept\n"
+                     "resonance_block_header=# Resonance\n"
+                     "motive_block_header=# Motive\n"
+                     "today=# Today (raw)\n"
+                     "sources=# Source files\n"
+                     "recent_runs=# Recent SATAN runs\n"))
+           (with-temp-file (expand-file-name "prompts/motd.txt" ,tmp-sym)
+             (insert "PROMPT"))
+           ,@body)
+       (delete-directory ,tmp-sym t))))
+
+(ert-deftest dl-satan-motive/capsule-renders-motive-between-resonance-and-today ()
+  "Phase 3.3 — when PREPARE carries a `:motive' with ≥1 active motive,
+the rendered prompt contains a `# Motive' block.  Placement is
+between `# Resonance' and `# Today (raw)' per §S1 sequence."
+  (dl-satan-motive-test--with-framing tmp
+    (let* ((spec (list :name "motd"
+                       :prompt-file
+                       (expand-file-name "prompts/motd.txt" tmp)))
+           (prepare (list :run_id "rid-x"
+                          :time_now "2026-05-22T10:00:00+10:00"
+                          :percept '(:handles ("app:firefox"))
+                          :resonance
+                          (list :status 'ok
+                                :cue '("app:firefox")
+                                :matches
+                                '((:trace_id "20260518T120000-aaa"
+                                   :score 11.2
+                                   :matched_handles ("app:firefox"))))
+                          :motive
+                          (dl-satan-motive-parse
+                           dl-satan-motive-test--well-formed)))
+           (bundle (dl-satan-context-motd spec prepare))
+           (prompt (plist-get bundle :prompt))
+           (idx-resonance (string-match "^# Resonance$" prompt))
+           (idx-motive (string-match "^# Motive$" prompt))
+           (idx-today (or (string-match "^# Today (raw)$" prompt)
+                          most-positive-fixnum)))
+      (should idx-resonance)
+      (should idx-motive)
+      (should (< idx-resonance idx-motive))
+      (should (< idx-motive idx-today))
+      (should (string-match-p "^## docs-after-error$" prompt)))))
+
+(ert-deftest dl-satan-motive/capsule-omits-motive-when-empty ()
+  "§S3 silent self-suppression — empty motive parse (e.g. missing
+file) → no `# Motive' header."
+  (dl-satan-motive-test--with-framing tmp
+    (let* ((spec (list :name "motd"
+                       :prompt-file
+                       (expand-file-name "prompts/motd.txt" tmp)))
+           (prepare (list :run_id "rid-y"
+                          :time_now "2026-05-22T10:00:00+10:00"
+                          :motive '(:motives nil :ruminations nil
+                                    :errors nil)))
+           (bundle (dl-satan-context-motd spec prepare))
+           (prompt (plist-get bundle :prompt)))
+      (should-not (string-match-p "^# Motive$" prompt)))))
+
+(ert-deftest dl-satan-motive/capsule-omits-when-only-dormant ()
+  "A file containing only dormant motives renders no actionable
+block.  Matches the §S3 file-tolerated / capsule-invisible split."
+  (dl-satan-motive-test--with-framing tmp
+    (let* ((spec (list :name "motd"
+                       :prompt-file
+                       (expand-file-name "prompts/motd.txt" tmp)))
+           (prepare (list :run_id "rid-z"
+                          :time_now "2026-05-22T10:00:00+10:00"
+                          :motive
+                          (dl-satan-motive-parse
+                           dl-satan-motive-test--malformed-cue)))
+           (bundle (dl-satan-context-motd spec prepare))
+           (prompt (plist-get bundle :prompt)))
+      (should-not (string-match-p "^# Motive$" prompt)))))
+
+;; ---------------------------------------------------------------------
+;; with-prepare mirror (Phase 3.3) — :motive joins :percept and :resonance
+;; ---------------------------------------------------------------------
+
+(ert-deftest dl-satan-motive/with-prepare-mirrors-motive-slot ()
+  (let* ((parsed (dl-satan-motive-parse
+                  dl-satan-motive-test--well-formed))
+         (prepare (list :run_id "rid"
+                        :time_now "2026-05-22T10:00:00+10:00"
+                        :percept '(:handles ("app:firefox"))
+                        :resonance '(:status no-match)
+                        :motive parsed))
+         (bundle (dl-satan-context--with-prepare '() prepare)))
+    (should (equal parsed (plist-get bundle :motive)))
+    (should (equal "rid" (plist-get bundle :run_id)))
+    (should (equal "2026-05-22T10:00:00+10:00"
+                   (plist-get bundle :time_now)))))
+
 (provide 'dl-satan-motive-test)
 ;;; dl-satan-motive-test.el ends here

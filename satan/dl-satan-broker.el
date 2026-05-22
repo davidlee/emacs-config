@@ -24,6 +24,7 @@
 (require 'dl-satan-output)
 (require 'dl-satan-percept)
 (require 'dl-satan-resonance)
+(require 'dl-satan-motive)
 
 (defcustom dl-satan-runs-dir
   (expand-file-name "satan/runs" (or (bound-and-true-p dl-notes-root)
@@ -649,15 +650,23 @@ Returns the run-id."
     ;; Result attaches to PREPARE :resonance for the context-fn (A4).
     ;; Memory errors return a `memory-unreachable' status; the run
     ;; proceeds without resonance rather than failing the tick.
+    ;;
+    ;; Phase 3.3 — motive file read.  Pure parse of motives.org; result
+    ;; attaches to PREPARE :motive.  Missing file is a valid state —
+    ;; `dl-satan-motive-read' returns an empty parse and the capsule
+    ;; renderer self-suppresses the block (§S3 silent omission).
     (let* ((percept (dl-satan-percept-build prepare mode))
            (_persisted (dl-satan-percept-persist dir percept))
            (resonance (dl-satan-resonance-derive percept))
+           (motive (dl-satan-motive-read dl-satan-motive-file))
            (prepare (plist-put
                      (plist-put
-                      (plist-put prepare :evidence
-                                 (plist-get percept :evidence_window))
-                      :percept percept)
-                     :resonance resonance)))
+                      (plist-put
+                       (plist-put prepare :evidence
+                                  (plist-get percept :evidence_window))
+                       :percept percept)
+                      :resonance resonance)
+                     :motive motive)))
     (let* ((bundle (funcall (or (plist-get mode :context-fn) #'ignore)
                             mode prepare))
            (manifest (dl-satan-broker--build-manifest mode run-id))
