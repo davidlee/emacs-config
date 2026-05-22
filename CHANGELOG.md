@@ -2,6 +2,49 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-22 — SATAN: perceptual-layer v0 Phase 0 prerequisites
+
+Lands the four sub-phase prerequisites the v0 perceptual loop sits on.
+Phases 1–6 (percept, auto-resonance, motive file, sensor alerts,
+observer, cooldown floor) all assume this shape; nothing visible to
+the model yet.
+
+- **0.1 broker prepare + run_ctx threading** — `dl-satan-broker--prepare`
+  is now the single allocator of `run_id` + frozen `time_now`. The
+  resulting run_ctx plist is threaded into context-fn (2nd arg),
+  `--tool-ctx` (reads frozen time; no per-call `format-time-string`),
+  and `dl-satan-audit-open` (stored on handle for later phases).
+  Carries v0 placeholder slots (`:evidence` `:percept` `:sensor_status`
+  `:pre_spawn` `:motive`) so later phases `plist-put` without keyword
+  ordering surprises.
+- **0.2 dispatch capability guard** — tool-spec `:capability` slot.
+  Dispatcher rejects before the handler runs when the mode's tool-ctx
+  lacks the required capability. Broker emits an `action-failed` audit
+  record on every denial using the canonical
+  `(:action ACTION :reason MSG)` plist shape. `notify_send` is the
+  first migrated tool (`:capability 'notify`); inbox / hippocampus /
+  etc still guard at handler-side as defense-in-depth, migration is
+  follow-up.
+- **0.3 actions.json pre_spawn schema bump** — optional `pre_spawn`
+  key on actions.json carrying a list of discriminated-union entries
+  (only `sensor_alert` in v0; parser shape is open). New pure
+  validator `dl-satan-audit-validate-actions` and verifier predicate
+  `dl-satan-audit-p/pre-spawn-shape`. Count invariants against
+  `final.actions` continue to ignore `pre_spawn`.
+- **0.4 python harness mirror** — `harness/protocol.py` learns
+  `check_actions_json` + `validate_actions_json` mirroring the elisp
+  validator. `protocol/fixtures.json` gains `direction=actions`
+  exemplars (3 valid, 4 invalid). Both ert and unittest suites
+  iterate them via the existing fixture loader.
+
+`docs/satan/perceptual-design.md` §8 A0a–A0e all green. Front-matter
+`status:` flipped from `draft` to `phase-0-shipped`.
+
+Tests: 128/130 ert (two pre-existing fails predate Phase 0 —
+`docs_list` missing require in the test bootstrap), 26/26 python
+unittest. Byte-compile clean. Integration test still skipped (needs
+`SATAN_TEST_JAIL_BIN`).
+
 ## 2026-05-21 — SATAN: `docs_*` lazy lookup over chunked docs
 
 Follow-up to the 03398479 reshape: SATAN can now pull its own docs
