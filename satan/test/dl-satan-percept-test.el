@@ -215,6 +215,144 @@ hardcoded header in elisp."
     (should (null (dl-satan-percept-render-block framing percept)))))
 
 ;; ---------------------------------------------------------------------
+;; Determinism rig (A3) — richer fixture, drives focus + browser + ctx
+;; ---------------------------------------------------------------------
+
+(defun dl-satan-percept-test--seed-fixture (behaviour day)
+  "Write a frozen panopticon fixture under BEHAVIOUR keyed by DAY (YYYY-MM-DD).
+A repeated build over the same fixture is the bone of acceptance A3.
+Includes current/sway + focus segments + browser segments — same
+shape `dl-satan-memory-evidence' uses in its own assemble tests, so
+this rig stays parallel."
+  (let ((current-dir (expand-file-name "current" behaviour))
+        (segments-dir (expand-file-name "segments" behaviour)))
+    (make-directory current-dir t)
+    (make-directory segments-dir t)
+    (with-temp-file (expand-file-name "sway.json" current-dir)
+      (insert "{\"app_id\":\"firefox\",\"workspace\":\"main\"}"))
+    (with-temp-file (expand-file-name (format "focus-%s.jsonl" day)
+                                      segments-dir)
+      (insert "{\"app_id\":\"Alacritty\",\"start_ts\":\"2026-05-19T09:55:00+10:00\",\"end_ts\":\"2026-05-19T09:58:00+10:00\",\"duration_s\":180}\n")
+      (insert "{\"app_id\":\"firefox\",\"start_ts\":\"2026-05-19T09:58:00+10:00\",\"end_ts\":\"2026-05-19T10:00:00+10:00\",\"duration_s\":120}\n"))
+    (with-temp-file (expand-file-name (format "browser-%s.jsonl" day)
+                                      segments-dir)
+      (insert "{\"domain\":\"docs.python.org\",\"start_ts\":\"2026-05-19T09:58:30+10:00\",\"end_ts\":\"2026-05-19T09:59:30+10:00\"}\n"))))
+
+(ert-deftest dl-satan-percept/determinism-on-rich-fixture ()
+  "A3 — two builds over a frozen focus + browser + current fixture
+produce byte-identical persisted JSON.  Beyond the minimal sway-only
+case: ensures focus/browser readers don't smuggle in timestamps or
+random ordering."
+  (dl-satan-percept-test--with-fixture (:tmp tmp :behaviour beh :run-dir rd)
+    (ignore tmp)
+    (dl-satan-percept-test--seed-fixture beh "2026-05-19")
+    (let* ((prepare (dl-satan-percept-test--prepare
+                     "20260519T100000-motd-deadbe"
+                     "2026-05-19T10:00:00+10:00"))
+           (opts (list :behaviour_dir beh :cwd rd))
+           (path-a (expand-file-name "a/percept.json" rd))
+           (path-b (expand-file-name "b/percept.json" rd)))
+      (make-directory (file-name-directory path-a) t)
+      (make-directory (file-name-directory path-b) t)
+      (dl-satan-percept-persist
+       (file-name-directory path-a)
+       (dl-satan-percept-build prepare '(:name "motd") opts))
+      (dl-satan-percept-persist
+       (file-name-directory path-b)
+       (dl-satan-percept-build prepare '(:name "motd") opts))
+      (let ((bytes-a (with-temp-buffer
+                       (set-buffer-multibyte nil)
+                       (insert-file-contents-literally path-a)
+                       (buffer-string)))
+            (bytes-b (with-temp-buffer
+                       (set-buffer-multibyte nil)
+                       (insert-file-contents-literally path-b)
+                       (buffer-string))))
+        (should (equal bytes-a bytes-b))
+        ;; Surface_transition + domain_kind must show up on the rich
+        ;; fixture — the determinism check is hollow if the build
+        ;; produced an empty handle list.
+        (let ((handles (plist-get
+                        (json-parse-string bytes-a
+                                           :object-type 'plist
+                                           :array-type 'list
+                                           :null-object :null
+                                           :false-object :false)
+                        :handles)))
+          (should (member "surface_transition:terminal->browser" handles))
+          (should (member "domain_kind:docs" handles)))))))
+
+;; ---------------------------------------------------------------------
+;; A2 identity — bundle.json + percept.json carry the same run_id + time_now
+;; ---------------------------------------------------------------------
+
+(ert-deftest dl-satan-percept/bundle-and-percept-share-identity ()
+  "A2 — writes both bundle.json (via a context-fn round-trip and
+`dl-satan-audit--write-json') and percept.json from the same prepare
+plist; asserts run_id + time_now match byte-for-byte across artifacts.
+
+This drives the same prepare allocator the broker uses, so any future
+drift between bundle and percept identity surfaces here before it
+ships."
+  (dl-satan-percept-test--with-fixture (:tmp tmp :behaviour beh :run-dir rd)
+    (dl-satan-percept-test--write-sway beh "firefox")
+    (let* ((dl-satan-system-scaffold-file
+            (expand-file-name "system/scaffold.txt" tmp))
+           (dl-satan-system-framing-file
+            (expand-file-name "system/framing.txt" tmp)))
+      (make-directory (expand-file-name "prompts" tmp))
+      (make-directory (expand-file-name "system" tmp))
+      (with-temp-file dl-satan-system-scaffold-file (insert "SCAFFOLD"))
+      (with-temp-file dl-satan-system-framing-file
+        (insert "now=# Now\n"
+                "today=# Today (raw)\n"
+                "sources=# Source files\n"
+                "percept_block_header=# Percept\n"))
+      (with-temp-file (expand-file-name "prompts/motd.txt" tmp)
+        (insert "PROMPT"))
+      (let* ((mode (list :name "motd"
+                         :prompt-file
+                         (expand-file-name "prompts/motd.txt" tmp)))
+             (prepare (dl-satan-percept-test--prepare
+                       "20260519T100000-motd-cafef0"
+                       "2026-05-19T10:00:00+10:00"))
+             (percept (dl-satan-percept-build
+                       prepare mode
+                       (list :behaviour_dir beh :cwd rd)))
+             (prepare-with-percept
+              (plist-put (plist-put prepare :evidence
+                                    (plist-get percept :evidence_window))
+                         :percept percept))
+             (bundle (dl-satan-context-motd mode prepare-with-percept))
+             (bundle-path (expand-file-name "bundle.json" rd))
+             (percept-path (dl-satan-percept-persist rd percept)))
+        (dl-satan-audit--write-json bundle-path bundle)
+        (let ((bundle-on-disk
+               (with-temp-buffer
+                 (insert-file-contents bundle-path)
+                 (goto-char (point-min))
+                 (json-parse-buffer :object-type 'plist
+                                    :array-type 'list
+                                    :null-object :null
+                                    :false-object :false)))
+              (percept-on-disk
+               (with-temp-buffer
+                 (insert-file-contents percept-path)
+                 (goto-char (point-min))
+                 (json-parse-buffer :object-type 'plist
+                                    :array-type 'list
+                                    :null-object :null
+                                    :false-object :false))))
+          (should (equal (plist-get bundle-on-disk :run_id)
+                         (plist-get percept-on-disk :run_id)))
+          (should (equal (plist-get bundle-on-disk :time_now)
+                         (plist-get percept-on-disk :time_now)))
+          (should (equal (plist-get bundle-on-disk :run_id)
+                         (plist-get prepare :run_id)))
+          (should (equal (plist-get bundle-on-disk :time_now)
+                         (plist-get prepare :time_now))))))))
+
+;; ---------------------------------------------------------------------
 ;; Capsule render through dl-satan-context (1.3)
 ;; ---------------------------------------------------------------------
 
@@ -225,7 +363,6 @@ hardcoded header in elisp."
 prompt includes a `# Percept' header followed by handle lines.
 The header text is supplied by framing.txt, not hardcoded."
   (let* ((tmp (make-temp-file "satan-percept-cap-" t))
-         (dl-satan-prompts-dir (expand-file-name "prompts/" tmp))
          (dl-satan-system-scaffold-file
           (expand-file-name "system/scaffold.txt" tmp))
          (dl-satan-system-framing-file
@@ -263,7 +400,6 @@ The header text is supplied by framing.txt, not hardcoded."
   "Without a PREPARE plist (legacy callers, or budget-denied paths),
 the capsule renders cleanly with no `# Percept' artefact."
   (let* ((tmp (make-temp-file "satan-percept-cap-empty-" t))
-         (dl-satan-prompts-dir (expand-file-name "prompts/" tmp))
          (dl-satan-system-scaffold-file
           (expand-file-name "system/scaffold.txt" tmp))
          (dl-satan-system-framing-file
