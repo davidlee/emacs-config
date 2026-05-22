@@ -25,6 +25,8 @@
 (require 'cl-lib)
 (require 'subr-x)
 (require 'dl-satan-jsonl)
+(require 'dl-satan-memory-evidence)
+(require 'dl-satan-memory-grammar)
 
 ;; Lazy require — `dl-satan-broker' will require this module in 5.8 to
 ;; wire the observer into prepare.  Declaring the broker symbols here
@@ -234,6 +236,85 @@ tools' edits because APPLIED_INDEX counts the unfiltered
                (and (equal (car key) (plist-get entry :run_id))
                     (equal (cdr key) (plist-get entry :applied_index))))
              (plist-get state :classified))))
+
+;; ---------------------------------------------------------------------
+;; Baseline + after-state (Phase 5.4a)
+;; ---------------------------------------------------------------------
+
+(defun dl-satan-observer--read-json-object (path)
+  "Parse the single JSON object at PATH, returning its plist.
+Returns nil on missing file or parse failure.  Mirrors the lenient
+contract of `dl-satan-observer--read-state' but doesn't seed an
+empty value — callers need to distinguish absent from empty."
+  (when (file-readable-p path)
+    (condition-case _err
+        (with-temp-buffer
+          (let ((coding-system-for-read 'utf-8))
+            (insert-file-contents path))
+          (goto-char (point-min))
+          (json-parse-buffer :object-type 'plist
+                             :array-type 'list
+                             :null-object nil
+                             :false-object :false))
+      (error nil))))
+
+(defun dl-satan-observer--baseline-read (run-dir)
+  "Return the intervention-time `evidence_window' for RUN-DIR.
+Reads RUN-DIR/`bundle.json' and pulls out `:percept' →
+`:evidence_window'.  Returns nil when bundle.json is missing,
+unparseable, or lacks the percept slot — which happens on budget-
+denied or pre-spawn-denied runs (phase 1 still skips percept.json
+write under budget-denied; same caveat applies to bundle).
+
+The classifier (5.4c) treats nil here as `:reason :no_baseline'."
+  (let* ((path (expand-file-name "bundle.json" run-dir))
+         (bundle (dl-satan-observer--read-json-object path))
+         (percept (and bundle (plist-get bundle :percept))))
+    (and percept (plist-get percept :evidence_window))))
+
+(defun dl-satan-observer--window-end-iso (intervention)
+  "Return the ISO8601 close-of-window for INTERVENTION.
+Window end = `:intervention_emitted_at' +
+`dl-satan-observer-window-mature-seconds' (30 min default).
+Format matches `dl-satan-memory-evidence' helpers (%T%:z)."
+  (let* ((emitted (plist-get intervention :intervention_emitted_at))
+         (et (date-to-time emitted))
+         (end (time-add et (seconds-to-time
+                            dl-satan-observer-window-mature-seconds))))
+    (format-time-string "%Y-%m-%dT%T%:z" end)))
+
+(defun dl-satan-observer--window-crosses-midnight-p (intervention)
+  "Return non-nil when INTERVENTION's 30-min window spans two calendar
+days.  `dl-satan-memory-evidence-assemble-with-bounds' resolves the
+panopticon segment file via `(substring END 0 10)' — a cross-day
+window would read tomorrow's segments and miss most of the
+window.  v0 punts on multi-day windows: the classifier yields
+`:reason :crosses_midnight' instead of attempting a probe."
+  (let ((start (plist-get intervention :intervention_emitted_at))
+        (end (dl-satan-observer--window-end-iso intervention)))
+    (not (equal (substring start 0 10) (substring end 0 10)))))
+
+(defun dl-satan-observer--after-state (intervention motive)
+  "Assemble the after-state `evidence_window' for INTERVENTION + MOTIVE.
+Calls `dl-satan-memory-evidence-assemble-with-bounds' with
+START = `:intervention_emitted_at',
+END   = `--window-end-iso' (+30 min),
+CWD   = MOTIVE's `:project_cwd' (default-directory when nil — git
+        + fs probes still run, predicates 1+3 simply won't find
+        path matches).
+
+Caller is responsible for guarding midnight crossings; this helper
+makes the call unconditionally."
+  (let* ((start (plist-get intervention :intervention_emitted_at))
+         (end (dl-satan-observer--window-end-iso intervention))
+         (cwd (or (plist-get motive :project_cwd) default-directory))
+         (ctx (list :time_now end
+                    :mode_name "observer"
+                    :run_id (plist-get intervention :run_id)
+                    :current_grammar_version
+                    dl-satan-memory-grammar-current-version)))
+    (dl-satan-memory-evidence-assemble-with-bounds
+     start end ctx (list :cwd cwd))))
 
 ;; ---------------------------------------------------------------------
 ;; Public entry

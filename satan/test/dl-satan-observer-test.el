@@ -516,5 +516,84 @@ re-appear in `pending' on a fresh scan."
          (let ((after (dl-satan-observer-pending now root spath)))
            (should (null after))))))))
 
+;; ---------------------------------------------------------------------
+;; Phase 5.4a — baseline + after-state helpers
+;; ---------------------------------------------------------------------
+
+(defun dl-satan-observer-test--write-bundle (dir bundle)
+  "Write BUNDLE (plist) as `bundle.json' under DIR."
+  (make-directory dir t)
+  (let ((coding-system-for-write 'utf-8))
+    (with-temp-file (expand-file-name "bundle.json" dir)
+      (insert (json-serialize (dl-satan-jsonl-prepare bundle)
+                              :null-object :null
+                              :false-object :false)))))
+
+(ert-deftest dl-satan-observer/baseline-read-returns-evidence-window ()
+  "5.4a — `--baseline-read' yields the persisted `:evidence_window'
+from `bundle.json' → `:percept' → `:evidence_window'."
+  (dl-satan-observer-test--in-tmp
+   (lambda (root)
+     (let* ((dir (expand-file-name "20260522T100000-tick-aaa" root))
+            (ev (list :git_state (list :head_short "deadbeef" :dirty :false)
+                      :fs_state (list :cwd "/tmp" :recent_files nil)
+                      :window_start_at "2026-05-22T10:00:00+1000"
+                      :window_end_at "2026-05-22T10:10:00+1000")))
+       (dl-satan-observer-test--write-bundle
+        dir (list :percept (list :evidence_window ev)))
+       (let ((out (dl-satan-observer--baseline-read dir)))
+         (should (equal "deadbeef" (plist-get (plist-get out :git_state)
+                                              :head_short))))))))
+
+(ert-deftest dl-satan-observer/baseline-read-missing-returns-nil ()
+  "5.4a — runs without `bundle.json' (budget-denied / pre_spawn-denied)
+yield nil; classifier converts that to `:reason :no_baseline'."
+  (dl-satan-observer-test--in-tmp
+   (lambda (root)
+     (let ((dir (expand-file-name "20260522T100000-tick-bbb" root)))
+       (make-directory dir t)
+       (should (null (dl-satan-observer--baseline-read dir)))))))
+
+(ert-deftest dl-satan-observer/baseline-read-malformed-returns-nil ()
+  "5.4a — corrupt `bundle.json' yields nil rather than signalling.
+Classifier treats it the same as missing baseline."
+  (dl-satan-observer-test--in-tmp
+   (lambda (root)
+     (let ((dir (expand-file-name "20260522T100000-tick-ccc" root)))
+       (make-directory dir t)
+       (with-temp-file (expand-file-name "bundle.json" dir)
+         (insert "{not valid json"))
+       (should (null (dl-satan-observer--baseline-read dir)))))))
+
+(ert-deftest dl-satan-observer/baseline-read-no-percept-returns-nil ()
+  "5.4a — `bundle.json' present but missing `:percept' slot yields nil.
+Defensive — older runs from before phase 1 lacked the slot."
+  (dl-satan-observer-test--in-tmp
+   (lambda (root)
+     (let ((dir (expand-file-name "20260522T100000-tick-ddd" root)))
+       (dl-satan-observer-test--write-bundle
+        dir (list :run_id "x" :time_now "2026-05-22T10:00:00+1000"))
+       (should (null (dl-satan-observer--baseline-read dir)))))))
+
+(ert-deftest dl-satan-observer/window-end-iso-adds-mature-seconds ()
+  "5.4a — `--window-end-iso' adds `window-mature-seconds' to the
+intervention timestamp, returning an ISO string in the same zone."
+  (let* ((dl-satan-observer-window-mature-seconds 1800)
+         (iv (list :intervention_emitted_at "2026-05-22T10:00:00+1000"))
+         (end (dl-satan-observer--window-end-iso iv)))
+    (should (equal (substring end 0 19) "2026-05-22T10:30:00"))))
+
+(ert-deftest dl-satan-observer/window-crosses-midnight-p-same-day ()
+  "5.4a — a 30-min window starting at 10:00 stays within one day."
+  (let ((iv (list :intervention_emitted_at "2026-05-22T10:00:00+1000")))
+    (should-not (dl-satan-observer--window-crosses-midnight-p iv))))
+
+(ert-deftest dl-satan-observer/window-crosses-midnight-p-rolls-over ()
+  "5.4a — a 30-min window starting at 23:50 crosses to the next day;
+classifier yields `:reason :crosses_midnight' rather than reading
+tomorrow's panopticon segment file."
+  (let ((iv (list :intervention_emitted_at "2026-05-22T23:50:00+1000")))
+    (should (dl-satan-observer--window-crosses-midnight-p iv))))
+
 (provide 'dl-satan-observer-test)
 ;;; dl-satan-observer-test.el ends here
