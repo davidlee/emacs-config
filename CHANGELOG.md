@@ -2,6 +2,73 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-22 — SATAN: perceptual-layer v0 Phase 3 (motive file)
+
+Picks up where Phase 2 stopped.  A small, bounded prose file
+(`~/notes/satan/motives.org`) now carries persistent intent across
+runs.  The broker reads it on every tick and renders an active-
+motive block into the capsule between `# Resonance` and `# Today
+(raw)`.  Two new tools let the model read and atomic-replace the
+file under bounded write-side guards.  No new substrate, no LLM in
+the parse path; pure org-style prose + a small footer schema.
+
+- **3.1 parser + footer schema** — new `satan/dl-satan-motive.el`
+  with `dl-satan-motive-parse` / `-read` / `-render-block` /
+  `-validate-for-write`.  Footer accepts `:cue:` `:cooldown_s:`
+  `:worked_count:` `:last_intervention_at:`; rejects `:ceiling:`
+  (v0 deferred, see §3 of the design doc).  A motive without a
+  valid `:cue:` is dormant — file-tolerated, capsule-invisible,
+  observer-skipped (A8).  §S3 cue admission mirrors the §S2
+  resonance gate by *namespace* prefix (handle strings have no
+  rule_id provenance to inspect): admitted are app, surface,
+  surface_transition, domain_kind, domain_transition, bough_event,
+  bough_node, bough_project, artifact, topic, phase, focal_app.
+  Missing file = empty parse (silent self-suppression, mirrors
+  the resonance gate-skip pattern).
+- **3.2 motive_read + motive_replace handlers** — new
+  `satan/dl-satan-tools-motive.el`.  `motive_read` (`risk read`,
+  no capability) returns the raw file + a counts plist
+  (`active_motives`, `dormant_motives`, `ruminations_count`,
+  `max_active`, `max_ruminations`) so the model can judge
+  headroom before proposing a replacement.  `motive_replace`
+  (`risk medium`, `capability motive-write`) atomic-writes via
+  tmp + rename; validation runs before any I/O so a rejected
+  payload leaves the file untouched.  Capability rail (Phase 0.2)
+  enforces the new `motive-write` capability — `morning` /
+  `motd` / `tick-*` modes get it added to their `:capabilities`
+  lists alongside `memory-write` etc.
+- **3.3 broker call + capsule render** —
+  `dl-satan-broker--spawn` calls `dl-satan-motive-read` after
+  `dl-satan-resonance-derive` and attaches the parse to PREPARE
+  `:motive`.  `dl-satan-context--with-prepare` mirrors `:motive`
+  alongside `:percept` / `:resonance`; `--render-prompt`
+  inserts a `# Motive` block between `# Resonance` and `# Today
+  (raw)` per §S1 sequence.  Mind owns `motive_block_header` in
+  `framing.txt`; `dl-satan-motive-file` /
+  `dl-satan-motive-archive-file` defcustoms live in the substrate
+  module so the broker doesn't need the tool-handler layer.
+- **3.4 bound precedence + naming contract** — new constant
+  `dl-satan-motive-bound-precedence` codifies the first-breach-
+  wins order (`:forbidden-field > :too-many-active >
+  :too-many-ruminations > :invalid-cue`) so a `:ceiling:` can't
+  sneak through a fix-the-count edit and the author trims before
+  tightening cues.  Tests pin the precedence in collision payloads
+  and lock the model-facing error string to surface the bound
+  name for every entry in the precedence list (A7).
+
+`docs/satan/perceptual-design.md` §8 A7 + A8 + A9 green.  Front-
+matter `status:` flipped from `phase-2-shipped` to
+`phase-3-shipped`.
+
+Mind seeds landed under `~/notes/satan/`: `motives.org` (3 motive
+stubs + 2 ruminations); `motives.archive.org` (empty paper-trail
+seed); `tools/motive_read.md` + `tools/motive_replace.md` (model-
+facing tool notes).  `system/framing.txt` gets
+`motive_block_header=# Motive`.
+
+Tests: 201/203 ert (the same two pre-Phase-0 failures), 26/26
+python unittest.  Byte-compile clean.
+
 ## 2026-05-22 — SATAN: perceptual-layer v0 Phase 2 (auto-resonance)
 
 Picks up where Phase 1 stopped.  Every run now derives a cue from

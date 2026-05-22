@@ -4,7 +4,7 @@ description: SATAN perceptual loop (v0) — percept capsule, auto-resonance, mot
 metadata:
   type: design
   topic: satan
-  status: phase-2-shipped
+  status: phase-3-shipped
   updated_at: 2026-05-22
   verified_at: 2026-05-22
 ---
