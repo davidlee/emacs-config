@@ -199,15 +199,31 @@ Ensures parent dir exists; uses tmp + rename per §S6."
     (rename-file tmp path t)))
 
 (defun dl-satan-sensor-alerts--cause-state (state cause)
-  "Return the per-CAUSE plist inside STATE, or nil when absent."
+  "Return the per-CAUSE plist inside STATE.`:causes', or nil when absent."
   (plist-get (plist-get state :causes) (intern (concat ":" cause))))
 
 (defun dl-satan-sensor-alerts--update-cause-state (state cause new)
-  "Return STATE with cause CAUSE's substate replaced by NEW (a plist)."
+  "Return STATE with cause CAUSE's substate replaced by NEW (a plist).
+Lives under the `:causes' slot so the A16 one-to-one invariant
+(causes touched this run ↔ pre_spawn entries) holds independent of
+the `:streaks' bookkeeping."
   (let* ((sym (intern (concat ":" cause)))
          (causes (or (plist-get state :causes) '()))
          (updated (plist-put (copy-sequence causes) sym new)))
     (plist-put (copy-sequence state) :causes updated)))
+
+(defun dl-satan-sensor-alerts--streak (state name)
+  "Return the streak counter under STATE.`:streaks'.<NAME> as an integer."
+  (or (plist-get (plist-get state :streaks)
+                 (intern (concat ":" name)))
+      0))
+
+(defun dl-satan-sensor-alerts--set-streak (state name value)
+  "Return STATE with streak NAME set to VALUE (integer) under `:streaks'."
+  (let* ((sym (intern (concat ":" name)))
+         (streaks (or (plist-get state :streaks) '()))
+         (updated (plist-put (copy-sequence streaks) sym value)))
+    (plist-put (copy-sequence state) :streaks updated)))
 
 ;; ---------------------------------------------------------------------
 ;; Cooldown + suppression decisions
@@ -230,13 +246,13 @@ A never-fired cause (no `:last_notified_at') is always elapsed."
 
 (defun dl-satan-sensor-alerts--bump-bough-streak (state status)
   "Return STATE with the bough_unreachable streak counter updated.
-Reset to 0 when STATUS is anything other than `unreachable'."
-  (let* ((sub (or (dl-satan-sensor-alerts--cause-state state "bough_unreachable")
-                  '()))
-         (count (or (plist-get sub :consecutive_count) 0))
-         (next (if (equal status "unreachable") (1+ count) 0))
-         (new (plist-put (copy-sequence sub) :consecutive_count next)))
-    (dl-satan-sensor-alerts--update-cause-state state "bough_unreachable" new)))
+Reset to 0 when STATUS is anything other than `unreachable'.  The
+counter lives under `:streaks' (not `:causes') so updates here
+don't pollute the A16 one-to-one count between `:causes' and
+pre_spawn entries."
+  (let* ((count (dl-satan-sensor-alerts--streak state "bough_unreachable"))
+         (next (if (equal status "unreachable") (1+ count) 0)))
+    (dl-satan-sensor-alerts--set-streak state "bough_unreachable" next)))
 
 ;; ---------------------------------------------------------------------
 ;; Dispatch (§S6 — same path as model-side notify_send, A17)
@@ -330,7 +346,11 @@ sensor was `ok')."
       (let* ((cause (plist-get base :cause))
              (msg (plist-get base :message))
              (cs (or (dl-satan-sensor-alerts--cause-state state cause) '()))
-             (entry nil))
+             (streak (and (equal cause "bough_unreachable")
+                          (dl-satan-sensor-alerts--streak
+                           state "bough_unreachable")))
+             (entry nil)
+             (next-cs (copy-sequence cs)))
         (cond
          ;; A15 — quiet hours suppress regardless of cooldown.
          (quiet-p
@@ -338,8 +358,7 @@ sensor was `ok')."
                        cause base :suppressed t :reason "quiet_hours")))
          ;; Bough streak threshold (§S6 — ≥ 3 ticks before fire).
          ((and (equal cause "bough_unreachable")
-               (< (or (plist-get cs :consecutive_count) 0)
-                  dl-satan-sensor-alerts-bough-streak-threshold))
+               (< streak dl-satan-sensor-alerts-bough-streak-threshold))
           (setq entry (dl-satan-sensor-alerts--entry
                        cause base :suppressed t
                        :reason "streak_below_threshold")))
@@ -356,11 +375,7 @@ sensor was `ok')."
                            cause base
                            :suppressed :false
                            :dispatched_at now-iso))
-              (setq state
-                    (dl-satan-sensor-alerts--update-cause-state
-                     state cause
-                     (plist-put (copy-sequence cs)
-                                :last_notified_at now-iso))))
+              (setq next-cs (plist-put next-cs :last_notified_at now-iso)))
              ((dl-satan-sensor-alerts--capability-denied-p reason)
               (setq entry (dl-satan-sensor-alerts--entry
                            cause base :suppressed t
@@ -369,6 +384,12 @@ sensor was `ok')."
               (setq entry (dl-satan-sensor-alerts--entry
                            cause base :suppressed t
                            :reason (format "dispatch_failed: %s" reason))))))))
+        ;; A16 — every entry (fired or suppressed) corresponds to a
+        ;; `:causes' update this run; stamp :last_evaluated_at so the
+        ;; one-to-one invariant holds independent of dispatch outcome.
+        (setq next-cs (plist-put next-cs :last_evaluated_at now-iso))
+        (setq state (dl-satan-sensor-alerts--update-cause-state
+                     state cause next-cs))
         (push entry entries)))
     (dl-satan-sensor-alerts--write-state path state)
     (nreverse entries)))

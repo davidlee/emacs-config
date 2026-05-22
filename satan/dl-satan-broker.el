@@ -25,6 +25,7 @@
 (require 'dl-satan-percept)
 (require 'dl-satan-resonance)
 (require 'dl-satan-motive)
+(require 'dl-satan-sensor-alerts)
 
 (defcustom dl-satan-runs-dir
   (expand-file-name "satan/runs" (or (bound-and-true-p dl-notes-root)
@@ -400,11 +401,14 @@ audit every denied dispatch in a structure consumers can grep."
         (dl-satan-audit-record (dl-satan-run-audit run-ctx) 'broker 'action-rejected a))
       (dolist (a (plist-get partition :failed))
         (dl-satan-audit-record (dl-satan-run-audit run-ctx) 'broker 'action-failed a)))
-    (dl-satan-audit-close
-     (dl-satan-run-audit run-ctx)
-     final
-     (or partition (list :applied [] :staged [] :rejected [] :failed []))
-     status)
+    (let* ((prepare (dl-satan-run-prepare run-ctx))
+           (pre-spawn (and prepare (plist-get prepare :pre_spawn)))
+           (actions (or partition
+                        (list :applied [] :staged [] :rejected [] :failed []))))
+      (when pre-spawn
+        (setq actions (plist-put actions :pre_spawn pre-spawn)))
+      (dl-satan-audit-close
+       (dl-satan-run-audit run-ctx) final actions status))
     (dl-satan-broker--mark-failed-on-disk run-ctx)))
 
 (defun dl-satan-broker--mark-failed-on-disk (run-ctx)
@@ -661,15 +665,28 @@ Returns the run-id."
            (motive (dl-satan-motive-read dl-satan-motive-file))
            (evidence (plist-get percept :evidence_window))
            (sensor-status (plist-get evidence :sensor_status))
+           ;; §S6 — sensor_alerts.check runs in the pre-spawn window
+           ;; alongside the rest of evidence assembly.  Returns the
+           ;; per-cause pre_spawn entries (fired or suppressed); Phase
+           ;; 4.4 threads them into the audit close so the run's
+           ;; `actions.json' carries the produced `pre_spawn' key.
+           (pre-spawn (condition-case _err
+                          (dl-satan-sensor-alerts-check
+                           sensor-status mode
+                           :time-now (plist-get prepare :time_now)
+                           :run-dir dir)
+                        (error nil)))
            (prepare (plist-put
                      (plist-put
                       (plist-put
                        (plist-put
-                        (plist-put prepare :evidence evidence)
-                        :percept percept)
-                       :resonance resonance)
-                      :motive motive)
-                     :sensor_status sensor-status)))
+                        (plist-put
+                         (plist-put prepare :evidence evidence)
+                         :percept percept)
+                        :resonance resonance)
+                       :motive motive)
+                      :sensor_status sensor-status)
+                     :pre_spawn pre-spawn)))
     (let* ((bundle (funcall (or (plist-get mode :context-fn) #'ignore)
                             mode prepare))
            (manifest (dl-satan-broker--build-manifest mode run-id))

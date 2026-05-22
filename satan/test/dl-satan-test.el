@@ -1796,6 +1796,99 @@ into `dl-satan-test--notes-fd-calls'."
           (should (eq (dl-satan-audit-verify-run dir) t)))
       (delete-directory dir t))))
 
+;; ---------- dl-satan-broker pre_spawn threading (Phase 4.4) ----------
+
+(ert-deftest dl-satan-broker/finalize-threads-pre-spawn-into-actions-json ()
+  "broker--finalize copies `:pre_spawn' from the prepare run_ctx into the
+actions plist passed to `dl-satan-audit-close', which lands the
+entries in `actions.json'.  Phase 4.4 — wires the producer side
+(Phase 4.3 `sensor-alerts.check') into the audit close (Phase 0.3
+schema bump)."
+  (let ((dir (make-temp-file "satan-broker-pre-spawn-" t))
+        (entries (list (list :kind "sensor_alert"
+                             :cause "panopticon_current_stale"
+                             :severity "warning"
+                             :message "stale 28m"
+                             :suppressed :false
+                             :dispatched_at "2026-05-22T11:13Z"))))
+    (unwind-protect
+        (let* ((prepare (list :run_id "rid" :time_now "2026-05-22T11:13Z"
+                              :start_time (current-time)
+                              :evidence nil :percept nil
+                              :sensor_status nil :motive nil
+                              :pre_spawn entries))
+               (audit (dl-satan-audit-open
+                       dir '(:run_id "rid" :mode (:name "test"))
+                       '(:bundle t) prepare))
+               (mode '(:name "test" :auto-apply none :timeout-seconds 30
+                       :budget-tool-calls 1 :capabilities ()))
+               (run-ctx (make-dl-satan-run
+                         :id "rid"
+                         :mode mode
+                         :start-time (plist-get prepare :start_time)
+                         :dir dir
+                         :status 'running
+                         :final '(:summary "ok" :actions ())
+                         :audit audit
+                         :prepare prepare)))
+          (cl-letf (((symbol-function 'dl-satan-broker--mark-failed-on-disk)
+                     (lambda (&rest _) nil)))
+            (dl-satan-broker--finalize run-ctx))
+          (let* ((actions-path (expand-file-name "actions.json" dir))
+                 (parsed (with-temp-buffer
+                           (insert-file-contents actions-path)
+                           (goto-char (point-min))
+                           (json-parse-buffer :object-type 'plist
+                                              :array-type 'list
+                                              :null-object :null
+                                              :false-object :false))))
+            (let ((ps (plist-get parsed :pre_spawn)))
+              (should (listp ps))
+              (should (= 1 (length ps)))
+              (should (equal "panopticon_current_stale"
+                             (plist-get (car ps) :cause)))
+              (should (equal "2026-05-22T11:13Z"
+                             (plist-get (car ps) :dispatched_at))))
+            (should (eq (dl-satan-audit-verify-run dir) t))))
+      (delete-directory dir t))))
+
+(ert-deftest dl-satan-broker/finalize-omits-pre-spawn-when-empty ()
+  "When `:pre_spawn' is nil on prepare, actions.json omits the key
+entirely so untouched runs keep the original four-partition shape."
+  (let ((dir (make-temp-file "satan-broker-pre-spawn-empty-" t)))
+    (unwind-protect
+        (let* ((prepare (list :run_id "rid" :time_now "2026-05-22T11:13Z"
+                              :start_time (current-time)
+                              :evidence nil :percept nil
+                              :sensor_status nil :motive nil :pre_spawn nil))
+               (audit (dl-satan-audit-open
+                       dir '(:run_id "rid" :mode (:name "test"))
+                       '(:bundle t) prepare))
+               (mode '(:name "test" :auto-apply none :timeout-seconds 30
+                       :budget-tool-calls 1 :capabilities ()))
+               (run-ctx (make-dl-satan-run
+                         :id "rid"
+                         :mode mode
+                         :start-time (plist-get prepare :start_time)
+                         :dir dir
+                         :status 'running
+                         :final '(:summary "ok" :actions ())
+                         :audit audit
+                         :prepare prepare)))
+          (cl-letf (((symbol-function 'dl-satan-broker--mark-failed-on-disk)
+                     (lambda (&rest _) nil)))
+            (dl-satan-broker--finalize run-ctx))
+          (let* ((actions-path (expand-file-name "actions.json" dir))
+                 (parsed (with-temp-buffer
+                           (insert-file-contents actions-path)
+                           (goto-char (point-min))
+                           (json-parse-buffer :object-type 'plist
+                                              :array-type 'list
+                                              :null-object :null
+                                              :false-object :false))))
+            (should-not (plist-member parsed :pre_spawn))))
+      (delete-directory dir t))))
+
 ;; ---------- dl-satan-audit pre_spawn (Phase 0.3) ----------
 
 (ert-deftest dl-satan-audit/pre-spawn-key-written-when-present ()

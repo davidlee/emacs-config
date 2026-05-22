@@ -205,8 +205,7 @@
               ;; Bough fires on streak ≥ 3 — pre-seed so it dispatches.
               (_seed (dl-satan-sensor-alerts--write-state
                       path
-                      '(:causes (:bough_unreachable
-                                 (:consecutive_count 5)))))
+                      '(:streaks (:bough_unreachable 5))))
               (entries (dl-satan-sensor-alerts-check
                         ss mode
                         :time-now "2026-05-22T10:00:00+10:00"
@@ -217,6 +216,36 @@
          (should (member "panopticon_focus_malformed" causes))
          (should (member "bough_unreachable" causes))
          (should (= 3 (length entries))))))))
+
+(ert-deftest dl-satan-sensor-alerts/a16-one-to-one-causes-and-entries ()
+  "A16 — causes touched in notified.json this run match pre_spawn entries.
+Tests fired, suppressed-by-cooldown, suppressed-by-quiet, and
+streak-suppressed all share the invariant: |state.:causes keys| ==
+|entries| with matching cause names."
+  (dl-satan-sensor-alerts-test--with-tmp-state path
+    (dl-satan-sensor-alerts-test--silence-notify
+     (lambda (_)
+       (let* ((ss (list :current_window "stale-28m"
+                        :focus "malformed"
+                        :browser "ok"
+                        :bough "unreachable"))
+              (mode (dl-satan-sensor-alerts-test--mode '(notify)))
+              (entries (dl-satan-sensor-alerts-check
+                        ss mode
+                        :time-now "2026-05-22T10:00:00+10:00"
+                        :state-file path
+                        :quiet-p-fn (lambda (&rest _) nil)))
+              (entry-causes (sort (mapcar (lambda (e) (plist-get e :cause))
+                                          entries)
+                                  #'string<))
+              (state (dl-satan-sensor-alerts--read-state path))
+              (state-causes
+               (sort
+                (cl-loop for (k _) on (plist-get state :causes) by #'cddr
+                         collect (substring (symbol-name k) 1))
+                #'string<)))
+         (should (equal entry-causes state-causes))
+         (should (= (length entries) (length state-causes))))))))
 
 ;; A17 — dispatch routes through notify_send + capability check
 
@@ -312,10 +341,8 @@
                                        :quiet-p-fn (lambda (&rest _) nil))
          (let ((state (dl-satan-sensor-alerts--read-state path)))
            (should (= 0
-                      (plist-get
-                       (dl-satan-sensor-alerts--cause-state
-                        state "bough_unreachable")
-                       :consecutive_count)))))))))
+                      (dl-satan-sensor-alerts--streak
+                       state "bough_unreachable")))))))))
 
 (provide 'dl-satan-sensor-alerts-test)
 ;;; dl-satan-sensor-alerts-test.el ends here
