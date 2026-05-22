@@ -74,9 +74,10 @@ Dotfiles must not be the source of truth for prompt content.")
                 "sway_border_set" "sway_border_reset"
                 "bough_read" "memory_mark" "memory_resonate"
                 "memory_show_trace"
+                "motive_read" "motive_replace"
                 "docs_list" "docs_search" "docs_read")
        :capabilities '(write-daily stage-proposal notify hippocampus-write
-                       inbox-write memory-write)
+                       inbox-write memory-write motive-write)
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
        :jail-profile 'specDev
        :profile 'claude-haiku
@@ -94,8 +95,9 @@ Dotfiles must not be the source of truth for prompt content.")
                 "agenda_read" "activity_read" "notes_recent"
                 "sway_border_set" "sway_border_reset"
                 "bough_read" "memory_mark" "memory_resonate"
-                "memory_show_trace")
-       :capabilities '(notify inbox-write memory-write)
+                "memory_show_trace"
+                "motive_read" "motive_replace")
+       :capabilities '(notify inbox-write memory-write motive-write)
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
        :jail-profile 'specDev
        :profile 'claude-haiku

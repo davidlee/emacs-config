@@ -21,6 +21,7 @@
 (require 'dl-satan-tools-notes)
 (require 'dl-satan-tools-docs)
 (require 'dl-satan-tools-sway)
+(require 'dl-satan-tools-motive)
 (require 'dl-satan-memory)
 (require 'dl-satan-mode)
 (require 'dl-satan-context)
