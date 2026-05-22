@@ -5,18 +5,22 @@
 ;; broker can credit (or not) the motive that drove each one.  Pure
 ;; scan — does not call any tool, does not write motive state.
 ;;
-;; Phase 5.2 ships only the discovery skeleton:
-;;   - intervention-tool defcustom (tunable without re-numbering keys)
-;;   - per-run transcript walk producing intervention plists keyed by
-;;     `(run_id . applied_index)' — the applied_index is the position
-;;     in `actions.json :applied' (unfiltered by the intervention set,
-;;     so dedup keys stay stable across config changes)
-;;   - flat scan across the prior N hours of run dirs
+;; Phases 5.2 + 5.3 ship the read half:
+;;   - 5.2  intervention-tool defcustom (tunable without re-numbering
+;;          keys), per-run transcript walk producing intervention
+;;          plists keyed by `(run_id . applied_index)' (unfiltered
+;;          `actions.json :applied' position so dedup keys stay
+;;          stable across config changes), 24h scan across run dirs.
+;;   - 5.3  window-mature gate (`dl-satan-observer--mature-p', A11),
+;;          durable dedup state in `dl-satan-observer-state-file'
+;;          (A13), public `dl-satan-observer-pending' that returns
+;;          interventions ripe for classification and
+;;          `dl-satan-observer-mark-classified' that appends a
+;;          dedup record atomically.
 ;;
-;; The window-mature gate (5.3), dedup state file (5.3), positive
-;; predicate (5.4), motive correlation (5.7), and trace writer (5.5)
-;; land in subsequent phases.  See `docs/satan/perceptual-design.md'
-;; §S5 / §7 / §A10–A14.
+;; The positive predicate (5.4), motive correlation (5.7), trace
+;; writer (5.5), and broker integration (5.8) land in subsequent
+;; phases.  See `docs/satan/perceptual-design.md' §S5 / §7 / §A10–A14.
 
 (require 'cl-lib)
 (require 'subr-x)
@@ -50,6 +54,30 @@ Interventions whose run started before `now - this' are ignored.
 The v0 attribution window is 30 min; 24 h gives generous slack for
 broker gaps (quiet hours, system off) per A11."
   :type 'integer :group 'dl-satan)
+
+(defcustom dl-satan-observer-window-mature-seconds 1800
+  "Seconds after `intervention_emitted_at' before an intervention is
+eligible for classification (A11).  Defaults to 30 minutes per §S5.
+The gate prevents a same-tick or next-tick scan from scoring an
+intervention before its attribution window has actually elapsed."
+  :type 'integer :group 'dl-satan)
+
+(defcustom dl-satan-observer-state-file
+  (expand-file-name "satan/observer.json"
+                    (or (getenv "XDG_STATE_HOME")
+                        (expand-file-name ".local/state" "~")))
+  "Per-intervention dedup state for the outcome observer.
+Shared across runs; reads/writes go through tmp + rename for
+atomicity (mirrors `dl-satan-sensor-state-file').  Shape:
+
+  (:classified
+   ((:run_id STR :applied_index INT
+     :classified_at ISO :verdict STR) ...))
+
+A13 — re-running the observer against the same prior transcript
+must not double-count a previously-correlated intervention; this
+file is the durable side of that invariant."
+  :type 'file :group 'dl-satan)
 
 ;; ---------------------------------------------------------------------
 ;; Helpers
@@ -135,6 +163,79 @@ stable across `dl-satan-observer-intervention-tools' tuning."
     (nreverse out)))
 
 ;; ---------------------------------------------------------------------
+;; Maturity gate (A11)
+;; ---------------------------------------------------------------------
+
+(defun dl-satan-observer--mature-p (intervention now-t)
+  "Return non-nil when INTERVENTION's attribution window has elapsed
+at NOW-T (emacs time value).  Maturity threshold is
+`dl-satan-observer-window-mature-seconds'.  Interventions without a
+parseable `:intervention_emitted_at' are treated as immature — the
+observer never classifies records it cannot timestamp."
+  (let* ((iso (plist-get intervention :intervention_emitted_at))
+         (emitted (and (stringp iso)
+                       (condition-case _ (date-to-time iso) (error nil)))))
+    (and emitted
+         (not (time-less-p
+               now-t
+               (time-add emitted
+                         (seconds-to-time
+                          dl-satan-observer-window-mature-seconds)))))))
+
+;; ---------------------------------------------------------------------
+;; State file I/O (atomic tmp + rename, mirrors dl-satan-sensor-alerts)
+;; ---------------------------------------------------------------------
+
+(defun dl-satan-observer--read-state (path)
+  "Return the parsed observer.json plist at PATH, or an empty seed.
+Missing file / malformed JSON both seed to `(:classified ())' so the
+run proceeds — observer state corruption must not block prepare."
+  (cond
+   ((not (file-readable-p path)) (list :classified nil))
+   (t (condition-case _err
+          (with-temp-buffer
+            (let ((coding-system-for-read 'utf-8))
+              (insert-file-contents path))
+            (goto-char (point-min))
+            (let ((obj (json-parse-buffer :object-type 'plist
+                                          :array-type 'list
+                                          :null-object nil
+                                          :false-object :false)))
+              (or obj (list :classified nil))))
+        (error (list :classified nil))))))
+
+(defun dl-satan-observer--write-state (path state)
+  "Atomically write STATE plist to PATH as JSON.
+Ensures parent dir exists; uses tmp + rename."
+  (let ((dir (file-name-directory path)))
+    (unless (file-directory-p dir) (make-directory dir t)))
+  (let ((tmp (concat path ".tmp"))
+        (coding-system-for-write 'utf-8))
+    (with-temp-file tmp
+      ;; `:classified' is a list of plists — `json-serialize' rejects
+      ;; that shape directly.  `dl-satan-jsonl-prepare' walks the
+      ;; structure and turns non-plist lists into JSON arrays.
+      (insert (json-serialize (dl-satan-jsonl-prepare state)
+                              :null-object :null :false-object :false)))
+    (rename-file tmp path t)))
+
+(defun dl-satan-observer--key-of (intervention)
+  "Return a `(RUN_ID . APPLIED_INDEX)' cons identifying INTERVENTION
+for dedup purposes.  Stable across `dl-satan-observer-intervention-
+tools' edits because APPLIED_INDEX counts the unfiltered
+`actions.json :applied' position."
+  (cons (plist-get intervention :run_id)
+        (plist-get intervention :applied_index)))
+
+(defun dl-satan-observer--classified-p (intervention state)
+  "Return non-nil when STATE already records a verdict for INTERVENTION."
+  (let ((key (dl-satan-observer--key-of intervention)))
+    (cl-some (lambda (entry)
+               (and (equal (car key) (plist-get entry :run_id))
+                    (equal (cdr key) (plist-get entry :applied_index))))
+             (plist-get state :classified))))
+
+;; ---------------------------------------------------------------------
 ;; Public entry
 ;; ---------------------------------------------------------------------
 
@@ -160,6 +261,50 @@ on top; the raw scan is deterministic per disk state."
           (setq out (nconc out (dl-satan-observer--applied-interventions-in-run
                                 run-dir))))))
     out))
+
+(defun dl-satan-observer-pending (now &optional runs-dir state-path)
+  "Return interventions ripe for classification this tick.
+Filters `dl-satan-observer-scan-prior-interventions' to entries that
+are both (a) past the maturity gate (A11) and (b) not already in the
+dedup state file (A13).  NOW is an ISO string or emacs time value.
+RUNS-DIR / STATE-PATH default to `dl-satan-runs-dir' and
+`dl-satan-observer-state-file'."
+  (let* ((now-t (if (stringp now) (date-to-time now) now))
+         (state (dl-satan-observer--read-state
+                 (or state-path dl-satan-observer-state-file)))
+         (all (dl-satan-observer-scan-prior-interventions now runs-dir)))
+    (cl-remove-if-not
+     (lambda (iv)
+       (and (dl-satan-observer--mature-p iv now-t)
+            (not (dl-satan-observer--classified-p iv state))))
+     all)))
+
+(defun dl-satan-observer-mark-classified (intervention verdict now &optional state-path)
+  "Append a dedup record for INTERVENTION + VERDICT to the state file.
+VERDICT is a string (e.g. `\"positive\"', `\"none\"').  NOW is an
+ISO string or time value used to stamp `:classified_at'.  STATE-PATH
+defaults to `dl-satan-observer-state-file'.
+
+Idempotent on `(run_id, applied_index)' — a second call for the
+same intervention is a no-op (the earlier verdict wins).  Returns
+the state plist that was persisted."
+  (let* ((path (or state-path dl-satan-observer-state-file))
+         (state (dl-satan-observer--read-state path))
+         (now-iso (if (stringp now)
+                      now
+                    (format-time-string "%Y-%m-%dT%H:%M:%S%z" now))))
+    (if (dl-satan-observer--classified-p intervention state)
+        state
+      (let* ((entry (list :run_id (plist-get intervention :run_id)
+                          :applied_index (plist-get intervention :applied_index)
+                          :classified_at now-iso
+                          :verdict verdict))
+             (next (plist-put (copy-sequence state)
+                              :classified
+                              (append (plist-get state :classified)
+                                      (list entry)))))
+        (dl-satan-observer--write-state path next)
+        next))))
 
 (provide 'dl-satan-observer)
 ;;; dl-satan-observer.el ends here

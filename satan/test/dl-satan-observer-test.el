@@ -288,5 +288,233 @@ classification but does NOT change `applied_index'."
          (should (equal "notify_send" (plist-get (car out) :tool_name)))
          (should (= 0 (plist-get (car out) :applied_index))))))))
 
+;; ---------------------------------------------------------------------
+;; Phase 5.3 — window-mature gate (A11)
+;; ---------------------------------------------------------------------
+
+(ert-deftest dl-satan-observer/mature-true-after-30m ()
+  (let ((dl-satan-observer-window-mature-seconds 1800)
+        (iv (list :intervention_emitted_at "2026-05-22T09:00:00+1000"))
+        (now (date-to-time "2026-05-22T09:35:00+1000")))
+    (should (dl-satan-observer--mature-p iv now))))
+
+(ert-deftest dl-satan-observer/mature-false-before-30m ()
+  (let ((dl-satan-observer-window-mature-seconds 1800)
+        (iv (list :intervention_emitted_at "2026-05-22T09:00:00+1000"))
+        (now (date-to-time "2026-05-22T09:20:00+1000")))
+    (should-not (dl-satan-observer--mature-p iv now))))
+
+(ert-deftest dl-satan-observer/mature-edge-exactly-at-window ()
+  "Exactly `emitted + window' is mature (inclusive)."
+  (let ((dl-satan-observer-window-mature-seconds 1800)
+        (iv (list :intervention_emitted_at "2026-05-22T09:00:00+1000"))
+        (now (date-to-time "2026-05-22T09:30:00+1000")))
+    (should (dl-satan-observer--mature-p iv now))))
+
+(ert-deftest dl-satan-observer/mature-honours-custom-seconds ()
+  (let ((dl-satan-observer-window-mature-seconds 60)
+        (iv (list :intervention_emitted_at "2026-05-22T09:00:00+1000"))
+        (now (date-to-time "2026-05-22T09:02:00+1000")))
+    (should (dl-satan-observer--mature-p iv now))))
+
+(ert-deftest dl-satan-observer/mature-skips-missing-timestamp ()
+  "Defensive — an intervention without a parseable timestamp never
+matures.  Observer cannot stamp what it cannot read."
+  (let ((now (date-to-time "2026-05-22T09:30:00+1000")))
+    (should-not (dl-satan-observer--mature-p '() now))
+    (should-not (dl-satan-observer--mature-p
+                 (list :intervention_emitted_at "garbage") now))))
+
+;; ---------------------------------------------------------------------
+;; Phase 5.3 — state I/O
+;; ---------------------------------------------------------------------
+
+(defmacro dl-satan-observer-test--with-state-path (sym &rest body)
+  "Bind SYM to a temp state file path; clean up after BODY."
+  (declare (indent 1))
+  `(let* ((,sym (make-temp-file "satan-observer-state-" nil ".json"))
+          ;; The fixture creates the file but we want the cold-start
+          ;; semantics for read-state; delete first.
+          (_ (delete-file ,sym)))
+     (unwind-protect (progn ,@body)
+       (when (file-exists-p ,sym) (delete-file ,sym))
+       (when (file-exists-p (concat ,sym ".tmp"))
+         (delete-file (concat ,sym ".tmp"))))))
+
+(ert-deftest dl-satan-observer/read-state-missing-file-seeds-empty ()
+  (dl-satan-observer-test--with-state-path path
+    (should (equal '(:classified nil)
+                   (dl-satan-observer--read-state path)))))
+
+(ert-deftest dl-satan-observer/read-state-malformed-json-seeds-empty ()
+  "Corrupt state must not block the observer — seed and proceed."
+  (dl-satan-observer-test--with-state-path path
+    (let ((coding-system-for-write 'utf-8))
+      (with-temp-file path (insert "{not valid json")))
+    (should (equal '(:classified nil)
+                   (dl-satan-observer--read-state path)))))
+
+(ert-deftest dl-satan-observer/write-state-round-trip ()
+  (dl-satan-observer-test--with-state-path path
+    (let ((state (list :classified
+                       (list (list :run_id "20260522T100000-tick-a"
+                                   :applied_index 0
+                                   :classified_at "2026-05-22T10:30:00+1000"
+                                   :verdict "positive")))))
+      (dl-satan-observer--write-state path state)
+      (should (file-exists-p path))
+      (let ((round (dl-satan-observer--read-state path)))
+        (should (= 1 (length (plist-get round :classified))))
+        (let ((entry (car (plist-get round :classified))))
+          (should (equal "20260522T100000-tick-a"
+                         (plist-get entry :run_id)))
+          (should (= 0 (plist-get entry :applied_index)))
+          (should (equal "positive" (plist-get entry :verdict))))))))
+
+(ert-deftest dl-satan-observer/write-state-creates-parent-dir ()
+  (let* ((root (make-temp-file "satan-observer-mkdir-" t))
+         (path (expand-file-name "deep/nested/observer.json" root)))
+    (unwind-protect
+        (progn
+          (dl-satan-observer--write-state path '(:classified nil))
+          (should (file-exists-p path)))
+      (delete-directory root t))))
+
+;; ---------------------------------------------------------------------
+;; Phase 5.3 — classified-p
+;; ---------------------------------------------------------------------
+
+(ert-deftest dl-satan-observer/classified-p-matches-key ()
+  (let* ((state (list :classified
+                      (list (list :run_id "rA" :applied_index 1
+                                  :verdict "positive"))))
+         (iv-hit (list :run_id "rA" :applied_index 1))
+         (iv-miss-run (list :run_id "rB" :applied_index 1))
+         (iv-miss-index (list :run_id "rA" :applied_index 2)))
+    (should (dl-satan-observer--classified-p iv-hit state))
+    (should-not (dl-satan-observer--classified-p iv-miss-run state))
+    (should-not (dl-satan-observer--classified-p iv-miss-index state))))
+
+;; ---------------------------------------------------------------------
+;; Phase 5.3 — `dl-satan-observer-pending'
+;; ---------------------------------------------------------------------
+
+(ert-deftest dl-satan-observer/pending-excludes-immature ()
+  "Mature interventions survive the filter; immature ones don't.
+NOW is set so only the first action's 30-min window has elapsed."
+  (dl-satan-observer-test--in-tmp
+   (lambda (root)
+     (dl-satan-observer-test--with-state-path spath
+       (let* ((dl-satan-observer-scan-window-hours 24)
+              (dl-satan-observer-window-mature-seconds 1800)
+              (_ (dl-satan-observer-test--make-run
+                  root "20260522T080000-tick-mature"
+                  (list (dl-satan-observer-test--applied-record
+                         "2026-05-22T08:00:01.000000+1000"
+                         "notify_send" '(:title "old")))))
+              (_ (dl-satan-observer-test--make-run
+                  root "20260522T094500-tick-young"
+                  (list (dl-satan-observer-test--applied-record
+                         "2026-05-22T09:45:01.000000+1000"
+                         "notify_send" '(:title "young")))))
+              (now "2026-05-22T10:00:00+1000")
+              (out (dl-satan-observer-pending now root spath)))
+         (should (= 1 (length out)))
+         (should (equal "20260522T080000-tick-mature"
+                        (plist-get (car out) :run_id))))))))
+
+(ert-deftest dl-satan-observer/pending-excludes-already-classified ()
+  (dl-satan-observer-test--in-tmp
+   (lambda (root)
+     (dl-satan-observer-test--with-state-path spath
+       (let* ((dl-satan-observer-scan-window-hours 24)
+              (dl-satan-observer-window-mature-seconds 1800)
+              (run-id "20260522T080000-tick-done")
+              (_ (dl-satan-observer-test--make-run
+                  root run-id
+                  (list (dl-satan-observer-test--applied-record
+                         "2026-05-22T08:00:01.000000+1000"
+                         "notify_send" '(:title "done")))))
+              (now "2026-05-22T10:00:00+1000")
+              ;; Seed state so the only candidate is already-classified.
+              (_ (dl-satan-observer--write-state
+                  spath
+                  (list :classified
+                        (list (list :run_id run-id :applied_index 0
+                                    :verdict "positive"
+                                    :classified_at "2026-05-22T09:00:00+1000")))))
+              (out (dl-satan-observer-pending now root spath)))
+         (should (null out)))))))
+
+;; ---------------------------------------------------------------------
+;; Phase 5.3 — `dl-satan-observer-mark-classified' (A13 durability)
+;; ---------------------------------------------------------------------
+
+(ert-deftest dl-satan-observer/mark-classified-persists-entry ()
+  (dl-satan-observer-test--with-state-path spath
+    (let* ((iv (list :run_id "20260522T080000-tick-x" :applied_index 2))
+           (state (dl-satan-observer-mark-classified
+                   iv "positive" "2026-05-22T10:30:00+1000" spath))
+           (round (dl-satan-observer--read-state spath))
+           (entry (car (plist-get round :classified))))
+      (should (= 1 (length (plist-get state :classified))))
+      (should (equal "20260522T080000-tick-x" (plist-get entry :run_id)))
+      (should (= 2 (plist-get entry :applied_index)))
+      (should (equal "positive" (plist-get entry :verdict)))
+      (should (equal "2026-05-22T10:30:00+1000"
+                     (plist-get entry :classified_at))))))
+
+(ert-deftest dl-satan-observer/mark-classified-preserves-prior-entries ()
+  (dl-satan-observer-test--with-state-path spath
+    (dl-satan-observer-mark-classified
+     (list :run_id "rA" :applied_index 0) "positive"
+     "2026-05-22T10:00:00+1000" spath)
+    (dl-satan-observer-mark-classified
+     (list :run_id "rB" :applied_index 5) "none"
+     "2026-05-22T10:30:00+1000" spath)
+    (let ((entries (plist-get (dl-satan-observer--read-state spath)
+                              :classified)))
+      (should (= 2 (length entries)))
+      (should (equal "rA" (plist-get (nth 0 entries) :run_id)))
+      (should (equal "rB" (plist-get (nth 1 entries) :run_id))))))
+
+(ert-deftest dl-satan-observer/mark-classified-idempotent-on-duplicate ()
+  "Calling twice for the same key writes once (A13).  The earlier
+verdict wins so a same-tick re-classification cannot flip a record."
+  (dl-satan-observer-test--with-state-path spath
+    (let ((iv (list :run_id "rA" :applied_index 0)))
+      (dl-satan-observer-mark-classified
+       iv "positive" "2026-05-22T10:00:00+1000" spath)
+      (dl-satan-observer-mark-classified
+       iv "none" "2026-05-22T10:01:00+1000" spath)
+      (let ((entries (plist-get (dl-satan-observer--read-state spath)
+                                :classified)))
+        (should (= 1 (length entries)))
+        (should (equal "positive" (plist-get (car entries) :verdict)))
+        (should (equal "2026-05-22T10:00:00+1000"
+                       (plist-get (car entries) :classified_at)))))))
+
+(ert-deftest dl-satan-observer/mark-then-pending-skips ()
+  "End-to-end A13 — once marked, the same intervention does not
+re-appear in `pending' on a fresh scan."
+  (dl-satan-observer-test--in-tmp
+   (lambda (root)
+     (dl-satan-observer-test--with-state-path spath
+       (let* ((dl-satan-observer-scan-window-hours 24)
+              (dl-satan-observer-window-mature-seconds 1800)
+              (run-id "20260522T080000-tick-loop")
+              (_ (dl-satan-observer-test--make-run
+                  root run-id
+                  (list (dl-satan-observer-test--applied-record
+                         "2026-05-22T08:00:01.000000+1000"
+                         "notify_send" '(:title "x")))))
+              (now "2026-05-22T10:00:00+1000")
+              (before (dl-satan-observer-pending now root spath)))
+         (should (= 1 (length before)))
+         (dl-satan-observer-mark-classified
+          (car before) "positive" now spath)
+         (let ((after (dl-satan-observer-pending now root spath)))
+           (should (null after))))))))
+
 (provide 'dl-satan-observer-test)
 ;;; dl-satan-observer-test.el ends here

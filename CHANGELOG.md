@@ -2,6 +2,24 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-22 — SATAN: perceptual-layer v0 Phase 5.3 (window-mature + dedup)
+
+Observer gains the gating + persistence half it needs before the
+positive predicate can ship.  Two new defcustoms:
+`dl-satan-observer-window-mature-seconds' (default 1800 — the §S5
+30-min attribution window) and `dl-satan-observer-state-file'
+(default `~/.local/state/satan/observer.json`).  Two new public
+entries:
+- `dl-satan-observer-pending NOW [RUNS-DIR] [STATE-PATH]` returns
+  intervention plists past the maturity gate (A11) and not already
+  in the dedup state (A13).
+- `dl-satan-observer-mark-classified INTERVENTION VERDICT NOW
+  [STATE-PATH]` atomically appends a `{run_id, applied_index,
+  classified_at, verdict}` record, no-op on duplicate keys.
+State I/O mirrors `dl-satan-sensor-alerts` (tmp + rename, lenient
+parse seeding to empty on missing / malformed).  Sixteen new ert;
+331/331 green.
+
 ## 2026-05-22 — SATAN: perceptual-layer v0 Phase 5.2 (observer skeleton)
 
 New `satan/dl-satan-observer.el` walks prior-run `transcript.jsonl`
