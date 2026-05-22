@@ -75,21 +75,81 @@ DIR ∈ in|out|broker.  EVENT is a symbol.  PAYLOAD is a plist/list/string."
 
 (defun dl-satan-audit-close (handle final actions status)
   "Finalize the run.
-FINAL is a plist (or nil).  ACTIONS is a plist with the four partition keys
-\(:applied :staged :rejected :failed).  STATUS is a symbol."
-  (let ((dir (dl-satan-audit-handle-dir handle)))
+FINAL is a plist (or nil).  ACTIONS is a plist with the four model-action
+partition keys (:applied :staged :rejected :failed) and an OPTIONAL
+:pre_spawn key (Phase 0.3) for entries the broker emitted before the
+model had a turn (e.g. sensor alerts).  STATUS is a symbol."
+  (let ((dir (dl-satan-audit-handle-dir handle))
+        (pre-spawn (plist-get actions :pre_spawn)))
     (dl-satan-audit--write-json
      (expand-file-name "final.json" dir)
      (or final (list :status "invalid")))
     (dl-satan-audit--write-json
      (expand-file-name "actions.json" dir)
-     (list :applied  (or (plist-get actions :applied)  [])
-           :staged   (or (plist-get actions :staged)   [])
-           :rejected (or (plist-get actions :rejected) [])
-           :failed   (or (plist-get actions :failed)   [])))
+     (append
+      (list :applied  (or (plist-get actions :applied)  [])
+            :staged   (or (plist-get actions :staged)   [])
+            :rejected (or (plist-get actions :rejected) [])
+            :failed   (or (plist-get actions :failed)   []))
+      (when pre-spawn (list :pre_spawn pre-spawn))))
     (let ((coding-system-for-write 'utf-8))
       (write-region (concat (symbol-name status) "\n") nil
                     (expand-file-name "status" dir) nil 'silent))))
+
+(defun dl-satan-audit--list-of-plists-p (val)
+  "Non-nil when VAL is a (possibly empty) list of plist-like objects."
+  (and (listp val)
+       (cl-every (lambda (e)
+                   (and (listp e)
+                        (or (null e) (keywordp (car e)))))
+                 val)))
+
+(defun dl-satan-audit-validate-actions (obj)
+  "Return nil if OBJ is a valid actions.json plist, else an error string.
+Pure in-memory validator usable from fixtures.  Checks:
+  - the four model-action partition keys (`:applied' `:staged'
+    `:rejected' `:failed') are arrays of objects;
+  - `:pre_spawn', when present, is an array of objects each carrying
+    a `:kind' string discriminator.  Unknown discriminant values are
+    accepted gracefully (forward compatibility).
+
+The validator deliberately does NOT cross-check counts against
+`final.actions' — that invariant belongs to
+`dl-satan-audit-p/actions-partition-final', which reads from disk
+and knows about `final.json'."
+  (cond
+   ((not (listp obj)) "actions must be plist")
+   ((not (dl-satan-audit--list-of-plists-p (plist-get obj :applied)))
+    "applied must be array")
+   ((not (dl-satan-audit--list-of-plists-p (plist-get obj :staged)))
+    "staged must be array")
+   ((not (dl-satan-audit--list-of-plists-p (plist-get obj :rejected)))
+    "rejected must be array")
+   ((not (dl-satan-audit--list-of-plists-p (plist-get obj :failed)))
+    "failed must be array")
+   ((plist-member obj :pre_spawn)
+    (dl-satan-audit--validate-pre-spawn (plist-get obj :pre_spawn)))))
+
+(defun dl-satan-audit--validate-pre-spawn (val)
+  "Return nil if VAL is a valid pre_spawn entry list, else an error string."
+  (cond
+   ((not (or (null val) (listp val))) "pre_spawn must be array")
+   (t
+    (let ((idx 0) (err nil))
+      (catch 'done
+        (dolist (entry val)
+          (cond
+           ((not (and (listp entry) (or (null entry) (keywordp (car entry)))))
+            (setq err (format "pre_spawn[%d] must be object" idx))
+            (throw 'done nil))
+           ((not (plist-member entry :kind))
+            (setq err (format "pre_spawn[%d] missing kind" idx))
+            (throw 'done nil))
+           ((not (stringp (plist-get entry :kind)))
+            (setq err (format "pre_spawn[%d] kind must be string" idx))
+            (throw 'done nil)))
+          (cl-incf idx)))
+      err))))
 
 ;; ---------- Verifier ----------
 
@@ -184,6 +244,20 @@ FINAL is a plist (or nil).  ACTIONS is a plist with the four partition keys
      ((listp fa) (= (length fa) sum))
      (t nil))))
 
+(defun dl-satan-audit-p/pre-spawn-shape (dir)
+  "Return t when actions.json's optional `pre_spawn' is structurally valid.
+Absent key is fine; present means each entry is an object with a
+`:kind' string discriminator.  Pre_spawn entries do not count toward
+the {applied,staged,rejected,failed} partition invariant."
+  (let* ((actions (ignore-errors
+                    (dl-satan-audit--read-json
+                     (expand-file-name "actions.json" dir)))))
+    (cond
+     ((null actions) nil)
+     ((not (plist-member actions :pre_spawn)) t)
+     (t (null (dl-satan-audit--validate-pre-spawn
+               (plist-get actions :pre_spawn)))))))
+
 (defun dl-satan-audit-p/status-terminal (dir)
   (let ((p (expand-file-name "status" dir)))
     (and (file-readable-p p)
@@ -194,7 +268,7 @@ FINAL is a plist (or nil).  ACTIONS is a plist with the four partition keys
                        "budget-exceeded"))))))
 
 (defun dl-satan-audit-verify-run (dir)
-  "Return t if all six audit predicates pass for DIR.
+  "Return t if all audit predicates pass for DIR.
 Otherwise return an alist of (PREDICATE-SYMBOL . nil) pairs."
   (let ((checks
          (list
@@ -203,6 +277,7 @@ Otherwise return an alist of (PREDICATE-SYMBOL . nil) pairs."
           (cons 'transcript-monotonic (dl-satan-audit-p/transcript-monotonic dir))
           (cons 'calls-match-results (dl-satan-audit-p/calls-match-results dir))
           (cons 'actions-partition-final (dl-satan-audit-p/actions-partition-final dir))
+          (cons 'pre-spawn-shape     (dl-satan-audit-p/pre-spawn-shape dir))
           (cons 'status-terminal     (dl-satan-audit-p/status-terminal dir)))))
     (let ((failed (cl-remove-if #'cdr checks)))
       (if (null failed) t failed))))

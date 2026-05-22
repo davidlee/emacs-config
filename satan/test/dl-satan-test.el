@@ -1795,6 +1795,135 @@ into `dl-satan-test--notes-fd-calls'."
           (should (eq (dl-satan-audit-verify-run dir) t)))
       (delete-directory dir t))))
 
+;; ---------- dl-satan-audit pre_spawn (Phase 0.3) ----------
+
+(ert-deftest dl-satan-audit/pre-spawn-key-written-when-present ()
+  "`dl-satan-audit-close' writes `:pre_spawn' into actions.json when the
+caller supplies it; the four model-action partitions stay untouched."
+  (let ((dir (make-temp-file "satan-prespawn-write-" t)))
+    (unwind-protect
+        (progn
+          (dl-satan-test--write-run
+           dir
+           '(:summary "s" :actions ())
+           (list :applied () :staged () :rejected () :failed ()
+                 :pre_spawn (list (list :kind "sensor_alert"
+                                        :cause "panopticon_current_stale"
+                                        :severity "warning"
+                                        :message "stale 28m"
+                                        :dispatched_at "2026-05-22T11:13Z")))
+           'done)
+          (let* ((actions-path (expand-file-name "actions.json" dir))
+                 (parsed (with-temp-buffer
+                           (insert-file-contents actions-path)
+                           (goto-char (point-min))
+                           (json-parse-buffer :object-type 'plist
+                                              :array-type 'list
+                                              :null-object :null
+                                              :false-object :false))))
+            (should (equal (plist-get parsed :applied) '()))
+            (should (equal (plist-get parsed :staged) '()))
+            (should (equal (plist-get parsed :rejected) '()))
+            (should (equal (plist-get parsed :failed) '()))
+            (let ((ps (plist-get parsed :pre_spawn)))
+              (should (listp ps))
+              (should (= 1 (length ps)))
+              (should (equal (plist-get (car ps) :kind) "sensor_alert"))
+              (should (equal (plist-get (car ps) :cause)
+                             "panopticon_current_stale")))))
+      (delete-directory dir t))))
+
+(ert-deftest dl-satan-audit/pre-spawn-omitted-when-absent ()
+  "Runs without `:pre_spawn' omit the key entirely from actions.json."
+  (let ((dir (make-temp-file "satan-prespawn-absent-" t)))
+    (unwind-protect
+        (progn
+          (dl-satan-test--write-run
+           dir
+           '(:summary "s" :actions ())
+           '(:applied () :staged () :rejected () :failed ())
+           'done)
+          (let* ((actions-path (expand-file-name "actions.json" dir))
+                 (parsed (with-temp-buffer
+                           (insert-file-contents actions-path)
+                           (goto-char (point-min))
+                           (json-parse-buffer :object-type 'plist
+                                              :array-type 'list
+                                              :null-object :null
+                                              :false-object :false))))
+            (should-not (plist-member parsed :pre_spawn))))
+      (delete-directory dir t))))
+
+(ert-deftest dl-satan-audit/verifier-accepts-pre-spawn-run ()
+  "A run carrying a single `pre_spawn' sensor_alert and zero model
+actions still verifies clean — `pre_spawn' must NOT pollute the
+{applied,staged,rejected,failed} partition count invariant against
+`final.actions'."
+  (let ((dir (make-temp-file "satan-prespawn-verify-" t)))
+    (unwind-protect
+        (progn
+          (dl-satan-test--write-run
+           dir
+           '(:summary "no model actions, sensor alert pre-spawn"
+             :actions ())
+           (list :applied () :staged () :rejected () :failed ()
+                 :pre_spawn (list (list :kind "sensor_alert"
+                                        :cause "panopticon_current_stale"
+                                        :severity "warning"
+                                        :message "stale 28m"
+                                        :remediation "systemctl --user status panopticon-sway"
+                                        :suppressed :false
+                                        :dispatched_at "2026-05-22T11:13Z")))
+           'done)
+          (should (eq (dl-satan-audit-verify-run dir) t)))
+      (delete-directory dir t))))
+
+(ert-deftest dl-satan-audit/verifier-rejects-malformed-pre-spawn ()
+  "An entry missing the `kind' discriminator is malformed structure
+(distinct from an unknown discriminant value).  Verifier flags it."
+  (let ((dir (make-temp-file "satan-prespawn-bad-" t)))
+    (unwind-protect
+        (progn
+          (dl-satan-test--write-run
+           dir
+           '(:summary "" :actions ())
+           (list :applied () :staged () :rejected () :failed ()
+                 :pre_spawn (list (list :cause "no_kind_here")))
+           'done)
+          (let ((res (dl-satan-audit-verify-run dir)))
+            (should (consp res))
+            (should (assq 'pre-spawn-shape res))))
+      (delete-directory dir t))))
+
+(ert-deftest dl-satan-audit/verifier-accepts-unknown-pre-spawn-kind ()
+  "Unknown `kind' discriminants are accepted gracefully (forward-compat);
+only malformed STRUCTURE is rejected."
+  (let ((dir (make-temp-file "satan-prespawn-unknown-" t)))
+    (unwind-protect
+        (progn
+          (dl-satan-test--write-run
+           dir
+           '(:summary "" :actions ())
+           (list :applied () :staged () :rejected () :failed ()
+                 :pre_spawn (list (list :kind "future_thing_v2"
+                                        :payload "whatever")))
+           'done)
+          (should (eq (dl-satan-audit-verify-run dir) t)))
+      (delete-directory dir t))))
+
+(ert-deftest dl-satan-audit/validate-actions-pure ()
+  "`dl-satan-audit-validate-actions' is a pure (in-memory) validator over
+the actions.json shape — usable from fixtures without touching disk."
+  (should (null (dl-satan-audit-validate-actions
+                 '(:applied () :staged () :rejected () :failed ()))))
+  (should (null (dl-satan-audit-validate-actions
+                 (list :applied () :staged () :rejected () :failed ()
+                       :pre_spawn (list (list :kind "sensor_alert"
+                                              :cause "x" :message "y"))))))
+  (should (stringp (dl-satan-audit-validate-actions
+                    (list :applied () :staged () :rejected () :failed ()
+                          :pre_spawn (list (list :cause "no_kind")))))))
+
 (ert-deftest dl-satan-audit/verifier-detects-orphan-call ()
   (let ((dir (make-temp-file "satan-run-" t)))
     (unwind-protect
