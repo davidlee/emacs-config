@@ -80,6 +80,35 @@
     (should (equal (length errs) 1))
     (should (equal (car (car errs)) "not-json"))))
 
+(ert-deftest dl-satan-jsonl/prepare-stringifies-symbols ()
+  "`json-serialize' rejects elisp symbols other than t / nil / :null
+/ :false.  `dl-satan-jsonl-prepare' is the single wire-encoding
+chokepoint and must coerce them so `bundle.json' / tool results /
+transcript records survive any in-memory symbol leak (resonance
+:status, motive :dormant_reason, etc.)."
+  ;; Regular symbol → bare name.
+  (should (equal "ok" (dl-satan-jsonl-prepare 'ok)))
+  ;; Keyword → bare name, colon dropped.
+  (should (equal "missing-cue" (dl-satan-jsonl-prepare :missing-cue)))
+  ;; JSON special sentinels preserved.
+  (should (eq t (dl-satan-jsonl-prepare t)))
+  (should (null  (dl-satan-jsonl-prepare nil)))
+  (should (eq :null  (dl-satan-jsonl-prepare :null)))
+  (should (eq :false (dl-satan-jsonl-prepare :false)))
+  ;; Nested: plist values get coerced; keyword keys stay keywords for
+  ;; downstream `json-serialize' which handles those itself.
+  (let* ((v (dl-satan-jsonl-prepare
+             (list :status 'ok :reason :no-match))))
+    (should (equal "ok" (plist-get v :status)))
+    (should (equal "no-match" (plist-get v :reason))))
+  ;; Round-trips through `json-serialize' without error.
+  (should (stringp (json-serialize
+                    (dl-satan-jsonl-prepare
+                     (list :status 'ok
+                           :motives (list (list :id "m1"
+                                                :dormant_reason :missing-cue))))
+                    :null-object :null :false-object :false))))
+
 ;; ---------- dl-satan-block ----------
 
 (ert-deftest dl-satan-block/replace-ok ()

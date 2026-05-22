@@ -18,7 +18,12 @@
 (defun dl-satan-jsonl-prepare (v)
   "Walk V and coerce non-plist lists into vectors so `json-serialize' accepts them.
 Plists (lists whose car is a keyword) are preserved.  Vectors are walked.
-Atoms pass through untouched."
+Non-special symbols are stringified (`json-serialize' rejects symbols
+other than t / nil / :null / :false with `wrong-type-argument
+json-value-p'), so any in-memory symbol that leaks into a bundle /
+percept / transcript record survives the wire layer.  Regular symbols
+emit their `symbol-name'; keywords drop the leading colon.  Other
+atoms pass through untouched."
   (cond
    ((vectorp v)
     (vconcat (mapcar #'dl-satan-jsonl-prepare (append v nil))))
@@ -27,6 +32,9 @@ Atoms pass through untouched."
              append (list k (dl-satan-jsonl-prepare val))))
    ((and (consp v) (listp (cdr v)))
     (vconcat (mapcar #'dl-satan-jsonl-prepare v)))
+   ((or (eq v t) (null v) (eq v :null) (eq v :false)) v)
+   ((keywordp v) (substring (symbol-name v) 1))
+   ((symbolp v)  (symbol-name v))
    (t v)))
 
 (defun dl-satan-jsonl-make-filter (on-object on-error)

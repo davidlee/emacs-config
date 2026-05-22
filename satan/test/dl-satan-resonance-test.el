@@ -466,5 +466,19 @@ block lands between `# Percept' and `# Today (raw)' per design §S2."
            (prompt (plist-get bundle :prompt)))
       (should-not (string-match-p "^# Resonance$" prompt)))))
 
+(ert-deftest dl-satan-resonance/result-json-serializes-via-jsonl-prepare ()
+  "Live failure repro: a resonance result with `:status 'ok' (symbol)
+must survive `dl-satan-jsonl-prepare' → `json-serialize' so the audit
+layer can write `bundle.json'.  Regression for the run that crashed
+with `(wrong-type-argument json-value-p ok)' inside
+`dl-satan-audit--write-json'."
+  (require 'dl-satan-jsonl)
+  (let* ((result (list :status 'ok
+                       :cue '("app:firefox" "domain_kind:docs")
+                       :matches nil)))
+    (should (stringp (json-serialize (dl-satan-jsonl-prepare result)
+                                     :null-object :null
+                                     :false-object :false)))))
+
 (provide 'dl-satan-resonance-test)
 ;;; dl-satan-resonance-test.el ends here
