@@ -8,6 +8,8 @@
 (require 'cl-lib)
 (require 'dl-satan-jsonl)
 (require 'dl-satan-observer)
+;; Phase 5.6 tests reuse motive-test fixtures + helpers.
+(require 'dl-satan-motive-test)
 
 ;; ---------------------------------------------------------------------
 ;; Fixture helpers
@@ -957,6 +959,200 @@ cwd-prefix; classifier returns `none', not `positive'."
        (dl-satan-observer-test--with-stubbed-after-state after-ev
          (let ((out (dl-satan-observer-classify iv motive)))
            (should (equal "none" (plist-get out :verdict)))))))))
+
+;; ---------------------------------------------------------------------
+;; Phase 5.6 — verdict persistence
+;; ---------------------------------------------------------------------
+
+(defun dl-satan-observer-test--positive-verdict (&optional predicate)
+  (list :verdict "positive"
+        :predicate (or predicate :git_head_changed)))
+
+(defun dl-satan-observer-test--negative-verdict (&optional reason)
+  (list :verdict "none" :reason reason))
+
+(defun dl-satan-observer-test--full-motive (&rest overrides)
+  "Motive plist with worked_count + cue for persist tests."
+  (let ((base (list :id "docs-after-error"
+                    :project_cwd dl-satan-observer-test--cwd
+                    :cue (list "project:emacs.d"
+                               "domain_kind:docs"
+                               "surface_transition:terminal->browser")
+                    :worked_count 4)))
+    (while overrides
+      (setq base (plist-put base (pop overrides) (pop overrides))))
+    base))
+
+(defmacro dl-satan-observer-test--capture-mark (sym &rest body)
+  "Bind SYM as a let-bound list capturing every (kind . args) call to
+`dl-satan-memory-store-mark'.  The stubbed fn returns `(ok . \"tid-stub\")'."
+  (declare (indent 1))
+  `(let* ((,sym nil)
+          (mark-fn (lambda (&rest args)
+                     (push args ,sym)
+                     (cons 'ok "tid-stub"))))
+     ,@body))
+
+(ert-deftest dl-satan-observer/persist-positive-runs-all-three-writes ()
+  "Positive verdict bumps motive, writes trace, writes dedup."
+  (dl-satan-observer-test--with-state-path spath
+    (dl-satan-motive-test--with-tmp-file
+     mpath dl-satan-motive-test--well-formed
+     (dl-satan-observer-test--capture-mark captured
+       (let* ((iv (dl-satan-observer-test--intervention))
+              (motive (dl-satan-observer-test--full-motive))
+              (verdict (dl-satan-observer-test--positive-verdict))
+              (out (dl-satan-observer-persist-verdict
+                    iv motive verdict "2026-05-22T10:30:00+1000"
+                    (list :motive-path mpath
+                          :state-path spath
+                          :memory-mark-fn mark-fn))))
+         (should (plist-get out :dedup_written))
+         (should (plist-get out :motive_written))
+         (should (equal '(ok . "tid-stub") (plist-get out :trace_result)))
+         (should (= 5 (plist-get out :new_worked_count)))
+         (should (= 1 (length captured)))
+         (let* ((dedup (dl-satan-observer--read-state spath))
+                (entries (plist-get dedup :classified)))
+           (should (= 1 (length entries)))
+           (should (equal "positive" (plist-get (car entries) :verdict)))))))))
+
+(ert-deftest dl-satan-observer/persist-positive-bumps-worked-count ()
+  "After persist, parsing the motive file shows worked_count old+1."
+  (dl-satan-observer-test--with-state-path spath
+    (dl-satan-motive-test--with-tmp-file
+     mpath dl-satan-motive-test--well-formed
+     (dl-satan-observer-test--capture-mark
+      _captured
+      (let* ((iv (dl-satan-observer-test--intervention))
+             ;; Fixture has docs-after-error with worked_count 0
+             (motive (dl-satan-observer-test--full-motive
+                      :worked_count 0))
+             (verdict (dl-satan-observer-test--positive-verdict)))
+        (dl-satan-observer-persist-verdict
+         iv motive verdict "2026-05-22T10:30:00+1000"
+         (list :motive-path mpath
+               :state-path spath
+               :memory-mark-fn mark-fn))
+        (let* ((parsed (dl-satan-motive-parse
+                        (dl-satan-motive-test--read mpath)))
+               (target (cl-find "docs-after-error"
+                                (plist-get parsed :motives)
+                                :key (lambda (m) (plist-get m :id))
+                                :test #'equal)))
+          (should (= 1 (plist-get target :worked_count)))
+          (should (equal "2026-05-22T10:30:00+1000"
+                         (plist-get target :last_intervention_at)))))))))
+
+(ert-deftest dl-satan-observer/persist-positive-trace-shape ()
+  "The trace call carries kind=observation, origin=auto_rule, source=
+observer, the correct ISO bounds, and metadata reflecting the
+intervention + motive + predicate."
+  (dl-satan-observer-test--with-state-path spath
+    (dl-satan-motive-test--with-tmp-file
+     mpath dl-satan-motive-test--well-formed
+     (dl-satan-observer-test--capture-mark captured
+       (let* ((iv (dl-satan-observer-test--intervention))
+              (motive (dl-satan-observer-test--full-motive))
+              (verdict (dl-satan-observer-test--positive-verdict
+                        :git_head_changed)))
+         (dl-satan-observer-persist-verdict
+          iv motive verdict "2026-05-22T10:30:00+1000"
+          (list :motive-path mpath
+                :state-path spath
+                :memory-mark-fn mark-fn))
+         (let ((args (car captured)))
+           (should (equal "observation" (plist-get args :kind)))
+           (should (equal "auto_rule" (plist-get args :trace-origin)))
+           (should (equal "observer" (plist-get args :source)))
+           (should (equal "2026-05-22T10:00:00+1000"
+                          (plist-get args :observed-start-at)))
+           (should (equal (substring (plist-get args :observed-end-at) 0 19)
+                          "2026-05-22T10:30:00"))
+           (let ((md (plist-get args :metadata-json)))
+             (should (equal "20260522T100000-tick-aaa"
+                            (plist-get md :run_id)))
+             (should (= 0 (plist-get md :applied_index)))
+             (should (equal "docs-after-error" (plist-get md :motive_id)))
+             (should (eq :git_head_changed (plist-get md :predicate))))
+           ;; Handles derived from motive :cue.
+           (let ((handles (plist-get args :handles)))
+             (should (= 3 (length handles)))
+             (should (equal "project:emacs.d"
+                            (plist-get (car handles) :handle))))))))))
+
+(ert-deftest dl-satan-observer/persist-none-writes-only-dedup ()
+  "Negative verdict — no motive bump, no trace; dedup recorded so
+the intervention isn't re-classified on next tick."
+  (dl-satan-observer-test--with-state-path spath
+    (dl-satan-motive-test--with-tmp-file
+     mpath dl-satan-motive-test--well-formed
+     (dl-satan-observer-test--capture-mark captured
+       (let* ((before (dl-satan-motive-test--read mpath))
+              (iv (dl-satan-observer-test--intervention))
+              (motive (dl-satan-observer-test--full-motive))
+              (verdict (dl-satan-observer-test--negative-verdict))
+              (out (dl-satan-observer-persist-verdict
+                    iv motive verdict "2026-05-22T10:30:00+1000"
+                    (list :motive-path mpath
+                          :state-path spath
+                          :memory-mark-fn mark-fn))))
+         (should (plist-get out :dedup_written))
+         (should (null (plist-get out :motive_written)))
+         (should (null (plist-get out :trace_result)))
+         (should (null (plist-get out :new_worked_count)))
+         (should (null captured))                 ;; trace not called
+         (should (equal before (dl-satan-motive-test--read mpath))) ;; file untouched
+         (let ((entries (plist-get (dl-satan-observer--read-state spath)
+                                   :classified)))
+           (should (equal "none" (plist-get (car entries) :verdict)))))))))
+
+(ert-deftest dl-satan-observer/persist-none-with-reason-still-deduped ()
+  "Reason-guarded `none' (motive_dormant / crosses_midnight / no_baseline)
+still records dedup so the broker doesn't waste cycles re-checking."
+  (dl-satan-observer-test--with-state-path spath
+    (dl-satan-motive-test--with-tmp-file
+     mpath dl-satan-motive-test--well-formed
+     (dl-satan-observer-test--capture-mark _captured
+       (dl-satan-observer-persist-verdict
+        (dl-satan-observer-test--intervention)
+        (dl-satan-observer-test--full-motive)
+        (dl-satan-observer-test--negative-verdict :motive_dormant)
+        "2026-05-22T10:30:00+1000"
+        (list :motive-path mpath
+              :state-path spath
+              :memory-mark-fn mark-fn))
+       (let ((entries (plist-get (dl-satan-observer--read-state spath)
+                                 :classified)))
+         (should (= 1 (length entries))))))))
+
+(ert-deftest dl-satan-observer/persist-then-pending-skips ()
+  "End-to-end — after persist-verdict, the intervention drops out of
+`dl-satan-observer-pending'."
+  (dl-satan-observer-test--in-tmp
+   (lambda (root)
+     (dl-satan-observer-test--with-state-path spath
+       (dl-satan-motive-test--with-tmp-file
+        mpath dl-satan-motive-test--well-formed
+        (dl-satan-observer-test--capture-mark _captured
+          (let* ((run-id "20260522T080000-tick-pp")
+                 (_ (dl-satan-observer-test--make-run
+                     root run-id
+                     (list (dl-satan-observer-test--applied-record
+                            "2026-05-22T08:00:00.000000+1000"
+                            "notify_send" '(:title "x")))))
+                 (now "2026-05-22T10:00:00+1000")
+                 (pending (dl-satan-observer-pending now root spath)))
+            (should (= 1 (length pending)))
+            (dl-satan-observer-persist-verdict
+             (car pending)
+             (dl-satan-observer-test--full-motive)
+             (dl-satan-observer-test--positive-verdict)
+             now
+             (list :motive-path mpath
+                   :state-path spath
+                   :memory-mark-fn mark-fn))
+            (should (null (dl-satan-observer-pending now root spath))))))))))
 
 (provide 'dl-satan-observer-test)
 ;;; dl-satan-observer-test.el ends here

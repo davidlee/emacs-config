@@ -28,6 +28,8 @@
 (require 'dl-satan-memory-canon)
 (require 'dl-satan-memory-evidence)
 (require 'dl-satan-memory-grammar)
+(require 'dl-satan-memory-store)
+(require 'dl-satan-motive)
 
 ;; Lazy require — `dl-satan-broker' will require this module in 5.8 to
 ;; wire the observer into prepare.  Declaring the broker symbols here
@@ -515,6 +517,122 @@ combine themselves until then."
           (if hit
               (list :verdict "positive" :predicate (car hit))
             (list :verdict "none")))))))))
+
+;; ---------------------------------------------------------------------
+;; Verdict persistence (Phase 5.6) — counter + trace + dedup
+;; ---------------------------------------------------------------------
+
+(defun dl-satan-observer--motive-handle-rows (motive)
+  "Convert MOTIVE's `:cue' handles into memory-store-mark handle rows.
+Each handle gets a `:rule_id observer.intervention_correlation'
+provenance so resonance can later reason about which traces the
+observer authored."
+  (mapcar
+   (lambda (h)
+     (list :handle h
+           :source (list :rule_id "observer.intervention_correlation"
+                         :origin "derived"
+                         :evidence_pointer
+                         (format "/motive/%s/cue"
+                                 (or (plist-get motive :id) "_")))
+           :grammar_version dl-satan-memory-grammar-current-version))
+   (or (plist-get motive :cue) nil)))
+
+(defun dl-satan-observer--persist-positive (intervention motive verdict now opts)
+  "Side-effect bundle for a positive verdict.
+Increments MOTIVE's `:worked_count' via the 5.5 rewriter and writes
+an `observation' / `auto_rule' trace via
+`dl-satan-memory-store-mark'.
+
+NOW is the ISO timestamp (frozen time_now) used as the new
+`:last_intervention_at'.  OPTS may contain `:motive-path',
+`:touch-footer-fn', `:memory-mark-fn' for test injection.
+
+Returns `(:motive_written BOOL :trace_result CONS :new_worked_count
+N)'."
+  (let* ((motive-path (or (plist-get opts :motive-path)
+                          dl-satan-motive-file))
+         (touch-fn (or (plist-get opts :touch-footer-fn)
+                       #'dl-satan-motive-touch-footer))
+         (mark-fn (or (plist-get opts :memory-mark-fn)
+                      #'dl-satan-memory-store-mark))
+         (new-count (1+ (or (plist-get motive :worked_count) 0)))
+         (motive-written
+          (funcall touch-fn (plist-get motive :id) new-count now motive-path))
+         (handles (dl-satan-observer--motive-handle-rows motive))
+         (metadata
+          (list :run_id (plist-get intervention :run_id)
+                :applied_index (plist-get intervention :applied_index)
+                :tool_name (plist-get intervention :tool_name)
+                :motive_id (plist-get motive :id)
+                :predicate (plist-get verdict :predicate)
+                :verdict (plist-get verdict :verdict)))
+         (payload (format "%s: %s applied_index %d → motive %s via %s"
+                          (plist-get verdict :verdict)
+                          (plist-get intervention :run_id)
+                          (plist-get intervention :applied_index)
+                          (plist-get motive :id)
+                          (or (plist-get verdict :predicate) "_")))
+         (trace-result
+          (funcall mark-fn
+                   :kind "observation"
+                   :trace-origin "auto_rule"
+                   :source "observer"
+                   :observed-start-at
+                   (plist-get intervention :intervention_emitted_at)
+                   :observed-end-at
+                   (dl-satan-observer--window-end-iso intervention)
+                   :payload payload
+                   :grammar-version dl-satan-memory-grammar-current-version
+                   :metadata-json metadata
+                   :handles handles)))
+    (list :motive_written motive-written
+          :trace_result trace-result
+          :new_worked_count new-count)))
+
+(defun dl-satan-observer-persist-verdict
+    (intervention motive verdict now &optional opts)
+  "Persist VERDICT for INTERVENTION against MOTIVE at NOW.
+
+VERDICT is a `dl-satan-observer-classify' output plist.  When
+VERDICT's `:verdict' is `\"positive\"', this credits the motive
+end-to-end:
+  1. text-level rewrite of MOTIVE's footer (`:worked_count' +
+     `:last_intervention_at') via `dl-satan-motive-touch-footer'.
+  2. observation/auto_rule trace via `dl-satan-memory-store-mark'
+     carrying the (run_id, applied_index, motive_id, predicate)
+     metadata so a later scorer can reconstruct the correlation.
+
+For any verdict — positive or `\"none\"' — a dedup record is
+appended last via `dl-satan-observer-mark-classified'.  Dedup
+written LAST: if motive write or trace write fails, the
+intervention will be retried on the next tick rather than
+silently lost.  v0 trade-off: rare partial-failure may double-
+credit; documented and accepted.
+
+OPTS forwards to the lower-level writers (used in tests):
+  :motive-path        override `dl-satan-motive-file'
+  :state-path         override `dl-satan-observer-state-file'
+  :touch-footer-fn    stub `dl-satan-motive-touch-footer'
+  :memory-mark-fn     stub `dl-satan-memory-store-mark'
+
+Returns plist:
+  (:dedup_written BOOL
+   :motive_written BOOL-or-nil
+   :trace_result CONS-or-nil
+   :new_worked_count N-or-nil)"
+  (let* ((opts (or opts '()))
+         (positive (equal "positive" (plist-get verdict :verdict)))
+         (result (when positive
+                   (dl-satan-observer--persist-positive
+                    intervention motive verdict now opts))))
+    (dl-satan-observer-mark-classified
+     intervention (plist-get verdict :verdict) now
+     (plist-get opts :state-path))
+    (list :dedup_written t
+          :motive_written (and result (plist-get result :motive_written))
+          :trace_result (and result (plist-get result :trace_result))
+          :new_worked_count (and result (plist-get result :new_worked_count)))))
 
 (defun dl-satan-observer-scan-prior-interventions (now &optional runs-dir)
   "Return a flat list of intervention plists drawn from prior runs.
