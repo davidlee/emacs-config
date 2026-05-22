@@ -2,6 +2,46 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-22 — SATAN: perceptual-layer v0 Phase 5 complete
+
+Phase 5 (outcome observer) is now end-to-end.  Sub-phases 5.5–5.8
+land on top of 5.4:
+
+- **5.5 motive footer rewriter** — `dl-satan-motive-touch-footer ID
+  WORKED-COUNT LAST-AT [PATH]'.  Text-level mutation: existing
+  `:worked_count:' / `:last_intervention_at:' lines edited in
+  place (indentation preserved via capture group); missing lines
+  appended after the section's last footer line.  Prose,
+  ruminations, other footer fields, ordering preserved verbatim.
+  Atomic tmp + rename.  Ten ert.
+- **5.6 verdict persistence** — `dl-satan-observer-persist-
+  verdict' composes the three writes a positive classification
+  triggers: touch-footer (counter + ISO bump), memory-store-mark
+  (observation / auto_rule trace with run/applied_index/motive_id/
+  predicate metadata), and dedup mark-classified.  Negative
+  verdicts record dedup only.  Dedup written last so partial
+  failures retry.  Six ert.
+- **5.7 multi-motive resolver** — `dl-satan-observer-classify-for-
+  motives' intersects intervention's percept-handles (from
+  bundle.json) against each motive's `:cue', picks highest
+  overlap, file-order tiebreak.  Dormant motives skipped.  Zero
+  overlap → `:reason :no_correlation'.  Nine ert.
+- **5.8 broker integration** — `dl-satan-observer-process RUN-CTX'
+  is the per-tick entry; `dl-satan-broker--spawn' calls it BEFORE
+  percept-build and motive-read so the in-tick capsule sees
+  fresh `:worked_count' / `:last_intervention_at' from prior-run
+  interventions whose 30-min window matured.  Per-iv errors
+  caught; loop continues.  Summary attaches to PREPARE
+  `:observer' and (mirroring Phase 4.4 pre_spawn precedent)
+  surfaces in `actions.json' alongside `pre_spawn'.  Four ert.
+
+390/390 ert across all suites.  Byte-compile clean.
+
+Carry-forward for Phase 6: cooldown floor enforcement (broker
+pre-capsule check that flips motives in cooldown to a
+`cooling-down (Nm remaining)' rendering — uses the
+`:last_intervention_at:' Phase 5 now maintains).
+
 ## 2026-05-22 — SATAN: perceptual-layer v0 Phase 5.4 (positive predicate)
 
 Observer gains the classification half — given a mature, undeduped
