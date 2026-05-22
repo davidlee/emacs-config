@@ -595,5 +595,239 @@ tomorrow's panopticon segment file."
   (let ((iv (list :intervention_emitted_at "2026-05-22T23:50:00+1000")))
     (should (dl-satan-observer--window-crosses-midnight-p iv))))
 
+;; ---------------------------------------------------------------------
+;; Phase 5.4b — positive predicate primitives (§S5 P1–P4)
+;; ---------------------------------------------------------------------
+
+(defconst dl-satan-observer-test--cwd "/tmp/satan-obs-proj")
+(defconst dl-satan-observer-test--emitted "2026-05-22T10:00:00+1000")
+
+(defun dl-satan-observer-test--motive (&rest overrides)
+  "Build a motive plist with sensible defaults; OVERRIDES merge on top."
+  (let ((base (list :project_cwd dl-satan-observer-test--cwd
+                    :cue (list "project:satan-obs-proj"))))
+    (while overrides
+      (setq base (plist-put base (pop overrides) (pop overrides))))
+    base))
+
+(defun dl-satan-observer-test--intervention ()
+  (list :run_id "20260522T100000-tick-aaa"
+        :applied_index 0
+        :intervention_emitted_at dl-satan-observer-test--emitted))
+
+;; --- P1 editor edit in window -----------------------------------------
+
+(ert-deftest dl-satan-observer/p1-editor-edit-fires ()
+  "P1 fires on an emacs segment starting after intervention with a
+last_title that resolves under `:project_cwd'."
+  (let* ((motive (dl-satan-observer-test--motive))
+         (iv (dl-satan-observer-test--intervention))
+         (after (list :focus_segments
+                      (list (list :app_id "emacs"
+                                  :start_ts "2026-05-22T10:05:00+1000"
+                                  :end_ts "2026-05-22T10:08:00+1000"
+                                  :last_title
+                                  (concat dl-satan-observer-test--cwd
+                                          "/foo.el - GNU Emacs at Sleipnir"))))))
+    (should (dl-satan-observer--predicate-editor-edit-in-window
+             nil after motive iv))))
+
+(ert-deftest dl-satan-observer/p1-coincidence-outside-cwd-does-not-fire ()
+  "A12 — emacs segment whose title resolves to a path NOT under
+`:project_cwd' must not fire P1.  Load-bearing for the no-coincidence
+invariant."
+  (let* ((motive (dl-satan-observer-test--motive))
+         (iv (dl-satan-observer-test--intervention))
+         (after (list :focus_segments
+                      (list (list :app_id "emacs"
+                                  :start_ts "2026-05-22T10:05:00+1000"
+                                  :last_title
+                                  "/other/repo/bar.el - GNU Emacs at Sleipnir")))))
+    (should-not (dl-satan-observer--predicate-editor-edit-in-window
+                 nil after motive iv))))
+
+(ert-deftest dl-satan-observer/p1-segment-starting-at-or-before-emitted-does-not-fire ()
+  "P1 requires `start_ts' strictly after `:intervention_emitted_at'.
+A segment opened at the same moment was already in progress; it
+isn't evidence of a post-intervention edit."
+  (let* ((motive (dl-satan-observer-test--motive))
+         (iv (dl-satan-observer-test--intervention))
+         (after (list :focus_segments
+                      (list (list :app_id "emacs"
+                                  :start_ts dl-satan-observer-test--emitted
+                                  :last_title
+                                  (concat dl-satan-observer-test--cwd
+                                          "/foo.el - GNU Emacs at Sleipnir"))))))
+    (should-not (dl-satan-observer--predicate-editor-edit-in-window
+                 nil after motive iv))))
+
+(ert-deftest dl-satan-observer/p1-non-editor-app-does-not-fire ()
+  "A firefox segment with a URL-shaped title under `:project_cwd' (as
+if the user navigated to a local file://) doesn't fire P1 — surface
+must be editor."
+  (let* ((motive (dl-satan-observer-test--motive))
+         (iv (dl-satan-observer-test--intervention))
+         (after (list :focus_segments
+                      (list (list :app_id "firefox"
+                                  :start_ts "2026-05-22T10:05:00+1000"
+                                  :last_title
+                                  (concat dl-satan-observer-test--cwd
+                                          "/foo.el - GNU Emacs at Sleipnir"))))))
+    (should-not (dl-satan-observer--predicate-editor-edit-in-window
+                 nil after motive iv))))
+
+(ert-deftest dl-satan-observer/p1-missing-last-title-skips ()
+  "Segments from panopticon before phase 5.4-pan lack `:last_title';
+P1 must skip them silently."
+  (let* ((motive (dl-satan-observer-test--motive))
+         (iv (dl-satan-observer-test--intervention))
+         (after (list :focus_segments
+                      (list (list :app_id "emacs"
+                                  :start_ts "2026-05-22T10:05:00+1000")))))
+    (should-not (dl-satan-observer--predicate-editor-edit-in-window
+                 nil after motive iv))))
+
+(ert-deftest dl-satan-observer/p1-no-project-cwd-skips ()
+  "Motive without `:project_cwd' — P1 silently no-ops."
+  (let* ((motive (dl-satan-observer-test--motive :project_cwd nil))
+         (iv (dl-satan-observer-test--intervention))
+         (after (list :focus_segments
+                      (list (list :app_id "emacs"
+                                  :start_ts "2026-05-22T10:05:00+1000"
+                                  :last_title
+                                  "/anywhere/foo.el - GNU Emacs at Sleipnir")))))
+    (should-not (dl-satan-observer--predicate-editor-edit-in-window
+                 nil after motive iv))))
+
+;; --- P2 git HEAD changed ----------------------------------------------
+
+(ert-deftest dl-satan-observer/p2-git-head-changed-fires ()
+  (let ((baseline (list :git_state (list :head_short "aaaaaaa"
+                                         :remote "github.com/u/r")))
+        (after (list :git_state (list :head_short "bbbbbbb"
+                                      :remote "github.com/u/r"))))
+    (should (dl-satan-observer--predicate-git-head-changed
+             baseline after nil nil))))
+
+(ert-deftest dl-satan-observer/p2-git-head-stable-does-not-fire ()
+  (let ((baseline (list :git_state (list :head_short "aaaaaaa"
+                                         :remote "github.com/u/r")))
+        (after (list :git_state (list :head_short "aaaaaaa"
+                                      :remote "github.com/u/r"))))
+    (should-not (dl-satan-observer--predicate-git-head-changed
+                 baseline after nil nil))))
+
+(ert-deftest dl-satan-observer/p2-different-remotes-do-not-fire ()
+  "A12 corollary — baseline and after probed different repos.
+Their head_shorts being different is not evidence of a commit."
+  (let ((baseline (list :git_state (list :head_short "aaaaaaa"
+                                         :remote "github.com/u/r1")))
+        (after (list :git_state (list :head_short "bbbbbbb"
+                                      :remote "github.com/u/r2"))))
+    (should-not (dl-satan-observer--predicate-git-head-changed
+                 baseline after nil nil))))
+
+(ert-deftest dl-satan-observer/p2-missing-head-on-either-side-skips ()
+  "Non-repo probes return nil head; P2 must skip rather than fire."
+  (let ((baseline (list :git_state (list :head_short nil :remote nil)))
+        (after (list :git_state (list :head_short "bbbbbbb" :remote nil))))
+    (should-not (dl-satan-observer--predicate-git-head-changed
+                 baseline after nil nil))))
+
+;; --- P3 recent_files delta --------------------------------------------
+
+(ert-deftest dl-satan-observer/p3-recent-files-delta-fires ()
+  "A file under `:project_cwd' present in AFTER's recent_files and
+absent from BASELINE's recent_files satisfies P3."
+  (let* ((motive (dl-satan-observer-test--motive))
+         (baseline (list :fs_state
+                         (list :cwd dl-satan-observer-test--cwd
+                               :recent_files (list "old.el"))))
+         (after (list :fs_state
+                      (list :cwd dl-satan-observer-test--cwd
+                            :recent_files (list "old.el" "new.el")))))
+    (should (dl-satan-observer--predicate-fs-recent-delta
+             baseline after motive nil))))
+
+(ert-deftest dl-satan-observer/p3-coincidence-outside-cwd-does-not-fire ()
+  "A12 — a new recent_files entry on a path NOT under `:project_cwd'
+must not fire P3.  Set diff is path-prefix-filtered."
+  (let* ((motive (dl-satan-observer-test--motive))
+         ;; BASELINE assembled with a different cwd (e.g. an unrelated
+         ;; repo); AFTER assembled with motive's :project_cwd.  The
+         ;; delta exists but on /other/repo, not /tmp/satan-obs-proj.
+         (baseline (list :fs_state
+                         (list :cwd "/other/repo" :recent_files nil)))
+         (after (list :fs_state
+                      (list :cwd "/other/repo"
+                            :recent_files (list "noise.el")))))
+    (should-not (dl-satan-observer--predicate-fs-recent-delta
+                 baseline after motive nil))))
+
+(ert-deftest dl-satan-observer/p3-no-project-cwd-skips ()
+  (let* ((motive (dl-satan-observer-test--motive :project_cwd nil))
+         (baseline (list :fs_state (list :cwd "/x" :recent_files nil)))
+         (after (list :fs_state (list :cwd "/x" :recent_files (list "a.el")))))
+    (should-not (dl-satan-observer--predicate-fs-recent-delta
+                 baseline after motive nil))))
+
+(ert-deftest dl-satan-observer/p3-handles-different-cwds-by-absolute-path ()
+  "BASELINE may have been assembled with a different cwd than the
+motive's; P3 compares absolute paths, not relative ones."
+  (let* ((motive (dl-satan-observer-test--motive))
+         (baseline (list :fs_state
+                         (list :cwd "/other/repo"
+                               ;; Same absolute path as AFTER's new entry —
+                               ;; should suppress the fire.
+                               :recent_files
+                               (list "../../tmp/satan-obs-proj/foo.el"))))
+         (after (list :fs_state
+                      (list :cwd dl-satan-observer-test--cwd
+                            :recent_files (list "foo.el")))))
+    (should-not (dl-satan-observer--predicate-fs-recent-delta
+                 baseline after motive nil))))
+
+;; --- P4 bough event match ---------------------------------------------
+
+(ert-deftest dl-satan-observer/p4-bough-node-match-fires ()
+  (let* ((motive (dl-satan-observer-test--motive
+                  :cue (list "bough_node:nano123" "project:foo")))
+         (after (list :bough_recent
+                      (list (list :event "status_changed"
+                                  :nanoid "nano123" :from "todo" :to "done")))))
+    (should (dl-satan-observer--predicate-bough-event-match
+             nil after motive nil))))
+
+(ert-deftest dl-satan-observer/p4-bough-project-match-fires ()
+  (let* ((motive (dl-satan-observer-test--motive
+                  :cue (list "bough_project:proj456")))
+         (after (list :bough_recent
+                      (list (list :event "status_changed"
+                                  :nanoid "proj456")))))
+    (should (dl-satan-observer--predicate-bough-event-match
+             nil after motive nil))))
+
+(ert-deftest dl-satan-observer/p4-noise-event-does-not-fire ()
+  "An unrelated bough event must not fire when none of the nanoids
+match a `bough_node:'/`bough_project:' handle in the cue."
+  (let* ((motive (dl-satan-observer-test--motive
+                  :cue (list "bough_node:nano123")))
+         (after (list :bough_recent
+                      (list (list :event "status_changed"
+                                  :nanoid "different")))))
+    (should-not (dl-satan-observer--predicate-bough-event-match
+                 nil after motive nil))))
+
+(ert-deftest dl-satan-observer/p4-no-bough-handles-skips ()
+  "Motive whose cue carries no bough_node:/bough_project: handle is
+not eligible for P4 — even with bough events in the window."
+  (let* ((motive (dl-satan-observer-test--motive
+                  :cue (list "project:foo")))
+         (after (list :bough_recent
+                      (list (list :event "status_changed"
+                                  :nanoid "anything")))))
+    (should-not (dl-satan-observer--predicate-bough-event-match
+                 nil after motive nil))))
+
 (provide 'dl-satan-observer-test)
 ;;; dl-satan-observer-test.el ends here
