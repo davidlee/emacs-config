@@ -341,6 +341,15 @@ not influence ordering: motives render in file order."
 ;; Write-side guard (Phase 3.4 / A7 / A8)
 ;; ---------------------------------------------------------------------
 
+(defconst dl-satan-motive-bound-precedence
+  '(:forbidden-field :too-many-active :too-many-ruminations :invalid-cue)
+  "Order in which `dl-satan-motive-validate-for-write' reports breaches.
+Document-visible precedence: the first breach in this list wins when
+a payload trips more than one (A7 — caller sees one actionable error
+per turn).  Forbidden-field beats count caps so the author can't hide
+a `:ceiling:' inside an already-bloated file; count caps beat
+per-motive `:cue:' validity so author trims first, fixes second.")
+
 (defun dl-satan-motive-validate-for-write (text)
   "Validate TEXT (a proposed motives.org replacement).
 Return nil when acceptable, else a structured-error plist:
@@ -351,8 +360,9 @@ Return nil when acceptable, else a structured-error plist:
   (:bound :invalid-cue          :motive ID :reason SYM)
 
 The motive_replace handler maps this onto a `(error . MSG)` tool
-result.  Bounds are checked in order; the first breach wins so the
-caller sees one actionable error per turn."
+result.  Precedence is `dl-satan-motive-bound-precedence' — the
+first breach in that order wins so the caller sees one actionable
+error per turn (A7)."
   (let* ((parsed (dl-satan-motive-parse text))
          (motives (plist-get parsed :motives))
          (actives (dl-satan-motive--active-motives parsed))

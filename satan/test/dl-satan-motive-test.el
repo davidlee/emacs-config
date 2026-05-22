@@ -323,6 +323,100 @@ The write path tolerates it; the read path renders it dormant."
     (should (null (dl-satan-motive-validate-for-write text)))))
 
 ;; ---------------------------------------------------------------------
+;; A7 precedence — first breach in `dl-satan-motive-bound-precedence' wins
+;; ---------------------------------------------------------------------
+
+(ert-deftest dl-satan-motive/bound-precedence-shape ()
+  "Document-visible precedence constant exists with the expected
+order — forbidden-field > count caps > invalid-cue (A7)."
+  (should (equal dl-satan-motive-bound-precedence
+                 '(:forbidden-field :too-many-active
+                   :too-many-ruminations :invalid-cue))))
+
+(ert-deftest dl-satan-motive/write-precedence-forbidden-beats-count ()
+  "Payload that uses `:ceiling:' *and* has too many actives must
+report forbidden-field first — the author can't slip a v0-deferred
+field through a fix-the-count edit."
+  (let* ((bad (concat "* test: a\n  :cue: app:firefox\n  :ceiling: 5\n"
+                      "* test: b\n  :cue: app:firefox\n  :cooldown_s: 1800\n"
+                      "* test: c\n  :cue: app:firefox\n  :cooldown_s: 1800\n"
+                      "* test: d\n  :cue: app:firefox\n  :cooldown_s: 1800\n"))
+         (err (dl-satan-motive-validate-for-write bad)))
+    (should (eq :forbidden-field (plist-get err :bound)))))
+
+(ert-deftest dl-satan-motive/write-precedence-count-beats-invalid-cue ()
+  "Payload with 4 well-formed actives *and* a separate motive
+declaring a malformed cue reports the count breach first — author
+trims before tightening cues.  (A motive with a malformed cue is
+itself dormant so it does not contribute to the active count; the
+collision arises when too-many valid actives sit beside a bad-cue
+draft.)"
+  (let* ((bad (concat "* test: a\n  :cue: app:firefox\n  :cooldown_s: 1800\n"
+                      "* test: b\n  :cue: app:firefox\n  :cooldown_s: 1800\n"
+                      "* test: c\n  :cue: app:firefox\n  :cooldown_s: 1800\n"
+                      "* test: d\n  :cue: app:firefox\n  :cooldown_s: 1800\n"
+                      "* test: bad-draft\n  :cue: not-a-valid-handle\n  :cooldown_s: 1800\n"))
+         (err (dl-satan-motive-validate-for-write bad)))
+    (should (eq :too-many-active (plist-get err :bound)))))
+
+(ert-deftest dl-satan-motive/write-precedence-active-beats-ruminations ()
+  "When both count caps trip, active-cap reports first."
+  (let* ((bad (concat (mapconcat
+                       (lambda (id)
+                         (format "* test: %s\n  :cue: app:firefox\n  :cooldown_s: 1800\n"
+                                 id))
+                       '("a" "b" "c" "d") "")
+                      "* ruminations\n"
+                      (mapconcat
+                       (lambda (i)
+                         (format "  - 2026-05-%02d  line %d" (1+ i) i))
+                       (number-sequence 0 10) "\n")
+                      "\n"))
+         (err (dl-satan-motive-validate-for-write bad)))
+    (should (eq :too-many-active (plist-get err :bound)))))
+
+(ert-deftest dl-satan-motive/write-invalid-cue-reports-first-bad-motive ()
+  "Iteration order is file order — `cl-some' reports the first
+breaching motive, not an arbitrary one."
+  (let* ((bad (concat
+               "* test: clean\n  :cue: app:firefox\n  :cooldown_s: 1800\n"
+               "* test: first-bad\n  :cue: not-canonical\n  :cooldown_s: 1800\n"
+               "* test: second-bad\n  :cue: also-bad\n  :cooldown_s: 1800\n"))
+         (err (dl-satan-motive-validate-for-write bad)))
+    (should (eq :invalid-cue (plist-get err :bound)))
+    (should (equal "first-bad" (plist-get err :motive)))))
+
+;; ---------------------------------------------------------------------
+;; A7 prose surface — every bound formats with its name in the message
+;; ---------------------------------------------------------------------
+
+(ert-deftest dl-satan-motive/format-error-names-every-bound ()
+  "The model-facing error string surfaces the bound name (A7).
+Round-trip every precedence entry through a synthetic plist and
+assert the formatter mentions it."
+  (let ((cases
+         '((:forbidden-field
+            (:bound :forbidden-field :motive "x" :field "ceiling")
+            "forbidden field")
+           (:too-many-active
+            (:bound :too-many-active :limit 3 :got 4)
+            "too many active motives")
+           (:too-many-ruminations
+            (:bound :too-many-ruminations :limit 10 :got 11)
+            "too many rumination lines")
+           (:invalid-cue
+            (:bound :invalid-cue :motive "x" :reason :malformed-cue)
+            "invalid :cue:"))))
+    (dolist (case cases)
+      (let ((bound (nth 0 case))
+            (err (nth 1 case))
+            (needle (nth 2 case)))
+        (should (string-match-p
+                 (regexp-quote needle)
+                 (dl-satan-motive-format-write-error err)))
+        (ignore bound)))))
+
+;; ---------------------------------------------------------------------
 ;; Capsule integration (Phase 3.3) — block lands between resonance and today
 ;; ---------------------------------------------------------------------
 
