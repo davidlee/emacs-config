@@ -829,5 +829,134 @@ not eligible for P4 — even with bough events in the window."
     (should-not (dl-satan-observer--predicate-bough-event-match
                  nil after motive nil))))
 
+;; ---------------------------------------------------------------------
+;; Phase 5.4c — single-motive classifier glue
+;; ---------------------------------------------------------------------
+
+(defun dl-satan-observer-test--stub-after-state (after-plist)
+  "Return a function that mimics `--after-state' by returning AFTER-PLIST."
+  (lambda (&rest _) after-plist))
+
+(defmacro dl-satan-observer-test--with-stubbed-after-state (after &rest body)
+  "Run BODY with `--after-state' stubbed to return AFTER (plist)."
+  (declare (indent 1))
+  `(cl-letf (((symbol-function 'dl-satan-observer--after-state)
+              (dl-satan-observer-test--stub-after-state ,after)))
+     ,@body))
+
+(ert-deftest dl-satan-observer/classify-dormant-motive-skips ()
+  "A14 — dormant motive yields `:reason :motive_dormant' immediately,
+without reading baseline or assembling after-state."
+  (let* ((motive (dl-satan-observer-test--motive :dormant t))
+         (iv (dl-satan-observer-test--intervention))
+         (out (dl-satan-observer-classify iv motive)))
+    (should (equal "none" (plist-get out :verdict)))
+    (should (eq :motive_dormant (plist-get out :reason)))))
+
+(ert-deftest dl-satan-observer/classify-midnight-crossing-skips ()
+  "5.4 §S5 watch-out — a window crossing midnight yields
+`:reason :crosses_midnight' instead of probing after-state."
+  (let* ((motive (dl-satan-observer-test--motive))
+         (iv (plist-put (dl-satan-observer-test--intervention)
+                        :intervention_emitted_at
+                        "2026-05-22T23:50:00+1000"))
+         (out (dl-satan-observer-classify iv motive)))
+    (should (equal "none" (plist-get out :verdict)))
+    (should (eq :crosses_midnight (plist-get out :reason)))))
+
+(ert-deftest dl-satan-observer/classify-no-baseline-yields-reason ()
+  "Budget-denied / pre_spawn-denied runs lack `bundle.json'; classifier
+yields `:reason :no_baseline' rather than crashing on a nil
+baseline."
+  (dl-satan-observer-test--in-tmp
+   (lambda (root)
+     (let* ((dir (expand-file-name "20260522T100000-tick-aaa" root))
+            (_ (make-directory dir t))
+            (motive (dl-satan-observer-test--motive))
+            (iv (plist-put (dl-satan-observer-test--intervention)
+                           :run_dir dir))
+            (out (dl-satan-observer-classify iv motive)))
+       (should (equal "none" (plist-get out :verdict)))
+       (should (eq :no_baseline (plist-get out :reason)))))))
+
+(ert-deftest dl-satan-observer/classify-positive-via-git-head ()
+  "P2 fires end-to-end — baseline `bundle.json' carries head_short
+`aaaaaaa', stubbed after-state reports `bbbbbbb' with matching
+remote; classifier returns `:predicate :git_head_changed'."
+  (dl-satan-observer-test--in-tmp
+   (lambda (root)
+     (let* ((dir (expand-file-name "20260522T100000-tick-aaa" root))
+            (baseline-ev
+             (list :git_state (list :head_short "aaaaaaa"
+                                    :remote "github.com/u/r")
+                   :fs_state (list :cwd dl-satan-observer-test--cwd
+                                   :recent_files nil)
+                   :focus_segments nil :bough_recent nil))
+            (after-ev
+             (list :git_state (list :head_short "bbbbbbb"
+                                    :remote "github.com/u/r")
+                   :fs_state (list :cwd dl-satan-observer-test--cwd
+                                   :recent_files nil)
+                   :focus_segments nil :bough_recent nil))
+            (motive (dl-satan-observer-test--motive))
+            (iv (plist-put (dl-satan-observer-test--intervention)
+                           :run_dir dir)))
+       (dl-satan-observer-test--write-bundle
+        dir (list :percept (list :evidence_window baseline-ev)))
+       (dl-satan-observer-test--with-stubbed-after-state after-ev
+         (let ((out (dl-satan-observer-classify iv motive)))
+           (should (equal "positive" (plist-get out :verdict)))
+           (should (eq :git_head_changed (plist-get out :predicate)))))))))
+
+(ert-deftest dl-satan-observer/classify-no-fire-returns-none-no-reason ()
+  "All four predicates inert — verdict `none' with no `:reason' slot.
+`:reason' is reserved for guard-triggered short-circuits, not for
+predicates simply not finding signal."
+  (dl-satan-observer-test--in-tmp
+   (lambda (root)
+     (let* ((dir (expand-file-name "20260522T100000-tick-aaa" root))
+            (stable (list :git_state (list :head_short "aaaaaaa"
+                                           :remote "github.com/u/r")
+                          :fs_state (list :cwd dl-satan-observer-test--cwd
+                                          :recent_files nil)
+                          :focus_segments nil :bough_recent nil))
+            (motive (dl-satan-observer-test--motive))
+            (iv (plist-put (dl-satan-observer-test--intervention)
+                           :run_dir dir)))
+       (dl-satan-observer-test--write-bundle
+        dir (list :percept (list :evidence_window stable)))
+       (dl-satan-observer-test--with-stubbed-after-state stable
+         (let ((out (dl-satan-observer-classify iv motive)))
+           (should (equal "none" (plist-get out :verdict)))
+           (should (null (plist-get out :predicate)))
+           (should (null (plist-get out :reason)))))))))
+
+(ert-deftest dl-satan-observer/classify-a12-fs-coincidence-does-not-fire ()
+  "A12 end-to-end — an emacs recentf entry outside `:project_cwd'
+appears in AFTER but not BASELINE.  P3 must filter it out by
+cwd-prefix; classifier returns `none', not `positive'."
+  (dl-satan-observer-test--in-tmp
+   (lambda (root)
+     (let* ((dir (expand-file-name "20260522T100000-tick-aaa" root))
+            (baseline-ev
+             (list :git_state (list :head_short "aaaaaaa" :remote "r")
+                   :fs_state (list :cwd "/other/repo" :recent_files nil)
+                   :focus_segments nil :bough_recent nil))
+            (after-ev
+             (list :git_state (list :head_short "aaaaaaa" :remote "r")
+                   :fs_state (list :cwd "/other/repo"
+                                   ;; New entry — but NOT under motive's
+                                   ;; :project_cwd, so P3 must skip it.
+                                   :recent_files (list "noise.el"))
+                   :focus_segments nil :bough_recent nil))
+            (motive (dl-satan-observer-test--motive))
+            (iv (plist-put (dl-satan-observer-test--intervention)
+                           :run_dir dir)))
+       (dl-satan-observer-test--write-bundle
+        dir (list :percept (list :evidence_window baseline-ev)))
+       (dl-satan-observer-test--with-stubbed-after-state after-ev
+         (let ((out (dl-satan-observer-classify iv motive)))
+           (should (equal "none" (plist-get out :verdict)))))))))
+
 (provide 'dl-satan-observer-test)
 ;;; dl-satan-observer-test.el ends here

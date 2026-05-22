@@ -455,6 +455,67 @@ dormant')."
 ;; Public entry
 ;; ---------------------------------------------------------------------
 
+(defconst dl-satan-observer--predicates
+  '((:editor_edit_in_window
+     . dl-satan-observer--predicate-editor-edit-in-window)
+    (:git_head_changed
+     . dl-satan-observer--predicate-git-head-changed)
+    (:fs_recent_delta
+     . dl-satan-observer--predicate-fs-recent-delta)
+    (:bough_event_match
+     . dl-satan-observer--predicate-bough-event-match))
+  "Ordered alist mapping predicate keyword → symbol.
+`dl-satan-observer-classify' runs them in order; first fire wins.
+Order matters only for the `:predicate' slot recorded on the
+verdict — the verdict itself is `\"positive\"' regardless.")
+
+(defun dl-satan-observer-classify (intervention motive)
+  "Return a verdict plist for INTERVENTION against MOTIVE (§S5).
+Pure: no state writes.  Reads INTERVENTION's `:run_dir'/bundle.json
+for the baseline; assembles the after-state via
+`--after-state'.  Returns:
+
+  (:verdict   \"positive\" | \"none\"
+   :predicate KEYWORD or nil   ; which P fired, when positive
+   :reason    KEYWORD or nil)  ; why none, when negative
+
+Guard order:
+  1. A14 — MOTIVE marked `:dormant' → `:verdict \"none\"
+     :reason :motive_dormant'.
+  2. Window crosses calendar-day boundary →
+     `:reason :crosses_midnight' (v0 punts cross-day per §S5
+     watch-out — assemble-with-bounds would read tomorrow's
+     panopticon segment file).
+  3. Baseline absent (budget-denied / pre_spawn-denied runs lack
+     `bundle.json') → `:reason :no_baseline'.
+  4. P1 → P2 → P3 → P4 in `dl-satan-observer--predicates' order;
+     first fire wins.
+  5. None fire → `:verdict \"none\" :reason nil'.
+
+Single-motive only (§S5 multi-motive correlation by overlap-count
++ file-order tiebreak lands in 5.7); callers iterate motives and
+combine themselves until then."
+  (cond
+   ((plist-get motive :dormant)
+    (list :verdict "none" :reason :motive_dormant))
+   ((dl-satan-observer--window-crosses-midnight-p intervention)
+    (list :verdict "none" :reason :crosses_midnight))
+   (t
+    (let ((baseline (dl-satan-observer--baseline-read
+                     (plist-get intervention :run_dir))))
+      (cond
+       ((null baseline)
+        (list :verdict "none" :reason :no_baseline))
+       (t
+        (let* ((after (dl-satan-observer--after-state intervention motive))
+               (hit (cl-find-if
+                     (lambda (p)
+                       (funcall (cdr p) baseline after motive intervention))
+                     dl-satan-observer--predicates)))
+          (if hit
+              (list :verdict "positive" :predicate (car hit))
+            (list :verdict "none")))))))))
+
 (defun dl-satan-observer-scan-prior-interventions (now &optional runs-dir)
   "Return a flat list of intervention plists drawn from prior runs.
 Walks every run under RUNS-DIR (default `dl-satan-runs-dir') whose
