@@ -659,14 +659,17 @@ Returns the run-id."
            (_persisted (dl-satan-percept-persist dir percept))
            (resonance (dl-satan-resonance-derive percept))
            (motive (dl-satan-motive-read dl-satan-motive-file))
+           (evidence (plist-get percept :evidence_window))
+           (sensor-status (plist-get evidence :sensor_status))
            (prepare (plist-put
                      (plist-put
                       (plist-put
-                       (plist-put prepare :evidence
-                                  (plist-get percept :evidence_window))
-                       :percept percept)
-                      :resonance resonance)
-                     :motive motive)))
+                       (plist-put
+                        (plist-put prepare :evidence evidence)
+                        :percept percept)
+                       :resonance resonance)
+                      :motive motive)
+                     :sensor_status sensor-status)))
     (let* ((bundle (funcall (or (plist-get mode :context-fn) #'ignore)
                             mode prepare))
            (manifest (dl-satan-broker--build-manifest mode run-id))

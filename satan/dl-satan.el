@@ -23,6 +23,7 @@
 (require 'dl-satan-tools-sway)
 (require 'dl-satan-tools-motive)
 (require 'dl-satan-memory)
+(require 'dl-satan-sensor-alerts)
 (require 'dl-satan-mode)
 (require 'dl-satan-context)
 (require 'dl-satan-output)

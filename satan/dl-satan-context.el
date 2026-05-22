@@ -12,6 +12,7 @@
 (require 'dl-satan-percept)
 (require 'dl-satan-resonance)
 (require 'dl-satan-motive)
+(require 'dl-satan-sensor-alerts)
 
 (defvar dl-satan-runs-dir)              ; defined in dl-satan-broker.el
 
@@ -299,11 +300,11 @@ Keys: :when, :mode, :status (\"ok\" / \"FAILED\"), :summary (or nil),
   "Return the fully-rendered system prompt for the harness.
 ASSEMBLED is the scaffold + mode-prompt string (no framing yet).
 BUNDLE is the context plist providing `:now', `:today_text', `:sources',
-`:recent_runs', `:percept', `:resonance', `:motive'.  Missing
-framing.txt signals — there is no canonical fallback.  Block order:
-`# Now' → percept → resonance → motive → mode-specific (today /
-sources / recent runs).  Each block self-suppresses when its source
-is empty/absent (A4, A6, A8)."
+`:recent_runs', `:percept', `:resonance', `:motive', `:sensor_status'.
+Missing framing.txt signals — there is no canonical fallback.  Block
+order: `# Now' → percept → resonance → motive → sensors → mode-
+specific (today / sources / recent runs).  Each block self-suppresses
+when its source is empty/absent (A4, A6, A8, A15)."
   (let* ((framing (dl-satan-context--framing))
          (parts (list (string-trim-right assembled)))
          (blocks (delq nil
@@ -316,6 +317,8 @@ is empty/absent (A4, A6, A8)."
                          framing (plist-get bundle :resonance))
                         (dl-satan-motive-render-block
                          framing (plist-get bundle :motive))
+                        (dl-satan-sensor-render-block
+                         framing (plist-get bundle :sensor_status))
                         (dl-satan-context--render-today
                          framing (plist-get bundle :today_text))
                         (dl-satan-context--render-sources
@@ -349,18 +352,18 @@ for audit but are no longer read by the harness."
   (plist-put bundle :prompt (dl-satan-context--render-prompt assembled bundle)))
 
 (defun dl-satan-context--with-prepare (bundle prepare)
-  "Mirror PREPARE's identity + percept + resonance + motive slots into BUNDLE.
+  "Mirror PREPARE's identity + percept + resonance + motive + sensor slots into BUNDLE.
 Phase 1 acceptance A2 requires `bundle.json' and `percept.json' to
 carry the same `:run_id' and `:time_now'.  Phase 2 extends the mirror
 to `:resonance' so the rendered capsule block and the audited bundle
 agree on what was injected (A4).  Phase 3 extends it again to
 `:motive' — the parsed motives.org snapshot — so the §S3 block in
 the capsule corresponds to a recorded artifact (A8 read-side, A9
-ordering invariance).  This helper does the threading once so the
-per-mode context-fns don't each have to re-fish those fields out of
-the prepare plist."
+ordering invariance).  Phase 4 extends it once more to
+`:sensor_status' so the capsule's `# Sensors' line corresponds to
+the freshness snapshot the assembler recorded (§S6)."
   (when (plistp prepare)
-    (dolist (k '(:run_id :time_now :percept :resonance :motive))
+    (dolist (k '(:run_id :time_now :percept :resonance :motive :sensor_status))
       (setq bundle (plist-put bundle k (plist-get prepare k)))))
   bundle)
 
