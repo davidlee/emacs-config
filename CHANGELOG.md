@@ -2,6 +2,19 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-22 — SATAN: perceptual-layer v0 Phase 5.1 (evidence bounds refactor)
+
+Behaviour-preserving split of `dl-satan-memory-evidence-assemble`
+into a thin wrapper and a bounds-explicit form
+`dl-satan-memory-evidence-assemble-with-bounds (start end ctx opts)`.
+The wrapper now derives `[start, end]` from CTX `:time_now` and OPTS
+`:run_started_at` and delegates; all existing call sites are
+unaffected.  The forthcoming Phase-5 observer will call the
+bounds-explicit form directly to read the panopticon / git / fs
+substrate covering a single intervention's 30-min attribution window
+(an arbitrary historical span, not anchored to `time_now`).  One new
+ert pins the contract; full suite 304/304 green.
+
 ## 2026-05-22 — SATAN: perceptual-layer v0 Phase 5.0 (motive `:project_cwd:`)
 
 Schema bump on `motives.org` footer ahead of the Phase 5 outcome

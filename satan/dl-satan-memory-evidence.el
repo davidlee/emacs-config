@@ -468,13 +468,34 @@ from the evidence window itself (so canon never sees stale data) but
 the original status remains in `:sensor_status' so the sensor-alerts
 dispatcher (Phase 4.3) can fire on the cause.  The canonicalizer
 ignores `:sensor_status' — it's metadata about the assemble, not a
-substrate input."
+substrate input.
+
+Thin wrapper around `dl-satan-memory-evidence-assemble-with-bounds':
+derives the [start, end] window from CTX `:time_now' and any
+`:run_started_at' in OPTS.  Callers that need an arbitrary window
+(e.g. the Phase-5 observer attributing a single intervention) skip
+the wrapper and call the bounds-explicit form directly."
   (let* ((time-now (plist-get ctx :time_now))
-         (now-t (date-to-time time-now))
          (run-started (plist-get opts :run_started_at))
          (bounds (dl-satan-memory-evidence--bounds time-now run-started))
          (start (car bounds))
-         (end (cdr bounds))
+         (end (cdr bounds)))
+    (dl-satan-memory-evidence-assemble-with-bounds start end ctx opts)))
+
+(defun dl-satan-memory-evidence-assemble-with-bounds (start end ctx &optional opts)
+  "Assemble the evidence_window plist for the explicit [START, END] window.
+START / END are ISO8601 strings; CTX is the canon ctx plist; OPTS
+matches `dl-satan-memory-evidence-assemble' (the wrapper's
+`:run_started_at' is irrelevant here — bounds are already fixed).
+
+Same shape as the wrapper.  Sensor freshness probes still derive
+from CTX `:time_now', which the observer's caller can either pass
+as the intervention-emitted-at (treating probes as historical
+metadata) or as the real clock (ignoring the probes' values).  In
+practice the observer ignores `:sensor_status' — it cares only
+about substrate slices."
+  (let* ((time-now (plist-get ctx :time_now))
+         (now-t (date-to-time time-now))
          (today (substring end 0 10))
          (root (or (plist-get opts :behaviour_dir)
                    dl-satan-tools-activity-dir))

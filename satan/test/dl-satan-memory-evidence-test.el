@@ -238,6 +238,31 @@ status_changed rows first (the canon-relevant ones)."
      (should (equal (plist-get (plist-get out :fs_state) :recent_files)
                     '())))))
 
+(ert-deftest dl-satan-memory-evidence/assemble-with-bounds-honours-explicit-window ()
+  "Phase 5.1 — `dl-satan-memory-evidence-assemble-with-bounds' lets
+the caller supply START / END directly, bypassing the wrapper's
+`time_now'-derived window.  Used by the Phase-5 observer to read
+the panopticon slice covering a single intervention's 30-min
+attribution window.  Wrapper still threads ctx-derived bounds when
+called without an explicit start/end."
+  (dl-satan-memory-evidence-test--in-tmp tmp
+   (let* ((ctx (list :time_now "2026-05-19T10:00:00+10:00"
+                     :mode_name "motd"))
+          (start "2026-05-19T08:45:00+10:00")
+          (end "2026-05-19T09:15:00+10:00")
+          (out (dl-satan-memory-evidence-assemble-with-bounds
+                start end ctx
+                (list :behaviour_dir (file-name-as-directory tmp)
+                      :cwd tmp))))
+     (should (equal (plist-get out :window_start_at) start))
+     (should (equal (plist-get out :window_end_at) end))
+     ;; The wrapper still works identically for the default case.
+     (let ((wrapper-out (dl-satan-memory-evidence-assemble
+                         ctx (list :behaviour_dir (file-name-as-directory tmp)
+                                   :cwd tmp))))
+       (should (equal (plist-get wrapper-out :window_end_at)
+                      "2026-05-19T10:00:00+10:00"))))))
+
 (ert-deftest dl-satan-memory-evidence/assemble-cue-only-skips-heavy-probes ()
   "`:cue_only t' returns empty focus/browser segments and nil
 bough_recent / bough_day even when those sources would otherwise
