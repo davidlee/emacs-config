@@ -2,6 +2,49 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-22 — SATAN: perceptual-layer v0 Phase 1 (percept skeleton)
+
+The first phase that's actually visible to the model.  Every run now
+builds a deterministic percept from the existing memory substrate
+and folds it into the system prompt.  No new substrate, no LLM in
+the path, no auto-resonance yet (Phase 2).
+
+- **1.1 + 1.2 percept builder + persist** — new `satan/dl-satan-percept.el`.
+  `dl-satan-percept-build` calls `dl-satan-memory-evidence-assemble`
+  then `dl-satan-memory-canon-canonicalize` over the prepare-phase
+  ctx (frozen `:time_now` / `:run_id`).  `dl-satan-percept-persist`
+  writes `percept.json` next to `bundle.json` under
+  `~/notes/satan/runs/<id>/` via the same atomic-rename path the
+  rest of the audit bundle uses.  Threaded into
+  `dl-satan-broker--spawn` so the prepare plist carries the
+  `:evidence` + `:percept` slots Phase 0.1 reserved (A1).
+- **1.3 capsule render** — `dl-satan-context--render-prompt` inserts
+  a `# Percept` block between `# Now` and the mode-specific blocks.
+  Header text owned by mind: `~/notes/satan/system/framing.txt` gets
+  a new `percept_block_header` key.  Block lists only the handles
+  the canon actually emitted — A6 holds because no rule emits
+  absence.  Every context-fn (-morning -motd -tick -self-edit) now
+  actively reads the prepare run_ctx via
+  `dl-satan-context--with-prepare', mirroring `:run_id', `:time_now',
+  `:percept' into the bundle so audit artifacts agree across disk
+  (A2).
+- **1.4 golden tests + determinism rig** — new
+  `satan/test/dl-satan-percept-test.el` (12 tests).  Covers shape,
+  persist (A1), bundle/percept identity (A2), byte-identical re-run
+  over a frozen focus+browser fixture (A3), capsule render (A4
+  partial — resonance lands in Phase 2), absent-handle suppression
+  (A6).  Sensor surface quarantined the same way the evidence-test
+  file does it (`:behaviour_dir' = tmp tree;
+  `dl-satan-bough-program' shunted to /nonexistent/).
+
+`docs/satan/perceptual-design.md` §8 A1–A3 + A6 green.  A4 partial
+(resonance + motive blocks deferred to Phase 2/3).  A5 deferred (no
+gate runs in Phase 1).  Front-matter `status:` flipped from
+`phase-0-shipped` to `phase-1-shipped`.
+
+Tests: 140/142 ert (the same two pre-Phase-0 failures from missing
+`docs_list` requires), 26/26 python unittest.  Byte-compile clean.
+
 ## 2026-05-22 — SATAN: perceptual-layer v0 Phase 0 prerequisites
 
 Lands the four sub-phase prerequisites the v0 perceptual loop sits on.
