@@ -82,11 +82,22 @@ and every namespace declared closed has a values entry."
 ;; ---------- DB sync ----------
 
 (ert-deftest dl-satan-memory-grammar/db-sync-current-version ()
+  ;; Elisp's `current-version' must exist as a row in `grammar_versions'.
+  ;; DB is permitted to be AHEAD of elisp — fixture migrations
+  ;; (e.g. 0004 v2) introduce later versions whose elisp counterparts
+  ;; are cl-letf'd inside tests, not committed as live constants.
+  ;; The sister tests `db-sync-aliases' and `db-sync-default-weights'
+  ;; pin the table contents at `current-version', so real drift is
+  ;; still caught.
   (skip-unless (dl-satan-memory-grammar-test--db-reachable-p))
   (let* ((rows (dl-satan-memory-grammar-test--psql
-                "SELECT MAX(version) FROM grammar_versions"))
-         (db-max (and rows (string-to-number (caar rows)))))
-    (should (= dl-satan-memory-grammar-current-version db-max))))
+                (format "SELECT 1 FROM grammar_versions WHERE version = %d"
+                        dl-satan-memory-grammar-current-version)))
+         (max-rows (dl-satan-memory-grammar-test--psql
+                    "SELECT MAX(version) FROM grammar_versions"))
+         (db-max (and max-rows (string-to-number (caar max-rows)))))
+    (should rows)
+    (should (>= db-max dl-satan-memory-grammar-current-version))))
 
 (ert-deftest dl-satan-memory-grammar/db-sync-aliases ()
   (skip-unless (dl-satan-memory-grammar-test--db-reachable-p))
