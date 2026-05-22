@@ -67,6 +67,127 @@ Capped further by `:run_started_at' (see §4.1)."
   :type 'integer :group 'dl-satan)
 
 ;; ---------------------------------------------------------------------
+;; Freshness thresholds (§S6)
+;;
+;; Per-source seconds-old ceilings.  When a sensor's age exceeds its
+;; threshold the assembler drops the affected slice from the evidence
+;; window AND tags its `:sensor_status' entry as `stale-Nm' so the
+;; sensor-alerts dispatcher (Phase 4.3) can decide whether to notify.
+;; ---------------------------------------------------------------------
+
+(defcustom dl-satan-memory-evidence-current-window-stale-seconds 300
+  "Seconds-old ceiling for `current/sway.json' mtime before it is stale.
+Default 5 minutes per §S6 open question — tune from observed sway
+focus cadence."
+  :type 'integer :group 'dl-satan)
+
+(defcustom dl-satan-memory-evidence-segment-stale-seconds 1800
+  "Seconds-old ceiling for the newest focus/browser segment before stale."
+  :type 'integer :group 'dl-satan)
+
+;; ---------------------------------------------------------------------
+;; Sensor-status helpers (§S6)
+;; ---------------------------------------------------------------------
+
+(defun dl-satan-memory-evidence--age-seconds (then now)
+  "Return non-negative integer seconds between THEN and NOW.
+THEN, NOW are Emacs time values.  Negative deltas clamp to 0 so a
+clock skew on the sensor side doesn't masquerade as the future."
+  (max 0 (truncate (float-time (time-subtract now then)))))
+
+(defun dl-satan-memory-evidence--stale-tag (age-seconds)
+  "Return the `stale-Nm' string for AGE-SECONDS (integer minutes, floor).
+String not symbol so the value JSON-serialises directly in the run's
+`bundle.json' / `percept.json' alongside the rest of the evidence
+window."
+  (format "stale-%dm" (max 1 (/ age-seconds 60))))
+
+(defun dl-satan-memory-evidence--mtime (path)
+  "Return PATH's mtime as an Emacs time, or nil when PATH is unreadable."
+  (and (file-readable-p path)
+       (file-attribute-modification-time (file-attributes path))))
+
+(defun dl-satan-memory-evidence--current-window-status (path now)
+  "Return (STATUS . DATA) for `current/sway.json' at PATH.
+STATUS is the JSON-friendly string `\"ok\"' / `\"stale-Nm\"' /
+`\"missing\"' / `\"malformed\"'.  DATA is the parsed plist on success,
+nil on stale / missing / malformed — the assembler treats nil-data
+as drop-the-slice."
+  (let ((mtime (dl-satan-memory-evidence--mtime path)))
+    (cond
+     ((null mtime) (cons "missing" nil))
+     (t (let* ((age (dl-satan-memory-evidence--age-seconds mtime now))
+               (stale (> age dl-satan-memory-evidence-current-window-stale-seconds)))
+          (condition-case _err
+              (let ((data (dl-satan-tools-activity--read-json path)))
+                (if stale
+                    (cons (dl-satan-memory-evidence--stale-tag age) nil)
+                  (cons "ok" data)))
+            (error (cons "malformed" nil))))))))
+
+(defun dl-satan-memory-evidence--newest-segment-end (segments)
+  "Return the max :end_ts string across SEGMENTS, or nil when none qualify.
+Segments may be appended out of order in tests/fixtures, so the
+freshness check takes max rather than trusting file position."
+  (let (best)
+    (dolist (seg segments)
+      (let ((ts (plist-get seg :end_ts)))
+        (when (and (stringp ts)
+                   (or (null best) (string> ts best)))
+          (setq best ts))))
+    best))
+
+(defun dl-satan-memory-evidence--segments-status (path start end limit now)
+  "Return (STATUS . SEGMENTS) for a focus/browser segments JSONL at PATH.
+STATUS is the JSON-friendly string `\"ok\"' / `\"stale-Nm\"' /
+`\"missing\"' / `\"malformed\"'.  SEGMENTS is the filtered tail when
+STATUS is `\"ok\"' and empty otherwise — stale tails drop per §S6.
+Newest entry is taken by max :end_ts so files written out of order
+(or fixtures) still register correctly."
+  (cond
+   ((not (file-readable-p path)) (cons "missing" '()))
+   (t (condition-case _err
+          (let* ((all (dl-satan-tools-activity--read-jsonl path))
+                 (newest (dl-satan-memory-evidence--newest-segment-end all))
+                 (newest-t (and newest (date-to-time newest)))
+                 (age (and newest-t
+                           (dl-satan-memory-evidence--age-seconds
+                            newest-t now))))
+            (cond
+             ((or (null all) (null newest-t))
+              (cons "missing" '()))
+             ((> age dl-satan-memory-evidence-segment-stale-seconds)
+              (cons (dl-satan-memory-evidence--stale-tag age) '()))
+             (t
+              (let* ((filt (dl-satan-memory-evidence--filter-segments
+                            all start end))
+                     (tail (and filt (last filt limit))))
+                (cons "ok" (or tail '()))))))
+        (error (cons "malformed" '()))))))
+
+(defvar dl-satan-memory-evidence--bough-tracking nil
+  "When non-nil, `--bough-call' records reachability in the vars below.
+Dynamically bound by `assemble' to derive the `:bough' sensor_status
+without needing each `--bough-*' wrapper to thread the flag itself.")
+
+(defvar dl-satan-memory-evidence--bough-attempts 0
+  "Counter incremented by `--bough-call' under `--bough-tracking'.")
+
+(defvar dl-satan-memory-evidence--bough-ok 0
+  "Counter incremented by `--bough-call' on each successful ok payload.")
+
+(defun dl-satan-memory-evidence--bough-status ()
+  "Synthesise the `:bough' sensor_status from tracking counters.
+Returns the JSON-friendly string `\"ok\"' when at least one call
+succeeded; `\"unreachable\"' when one or more were attempted but none
+returned ok; `\"ok\"' (best guess) when no calls were attempted this
+run (e.g. heavy probes skipped under `:cue_only')."
+  (cond
+   ((> dl-satan-memory-evidence--bough-ok 0) "ok")
+   ((> dl-satan-memory-evidence--bough-attempts 0) "unreachable")
+   (t "ok")))
+
+;; ---------------------------------------------------------------------
 ;; Bounds (§4.1)
 ;; ---------------------------------------------------------------------
 
@@ -96,11 +217,6 @@ and RUN-STARTED.  RUN-STARTED may be nil."
 ;; Panopticon reads (§4.2)
 ;; ---------------------------------------------------------------------
 
-(defun dl-satan-memory-evidence--read-current-window (root)
-  (let ((path (expand-file-name "current/sway.json" root)))
-    (and (file-readable-p path)
-         (dl-satan-tools-activity--read-json path))))
-
 (defun dl-satan-memory-evidence--filter-segments (segments start end)
   "Return SEGMENTS overlapping the half-open [START, END] window.
 A segment overlaps if its :end_ts >= START and its :start_ts <= END."
@@ -116,30 +232,27 @@ A segment overlaps if its :end_ts >= START and its :start_ts <= END."
               (or (null s-time) (not (time-less-p e-t s-time))))))
      segments)))
 
-(defun dl-satan-memory-evidence--read-segments (root prefix today start end limit)
-  "Read panopticon segments JSONL for PREFIX (focus|browser) on TODAY,
-filter to [START, END], return the last LIMIT entries."
-  (let* ((path (expand-file-name
-                (format "segments/%s-%s.jsonl" prefix today) root))
-         (all (and (file-readable-p path)
-                   (dl-satan-tools-activity--read-jsonl path)))
-         (filt (dl-satan-memory-evidence--filter-segments all start end))
-         (tail (and filt (last filt limit))))
-    (or tail '())))
-
 ;; ---------------------------------------------------------------------
 ;; Bough reads via the tool handler (§5.4 — only path into bough)
 ;; ---------------------------------------------------------------------
 
 (defun dl-satan-memory-evidence--bough-call (scope &rest args)
   "Call `dl-satan-tool/bough-read' with SCOPE and ARGS (keyword plist).
-Return the payload plist on `ok', or nil on any error."
+Return the payload plist on `ok', or nil on any error.
+
+When `--bough-tracking' is non-nil (set by `assemble') each call
+increments `--bough-attempts'; successful calls also increment
+`--bough-ok'.  The two counters back the §S6 `:bough' sensor_status
+synthesis without each `--bough-*' wrapper having to thread state."
   (let* ((arg-plist (apply #'list :scope scope args))
          (result (condition-case _err
                      (dl-satan-tool/bough-read arg-plist nil)
-                   (error nil))))
-    (when (and (consp result) (eq (car result) 'ok))
-      (cdr result))))
+                   (error nil)))
+         (ok-p (and (consp result) (eq (car result) 'ok))))
+    (when dl-satan-memory-evidence--bough-tracking
+      (cl-incf dl-satan-memory-evidence--bough-attempts)
+      (when ok-p (cl-incf dl-satan-memory-evidence--bough-ok)))
+    (when ok-p (cdr result))))
 
 (defun dl-satan-memory-evidence--flatten-tree (nodes)
   "Depth-first flatten of a tree of node plists.  Strip :children from
@@ -347,8 +460,17 @@ to a list of pass names that fired, or nil if none did."
 
 (defun dl-satan-memory-evidence-assemble (ctx &optional opts)
   "Assemble the evidence_window plist (§4) for canonicalization and storage.
-CTX is the canon ctx plist; OPTS optional knobs (see file header)."
+CTX is the canon ctx plist; OPTS optional knobs (see file header).
+
+§S6 — also computes a per-source freshness check and attaches it as
+`:sensor_status' on the returned plist.  Stale slices are dropped
+from the evidence window itself (so canon never sees stale data) but
+the original status remains in `:sensor_status' so the sensor-alerts
+dispatcher (Phase 4.3) can fire on the cause.  The canonicalizer
+ignores `:sensor_status' — it's metadata about the assemble, not a
+substrate input."
   (let* ((time-now (plist-get ctx :time_now))
+         (now-t (date-to-time time-now))
          (run-started (plist-get opts :run_started_at))
          (bounds (dl-satan-memory-evidence--bounds time-now run-started))
          (start (car bounds))
@@ -368,32 +490,47 @@ CTX is the canon ctx plist; OPTS optional knobs (see file header)."
          (budget-hard (or (plist-get opts :budget_hard_cap_bytes)
                           dl-satan-memory-evidence-budget-hard-cap))
          (cue-only (plist-get opts :cue_only))
+         (current-path (expand-file-name "current/sway.json" root))
+         (current-probe (dl-satan-memory-evidence--current-window-status
+                         current-path now-t))
+         (focus-probe (if cue-only
+                          (cons 'ok '())
+                        (dl-satan-memory-evidence--segments-status
+                         (expand-file-name
+                          (format "segments/focus-%s.jsonl" today) root)
+                         start end seg-limit now-t)))
+         (browser-probe (if cue-only
+                            (cons 'ok '())
+                          (dl-satan-memory-evidence--segments-status
+                           (expand-file-name
+                            (format "segments/browser-%s.jsonl" today) root)
+                           start end seg-limit now-t)))
+         (dl-satan-memory-evidence--bough-tracking t)
+         (dl-satan-memory-evidence--bough-attempts 0)
+         (dl-satan-memory-evidence--bough-ok 0)
+         (bough-recent (unless cue-only
+                         (dl-satan-memory-evidence--bough-recent
+                          start workspace bough-limit)))
+         (bough-active (dl-satan-memory-evidence--bough-active workspace))
+         (bough-day (unless cue-only
+                      (dl-satan-memory-evidence--bough-day today workspace)))
+         (bough-status (dl-satan-memory-evidence--bough-status))
+         (sensor-status (list :current_window (car current-probe)
+                              :focus (car focus-probe)
+                              :browser (car browser-probe)
+                              :bough bough-status))
          (raw (list
-               :current_window
-               (dl-satan-memory-evidence--read-current-window root)
-               :focus_segments
-               (if cue-only '()
-                 (dl-satan-memory-evidence--read-segments
-                  root "focus" today start end seg-limit))
-               :browser_segments
-               (if cue-only '()
-                 (dl-satan-memory-evidence--read-segments
-                  root "browser" today start end seg-limit))
-               :bough_recent
-               (unless cue-only
-                 (dl-satan-memory-evidence--bough-recent
-                  start workspace bough-limit))
-               :bough_active
-               (dl-satan-memory-evidence--bough-active workspace)
-               :bough_day
-               (unless cue-only
-                 (dl-satan-memory-evidence--bough-day today workspace))
-               :git_state
-               (dl-satan-memory-evidence--git-state cwd)
-               :fs_state
-               (dl-satan-memory-evidence--fs-state cwd)
+               :current_window (cdr current-probe)
+               :focus_segments (cdr focus-probe)
+               :browser_segments (cdr browser-probe)
+               :bough_recent bough-recent
+               :bough_active bough-active
+               :bough_day bough-day
+               :git_state (dl-satan-memory-evidence--git-state cwd)
+               :fs_state (dl-satan-memory-evidence--fs-state cwd)
                :window_start_at start
-               :window_end_at end)))
+               :window_end_at end
+               :sensor_status sensor-status)))
     (dl-satan-memory-evidence--truncate raw budget-target budget-hard)))
 
 (provide 'dl-satan-memory-evidence)

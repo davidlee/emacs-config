@@ -319,6 +319,137 @@ populate them.  Keeps current_window and bough_active."
          (should (= 1 (length (plist-get git :commits)))))))))
 
 ;; ---------------------------------------------------------------------
+;; Freshness check (§S6 / Phase 4.1)
+;; ---------------------------------------------------------------------
+
+(ert-deftest dl-satan-memory-evidence/sensor-status-all-missing ()
+  "No sensor files: every probe reports \"missing\".  Bough is \"ok\"
+because no calls are attempted (the binary's missing → tool errors
+→ ok-payload nil with attempts=0 → reported as ok per §S6 fallback)."
+  (dl-satan-memory-evidence-test--in-tmp tmp
+   (let* ((ctx (list :time_now "2026-05-19T10:00:00+10:00"
+                     :mode_name "motd"))
+          (out (dl-satan-memory-evidence-assemble
+                ctx (list :behaviour_dir (file-name-as-directory tmp)
+                          :cwd tmp)))
+          (ss (plist-get out :sensor_status)))
+     (should (equal "missing" (plist-get ss :current_window)))
+     (should (equal "missing" (plist-get ss :focus)))
+     (should (equal "missing" (plist-get ss :browser))))))
+
+(ert-deftest dl-satan-memory-evidence/sensor-status-current-stale-drops-slice ()
+  "When sway.json mtime exceeds the threshold, :current_window is
+dropped from the evidence (set nil) AND the status is tagged
+\"stale-Nm\"."
+  (dl-satan-memory-evidence-test--in-tmp tmp
+   (let* ((current-dir (expand-file-name "current" tmp))
+          (sway-path (expand-file-name "sway.json" current-dir))
+          (ctx (list :time_now "2026-05-19T10:00:00+10:00"
+                     :mode_name "motd")))
+     (make-directory current-dir t)
+     (with-temp-file sway-path
+       (insert "{\"app_id\":\"firefox\",\"workspace\":\"main\"}"))
+     (let ((old (time-subtract (date-to-time "2026-05-19T10:00:00+10:00")
+                               (seconds-to-time (* 60 28)))))
+       (set-file-times sway-path old))
+     (let* ((out (dl-satan-memory-evidence-assemble
+                  ctx (list :behaviour_dir (file-name-as-directory tmp)
+                            :cwd tmp)))
+            (ss (plist-get out :sensor_status)))
+       (should (null (plist-get out :current_window)))
+       (should (equal (plist-get ss :current_window) "stale-28m"))))))
+
+(ert-deftest dl-satan-memory-evidence/sensor-status-current-fresh-keeps-slice ()
+  (dl-satan-memory-evidence-test--in-tmp tmp
+   (let* ((current-dir (expand-file-name "current" tmp))
+          (sway-path (expand-file-name "sway.json" current-dir))
+          (ctx (list :time_now (format-time-string "%Y-%m-%dT%T%:z")
+                     :mode_name "motd")))
+     (make-directory current-dir t)
+     (with-temp-file sway-path
+       (insert "{\"app_id\":\"firefox\",\"workspace\":\"main\"}"))
+     (let* ((out (dl-satan-memory-evidence-assemble
+                  ctx (list :behaviour_dir (file-name-as-directory tmp)
+                            :cwd tmp)))
+            (ss (plist-get out :sensor_status)))
+       (should (equal (plist-get (plist-get out :current_window) :app_id)
+                      "firefox"))
+       (should (equal "ok" (plist-get ss :current_window)))))))
+
+(ert-deftest dl-satan-memory-evidence/sensor-status-segments-stale ()
+  "Segments file whose newest :end_ts is past the 30-min threshold
+reports \"stale-Nm\" and the slice drops to '()."
+  (dl-satan-memory-evidence-test--in-tmp tmp
+   (let* ((segments-dir (expand-file-name "segments" tmp))
+          (ctx (list :time_now "2026-05-19T10:00:00+10:00"
+                     :mode_name "motd")))
+     (make-directory segments-dir t)
+     (with-temp-file (expand-file-name "focus-2026-05-19.jsonl" segments-dir)
+       (insert "{\"app_id\":\"firefox\",\"start_ts\":\"2026-05-19T08:55:00+10:00\",\"end_ts\":\"2026-05-19T08:58:00+10:00\",\"duration_s\":180}\n"))
+     (let* ((out (dl-satan-memory-evidence-assemble
+                  ctx (list :behaviour_dir (file-name-as-directory tmp)
+                            :cwd tmp)))
+            (ss (plist-get out :sensor_status)))
+       (should (equal '() (plist-get out :focus_segments)))
+       (should (equal "stale-62m" (plist-get ss :focus)))))))
+
+(ert-deftest dl-satan-memory-evidence/sensor-status-malformed-json ()
+  "Malformed sway.json → status \"malformed\", slice nil."
+  (dl-satan-memory-evidence-test--in-tmp tmp
+   (let* ((current-dir (expand-file-name "current" tmp))
+          (ctx (list :time_now (format-time-string "%Y-%m-%dT%T%:z")
+                     :mode_name "motd")))
+     (make-directory current-dir t)
+     (with-temp-file (expand-file-name "sway.json" current-dir)
+       (insert "{not-json"))
+     (let* ((out (dl-satan-memory-evidence-assemble
+                  ctx (list :behaviour_dir (file-name-as-directory tmp)
+                            :cwd tmp)))
+            (ss (plist-get out :sensor_status)))
+       (should (null (plist-get out :current_window)))
+       (should (equal "malformed" (plist-get ss :current_window)))))))
+
+(ert-deftest dl-satan-memory-evidence/sensor-status-bough-unreachable ()
+  "When `--bough-call' returns nil for every probe but tracking
+recorded attempts, the bough status is \"unreachable\"."
+  (dl-satan-memory-evidence-test--in-tmp tmp
+   (cl-letf (((symbol-function 'dl-satan-memory-evidence--bough-call)
+              (lambda (&rest _)
+                (when dl-satan-memory-evidence--bough-tracking
+                  (cl-incf dl-satan-memory-evidence--bough-attempts))
+                nil)))
+     (let* ((ctx (list :time_now "2026-05-19T10:00:00+10:00"
+                       :mode_name "motd"))
+            (out (dl-satan-memory-evidence-assemble
+                  ctx (list :behaviour_dir (file-name-as-directory tmp)
+                            :cwd tmp)))
+            (ss (plist-get out :sensor_status)))
+       (should (equal "unreachable" (plist-get ss :bough)))))))
+
+(ert-deftest dl-satan-memory-evidence/sensor-status-bough-ok-when-any-succeeds ()
+  "One successful bough call is enough to flip status to \"ok\"."
+  (dl-satan-memory-evidence-test--in-tmp tmp
+   (let ((call-n 0))
+     (cl-letf (((symbol-function 'dl-satan-memory-evidence--bough-call)
+                (lambda (&rest _)
+                  (when dl-satan-memory-evidence--bough-tracking
+                    (cl-incf dl-satan-memory-evidence--bough-attempts))
+                  (cl-incf call-n)
+                  (cond
+                   ((= call-n 1)
+                    (when dl-satan-memory-evidence--bough-tracking
+                      (cl-incf dl-satan-memory-evidence--bough-ok))
+                    (list :nodes '()))
+                   (t nil)))))
+       (let* ((ctx (list :time_now "2026-05-19T10:00:00+10:00"
+                         :mode_name "motd"))
+              (out (dl-satan-memory-evidence-assemble
+                    ctx (list :behaviour_dir (file-name-as-directory tmp)
+                              :cwd tmp)))
+              (ss (plist-get out :sensor_status)))
+         (should (equal "ok" (plist-get ss :bough))))))))
+
+;; ---------------------------------------------------------------------
 ;; Cross-step contract: canon eats assembler output.
 ;; ---------------------------------------------------------------------
 
