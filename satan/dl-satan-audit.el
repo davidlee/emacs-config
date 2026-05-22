@@ -21,7 +21,11 @@
 (cl-defstruct dl-satan-audit-handle
   dir
   transcript-path
-  last-ts)
+  last-ts
+  ;; Phase 0.1: the run_ctx plist built by `dl-satan-broker--prepare'.
+  ;; Later phases (sensor alerts, observer) attach pre_spawn / motive
+  ;; updates here so audit-close can write them without re-deriving.
+  run-ctx)
 
 (defun dl-satan-audit--iso-now ()
   "Return current time as ISO-8601 with microseconds + zone."
@@ -41,14 +45,19 @@
   (let ((coding-system-for-write 'utf-8))
     (write-region (concat line "\n") nil path 'append 'silent)))
 
-(defun dl-satan-audit-open (dir manifest bundle)
-  "Create DIR, write MANIFEST and BUNDLE plists, return an audit handle."
+(defun dl-satan-audit-open (dir manifest bundle &optional run-ctx)
+  "Create DIR, write MANIFEST and BUNDLE plists, return an audit handle.
+RUN-CTX is the prepare-phase run_ctx plist (Phase 0.1); it is stored
+on the handle so audit-close can read percept / sensor-status / etc.
+without re-deriving them.  Optional for backwards compatibility with
+callers that have not been threaded through prepare yet."
   (unless (file-directory-p dir) (make-directory dir t))
   (dl-satan-audit--write-json (expand-file-name "manifest.json" dir) manifest)
   (dl-satan-audit--write-json (expand-file-name "bundle.json"   dir) bundle)
   (let ((tp (expand-file-name "transcript.jsonl" dir)))
     (with-temp-file tp (insert ""))
-    (make-dl-satan-audit-handle :dir dir :transcript-path tp :last-ts nil)))
+    (make-dl-satan-audit-handle :dir dir :transcript-path tp :last-ts nil
+                                :run-ctx run-ctx)))
 
 (defun dl-satan-audit-record (handle dir event payload)
   "Append a transcript record.

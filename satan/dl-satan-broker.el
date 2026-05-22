@@ -66,7 +66,12 @@ Falls back to `getenv' if `my/op-read-env' is unavailable."
   pending-tool-calls tool-calls-done
   applied-actions staged-actions rejected-actions failed-actions
   final status timeout-timer audit
-  stdout-log-path)
+  stdout-log-path
+  ;; Phase 0.1: the run_ctx plist built by `dl-satan-broker--prepare'.
+  ;; Carries the frozen `:time_now', `:run_id', `:start_time' and v0
+  ;; placeholder slots (`:evidence' `:percept' `:sensor_status'
+  ;; `:pre_spawn' `:motive') that later phases populate.
+  prepare)
 
 (declare-function envrc--export "envrc" (env-dir))
 (declare-function envrc--merged-environment "envrc" (process-env pairs))
@@ -95,12 +100,36 @@ returns no vars, BASE-ENV is returned unchanged.  Direnv errors signal."
                        env)))
     (if path (split-string path ":" t) exec-path)))
 
-(defun dl-satan-broker--mint-run-id (name)
+(defun dl-satan-broker--mint-run-id (name &optional time)
   (random t)
   (format "%s-%s-%06x"
-          (format-time-string "%Y%m%dT%H%M%S" nil)
+          (format-time-string "%Y%m%dT%H%M%S" time)
           name
           (random (expt 16 6))))
+
+(defconst dl-satan-broker--iso-time-format "%Y-%m-%dT%T%:z"
+  "ISO-8601 time format the broker stamps onto run_ctx and tool-ctx.")
+
+(defun dl-satan-broker--prepare (mode)
+  "Allocate run_id, freeze time_now, return the v0 run_ctx plist for MODE.
+The plist is the single source of truth for the run's identity and
+the frozen `time_now' that the percept builder, observer, and tool
+handlers all read.  Phase-1+ slots (`:evidence' `:percept'
+`:sensor_status' `:pre_spawn' `:motive') are present-with-nil so later
+phases can `plist-put' without keyword-arg ordering surprises."
+  (let* ((name (plist-get mode :name))
+         (start (current-time))
+         (run-id (dl-satan-broker--mint-run-id name start))
+         (time-now (format-time-string
+                    dl-satan-broker--iso-time-format start)))
+    (list :run_id run-id
+          :time_now time-now
+          :start_time start
+          :evidence nil
+          :percept nil
+          :sensor_status nil
+          :pre_spawn nil
+          :motive nil)))
 
 (defconst dl-satan-broker--failed-suffix ".FAILED"
   "Suffix appended to a run directory when its status is not `done'.
@@ -220,16 +249,21 @@ flat layout (filters by prefix on the leaf name)."
      (dl-satan-broker-list-run-dirs runs-dir))))
 
 (defun dl-satan-broker--tool-ctx (run-ctx)
+  "Return the tool-ctx plist handlers see.
+Reads frozen `time_now' from RUN-CTX's prepare plist (allocated once
+by `dl-satan-broker--prepare') rather than calling `format-time-string'
+per tool call.  `run-started-at' aliases the same frozen value — a run
+has exactly one starting moment."
   (let* ((mode (dl-satan-run-mode run-ctx))
-         (fmt "%Y-%m-%dT%T%:z")
-         (start (dl-satan-run-start-time run-ctx)))
+         (prepare (dl-satan-run-prepare run-ctx))
+         (time-now (plist-get prepare :time_now)))
     (list :id (dl-satan-run-id run-ctx)
           :mode-name (plist-get mode :name)
           :capabilities (plist-get mode :capabilities)
           :run-dir (dl-satan-run-dir run-ctx)
           :hippocampus-dir dl-satan-hippocampus-dir
-          :run-started-at (and start (format-time-string fmt start))
-          :time-now (format-time-string fmt))))
+          :run-started-at time-now
+          :time-now time-now)))
 
 (defun dl-satan-broker--tee-stdout (path chunk)
   (let ((coding-system-for-write 'utf-8))
@@ -508,61 +542,74 @@ relative so the runs dir stays portable."
         (delete-file link))
       (make-symbolic-link target link t))))
 
-(defun dl-satan-broker--write-budget-denied-run (mode run-id dir spent ceiling)
-  "Write a slim audit bundle marking RUN-ID as budget-exceeded.
+(defun dl-satan-broker--write-budget-denied-run (mode prepare dir spent ceiling)
+  "Write a slim audit bundle marking the run in PREPARE as budget-exceeded.
 No child is spawned; the run terminates with status `budget-exceeded'
-and a synthetic final summarising the gate decision."
+and a synthetic final summarising the gate decision.  PREPARE is the
+prepare-phase run_ctx plist allocated by `dl-satan-broker--prepare'
+(carries the frozen run_id + time_now)."
   (unless (file-directory-p dir) (make-directory dir t))
-  (dl-satan-broker--update-most-recent run-id)
-  (let* ((manifest (dl-satan-broker--build-manifest mode run-id))
-         (bundle (list :budget-denied t
-                       :tokens_spent spent
-                       :tokens_ceiling ceiling))
-         (audit (dl-satan-audit-open dir manifest bundle))
-         (final (list :summary (format "budget-exceeded: %d/%d tokens spent today"
-                                       spent ceiling)
-                      :actions []
-                      :reason "budget_daily_tokens"
-                      :tokens_spent spent
-                      :tokens_ceiling ceiling)))
-    (dl-satan-audit-record audit 'broker 'budget-denied
-                           (list :tokens_spent spent
-                                 :tokens_ceiling ceiling))
-    (dl-satan-audit-close audit final
-                          (list :applied [] :staged [] :rejected [] :failed [])
-                          'budget-exceeded)
-    (let ((new-dir (concat dir dl-satan-broker--failed-suffix)))
-      (when (and (file-directory-p dir)
-                 (not (file-exists-p new-dir)))
-        (rename-file dir new-dir)
-        (dl-satan-broker--update-most-recent
-         run-id dl-satan-broker--failed-suffix)
-        (dl-satan-broker--announce-failure
-         run-id (plist-get mode :name) 'budget-exceeded
-         (format "%d/%d tokens" spent ceiling))))))
+  (let ((run-id (plist-get prepare :run_id)))
+    (dl-satan-broker--update-most-recent run-id)
+    (let* ((manifest (dl-satan-broker--build-manifest mode run-id))
+           (bundle (list :budget-denied t
+                         :tokens_spent spent
+                         :tokens_ceiling ceiling))
+           (audit (dl-satan-audit-open dir manifest bundle prepare))
+           (final (list :summary (format "budget-exceeded: %d/%d tokens spent today"
+                                         spent ceiling)
+                        :actions []
+                        :reason "budget_daily_tokens"
+                        :tokens_spent spent
+                        :tokens_ceiling ceiling)))
+      (dl-satan-audit-record audit 'broker 'budget-denied
+                             (list :tokens_spent spent
+                                   :tokens_ceiling ceiling))
+      (dl-satan-audit-close audit final
+                            (list :applied [] :staged [] :rejected [] :failed [])
+                            'budget-exceeded)
+      (let ((new-dir (concat dir dl-satan-broker--failed-suffix)))
+        (when (and (file-directory-p dir)
+                   (not (file-exists-p new-dir)))
+          (rename-file dir new-dir)
+          (dl-satan-broker--update-most-recent
+           run-id dl-satan-broker--failed-suffix)
+          (dl-satan-broker--announce-failure
+           run-id (plist-get mode :name) 'budget-exceeded
+           (format "%d/%d tokens" spent ceiling)))))))
 
 (defun dl-satan-broker-run (name)
   "Resolve MODE-NAME, spawn jailed harness, drive it to completion.
 Returns the run-id.
 
+Single allocation site for `run_id' + `time_now': calls
+`dl-satan-broker--prepare' exactly once at the start of the run.  The
+returned run_ctx plist is threaded into context assembly, tool
+dispatch, and audit.
+
 If today's spend has met or exceeded `dl-satan-budget-daily-tokens',
-the broker refuses to spawn: it mints a run-id, writes a minimal audit
-bundle with `status=budget-exceeded' under
-`dl-satan-runs-dir/<YYYY-MM-DD>/<run-id>/', and returns the run-id
+the broker refuses to spawn: writes a minimal audit bundle with
+`status=budget-exceeded' under
+`dl-satan-runs-dir/<YYYY-MM-DD>/<run-id>/' and returns the run-id
 without launching the child."
   (let* ((mode (dl-satan-mode-resolve name))
-         (run-id (dl-satan-broker--mint-run-id name))
+         (prepare (dl-satan-broker--prepare mode))
+         (run-id (plist-get prepare :run_id))
          (dir (dl-satan-broker-run-dir-for-id run-id)))
     (if (dl-satan-budget-exceeded-p dl-satan-runs-dir)
         (let ((spent (dl-satan-budget-today-total dl-satan-runs-dir)))
           (dl-satan-broker--write-budget-denied-run
-           mode run-id dir spent dl-satan-budget-daily-tokens)
+           mode prepare dir spent dl-satan-budget-daily-tokens)
           run-id)
-      (dl-satan-broker--spawn mode run-id dir))))
+      (dl-satan-broker--spawn mode prepare dir))))
 
-(defun dl-satan-broker--spawn (mode run-id dir)
-  "Spawn the jailed harness for MODE/RUN-ID under DIR.  Returns RUN-ID."
-  (let* ((bundle-path (expand-file-name "bundle.json" dir))
+(defun dl-satan-broker--spawn (mode prepare dir)
+  "Spawn the jailed harness for MODE under DIR.
+PREPARE is the run_ctx plist returned by `dl-satan-broker--prepare'
+(carries the frozen run_id + time_now and v0 placeholder slots).
+Returns the run-id."
+  (let* ((run-id (plist-get prepare :run_id))
+         (bundle-path (expand-file-name "bundle.json" dir))
          (stdout-log (expand-file-name "stdout.log" dir))
          (stderr-buf (generate-new-buffer
                       (format " *satan-stderr-%s*" run-id))))
@@ -570,13 +617,14 @@ without launching the child."
     (dl-satan-broker--update-most-recent run-id)
     (unless (file-directory-p dl-satan-hippocampus-dir)
       (make-directory dl-satan-hippocampus-dir t))
-    (let* ((bundle (funcall (or (plist-get mode :context-fn) #'ignore) mode))
+    (let* ((bundle (funcall (or (plist-get mode :context-fn) #'ignore)
+                            mode prepare))
            (manifest (dl-satan-broker--build-manifest mode run-id))
-           (audit (dl-satan-audit-open dir manifest bundle))
+           (audit (dl-satan-audit-open dir manifest bundle prepare))
            (run-ctx (make-dl-satan-run
                      :id run-id
                      :mode mode
-                     :start-time (current-time)
+                     :start-time (plist-get prepare :start_time)
                      :dir dir
                      :bundle-path bundle-path
                      :pending-tool-calls (make-hash-table :test 'equal)
@@ -588,7 +636,8 @@ without launching the child."
                      :final nil
                      :status 'running
                      :audit audit
-                     :stdout-log-path stdout-log)))
+                     :stdout-log-path stdout-log
+                     :prepare prepare)))
       (let* ((cmd (plist-get (plist-get mode :harness) :cmd))
              (args (plist-get (plist-get mode :harness) :args))
              (provider (plist-get mode :provider))

@@ -660,30 +660,85 @@ populated from ALIST `((NAME . CONTENT) …)'."
        (should (string-match-p "Terminate" (plist-get fn :description)))
        (should (equal (append (plist-get params :required) nil) '("summary")))))))
 
+;; ---------- dl-satan-broker--prepare (Phase 0.1) ----------
+
+(ert-deftest dl-satan-broker/prepare-plist-shape ()
+  "prepare returns a run_ctx plist with frozen run_id + time_now and v0 placeholders."
+  (let* ((mode '(:name "tick-pulse"))
+         (run-ctx (dl-satan-broker--prepare mode)))
+    (should (stringp (plist-get run-ctx :run_id)))
+    (should (string-prefix-p (format-time-string "%Y%m%dT")
+                             (plist-get run-ctx :run_id)))
+    (should (stringp (plist-get run-ctx :time_now)))
+    (should (string-match-p
+             "\\`[0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\}T[0-9]\\{2\\}:[0-9]\\{2\\}:[0-9]\\{2\\}"
+             (plist-get run-ctx :time_now)))
+    (dolist (k '(:evidence :percept :sensor_status :pre_spawn :motive))
+      (should (plist-member run-ctx k))
+      (should (null (plist-get run-ctx k))))))
+
+(ert-deftest dl-satan-broker/prepare-mints-distinct-run-ids ()
+  "Two calls to prepare allocate different run_ids."
+  (let* ((mode '(:name "x"))
+         (a (dl-satan-broker--prepare mode))
+         (b (dl-satan-broker--prepare mode)))
+    (should-not (equal (plist-get a :run_id) (plist-get b :run_id)))))
+
+(ert-deftest dl-satan-broker/prepare-freezes-time-now-once ()
+  "time_now is computed exactly once at prepare; identical across reads."
+  (let* ((mode '(:name "tick-pulse"))
+         (run-ctx (dl-satan-broker--prepare mode))
+         (frozen (plist-get run-ctx :time_now)))
+    (sleep-for 0.05)
+    (should (equal frozen (plist-get run-ctx :time_now)))))
+
 ;; ---------- dl-satan-broker tool-ctx ----------
 
 (ert-deftest dl-satan-broker/tool-ctx-shape ()
-  "Tool-ctx carries run-id, mode, capabilities, dirs, time fields."
+  "Tool-ctx carries run-id, mode, capabilities, dirs, and frozen time fields
+read from the prepare-phase run_ctx plist."
   (let* ((mode '(:name morning :capabilities (memory-write)))
          (start (encode-time '(0 0 10 19 5 2026 nil nil 36000)))
+         (prepare (list :run_id "20260519T100000-morning-abc123"
+                        :time_now "2026-05-19T10:00:00+1000"
+                        :start_time start
+                        :evidence nil :percept nil
+                        :sensor_status nil :pre_spawn nil :motive nil))
          (run-ctx (make-dl-satan-run
                    :id "20260519T100000-morning-abc123"
                    :mode mode
                    :start-time start
-                   :dir "/tmp/satan-run-test"))
+                   :dir "/tmp/satan-run-test"
+                   :prepare prepare))
          (tool-ctx (dl-satan-broker--tool-ctx run-ctx)))
     (should (equal (plist-get tool-ctx :id)
                    "20260519T100000-morning-abc123"))
     (should (equal (plist-get tool-ctx :mode-name) 'morning))
     (should (equal (plist-get tool-ctx :capabilities) '(memory-write)))
     (should (equal (plist-get tool-ctx :run-dir) "/tmp/satan-run-test"))
-    (should (stringp (plist-get tool-ctx :run-started-at)))
-    (should (string-match-p "\\`2026-05-19T10:00:00"
-                            (plist-get tool-ctx :run-started-at)))
-    (should (stringp (plist-get tool-ctx :time-now)))
-    (should (string-match-p
-             "\\`[0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\}T[0-9]\\{2\\}:[0-9]\\{2\\}:[0-9]\\{2\\}"
-             (plist-get tool-ctx :time-now)))))
+    (should (equal (plist-get tool-ctx :run-started-at)
+                   "2026-05-19T10:00:00+1000"))
+    (should (equal (plist-get tool-ctx :time-now)
+                   "2026-05-19T10:00:00+1000"))))
+
+(ert-deftest dl-satan-broker/tool-ctx-does-not-call-format-time-string ()
+  "tool-ctx must read time_now from run_ctx, never compute it on demand."
+  (let* ((mode '(:name morning :capabilities ()))
+         (prepare (list :run_id "rid" :time_now "2026-01-01T00:00:00+0000"
+                        :start_time (current-time)
+                        :evidence nil :percept nil
+                        :sensor_status nil :pre_spawn nil :motive nil))
+         (run-ctx (make-dl-satan-run
+                   :id "rid" :mode mode
+                   :start-time (plist-get prepare :start_time)
+                   :dir "/tmp/x" :prepare prepare))
+         (called nil))
+    (cl-letf (((symbol-function 'format-time-string)
+               (lambda (&rest args) (setq called args) "NEVER")))
+      (let ((tool-ctx (dl-satan-broker--tool-ctx run-ctx)))
+        (should (equal (plist-get tool-ctx :time-now)
+                       "2026-01-01T00:00:00+0000"))
+        (should (null called))))))
 
 (ert-deftest dl-secret/scrub-op-refs-env-drops-unresolved-keys ()
   "Env-list scrub removes any KEY=op://… entries before child spawn.
