@@ -989,7 +989,7 @@ inherit from `process-environment'.  The scrub closes that leak."
 (ert-deftest dl-satan-tick/default-pulse-mode-registered ()
   "tick-pulse is registered with the documented budget defaults."
   (let ((mode (dl-satan-mode-resolve "tick-pulse")))
-    (should (equal (plist-get mode :budget-tokens) 40000))
+    (should (equal (plist-get mode :budget-tokens) 100000))
     (should (equal (plist-get mode :budget-tool-calls) 10))
     (should (equal (plist-get mode :timeout-seconds) 60))
     (should (eq (plist-get mode :output-handler) 'dl-satan-output/tick))

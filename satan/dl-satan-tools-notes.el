@@ -74,7 +74,8 @@
     argv))
 
 (defun dl-satan-tools-notes--run-fd (argv)
-  "Invoke fd with ARGV.  Return (EXIT . STDOUT) plist `(:exit N :stdout STR :stderr STR)'."
+  "Invoke fd with ARGV.
+Return a plist `(:exit N :stdout STR :stderr STR)'."
   (let ((stdout-buf (generate-new-buffer " *satan-notes-fd-out*"))
         (stderr-file (make-temp-file "satan-notes-fd-err-")))
     (unwind-protect

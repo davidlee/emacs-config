@@ -80,7 +80,7 @@ Dotfiles must not be the source of truth for prompt content.")
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
        :jail-profile 'specDev
        :profile 'claude-haiku
-       :budget-tokens 20000
+       :budget-tokens 100000
        :output-handler 'dl-satan-output/morning
        :auto-apply 'owned
        :timeout-seconds 90
@@ -99,7 +99,7 @@ Dotfiles must not be the source of truth for prompt content.")
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
        :jail-profile 'specDev
        :profile 'claude-haiku
-       :budget-tokens 10000
+       :budget-tokens 80000
        :output-handler 'dl-satan-output/motd
        :auto-apply 'owned
        :timeout-seconds 45
@@ -118,7 +118,7 @@ Dotfiles must not be the source of truth for prompt content.")
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
        :jail-profile 'specDev
        :profile 'claude-haiku
-       :budget-tokens 50000
+       :budget-tokens 100000
        :output-handler 'dl-satan-output/self-edit
        :auto-apply 'none
        :timeout-seconds 180
@@ -137,7 +137,7 @@ Dotfiles must not be the source of truth for prompt content.")
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
        :jail-profile 'specDev
        :profile 'claude-haiku
-       :budget-tokens 50000
+       :budget-tokens 100000
        :output-handler 'dl-satan-output/self-edit
        :auto-apply 'none
        :timeout-seconds 180

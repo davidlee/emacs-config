@@ -9,12 +9,13 @@
 ;; Or interactively: M-x ert RET dl-denote-journal RET.
 
 (require 'ert)
+(require 'cl-lib)
 (require 'dl-notes-paths)
 (require 'dl-denote-journal)
 
 ;;; Helpers
 
-(defmacro with-journal-buffer ((realm type) &rest body)
+(cl-defmacro with-journal-buffer ((realm type) &rest body)
   "Create a temp buffer pretending to be a REAM-TYPE journal file, run BODY.
 Sets `buffer-file-name' to a fake path matching the journal naming
 convention so that `my/journal--buffer-realm' and friends work."
@@ -30,18 +31,18 @@ convention so that `my/journal--buffer-realm' and friends work."
     `(let* ((,date-str "2026-05-21")
             (,week-str "2026-w21")
             (,monday  "20260518T000000")
-            (,id      (pcase ,type
+            (,id      (pcase ',type
                         ('daily "20260521T000000")
                         ('weekly "20260518T000000")))
-            (,slug    (pcase ,type
+            (,slug    (pcase ',type
                         ('daily  (concat ,date-str "-thursday"))
                         ('weekly ,week-str)))
-            (,suffix  (pcase (cons ,realm ,type)
+            (,suffix  (pcase (cons ',realm ',type)
                         ('(personal . daily)   "journal")
                         ('(work . daily)       "work_journal")
                         ('(personal . weekly)  "weekly_journal")
                         ('(work . weekly)      "work_weekly_journal")))
-            (,dir     (pcase (cons ,realm ,type)
+            (,dir     (pcase (cons ',realm ',type)
                         ('(personal . daily)   dl-notes-journal-dir)
                         ('(work . daily)       dl-notes-work-journal-dir)
                         ('(personal . weekly)  dl-notes-weekly-dir)

@@ -17,17 +17,18 @@
 (require 'dl-notes-paths)
 (require 'denote)
 
-(defun my/denote--new (class-or-classes subdir)
+(defun my/denote--new (class-or-classes subdir &optional file-type)
   "Create a Denote note tagged CLASS-OR-CLASSES under SUBDIR.
 CLASS-OR-CLASSES is a single class string or a list of class strings;
-in either case the class keyword(s) are prepended to the user's extras."
+in either case the class keyword(s) are prepended to the user's extras.
+FILE-TYPE, when non-nil, overrides `denote-file-type' (e.g. `markdown-yaml')."
   (let* ((base     (if (listp class-or-classes) class-or-classes
                      (list class-or-classes)))
          (label    (mapconcat #'identity base "/"))
          (title    (denote-title-prompt nil (format "New %s title" label)))
          (extra    (denote-keywords-prompt (format "Extra keywords for %s" label)))
          (keywords (append base extra)))
-    (denote title keywords nil subdir)))
+    (denote title keywords file-type subdir)))
 
 ;; Personal class constructors.
 
@@ -55,6 +56,13 @@ in either case the class keyword(s) are prepended to the user's extras."
   "Create a new `reference' note under `dl-notes-references-dir'."
   (interactive)
   (my/denote--new "reference" dl-notes-references-dir))
+
+(defun my/denote-new-reference-markdown ()
+  "Create a new markdown `reference' note under `dl-notes-references-dir'.
+Filename and YAML front matter follow Denote conventions so the file is
+indexed and rename/retag commands work in-place."
+  (interactive)
+  (my/denote--new "reference" dl-notes-references-dir 'markdown-yaml))
 
 (defun my/denote-new-index ()
   "Create a new `index' note under `dl-notes-indexes-dir'."

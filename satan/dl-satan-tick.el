@@ -13,6 +13,7 @@
 (require 'dl-satan-mode)
 (require 'dl-satan-context)
 (require 'dl-satan-output)
+(require 'dl-satan-broker)
 
 (defcustom dl-satan-tick-pool '(("tick-pulse" . 5) ("tick-agent" . 3))
   "Weighted alist of tick mode names.  Each entry is (MODE-NAME . WEIGHT).
@@ -77,7 +78,7 @@ The prompt file defaults to `<prompts>/tick/SHORT-NAME.txt'."
               :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
               :jail-profile 'specDev
               :profile 'deepseek-pro
-              :budget-tokens 40000
+              :budget-tokens 100000
               :output-handler 'dl-satan-output/tick
               :auto-apply 'owned
               :timeout-seconds 60
@@ -109,7 +110,7 @@ Returns the run-id, or nil if the tick was suppressed."
               (message "SATAN tick: empty pool"))
             nil)
           (t
-            (let ((run-id (my/satan-run name)))
+            (let ((run-id (dl-satan-broker-run name)))
               (when (called-interactively-p 'interactive)
                 (message "SATAN tick %s started: %s" name run-id))
               run-id)))))))

@@ -384,7 +384,7 @@ item is the canonical user-facing surface for the result."
           "agenda_read"
           "patch_job_create" "patch_job_status")
  :capabilities '(write-notes inbox-write memory-write)
- :budget-tokens 60000
+ :budget-tokens 100000
  :budget-tool-calls 15
  :timeout-seconds 120)
 

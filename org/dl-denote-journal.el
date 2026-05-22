@@ -28,6 +28,7 @@
 ;; both realms share the same YYYYMMDDT000000 identifier for the same date.
 
 (require 'dl-notes-paths)
+(declare-function org-with-wide-buffer "org-macs" (&rest body))
 
 (defun my/journal--iso-monday (time)
   "Return TIME shifted back to the Monday of its ISO week."
@@ -93,8 +94,10 @@ E.g. \"20260521T000000--2026-05-21-thursday__journal.org\"
 
 (defun my/journal--iso-week-monday (year week)
   "Return the Monday of ISO week WEEK in YEAR as a time value.
-Uses the January-4th rule: ISO week 1 contains Jan 4."
-  (let* ((jan-4 (encode-time 0 0 0 4 1 year))
+Uses the January-4th rule: ISO week 1 contains Jan 4.
+Anchored at noon so DST transitions cannot shift the result across a
+day boundary when callers later add fixed-length day deltas."
+  (let* ((jan-4 (encode-time 0 0 12 4 1 year))
           (dow   (string-to-number (format-time-string "%u" jan-4)))
           (monday (time-subtract jan-4 (days-to-time (1- dow)))))
     (time-add monday (days-to-time (* 7 (1- week))))))
@@ -277,7 +280,8 @@ Does nothing if the buffer isn't a journal file."
 (defun my/journal--day-skeleton (tags &optional time)
   "Return the skeleton string for a newly-created daily journal file.
 TAGS is the `#+filetags:' line value (e.g. \":journal:\").
-When TIME is non-nil, use it as the reference date; otherwise use `current-time'."
+When TIME is non-nil, use it as the reference date;
+otherwise use `current-time'."
   (let ((t0 (or time (current-time))))
     (concat "#+title:    " (format-time-string "%Y-%m-%d %A" t0) "\n"
       "#+filetags: " tags "\n"
@@ -297,7 +301,7 @@ otherwise use `current-time'."
 
 (defun my/journal--ensure-file (file skeleton)
   "Ensure FILE exists with SKELETON contents; return its path.
-Also inserts a :NAV: drawer with journal navigation links for newly created files."
+Also inserts a :NAV: drawer with navigation links on creation."
   (unless (file-exists-p file)
     (with-temp-buffer
       (insert skeleton)

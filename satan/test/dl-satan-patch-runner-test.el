@@ -59,6 +59,7 @@ defcustoms, and ensure the fake adapter is registered before BODY."
             (dl-satan-patch-prompt-log-root log-root)
             (dl-satan-patch-prompt-system-file prompt-tmp)
             (dl-satan-patch-runner--active nil)
+            (dl-satan-patch-runner-enabled t)
             (dl-satan-patch-runner-hook nil))
        (with-temp-file prompt-tmp (insert "# test prompt\n"))
        (unwind-protect
