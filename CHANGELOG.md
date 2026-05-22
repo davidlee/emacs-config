@@ -2,6 +2,51 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-22 — SATAN: perceptual-layer v0 Phase 2 (auto-resonance)
+
+Picks up where Phase 1 stopped.  Every run now derives a cue from
+its percept handles, applies the §S2 anti-generic-recall gate, and
+when admitted calls `memory_resonate` against the existing store.
+Top matches (≤3) render into the prompt capsule between `# Percept`
+and the mode-specific blocks.  No new substrate, no LLM in the
+path; just wiring around primitives Phase 1 and the memory
+subsystem already shipped.
+
+- **2.1 + 2.2 cue derive + gate + broker call** — new
+  `satan/dl-satan-resonance.el` with `dl-satan-resonance-derive`.
+  Reads the percept's `:handles` + per-handle `:rule_id`, admits the
+  cue iff at least one handle's rule is NOT in the §S2 exclude
+  list (`ctx.mode`, `time.day_week`, `cwd.project`,
+  `cwd.file_kind`).  On admit, calls
+  `dl-satan-memory-store-resonate` with `:limit 3`.  Returns a
+  plist with a `:status` slot — `ok` / `gate-skip` /
+  `memory-unreachable` / `no-match` — so audit can tell the four
+  no-block paths apart.  `dl-satan-broker--spawn` runs derive after
+  percept persist and attaches the result to PREPARE `:resonance`.
+  psql errors return `memory-unreachable`, not a run failure
+  (handover watch-out; design §S6 promised the same).
+- **2.3 capsule render** — `dl-satan-context--render-prompt` inserts
+  a `# Resonance` block after `# Percept` and before `# Today (raw)`.
+  Block lines render per design §S2: `- <trace_id>  score N.N` then
+  `    matched: handle1, handle2, …`.  Header text owned by mind:
+  `~/notes/satan/system/framing.txt` gets `resonance_block_header`.
+  Block self-suppresses unless status=ok AND ≥1 match (A4).
+  `dl-satan-context--with-prepare` mirrors `:resonance` alongside
+  `:percept` so bundle.json agrees with what landed in the prompt.
+- **2.4 fixtures** — `satan/test/dl-satan-resonance-test.el` (19
+  tests).  Unit-level tests use a stubbed store to drive
+  gate-skip / no-match / psql-down paths.  Real-percept fixtures
+  build percepts from frozen sensors and lock the gate to the
+  canon's actual rule ids — if a canon rule renames
+  (`cwd.project` → `cwd.git_project`), the test trips before the
+  noise floor silently weakens.
+
+`docs/satan/perceptual-design.md` §8 A4 + A5 green.  Front-matter
+`status:` flipped from `phase-1-shipped` to `phase-2-shipped`.
+
+Tests: 161/163 ert (the same two pre-Phase-0 failures), 26/26
+python unittest.  Byte-compile clean.
+
 ## 2026-05-22 — SATAN: perceptual-layer v0 Phase 1 (percept skeleton)
 
 The first phase that's actually visible to the model.  Every run now
