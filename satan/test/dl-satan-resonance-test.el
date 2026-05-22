@@ -263,6 +263,113 @@ section.  Guards against silent fallback to a hardcoded header."
                    framing (list :status 'gate-skip :matches nil))))))
 
 ;; ---------------------------------------------------------------------
+;; Real-percept fixtures (2.4) — drive the canon, not synthetic rows.
+;;
+;; If canon rule_ids drift from the gate's exclude list, the gate
+;; silently weakens and the model drowns in low-signal recall.  These
+;; tests close the loop: they build a real percept with frozen
+;; sensors and assert the gate routes it the way §S2 promises.
+;; ---------------------------------------------------------------------
+
+(require 'dl-satan-percept)
+
+(defmacro dl-satan-resonance-test--with-sensor-fixture (vars &rest body)
+  "Parallel to `dl-satan-percept-test--with-fixture' — give BODY a tmp
+behaviour dir and run dir, with `dl-satan-bough-program' shunted to a
+non-existent path so bough probes return nil."
+  (declare (indent 1))
+  (let ((tmp (plist-get vars :tmp))
+        (beh (plist-get vars :behaviour))
+        (rd  (plist-get vars :run-dir)))
+    `(let* ((,tmp (make-temp-file "satan-resonance-fix-" t))
+            (,beh (file-name-as-directory
+                   (expand-file-name "behaviour" ,tmp)))
+            (,rd  (file-name-as-directory
+                   (expand-file-name "run" ,tmp))))
+       (unwind-protect
+           (let ((dl-satan-bough-program "/nonexistent/bough"))
+             (make-directory ,beh t)
+             (make-directory ,rd t)
+             ,@body)
+         (delete-directory ,tmp t)))))
+
+(defun dl-satan-resonance-test--write-sway (behaviour app)
+  (let ((dir (expand-file-name "current" behaviour)))
+    (make-directory dir t)
+    (with-temp-file (expand-file-name "sway.json" dir)
+      (insert (format "{\"app_id\":\"%s\",\"workspace\":\"main\"}" app)))))
+
+(defun dl-satan-resonance-test--prepare (run-id time-now)
+  (list :run_id run-id :time_now time-now :start_time (current-time)
+        :evidence nil :percept nil
+        :sensor_status nil :pre_spawn nil :motive nil))
+
+(ert-deftest dl-satan-resonance/fixture-real-percept-gate-skip-when-no-sensors ()
+  "A5 — a real percept built from an empty behaviour dir + nonexistent
+cwd carries only ctx-derived handles (mode, day, week).  The gate
+must skip — no store call, no block.  This locks the gate against
+canon-rule renames: if `ctx.mode' or `time.day_week' moves, this
+test trips before §S2 silently weakens."
+  (dl-satan-resonance-test--with-sensor-fixture (:tmp _t :behaviour beh :run-dir rd)
+    (let* ((prepare (dl-satan-resonance-test--prepare
+                     "20260519T100000-motd-aaaaaa"
+                     "2026-05-19T10:00:00+10:00"))
+           (percept (dl-satan-percept-build
+                     prepare '(:name "motd")
+                     (list :behaviour_dir beh :cwd "/nonexistent/dir/")))
+           (called 0)
+           (stub (lambda (&rest _) (cl-incf called) (cons 'ok nil)))
+           (result (dl-satan-resonance-derive
+                    percept (list :store-resonate stub))))
+      ;; Canon emitted some handles (mode + day + week at minimum),
+      ;; so this is genuinely the "only-excluded" path, not the
+      ;; empty-cue short-circuit.
+      (should (plist-get percept :handles))
+      (should (eq (plist-get result :status) 'gate-skip))
+      (should (= called 0)))))
+
+(ert-deftest dl-satan-resonance/fixture-real-percept-gate-admits-on-panopticon ()
+  "A real percept with a current_window sensor reading emits
+`app:firefox' (rule `panopticon.current.app') alongside the ctx-derived
+handles.  The gate admits — the panopticon-observed handle clears the
+noise floor."
+  (dl-satan-resonance-test--with-sensor-fixture (:tmp _t :behaviour beh :run-dir rd)
+    (ignore rd)
+    (dl-satan-resonance-test--write-sway beh "firefox")
+    (let* ((prepare (dl-satan-resonance-test--prepare
+                     "20260519T100000-motd-bbbbbb"
+                     "2026-05-19T10:00:00+10:00"))
+           (percept (dl-satan-percept-build
+                     prepare '(:name "motd")
+                     (list :behaviour_dir beh :cwd "/nonexistent/dir/")))
+           (passed nil)
+           (stub (lambda (&rest args)
+                   (setq passed args)
+                   (cons 'ok
+                         '((:trace_id "20260518T120000-aaa"
+                            :score 8.0
+                            :matched_handles ("app:firefox")))))))
+      (should (member "app:firefox" (plist-get percept :handles)))
+      (let ((result (dl-satan-resonance-derive
+                     percept (list :store-resonate stub))))
+        (should (eq (plist-get result :status) 'ok))
+        ;; Excluded handles still ride along in the cue — the gate is
+        ;; admit-only; scoring weight comes from every handle that's
+        ;; in the index.
+        (should (member "app:firefox" (plist-get passed :cue-handles)))
+        (should (member "mode:motd" (plist-get passed :cue-handles)))))))
+
+(ert-deftest dl-satan-resonance/fixture-exclude-list-matches-canon-rule-ids ()
+  "Lock the gate's exclude list against the canon's actual rule ids.
+If a canon rule named in `dl-satan-resonance--excluded-rule-ids' has
+been renamed or removed, this test fails loudly — better than the
+gate silently weakening because a string compare stopped matching."
+  (let ((registered (mapcar (lambda (cell) (symbol-name (car cell)))
+                            dl-satan-memory-canon--rules)))
+    (dolist (excluded dl-satan-resonance--excluded-rule-ids)
+      (should (member excluded registered)))))
+
+;; ---------------------------------------------------------------------
 ;; Capsule integration (2.3) — block lands between percept and today
 ;; ---------------------------------------------------------------------
 
