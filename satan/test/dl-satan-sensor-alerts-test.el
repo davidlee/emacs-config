@@ -7,6 +7,7 @@
 (require 'cl-lib)
 (require 'dl-satan-sensor-alerts)
 (require 'dl-satan-context)
+(require 'dl-satan-tools-notify)
 
 ;; ---------------------------------------------------------------------
 ;; --render-status (pure)
@@ -79,6 +80,242 @@
     (should (equal "unreachable"
                    (plist-get (plist-get bundle :sensor_status)
                               :bough)))))
+
+;; ---------------------------------------------------------------------
+;; Phase 4.3 — cooldown + dispatch (A15, A16, A17)
+;; ---------------------------------------------------------------------
+
+(defmacro dl-satan-sensor-alerts-test--with-tmp-state (var &rest body)
+  "Bind VAR to a fresh tmp notified.json path; evaluate BODY; clean up."
+  (declare (indent 1))
+  `(let* ((,var (concat (make-temp-file "satan-notified-" nil ".json"))))
+     (unwind-protect (progn ,@body)
+       (when (file-exists-p ,var) (delete-file ,var))
+       (when (file-exists-p (concat ,var ".tmp"))
+         (delete-file (concat ,var ".tmp"))))))
+
+(defun dl-satan-sensor-alerts-test--mode (caps)
+  "Return a stub mode-spec with CAPS as `:capabilities'."
+  (list :name "test-mode" :capabilities caps))
+
+(defun dl-satan-sensor-alerts-test--ok-sensor ()
+  (list :current_window "ok" :focus "ok"
+        :browser "ok" :bough "ok"))
+
+(defun dl-satan-sensor-alerts-test--silence-notify (body-fn)
+  "Stub `notifications-notify' to a counter; call BODY-FN with counter ref."
+  (let ((counter (list 0)))
+    (cl-letf (((symbol-function 'notifications-notify)
+               (lambda (&rest _) (cl-incf (car counter)) 42)))
+      (funcall body-fn counter))))
+
+;; A15 — one dispatch per cause per cooldown window
+
+(ert-deftest dl-satan-sensor-alerts/no-degradation-no-entries ()
+  (dl-satan-sensor-alerts-test--with-tmp-state path
+    (dl-satan-sensor-alerts-test--silence-notify
+     (lambda (_)
+       (let ((entries (dl-satan-sensor-alerts-check
+                       (dl-satan-sensor-alerts-test--ok-sensor)
+                       (dl-satan-sensor-alerts-test--mode '(notify))
+                       :time-now "2026-05-22T10:00:00+10:00"
+                       :state-file path
+                       :quiet-p-fn (lambda (&rest _) nil))))
+         (should-not entries))))))
+
+(ert-deftest dl-satan-sensor-alerts/stale-fires-once-then-cooldown ()
+  "First call dispatches; second call within cooldown suppresses with reason `cooldown'."
+  (dl-satan-sensor-alerts-test--with-tmp-state path
+    (dl-satan-sensor-alerts-test--silence-notify
+     (lambda (counter)
+       (let* ((ss (list :current_window "stale-28m" :focus "ok"
+                        :browser "ok" :bough "ok"))
+              (mode (dl-satan-sensor-alerts-test--mode '(notify)))
+              (e1 (dl-satan-sensor-alerts-check
+                   ss mode
+                   :time-now "2026-05-22T10:00:00+10:00"
+                   :state-file path
+                   :quiet-p-fn (lambda (&rest _) nil)))
+              (e2 (dl-satan-sensor-alerts-check
+                   ss mode
+                   :time-now "2026-05-22T10:15:00+10:00"
+                   :state-file path
+                   :quiet-p-fn (lambda (&rest _) nil))))
+         (should (= 1 (length e1)))
+         (should (equal "panopticon_current_stale"
+                        (plist-get (car e1) :cause)))
+         (should (eq :false (plist-get (car e1) :suppressed)))
+         (should (stringp (plist-get (car e1) :dispatched_at)))
+         (should (= 1 (length e2)))
+         (should (eq t (plist-get (car e2) :suppressed)))
+         (should (equal "cooldown" (plist-get (car e2) :reason)))
+         (should (= 1 (car counter))))))))
+
+(ert-deftest dl-satan-sensor-alerts/cooldown-elapsed-refires ()
+  "Past 24h+ refires."
+  (dl-satan-sensor-alerts-test--with-tmp-state path
+    (dl-satan-sensor-alerts-test--silence-notify
+     (lambda (counter)
+       (let* ((ss (list :current_window "stale-28m" :focus "ok"
+                        :browser "ok" :bough "ok"))
+              (mode (dl-satan-sensor-alerts-test--mode '(notify))))
+         (dl-satan-sensor-alerts-check
+          ss mode
+          :time-now "2026-05-21T10:00:00+10:00"
+          :state-file path
+          :quiet-p-fn (lambda (&rest _) nil))
+         (let ((e2 (dl-satan-sensor-alerts-check
+                    ss mode
+                    :time-now "2026-05-22T11:00:00+10:00"
+                    :state-file path
+                    :quiet-p-fn (lambda (&rest _) nil))))
+           (should (eq :false (plist-get (car e2) :suppressed)))
+           (should (= 2 (car counter)))))))))
+
+(ert-deftest dl-satan-sensor-alerts/quiet-hours-suppress ()
+  (dl-satan-sensor-alerts-test--with-tmp-state path
+    (dl-satan-sensor-alerts-test--silence-notify
+     (lambda (counter)
+       (let* ((ss (list :current_window "stale-28m" :focus "ok"
+                        :browser "ok" :bough "ok"))
+              (mode (dl-satan-sensor-alerts-test--mode '(notify)))
+              (entries (dl-satan-sensor-alerts-check
+                        ss mode
+                        :time-now "2026-05-22T03:00:00+10:00"
+                        :state-file path
+                        :quiet-p-fn (lambda (&rest _) t))))
+         (should (= 1 (length entries)))
+         (should (eq t (plist-get (car entries) :suppressed)))
+         (should (equal "quiet_hours"
+                        (plist-get (car entries) :reason)))
+         (should (= 0 (car counter))))))))
+
+;; A16 — every degradation produces an entry, fired or suppressed
+
+(ert-deftest dl-satan-sensor-alerts/every-degradation-recorded ()
+  "Mix of stale + malformed + unreachable → multiple entries this run."
+  (dl-satan-sensor-alerts-test--with-tmp-state path
+    (dl-satan-sensor-alerts-test--silence-notify
+     (lambda (_)
+       (let* ((ss (list :current_window "stale-28m"
+                        :focus "malformed"
+                        :browser "ok"
+                        :bough "unreachable"))
+              (mode (dl-satan-sensor-alerts-test--mode '(notify)))
+              ;; Bough fires on streak ≥ 3 — pre-seed so it dispatches.
+              (_seed (dl-satan-sensor-alerts--write-state
+                      path
+                      '(:causes (:bough_unreachable
+                                 (:consecutive_count 5)))))
+              (entries (dl-satan-sensor-alerts-check
+                        ss mode
+                        :time-now "2026-05-22T10:00:00+10:00"
+                        :state-file path
+                        :quiet-p-fn (lambda (&rest _) nil)))
+              (causes (mapcar (lambda (e) (plist-get e :cause)) entries)))
+         (should (member "panopticon_current_stale" causes))
+         (should (member "panopticon_focus_malformed" causes))
+         (should (member "bough_unreachable" causes))
+         (should (= 3 (length entries))))))))
+
+;; A17 — dispatch routes through notify_send + capability check
+
+(ert-deftest dl-satan-sensor-alerts/capability-denied-when-mode-lacks-notify ()
+  (dl-satan-sensor-alerts-test--with-tmp-state path
+    (dl-satan-sensor-alerts-test--silence-notify
+     (lambda (counter)
+       (let* ((ss (list :current_window "stale-28m" :focus "ok"
+                        :browser "ok" :bough "ok"))
+              (mode (dl-satan-sensor-alerts-test--mode '()))
+              (entries (dl-satan-sensor-alerts-check
+                        ss mode
+                        :time-now "2026-05-22T10:00:00+10:00"
+                        :state-file path
+                        :quiet-p-fn (lambda (&rest _) nil))))
+         (should (= 1 (length entries)))
+         (should (eq t (plist-get (car entries) :suppressed)))
+         (should (equal "capability_denied"
+                        (plist-get (car entries) :reason)))
+         (should (= 0 (car counter))))))))
+
+(ert-deftest dl-satan-sensor-alerts/dispatch-goes-through-tool-dispatch ()
+  "Successful dispatch shows up as a `notifications-notify' invocation."
+  (dl-satan-sensor-alerts-test--with-tmp-state path
+    (let* ((seen nil)
+           (mode (dl-satan-sensor-alerts-test--mode '(notify)))
+           (ss (list :current_window "stale-28m" :focus "ok"
+                     :browser "ok" :bough "ok")))
+      (cl-letf (((symbol-function 'notifications-notify)
+                 (lambda (&rest args)
+                   (setq seen args)
+                   42)))
+        (dl-satan-sensor-alerts-check
+         ss mode
+         :time-now "2026-05-22T10:00:00+10:00"
+         :state-file path
+         :quiet-p-fn (lambda (&rest _) nil)))
+      (should seen)
+      (should (string-match-p "SATAN sensor: panopticon_current_stale"
+                              (plist-get seen :title))))))
+
+;; Bough streak gate
+
+(ert-deftest dl-satan-sensor-alerts/bough-below-threshold-suppresses ()
+  "First two unreachable ticks accumulate; only the third dispatches."
+  (dl-satan-sensor-alerts-test--with-tmp-state path
+    (dl-satan-sensor-alerts-test--silence-notify
+     (lambda (counter)
+       (let* ((ss (list :current_window "ok" :focus "ok"
+                        :browser "ok" :bough "unreachable"))
+              (mode (dl-satan-sensor-alerts-test--mode '(notify))))
+         (let ((e1 (dl-satan-sensor-alerts-check
+                    ss mode
+                    :time-now "2026-05-22T10:00:00+10:00"
+                    :state-file path
+                    :quiet-p-fn (lambda (&rest _) nil))))
+           (should (eq t (plist-get (car e1) :suppressed)))
+           (should (equal "streak_below_threshold"
+                          (plist-get (car e1) :reason))))
+         (dl-satan-sensor-alerts-check
+          ss mode
+          :time-now "2026-05-22T10:30:00+10:00"
+          :state-file path
+          :quiet-p-fn (lambda (&rest _) nil))
+         (let ((e3 (dl-satan-sensor-alerts-check
+                    ss mode
+                    :time-now "2026-05-22T11:00:00+10:00"
+                    :state-file path
+                    :quiet-p-fn (lambda (&rest _) nil))))
+           (should (eq :false (plist-get (car e3) :suppressed)))
+           (should (= 1 (car counter)))))))))
+
+(ert-deftest dl-satan-sensor-alerts/bough-streak-resets-on-ok ()
+  "An `ok' bough between unreachable runs resets the counter."
+  (dl-satan-sensor-alerts-test--with-tmp-state path
+    (dl-satan-sensor-alerts-test--silence-notify
+     (lambda (_)
+       (let* ((unreach (list :current_window "ok" :focus "ok"
+                             :browser "ok" :bough "unreachable"))
+              (ok-ss (dl-satan-sensor-alerts-test--ok-sensor))
+              (mode (dl-satan-sensor-alerts-test--mode '(notify))))
+         (dl-satan-sensor-alerts-check unreach mode
+                                       :time-now "2026-05-22T10:00:00+10:00"
+                                       :state-file path
+                                       :quiet-p-fn (lambda (&rest _) nil))
+         (dl-satan-sensor-alerts-check unreach mode
+                                       :time-now "2026-05-22T10:30:00+10:00"
+                                       :state-file path
+                                       :quiet-p-fn (lambda (&rest _) nil))
+         (dl-satan-sensor-alerts-check ok-ss mode
+                                       :time-now "2026-05-22T11:00:00+10:00"
+                                       :state-file path
+                                       :quiet-p-fn (lambda (&rest _) nil))
+         (let ((state (dl-satan-sensor-alerts--read-state path)))
+           (should (= 0
+                      (plist-get
+                       (dl-satan-sensor-alerts--cause-state
+                        state "bough_unreachable")
+                       :consecutive_count)))))))))
 
 (provide 'dl-satan-sensor-alerts-test)
 ;;; dl-satan-sensor-alerts-test.el ends here
