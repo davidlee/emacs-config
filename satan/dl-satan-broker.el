@@ -23,6 +23,7 @@
 (require 'dl-satan-context)
 (require 'dl-satan-output)
 (require 'dl-satan-percept)
+(require 'dl-satan-resonance)
 
 (defcustom dl-satan-runs-dir
   (expand-file-name "satan/runs" (or (bound-and-true-p dl-notes-root)
@@ -642,12 +643,21 @@ Returns the run-id."
     ;; then context-fn assembles bundle.json with the percept block
     ;; rendered in.  Threaded into PREPARE so the context-fn can read
     ;; `:percept' instead of re-deriving it.
+    ;;
+    ;; Phase 2.1+2.2 — auto-resonance.  Derive a cue from the percept,
+    ;; apply the §S2 gate, call `memory_resonate' when admitted.
+    ;; Result attaches to PREPARE :resonance for the context-fn (A4).
+    ;; Memory errors return a `memory-unreachable' status; the run
+    ;; proceeds without resonance rather than failing the tick.
     (let* ((percept (dl-satan-percept-build prepare mode))
            (_persisted (dl-satan-percept-persist dir percept))
+           (resonance (dl-satan-resonance-derive percept))
            (prepare (plist-put
-                     (plist-put prepare :evidence
-                                (plist-get percept :evidence_window))
-                     :percept percept)))
+                     (plist-put
+                      (plist-put prepare :evidence
+                                 (plist-get percept :evidence_window))
+                      :percept percept)
+                     :resonance resonance)))
     (let* ((bundle (funcall (or (plist-get mode :context-fn) #'ignore)
                             mode prepare))
            (manifest (dl-satan-broker--build-manifest mode run-id))

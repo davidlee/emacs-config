@@ -342,13 +342,15 @@ for audit but are no longer read by the harness."
   (plist-put bundle :prompt (dl-satan-context--render-prompt assembled bundle)))
 
 (defun dl-satan-context--with-prepare (bundle prepare)
-  "Mirror PREPARE's identity + percept slots into BUNDLE.
+  "Mirror PREPARE's identity + percept + resonance slots into BUNDLE.
 Phase 1 acceptance A2 requires `bundle.json' and `percept.json' to
-carry the same `:run_id' and `:time_now'.  This helper does the
-threading once so the per-mode context-fns don't each have to
-re-fish those fields out of the prepare plist."
+carry the same `:run_id' and `:time_now'.  Phase 2 extends the mirror
+to `:resonance' so the rendered capsule block and the audited bundle
+agree on what was injected (A4).  This helper does the threading once
+so the per-mode context-fns don't each have to re-fish those fields
+out of the prepare plist."
   (when (plistp prepare)
-    (dolist (k '(:run_id :time_now :percept))
+    (dolist (k '(:run_id :time_now :percept :resonance))
       (setq bundle (plist-put bundle k (plist-get prepare k)))))
   bundle)
 
