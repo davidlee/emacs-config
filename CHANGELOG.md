@@ -2,6 +2,29 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-22 — SATAN: perceptual-layer v0 Phase 5.2 (observer skeleton)
+
+New `satan/dl-satan-observer.el` walks prior-run `transcript.jsonl`
+files and surfaces every `action-applied` record whose payload
+`:type` is in the new defcustom
+`dl-satan-observer-intervention-tools` (default: `notify_send`,
+`inbox_append`, `proposal_stage`, `org_update_owned_block`,
+`sway_border_set`).  Each match becomes an intervention plist
+keyed by `(run_id . applied_index)`, where `applied_index` is the
+position in the unfiltered applied sequence — so tuning the
+intervention-tool set does NOT re-number the dedup keys that 5.3
+will persist.
+
+Window: `dl-satan-observer-scan-window-hours` (default 24) bounds
+how far back observations reach.  Lazy require of
+`dl-satan-broker` avoids the load-time cycle 5.8 would otherwise
+introduce.  New helper `dl-satan-jsonl-read-file` consolidates
+JSONL reading (duplicate of
+`dl-satan-tools-activity--read-jsonl`; that one can be
+collapsed later).  11 new ert (315/315 green).  No behaviour
+change anywhere outside the observer module — the broker does
+not yet call the scanner.
+
 ## 2026-05-22 — SATAN: perceptual-layer v0 Phase 5.1 (evidence bounds refactor)
 
 Behaviour-preserving split of `dl-satan-memory-evidence-assemble`

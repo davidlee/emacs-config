@@ -60,5 +60,31 @@ ON-ERROR  is called with (RAW-LINE . ERROR-MSG) on parse failure."
                               :null-object :null :false-object :false)))
     (process-send-string proc (concat line "\n"))))
 
+(defun dl-satan-jsonl-read-file (path)
+  "Return a list of plists, one per non-empty JSON line at PATH.
+nil if PATH is unreadable.  Malformed lines signal — callers that
+need lenient parsing must wrap.  Decoder shape matches the inbound
+filter (`:object-type plist', `:array-type list', `:null-object nil',
+`:false-object :false') so the round-trip is symmetric for plists
+that don't carry JSON nulls."
+  (when (file-readable-p path)
+    (with-temp-buffer
+      (let ((coding-system-for-read 'utf-8))
+        (insert-file-contents path))
+      (let (acc)
+        (goto-char (point-min))
+        (while (not (eobp))
+          (let ((line (buffer-substring-no-properties
+                       (point) (line-end-position))))
+            (unless (string-empty-p (string-trim line))
+              (push (json-parse-string line
+                                       :object-type 'plist
+                                       :array-type 'list
+                                       :null-object nil
+                                       :false-object :false)
+                    acc)))
+          (forward-line 1))
+        (nreverse acc)))))
+
 (provide 'dl-satan-jsonl)
 ;;; dl-satan-jsonl.el ends here
