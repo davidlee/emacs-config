@@ -28,7 +28,15 @@
 (require 'json)
 (require 'dl-notes-paths)
 (require 'dl-satan-tools)
-(require 'dl-satan-tick)  ; for dl-satan-tick-register at load time
+(require 'dl-satan-tick)              ; for dl-satan-tick-register at load time
+(require 'dl-satan-intervention)      ; manual-outcome writer (T1.5b PR 4)
+(require 'dl-satan-audit)              ; audit-reopen (T1.5b PR 4)
+(require 'dl-satan-observer-classify) ; --maturity-state (T1.5b PR 4)
+
+;; Broker is soft — `dl-satan-broker-locate-run-dir' / `dl-satan-runs-dir'
+;; are available inside the live emacs daemon; requiring `dl-satan-broker'
+;; here pulls a heavy dep chain (denote / org-tools) into ert batch runs.
+(declare-function dl-satan-broker-locate-run-dir "dl-satan-broker")
 
 (defcustom dl-satan-tools-atsatan-root
   dl-notes-root
@@ -57,6 +65,14 @@ any `satan/' subtree regardless of depth.")
 
 (defconst dl-satan-tools-atsatan--mark "@satan"
   "Substring matching an active @satan directive.")
+
+(defconst dl-satan-tools-atsatan--intervention-mark-re
+  "@satan-intervention-\\(?:harmful\\|contradicted\\)"
+  "Regex matching an active @satan-intervention-{harmful|contradicted}
+directive prefix (T1.5b PR 4, outcome-semantics §7.2).  Distinct from
+the bare `@satan' mark so the rewriter replaces the longer prefix
+atomically instead of corrupting `@satan-intervention-harmful' into
+`@satan-was-here-intervention-harmful'.")
 
 (defconst dl-satan-tools-atsatan--claimed-re
   "@satan-\\(?:was-here\\|done\\)\\b"
@@ -247,21 +263,33 @@ without writing."
         (cond
          ((string-match-p dl-satan-tools-atsatan--claimed-re current)
           (cons 'ok (list :match-id id :status "already-done")))
-         ((not (string-match-p (regexp-quote dl-satan-tools-atsatan--mark)
-                               current))
+         ((not (or (string-match-p
+                    dl-satan-tools-atsatan--intervention-mark-re current)
+                   (string-match-p (regexp-quote dl-satan-tools-atsatan--mark)
+                                   current)))
           (cons 'ok (list :match-id id :status "already-done")))
          (t
-          ;; Replace the first @satan in `current'; preserve any
-          ;; preceding text (e.g. a leading "- " list bullet).
-          ;; Note: an older spec used `(replace-regexp-in-string ... nil 1)';
-          ;; non-nil START omits text before START from the return
-          ;; value, eating the leading character. Use explicit match +
-          ;; concat instead.
-          (let* ((mark    dl-satan-tools-atsatan--mark)
-                 (idx     (string-match (regexp-quote mark) current))
+          ;; Detect the longest-matching active mark first so
+          ;; `@satan-intervention-harmful' is replaced atomically; only
+          ;; fall back to the bare `@satan' when no intervention prefix
+          ;; sits on the line.  Older versions matched `@satan' alone
+          ;; and corrupted intervention directives into
+          ;; `@satan-was-here-intervention-harmful'.
+          (let* ((mark-info
+                  (cond
+                   ((string-match
+                     dl-satan-tools-atsatan--intervention-mark-re current)
+                    (cons (match-beginning 0)
+                          (- (match-end 0) (match-beginning 0))))
+                   (t
+                    (let* ((m dl-satan-tools-atsatan--mark)
+                           (i (string-match (regexp-quote m) current)))
+                      (cons i (length m))))))
+                 (idx     (car mark-info))
+                 (mlen    (cdr mark-info))
                  (replaced (concat (substring current 0 idx)
                                    "@satan-was-here"
-                                   (substring current (+ idx (length mark)))))
+                                   (substring current (+ idx mlen))))
                  (indent  (if (string-match "\\`\\([ \t]*\\)" current)
                               (match-string 1 current) ""))
                  (block   (dl-satan-tools-atsatan--render-block
@@ -355,6 +383,247 @@ item is the canonical user-facing surface for the result."
              (line (cdr pair)))
         (dl-satan-tools-atsatan--rewrite-line file line run-id effective-comment))))))
 
+;; ---------------------------------------------------------------------
+;; T1.5b PR 4 — @satan-intervention-{harmful|contradicted} directives.
+;; Grammar (outcome-semantics §7.2):
+;;
+;;   @satan-intervention-{harmful|contradicted}: \
+;;       iv_id=<id> reason="<freeform>" [conf=low|medium|high] \
+;;       [evidence=<path>:<line>]
+;;
+;; The scanner already returns these lines because `--mark' is the
+;; substring `@satan' (so `@satan-intervention-*' matches) and
+;; `--claimed-re' only filters `@satan-{was-here,done}'.  The
+;; `notes_at_satan_intervention_done' handler parses the line, routes
+;; through `dl-satan-intervention-write-manual-outcome', and reuses
+;; `--rewrite-line' to stamp the directive consumed (now mark-aware).
+;; ---------------------------------------------------------------------
+
+(defun dl-satan-tools-atsatan--parse-intervention-kv (s)
+  "Parse a space-separated `key=value' (or `key=\"value\"') stream.
+Returns an alist of string→string.  Signals `user-error' on malformed
+input.  Used internally by `--parse-intervention-directive'."
+  (let ((pos 0) (n (length s)) (acc '()))
+    (while (< pos n)
+      (while (and (< pos n) (memq (aref s pos) '(?\s ?\t)))
+        (cl-incf pos))
+      (when (< pos n)
+        (cond
+         ((and (string-match "\\([a-z_]+\\)=" s pos)
+               (= (match-beginning 0) pos))
+          (let ((key (match-string 1 s)))
+            (setq pos (match-end 0))
+            (cond
+             ((and (< pos n) (eq (aref s pos) ?\"))
+              (let ((end (string-search "\"" s (1+ pos))))
+                (unless end
+                  (user-error "atsatan intervention directive: unterminated quoted value"))
+                (push (cons key (substring s (1+ pos) end)) acc)
+                (setq pos (1+ end))))
+             (t
+              (let ((end (or (string-match "[ \t]" s pos) n)))
+                (push (cons key (substring s pos end)) acc)
+                (setq pos end))))))
+         (t
+          (user-error "atsatan intervention directive: malformed token at %d: %s" pos s)))))
+    (nreverse acc)))
+
+(defun dl-satan-tools-atsatan--parse-intervention-directive (line)
+  "Parse LINE as an `@satan-intervention-*' directive (§7.2 grammar).
+Returns `(ok PLIST)' with `:classification :iv-id :reason :conf
+:evidence' (evidence may be nil; conf defaults to `\"low\"' per §4),
+or `(error MSG)' on failure."
+  (cond
+   ((not (string-match
+          "@satan-intervention-\\(harmful\\|contradicted\\):\\(.*\\)\\'"
+          line))
+    (cons 'error "not an @satan-intervention-{harmful|contradicted} directive"))
+   (t
+    (let* ((cls (match-string 1 line))
+           (tail (match-string 2 line))
+           (kv (condition-case err
+                   (dl-satan-tools-atsatan--parse-intervention-kv tail)
+                 (user-error (cons :err (error-message-string err))))))
+      (cond
+       ((and (consp kv) (eq (car kv) :err))
+        (cons 'error (cdr kv)))
+       (t
+        (let ((iv-id (cdr (assoc "iv_id" kv)))
+              (reason (cdr (assoc "reason" kv)))
+              (conf (or (cdr (assoc "conf" kv)) "low"))
+              (evidence (cdr (assoc "evidence" kv))))
+          (cond
+           ((or (null iv-id) (string-empty-p iv-id))
+            (cons 'error "directive missing iv_id="))
+           ((null reason)
+            (cons 'error "directive missing reason="))
+           ((not (member conf '("low" "medium" "high")))
+            (cons 'error (format "invalid conf=%S (expected low|medium|high)" conf)))
+           (t (cons 'ok (list :classification cls
+                              :iv-id iv-id
+                              :reason reason
+                              :conf conf
+                              :evidence evidence)))))))))))
+
+(defun dl-satan-tools-atsatan--read-line (file line)
+  "Read LINE (1-based) of FILE as a string; return nil on error."
+  (condition-case _err
+      (with-temp-buffer
+        (let ((coding-system-for-read 'utf-8))
+          (insert-file-contents file))
+        (goto-char (point-min))
+        (forward-line (1- line))
+        (buffer-substring-no-properties (point) (line-end-position)))
+    (error nil)))
+
+(defun dl-satan-tools-atsatan--intervention-ctx (run-id audit now)
+  "Build a tool-ctx for the manual-outcome writer (parallels the
+interactive command's `mark--build-ctx').  AUDIT is the reopened
+handle for the iv's run-dir."
+  (list :id run-id
+        :mode-name "manual-mark"
+        :time-now now
+        :audit audit
+        :capabilities '()))
+
+(defun dl-satan-tools-atsatan--intervention-run-id-of (iv-id)
+  "Extract the run-id prefix from `<run-id>.iv<NNN>'."
+  (cond
+   ((not (stringp iv-id)) nil)
+   ((string-match "\\`\\(.+\\)\\.iv[0-9]+\\'" iv-id)
+    (match-string 1 iv-id))
+   (t nil)))
+
+(defun dl-satan-tools-atsatan--iv-next-revisit-at (intervention)
+  "Return ISO8601 string for INTERVENTION's window-close (§6.2)."
+  (let* ((ts (plist-get intervention :ts))
+         (mins (or (plist-get intervention :outcome_window_minutes) 0))
+         (close (time-add (date-to-time ts)
+                          (seconds-to-time (* 60 mins)))))
+    (format-time-string "%Y-%m-%dT%H:%M:%S%z" close)))
+
+(defun dl-satan-tools-atsatan--iv-maturity-string (intervention now)
+  "Return §3 maturity string for INTERVENTION at NOW (ISO8601)."
+  (substring (symbol-name
+              (dl-satan-observer--maturity-state intervention now))
+             1))
+
+(defun dl-satan-tools-atsatan--intervention-rewrite-comment (cls comment)
+  "Build the on-disk claim block tag for a consumed intervention
+directive.  CLS is the classification (\"harmful\"/\"contradicted\");
+COMMENT is the model-supplied free comment (optional).  The result is
+always `iv-<CLS>: <body>' so the tag/body splitter sees a tag (carried
+into the QUOTE header) and the body lands on its own line."
+  (let ((trim (and comment (string-trim comment))))
+    (format "iv-%s: %s"
+            cls
+            (if (and trim (not (string-empty-p trim))) trim ""))))
+
+(defun dl-satan-tools-atsatan--intervention-do-write (parsed now)
+  "Half-2 of the directive handler: write the manual outcome.
+PARSED is the directive plist; NOW is the audit-boundary ISO timestamp.
+Returns (ok . PLIST) carrying `:audit-event' and the parsed shape,
+or (error . STR) on lookup / run-dir failure."
+  (let* ((iv-id (plist-get parsed :iv-id))
+         (cls (plist-get parsed :classification))
+         (conf (plist-get parsed :conf))
+         (reason (plist-get parsed :reason))
+         (evidence (plist-get parsed :evidence))
+         (iv-run-id (dl-satan-tools-atsatan--intervention-run-id-of iv-id))
+         (lookup (and iv-run-id (dl-satan-intervention-lookup iv-id)))
+         (iv (and lookup (plist-get lookup :intervention)))
+         (run-dir (and iv-run-id
+                       (fboundp 'dl-satan-broker-locate-run-dir)
+                       (dl-satan-broker-locate-run-dir iv-run-id))))
+    (cond
+     ((null iv-run-id)
+      (cons 'error (format "directive iv_id=%S malformed" iv-id)))
+     ((null iv)
+      (cons 'error (format "no intervention %s in projection" iv-id)))
+     ((null run-dir)
+      (cons 'error (format "no run-dir on disk for %s" iv-run-id)))
+     (t
+      (let* ((audit (dl-satan-audit-reopen run-dir))
+             (mark-ctx (dl-satan-tools-atsatan--intervention-ctx
+                        iv-run-id audit now))
+             (maturity (dl-satan-tools-atsatan--iv-maturity-string iv now))
+             (revisit (dl-satan-tools-atsatan--iv-next-revisit-at iv))
+             (event (dl-satan-intervention-write-manual-outcome
+                     :ctx mark-ctx
+                     :intervention-id iv-id
+                     :classification cls
+                     :confidence conf
+                     :reason reason
+                     :evidence-pointer evidence
+                     :marked-by "notes-directive"
+                     :maturity maturity
+                     :next-revisit-at revisit
+                     :classified-at now)))
+        (cons 'ok (list :intervention-id iv-id
+                        :classification cls
+                        :audit-event event)))))))
+
+(defun dl-satan-tool/notes-at-satan-intervention-done (args ctx)
+  "Implements `notes_at_satan_intervention_done'.
+ARGS plist: `:match-id' (from prior scan) and optional `:comment'
+(rendered into the on-disk claim block, like `notes_at_satan_done').
+Reads the matched line, parses the §7.2 directive, routes through
+`dl-satan-intervention-write-manual-outcome' with `:marked-by
+\"notes-directive\"', then stamps the directive consumed via the
+mark-aware `--rewrite-line'.
+
+CTX requires capability `write-notes' (same as `notes_at_satan_done').
+The outcome audit event is written into the iv's *original* run-dir
+(via `dl-satan-audit-reopen'), not the consuming tick's run, so
+intervention.outcome_* events stay attached to the intervention's
+authoring run for projection rebuild."
+  (let* ((id (plist-get args :match-id))
+         (comment (plist-get args :comment))
+         (caps (plist-get ctx :capabilities))
+         (consuming-run-id (plist-get ctx :id))
+         (now (or (plist-get ctx :time-now)
+                  (format-time-string "%Y-%m-%dT%H:%M:%S%z")))
+         (pair (gethash id dl-satan-tools-atsatan--id-index)))
+    (cond
+     ((not (memq 'write-notes caps))
+      (cons 'error "mode lacks capability write-notes"))
+     ((not (stringp id))
+      (cons 'error "match-id must be string"))
+     ((null pair)
+      (cons 'error
+            (format "unknown match-id: %s (no prior scan in this session)" id)))
+     ((not (file-exists-p (car pair)))
+      (cons 'error (format "file no longer exists: %s" (car pair))))
+     (t
+      (let* ((file (car pair))
+             (line (cdr pair))
+             (content (dl-satan-tools-atsatan--read-line file line)))
+        (cond
+         ((null content)
+          (cons 'error (format "could not read %s:%d" file line)))
+         (t
+          (pcase (dl-satan-tools-atsatan--parse-intervention-directive content)
+            (`(error . ,msg) (cons 'error msg))
+            (`(ok . ,parsed)
+             (pcase (dl-satan-tools-atsatan--intervention-do-write parsed now)
+               (`(error . ,msg) (cons 'error msg))
+               (`(ok . ,write-plist)
+                (let* ((cls (plist-get write-plist :classification))
+                       (tag (dl-satan-tools-atsatan--intervention-rewrite-comment
+                             cls comment))
+                       (rewrite-result
+                        (dl-satan-tools-atsatan--rewrite-line
+                         file line consuming-run-id tag)))
+                  (pcase rewrite-result
+                    (`(ok . ,_)
+                     (cons 'ok (list :match-id id
+                                     :status "done"
+                                     :event (plist-get write-plist :audit-event)
+                                     :intervention-id
+                                     (plist-get write-plist :intervention-id)
+                                     :classification cls)))
+                    (other other))))))))))))))
+
 (dl-satan-tool-register
  (list :name "notes_at_satan_scan"
        :risk 'read
@@ -371,9 +640,17 @@ item is the canonical user-facing surface for the result."
                       patch-job (:type string :required nil))
        :handler 'dl-satan-tool/notes-at-satan-done))
 
+(dl-satan-tool-register
+ (list :name "notes_at_satan_intervention_done"
+       :risk 'low
+       :args-schema '(match-id (:type string :required t)
+                      comment  (:type string :required nil))
+       :handler 'dl-satan-tool/notes-at-satan-intervention-done))
+
 (dl-satan-tick-register
  "agent"
  :tools '("notes_at_satan_scan" "notes_at_satan_done"
+          "notes_at_satan_intervention_done"
           "org_read_context"
           "inbox_append"
           "hippocampus_write"

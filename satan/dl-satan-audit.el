@@ -74,6 +74,23 @@ bundle to allow pre-bundle observer emits (T7 PR 5)."
    (expand-file-name "bundle.json" (dl-satan-audit-handle-dir handle))
    bundle))
 
+(defun dl-satan-audit-reopen (dir)
+  "Return an append-only audit handle for an EXISTING run DIR.
+Unlike `dl-satan-audit-open', this does NOT truncate the transcript
+or rewrite manifest/bundle.  Used by the T1.5b PR 4 manual-mark path
+to append `intervention.outcome_classified' / `outcome_revised'
+events into a prior run's transcript.jsonl without destroying it.
+
+Errors if DIR does not exist or contains no transcript.jsonl —
+manual marks must attach to a real prior run, not mint a new one."
+  (unless (file-directory-p dir)
+    (user-error "dl-satan-audit-reopen: not a directory: %s" dir))
+  (let ((tp (expand-file-name "transcript.jsonl" dir)))
+    (unless (file-readable-p tp)
+      (user-error "dl-satan-audit-reopen: no transcript.jsonl in %s" dir))
+    (make-dl-satan-audit-handle :dir dir :transcript-path tp :last-ts nil
+                                :run-ctx nil)))
+
 (defun dl-satan-audit-record (handle dir event payload)
   "Append a transcript record.
 DIR ∈ in|out|broker.  EVENT is a symbol.  PAYLOAD is a plist/list/string."

@@ -52,6 +52,8 @@
 (require 'dl-satan-audit)             ; validators + closed-set constants
 (require 'dl-satan-jsonl)              ; prepare arrays/alists for json-serialize
 (require 'dl-satan-memory-migrate)    ; psql runner + database defcustoms
+(require 'dl-satan-memory-grammar)    ; grammar-current-version (counter-memory)
+(require 'dl-satan-memory-store)      ; memory-store-mark (counter-memory)
 
 ;; ---------- runs-dir resolution ----------
 
@@ -459,6 +461,170 @@ string on success; signals `user-error' on validator/DB failure."
                 "\nCOMMIT;\n"))
     event))
 
+;; --- manual override writer (T1.5b PR 4) ---
+
+(defconst dl-satan-intervention--manual-classifications
+  '("harmful" "contradicted")
+  "Closed set of classifications acceptable via the manual-mark writer
+\(outcome-semantics §7).  Auto kinds (`worked'/`neutral'/`ignored'/
+`unknown') belong to the auto classifier and must not reach here.")
+
+(defconst dl-satan-intervention--manual-marked-by
+  '("interactive-command" "notes-directive")
+  "Closed set of `:marked_by' values the writer accepts.")
+
+(defun dl-satan-intervention--manual-evidence (classification reason
+                                                              evidence-pointer
+                                                              marked-by)
+  "Build the §5 evidence plist for a manual mark.
+For CLASSIFICATION = \"harmful\": carries `:reason' / `:evidence_pointer'.
+For CLASSIFICATION = \"contradicted\": carries `:prior_suspicion' /
+`:user_artifact'.  Both carry `:source_events ()' (manual marks consult
+no audit events) and `:marked_by'."
+  (cond
+   ((equal classification "harmful")
+    (list :source_events '()
+          :reason            (or reason "")
+          :marked_by         marked-by
+          :evidence_pointer  (or evidence-pointer "")))
+   ((equal classification "contradicted")
+    (list :source_events '()
+          :prior_suspicion  (or reason "")
+          :user_artifact    (or evidence-pointer "")
+          :marked_by        marked-by))
+   (t
+    (user-error
+     "dl-satan-intervention-write-manual-outcome: unsupported classification %S"
+     classification))))
+
+(defun dl-satan-intervention--counter-memory-handles (cue-handles iv-id)
+  "Build `dl-satan-memory-store-mark' handle rows from CUE-HANDLES.
+Each cue handle inherits provenance `(:rule_id
+\"intervention.manual_mark\" :origin \"derived\" :evidence_pointer
+\"/intervention/<iv-id>\")' so resonance can attribute the counter-
+memory back to the manual mark."
+  (mapcar
+   (lambda (h)
+     (list :handle h
+           :source (list :rule_id "intervention.manual_mark"
+                         :origin "derived"
+                         :evidence_pointer
+                         (format "/intervention/%s" (or iv-id "_")))
+           :grammar_version dl-satan-memory-grammar-current-version))
+   (or cue-handles nil)))
+
+(defun dl-satan-intervention--counter-memory-payload (classification iv-id
+                                                                     reason
+                                                                     evidence-pointer)
+  "Render the counter-memory trace payload string (§3.4)."
+  (cond
+   ((equal classification "contradicted")
+    (format "SATAN suspected %s, but the user produced %s from that activity. (intervention %s)"
+            (or reason "_") (or evidence-pointer "_") (or iv-id "_")))
+   ((equal classification "harmful")
+    (format "harmful intervention %s: %s%s"
+            (or iv-id "_")
+            (or reason "_")
+            (if (and evidence-pointer (not (string-empty-p evidence-pointer)))
+                (format " (%s)" evidence-pointer)
+              "")))
+   (t (format "manual mark %s for intervention %s" classification iv-id))))
+
+(defun dl-satan-intervention--write-counter-memory (intervention-id classification
+                                                                    confidence
+                                                                    reason
+                                                                    evidence-pointer
+                                                                    marked-by
+                                                                    classified-at
+                                                                    cue-handles
+                                                                    mark-fn)
+  "Write the §3.4 counter-memory trace for a manual mark.
+Returns the result of MARK-FN (cons of `ok|error . VALUE') so callers
+can surface failures.  Trace handles are CUE-HANDLES verbatim — per
+the PR 4 decision the counter-memory inherits the intervention's cue
+handles so resonance can later surface it on the same cue."
+  (funcall mark-fn
+           :kind "observation"
+           :trace-origin "auto_rule"
+           :source "intervention.manual_mark"
+           :observed-start-at classified-at
+           :observed-end-at   classified-at
+           :payload (dl-satan-intervention--counter-memory-payload
+                     classification intervention-id reason evidence-pointer)
+           :valence "negative"
+           :grammar-version dl-satan-memory-grammar-current-version
+           :metadata-json (list :intervention_id intervention-id
+                                :classification classification
+                                :confidence confidence
+                                :marked_by marked-by
+                                :evidence_pointer (or evidence-pointer ""))
+           :handles (dl-satan-intervention--counter-memory-handles
+                     cue-handles intervention-id)))
+
+(cl-defun dl-satan-intervention-write-manual-outcome
+    (&key ctx intervention-id classification confidence
+          reason evidence-pointer notes marked-by
+          classified-at maturity next-revisit-at
+          memory-mark-fn
+          (db dl-satan-memory-migrate-database))
+  "Write a manual outcome verdict for INTERVENTION-ID.
+
+CLASSIFICATION is the string `\"harmful\"' or `\"contradicted\"' (the
+only kinds reachable by manual mark in v1; outcome-semantics §2
+invariants 1+2).  CONFIDENCE is `\"low\"' | `\"medium\"' | `\"high\"'.
+REASON is freeform prose; EVIDENCE-POINTER is typically a `path:line'
+locator; NOTES is optional multiline freeform.
+
+MARKED-BY is `\"interactive-command\"' or `\"notes-directive\"'.
+CLASSIFIED-AT and NEXT-REVISIT-AT are ISO8601 strings the caller
+derives from the broker's frozen `:time_now' (interactive command)
+or from the directive consumption ts (notes handler).  MATURITY
+is `\"pending\"' / `\"mature\"' / `\"stale\"'; manual marks are
+allowed in every state (§7.4).
+
+Routes through `dl-satan-intervention-classify' with `:source
+\"manual\"'.  Emits `intervention.outcome_classified' on first emit;
+`intervention.outcome_revised' (with `:revises' auto-set) if a prior
+outcome row exists.  Returns the audit event-name string.
+
+Counter-memory trace (§3.4 of attributes.brief) is written via
+`dl-satan-memory-store-mark' after the verdict event succeeds; the
+trace inherits the intervention's `:cue_handles' so resonance can
+later surface the counter-memory when the same cue re-fires.
+MEMORY-MARK-FN is the function used to write the trace; defaults to
+`dl-satan-memory-store-mark'.  Override for tests."
+  (unless (member classification dl-satan-intervention--manual-classifications)
+    (user-error "manual writer: classification must be one of %S, got %S"
+                dl-satan-intervention--manual-classifications classification))
+  (unless (member marked-by dl-satan-intervention--manual-marked-by)
+    (user-error "manual writer: marked-by must be one of %S, got %S"
+                dl-satan-intervention--manual-marked-by marked-by))
+  (let* ((evidence (dl-satan-intervention--manual-evidence
+                    classification reason evidence-pointer marked-by))
+         (event (dl-satan-intervention-classify
+                 :ctx ctx
+                 :intervention-id intervention-id
+                 :classification classification
+                 :confidence confidence
+                 :evidence evidence
+                 :maturity maturity
+                 :next-revisit-at next-revisit-at
+                 :source "manual"
+                 :classified-at classified-at
+                 :marked-by marked-by
+                 :notes notes
+                 :db db))
+         (existing (dl-satan-intervention-lookup intervention-id db))
+         (cue-handles (let ((raw (plist-get (plist-get existing :intervention)
+                                            :cue_handles)))
+                        (if (eq raw :null) nil raw)))
+         (mark-fn (or memory-mark-fn #'dl-satan-memory-store-mark)))
+    (dl-satan-intervention--write-counter-memory
+     intervention-id classification confidence
+     reason evidence-pointer marked-by classified-at
+     cue-handles mark-fn)
+    event))
+
 ;; --- query helpers ---
 
 (defconst dl-satan-intervention--lookup-columns
@@ -612,6 +778,41 @@ projection."
                         (length dl-satan-intervention--lookup-columns))
                 collect (dl-satan-intervention--row-to-intervention cells)))
       (`(error . ,msg) (user-error "dl-satan-intervention-pending: %s" msg)))))
+
+(cl-defun dl-satan-intervention-recent
+    (now &key include-stale (limit 50) (db dl-satan-memory-migrate-database))
+  "Return up to LIMIT most recently-created interventions, newest first.
+NOW is an ISO8601 string; INCLUDE-STALE nil (default) filters out
+interventions whose `ts + outcome_window_minutes + 24 h' is earlier
+than NOW (auto-classifier-frozen per §6.3).  Each element is the
+plist shape produced by `dl-satan-intervention-lookup' under
+`:intervention'."
+  (let* ((now-lit (concat (dl-satan-intervention--quote-text now)
+                          "::timestamptz"))
+         (where (if include-stale
+                    ""
+                  (concat " WHERE i.ts + "
+                          "(i.outcome_window_minutes * INTERVAL '1 minute') "
+                          "+ INTERVAL '24 hours' >= " now-lit " ")))
+         (sql (concat
+               "SELECT "
+               (mapconcat
+                (lambda (c) (concat "COALESCE(i." c "::text, '')"))
+                dl-satan-intervention--lookup-columns ", ")
+               " FROM satan_interventions i"
+               where
+               " ORDER BY i.ts DESC LIMIT "
+               (number-to-string limit)))
+         (result (dl-satan-memory-migrate--psql
+                  db (list "-A" "-t" "-F" "|" "-c" sql))))
+    (pcase result
+      (`(ok . ,out)
+       (cl-loop for line in (split-string out "\n" t)
+                for cells = (split-string line "|")
+                when (= (length cells)
+                        (length dl-satan-intervention--lookup-columns))
+                collect (dl-satan-intervention--row-to-intervention cells)))
+      (`(error . ,msg) (user-error "dl-satan-intervention-recent: %s" msg)))))
 
 (provide 'dl-satan-intervention)
 ;;; dl-satan-intervention.el ends here

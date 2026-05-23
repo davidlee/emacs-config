@@ -4,7 +4,7 @@ description: Design contract — outcome classification vocabulary, lifecycle, e
 metadata:
   type: design-contract
   topic: attributes
-  status: contract-v1
+  status: merged
   feeds: [T7, T1.5b]
   authority: blocking
   updated_at: 2026-05-23

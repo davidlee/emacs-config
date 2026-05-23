@@ -584,5 +584,154 @@ The bucket is parsed from run-id's leading YYYYMMDD."
    (should-not (dl-satan-intervention-lookup
                 "20260523T120000-morning-zzzzzz.iv999"))))
 
+;; ---------- manual override writer (T1.5b PR 4) ---------------------
+
+(defun dl-satan-intervention-test--capturing-mark-fn (captures)
+  "Return a memory-mark-fn that pushes its kw args onto CAPTURES (a
+symbol whose value is a list).  Stub returns `(ok . \"trace_test\")'."
+  (lambda (&rest kvs)
+    (set captures (cons kvs (symbol-value captures)))
+    (cons 'ok "trace_test")))
+
+(ert-deftest dl-satan-intervention/manual-writer-rejects-bad-classification ()
+  (should-error
+   (dl-satan-intervention-write-manual-outcome
+    :ctx nil :intervention-id "x"
+    :classification "worked" :confidence "medium"
+    :reason "r" :evidence-pointer "p:1" :marked-by "interactive-command"
+    :maturity "mature" :next-revisit-at "2026-05-23T12:30:00+1000"
+    :classified-at "2026-05-23T12:30:01+1000")
+   :type 'user-error))
+
+(ert-deftest dl-satan-intervention/manual-writer-rejects-bad-marked-by ()
+  (should-error
+   (dl-satan-intervention-write-manual-outcome
+    :ctx nil :intervention-id "x"
+    :classification "harmful" :confidence "medium"
+    :reason "r" :evidence-pointer "p:1" :marked-by "telegram"
+    :maturity "mature" :next-revisit-at "2026-05-23T12:30:00+1000"
+    :classified-at "2026-05-23T12:30:01+1000")
+   :type 'user-error))
+
+(ert-deftest dl-satan-intervention/manual-writer-harmful-first-emit ()
+  (dl-satan-intervention-test--with-db
+   (dl-satan-intervention--reset-counters)
+   (let* ((root (make-temp-file "satan-iv-run-" t))
+          (run-id "20260523T120000-morning-aaaaaa")
+          (audit (dl-satan-intervention-test--open-audit root run-id))
+          (ctx (dl-satan-intervention-test--build-ctx audit run-id))
+          (captures-sym (make-symbol "captures"))
+          (mark-fn (progn (set captures-sym nil)
+                          (dl-satan-intervention-test--capturing-mark-fn
+                           captures-sym))))
+     (unwind-protect
+         (let ((iv-id (dl-satan-intervention-create
+                       :ctx ctx :kind "notify"
+                       :target-surface "dbus" :message "m"
+                       :expected-outcome "x" :outcome-window-minutes 30
+                       :severity "low"
+                       :cue-handles '("bough_node:abc" "bough_project:def"))))
+           (should (equal "intervention.outcome_classified"
+                          (dl-satan-intervention-write-manual-outcome
+                           :ctx ctx :intervention-id iv-id
+                           :classification "harmful" :confidence "high"
+                           :reason "interrupted focus"
+                           :evidence-pointer "/notes/x.org:88"
+                           :marked-by "interactive-command"
+                           :maturity "mature"
+                           :next-revisit-at "2026-05-23T12:30:00+1000"
+                           :classified-at "2026-05-23T12:30:01+1000"
+                           :notes "deep work"
+                           :memory-mark-fn mark-fn)))
+           (let* ((row (dl-satan-intervention-lookup iv-id))
+                  (outcome (plist-get row :outcome)))
+             (should (equal "harmful" (plist-get outcome :classification)))
+             (should (equal "high"    (plist-get outcome :confidence)))
+             (should (equal "manual"  (plist-get outcome :source)))
+             (should (equal "interactive-command"
+                            (plist-get outcome :marked_by)))
+             (should (equal "deep work" (plist-get outcome :notes)))
+             (let ((ev (plist-get outcome :evidence)))
+               (should (equal "interrupted focus" (plist-get ev :reason)))
+               (should (equal "/notes/x.org:88"
+                              (plist-get ev :evidence_pointer)))
+               (should (equal "interactive-command"
+                              (plist-get ev :marked_by)))))
+           ;; Counter-memory trace written via stubbed mark-fn.
+           (let* ((calls (symbol-value captures-sym))
+                  (kvs (car calls)))
+             (should (= 1 (length calls)))
+             (should (equal "observation" (plist-get kvs :kind)))
+             (should (equal "auto_rule"   (plist-get kvs :trace-origin)))
+             (should (equal "negative"    (plist-get kvs :valence)))
+             (should (string-match-p "harmful intervention"
+                                     (plist-get kvs :payload)))
+             (let* ((md (plist-get kvs :metadata-json)))
+               (should (equal iv-id        (plist-get md :intervention_id)))
+               (should (equal "harmful"    (plist-get md :classification)))
+               (should (equal "interactive-command"
+                              (plist-get md :marked_by))))
+             (let* ((handles (plist-get kvs :handles))
+                    (raw (mapcar (lambda (h) (plist-get h :handle)) handles)))
+               (should (equal '("bough_node:abc" "bough_project:def") raw)))))
+       (delete-directory root t)))))
+
+(ert-deftest dl-satan-intervention/manual-writer-contradicted-revises-auto ()
+  (dl-satan-intervention-test--with-db
+   (dl-satan-intervention--reset-counters)
+   (let* ((root (make-temp-file "satan-iv-run-" t))
+          (run-id "20260523T120000-morning-aaaaaa")
+          (audit (dl-satan-intervention-test--open-audit root run-id))
+          (ctx (dl-satan-intervention-test--build-ctx audit run-id))
+          (captures-sym (make-symbol "captures"))
+          (mark-fn (progn (set captures-sym nil)
+                          (dl-satan-intervention-test--capturing-mark-fn
+                           captures-sym))))
+     (unwind-protect
+         (let ((iv-id (dl-satan-intervention-create
+                       :ctx ctx :kind "notify"
+                       :target-surface "dbus" :message "m"
+                       :expected-outcome "x" :outcome-window-minutes 30
+                       :severity "low")))
+           ;; auto-emit :ignored first
+           (dl-satan-intervention-classify
+            :ctx ctx :intervention-id iv-id
+            :classification "ignored" :confidence "medium"
+            :evidence '(:source-events () :no_positive_predicates t)
+            :maturity "mature"
+            :next-revisit-at "2026-05-23T12:30:00+1000"
+            :source "auto"
+            :classified-at "2026-05-23T12:30:01+1000")
+           ;; user contradicts
+           (should (equal "intervention.outcome_revised"
+                          (dl-satan-intervention-write-manual-outcome
+                           :ctx ctx :intervention-id iv-id
+                           :classification "contradicted" :confidence "medium"
+                           :reason "drift-on-X"
+                           :evidence-pointer "/notes/x.org:42"
+                           :marked-by "notes-directive"
+                           :maturity "mature"
+                           :next-revisit-at "2026-05-23T12:30:00+1000"
+                           :classified-at "2026-05-23T13:00:00+1000"
+                           :memory-mark-fn mark-fn)))
+           (let* ((row (dl-satan-intervention-lookup iv-id))
+                  (outcome (plist-get row :outcome))
+                  (ev (plist-get outcome :evidence)))
+             (should (equal "contradicted" (plist-get outcome :classification)))
+             (should (equal "manual"       (plist-get outcome :source)))
+             (should (equal iv-id          (plist-get outcome :revises)))
+             (should (equal "drift-on-X"   (plist-get ev :prior_suspicion)))
+             (should (equal "/notes/x.org:42"
+                            (plist-get ev :user_artifact))))
+           ;; Counter-memory trace — §3.4 contradicted template.
+           (let* ((calls (symbol-value captures-sym))
+                  (kvs (car calls)))
+             (should (= 1 (length calls)))
+             (should (string-match-p "SATAN suspected drift-on-X"
+                                     (plist-get kvs :payload)))
+             (should (string-match-p "user produced /notes/x.org:42"
+                                     (plist-get kvs :payload)))))
+       (delete-directory root t)))))
+
 (provide 'dl-satan-intervention-test)
 ;;; dl-satan-intervention-test.el ends here

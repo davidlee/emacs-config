@@ -215,5 +215,47 @@ Asserts the suite is non-empty so a fixture-file regression is loud."
             (should (assq 'calls-match-results res))))
       (delete-directory dir t))))
 
+;; ---------- reopen (T1.5b PR 4 — manual-mark append path) ----------
+
+(ert-deftest dl-satan-audit/reopen-appends-without-truncating ()
+  "`dl-satan-audit-reopen' returns a handle whose `audit-record' appends
+to the existing transcript; prior lines are preserved."
+  (let ((dir (make-temp-file "satan-reopen-" t)))
+    (unwind-protect
+        (progn
+          (dl-satan-audit-test--write-run
+           dir
+           '(:summary "s" :actions ())
+           '(:applied () :staged () :rejected () :failed ())
+           'done
+           '((broker intervention.created (:intervention_id "iv1"))))
+          (let* ((tp (expand-file-name "transcript.jsonl" dir))
+                 (before (with-temp-buffer (insert-file-contents tp)
+                                           (buffer-string)))
+                 (handle (dl-satan-audit-reopen dir)))
+            (dl-satan-audit-record handle 'broker 'intervention.outcome_classified
+                                   '(:intervention_id "iv1"
+                                     :classification "harmful"
+                                     :source "manual"))
+            (let* ((after (with-temp-buffer (insert-file-contents tp)
+                                            (buffer-string)))
+                   (lines (split-string after "\n" t)))
+              (should (string-prefix-p before after))
+              (should (= 2 (length lines)))
+              (should (string-match-p "intervention.outcome_classified"
+                                      (nth 1 lines))))))
+      (delete-directory dir t))))
+
+(ert-deftest dl-satan-audit/reopen-rejects-missing-dir ()
+  (let ((dir (make-temp-file "satan-reopen-nope-" t)))
+    (delete-directory dir t)
+    (should-error (dl-satan-audit-reopen dir) :type 'user-error)))
+
+(ert-deftest dl-satan-audit/reopen-rejects-dir-without-transcript ()
+  (let ((dir (make-temp-file "satan-reopen-bare-" t)))
+    (unwind-protect
+        (should-error (dl-satan-audit-reopen dir) :type 'user-error)
+      (delete-directory dir t))))
+
 (provide 'dl-satan-audit-test)
 ;;; dl-satan-audit-test.el ends here

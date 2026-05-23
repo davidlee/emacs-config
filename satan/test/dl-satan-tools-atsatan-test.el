@@ -211,5 +211,138 @@ quoted block carries the patch-job tag and queued-<id> body."
         (should (eq (car done) 'error))
         (should (string-match-p "capability" (cdr done)))))))
 
+;; ---------- T1.5b PR 4 — @satan-intervention-* directives ----------
+
+(ert-deftest notes-at-satan-intervention/parser-happy ()
+  (pcase (dl-satan-tools-atsatan--parse-intervention-directive
+          "@satan-intervention-harmful: iv_id=R.iv03 reason=\"interrupted focus\" conf=high evidence=/notes/x.org:88")
+    (`(ok . ,p)
+     (should (equal "harmful"           (plist-get p :classification)))
+     (should (equal "R.iv03"             (plist-get p :iv-id)))
+     (should (equal "interrupted focus" (plist-get p :reason)))
+     (should (equal "high"              (plist-get p :conf)))
+     (should (equal "/notes/x.org:88"   (plist-get p :evidence))))
+    (other (ert-fail (format "expected ok, got %S" other)))))
+
+(ert-deftest notes-at-satan-intervention/parser-defaults-conf-low ()
+  (pcase (dl-satan-tools-atsatan--parse-intervention-directive
+          "@satan-intervention-contradicted: iv_id=R.iv01 reason=\"r\"")
+    (`(ok . ,p)
+     (should (equal "contradicted" (plist-get p :classification)))
+     (should (equal "low"          (plist-get p :conf)))
+     (should-not (plist-get p :evidence)))
+    (other (ert-fail (format "expected ok, got %S" other)))))
+
+(ert-deftest notes-at-satan-intervention/parser-rejects-missing-iv-id ()
+  (let ((r (dl-satan-tools-atsatan--parse-intervention-directive
+            "@satan-intervention-harmful: reason=\"r\"")))
+    (should (eq 'error (car r)))
+    (should (string-match-p "iv_id" (cdr r)))))
+
+(ert-deftest notes-at-satan-intervention/parser-rejects-bad-conf ()
+  (let ((r (dl-satan-tools-atsatan--parse-intervention-directive
+            "@satan-intervention-harmful: iv_id=R.iv01 reason=\"r\" conf=urgent")))
+    (should (eq 'error (car r)))
+    (should (string-match-p "conf" (cdr r)))))
+
+(ert-deftest notes-at-satan-intervention/parser-rejects-wrong-prefix ()
+  (let ((r (dl-satan-tools-atsatan--parse-intervention-directive
+            "@satan summarise me")))
+    (should (eq 'error (car r)))))
+
+(ert-deftest notes-at-satan-intervention/rewrite-line-preserves-intervention-prefix ()
+  "T1.5b PR 4 — the rewrite must replace the *full* `@satan-intervention-*'
+prefix, not just `@satan' (otherwise the line becomes
+`@satan-was-here-intervention-harmful', which is not claimed-re)."
+  (dl-satan-tools-atsatan-test--with-root root
+    (let* ((file (expand-file-name "iv.org" root)))
+      (let ((coding-system-for-write 'utf-8))
+        (write-region "@satan-intervention-harmful: iv_id=X.iv01 reason=\"r\"\n"
+                      nil file))
+      ;; rewrite-line is the on-disk action; the helper supplies the
+      ;; `iv-<cls>: <body>' tag shape so the tag carries into the QUOTE
+      ;; header (after the comma).
+      (let* ((tag (dl-satan-tools-atsatan--intervention-rewrite-comment
+                   "harmful" ""))
+             (res (dl-satan-tools-atsatan--rewrite-line
+                   file 1 "RUN-X" tag)))
+        (should (eq (car res) 'ok))
+        (should (equal "done" (plist-get (cdr res) :status))))
+      (with-temp-buffer
+        (insert-file-contents file)
+        (let ((s (buffer-string)))
+          (should (string-match-p "\\`@satan-was-here:" s))
+          (should-not (string-match-p "@satan-was-here-intervention" s))
+          (should (string-match-p "#\\+BEGIN_QUOTE satan RUN-X,iv-harmful" s)))))))
+
+(ert-deftest notes-at-satan-intervention/scanner-includes-and-rewrites ()
+  "Scanner returns the directive (substring of `@satan'); done-handler
+parses + rewrites; rescan filters it (now claimed-re matches)."
+  (dl-satan-tools-atsatan-test--with-root root
+    (let* ((file (expand-file-name "iv.org" root))
+           (ctx (list :id "RUN-X" :capabilities '(write-notes)
+                      :time-now "2026-05-23T13:00:00+1000")))
+      (let ((coding-system-for-write 'utf-8))
+        (write-region
+         "* heading\n@satan-intervention-harmful: iv_id=X.iv01 reason=\"interrupted\" conf=medium\n"
+         nil file))
+      (let* ((scan (dl-satan-tool/notes-at-satan-scan nil ctx))
+             (matches (plist-get (cdr scan) :matches)))
+        (should (eq 'ok (car scan)))
+        (should (= 1 (length matches)))
+        (should (string-match-p "@satan-intervention-harmful"
+                                (plist-get (car matches) :content))))
+      ;; Pretend the writer + broker-locate succeed by stubbing.
+      (cl-letf*
+          (((symbol-function 'dl-satan-intervention-lookup)
+            (lambda (iv-id &optional _db)
+              (list :intervention
+                    (list :intervention_id iv-id
+                          :ts "2026-05-23T12:00:00+1000"
+                          :outcome_window_minutes 30
+                          :cue_handles '("bough_node:abc")))))
+           ((symbol-function 'dl-satan-broker-locate-run-dir)
+            (lambda (_run-id &optional _runs-dir) root))
+           ((symbol-function 'dl-satan-audit-reopen)
+            (lambda (_dir) (list :stub-audit t)))
+           (writer-calls nil)
+           ((symbol-function 'dl-satan-intervention-write-manual-outcome)
+            (lambda (&rest kvs)
+              (push kvs writer-calls)
+              "intervention.outcome_classified")))
+        (let* ((scan2 (dl-satan-tool/notes-at-satan-scan nil ctx))
+               (id (plist-get (car (plist-get (cdr scan2) :matches)) :id))
+               (done (dl-satan-tool/notes-at-satan-intervention-done
+                      (list :match-id id) ctx)))
+          (should (eq 'ok (car done)))
+          (should (equal "done" (plist-get (cdr done) :status)))
+          (should (equal "harmful"
+                         (plist-get (cdr done) :classification)))
+          (should (= 1 (length writer-calls)))
+          (let ((kvs (car writer-calls)))
+            (should (equal "harmful" (plist-get kvs :classification)))
+            (should (equal "medium"  (plist-get kvs :confidence)))
+            (should (equal "interrupted" (plist-get kvs :reason)))
+            (should (equal "notes-directive"
+                           (plist-get kvs :marked-by))))))
+      ;; Rescan: claimed marker filters the line.
+      (let ((rescan (dl-satan-tool/notes-at-satan-scan nil ctx)))
+        (should (zerop (plist-get (cdr rescan) :count)))))))
+
+(ert-deftest notes-at-satan-intervention/done-refuses-without-capability ()
+  (dl-satan-tools-atsatan-test--with-root root
+    (let* ((file (expand-file-name "iv.org" root))
+           (scan-ctx (list :id "RUN-X" :capabilities '(write-notes)))
+           (no-cap-ctx (list :id "RUN-X" :capabilities '())))
+      (let ((coding-system-for-write 'utf-8))
+        (write-region "@satan-intervention-harmful: iv_id=X.iv01 reason=\"r\"\n"
+                      nil file))
+      (let* ((scan (dl-satan-tool/notes-at-satan-scan nil scan-ctx))
+             (id (plist-get (car (plist-get (cdr scan) :matches)) :id))
+             (done (dl-satan-tool/notes-at-satan-intervention-done
+                    (list :match-id id) no-cap-ctx)))
+        (should (eq 'error (car done)))
+        (should (string-match-p "capability" (cdr done)))))))
+
 (provide 'dl-satan-tools-atsatan-test)
 ;;; dl-satan-tools-atsatan-test.el ends here
