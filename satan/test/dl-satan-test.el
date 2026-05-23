@@ -66,8 +66,8 @@ broker manifest + budget sections; will move with those extractions."
           (funcall body-fn))
       (delete-directory tmp t))))
 
-;; ---------- dl-satan-audit verifier ----------
-
+;; Shared by remaining audit pre_spawn section.  Moves to
+;; dl-satan-audit-test.el with the next extraction.
 (defun dl-satan-test--write-run (dir final actions status &optional transcript)
   (make-directory dir t)
   (let ((audit (dl-satan-audit-open dir
@@ -76,20 +76,6 @@ broker manifest + budget sections; will move with those extractions."
     (dolist (rec (or transcript '()))
       (dl-satan-audit-record audit (nth 0 rec) (nth 1 rec) (nth 2 rec)))
     (dl-satan-audit-close audit final actions status)))
-
-(ert-deftest dl-satan-audit/verifier-ok ()
-  (let ((dir (make-temp-file "satan-run-" t)))
-    (unwind-protect
-        (progn
-          (dl-satan-test--write-run
-           dir
-           '(:summary "s" :actions ())
-           '(:applied () :staged () :rejected () :failed ())
-           'done
-           '((in tool-call (:id "a"))
-             (broker tool-result (:id "a" :ok t))))
-          (should (eq (dl-satan-audit-verify-run dir) t)))
-      (delete-directory dir t))))
 
 ;; ---------- dl-satan-broker pre_spawn threading (Phase 4.4) ----------
 
