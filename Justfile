@@ -1,7 +1,7 @@
 default: home-switch
 
 home-switch:
-  cd ~/flakes && git add ~/.emacs.d . && just home-switch
+  cd ~/flakes && git add . && nix flake update panopticon && nix flake update satan-patcher && just home-switch
 
 used:
   @rg use-package -g '*.el' -I --trim | egrep -v '^;' | cut -d ' ' -f 2 | tr ')' ' ' | sort | uniq
