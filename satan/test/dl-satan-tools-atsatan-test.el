@@ -9,6 +9,11 @@
 (require 'ert)
 (require 'cl-lib)
 (require 'dl-satan-tools-atsatan)
+;; Optional fixtures for the live-broker smoke test; tests that need
+;; them gate on `dl-satan-intervention-test--with-db' being bound.
+(require 'dl-satan-audit)
+(require 'dl-satan-intervention)
+(require 'dl-satan-intervention-test nil 'noerror)
 
 (defmacro dl-satan-tools-atsatan-test--with-root (root-sym &rest body)
   "Bind ROOT-SYM to a fresh temp dir, let-bind it as the scan root, cleanup on exit."
@@ -343,6 +348,113 @@ parses + rewrites; rescan filters it (now claimed-re matches)."
                     (list :match-id id) no-cap-ctx)))
         (should (eq 'error (car done)))
         (should (string-match-p "capability" (cdr done)))))))
+
+;; ---------- live-broker smoke (follow-up #3) ----------
+;;
+;; Exercises `notes_at_satan_intervention_done' against:
+;;   - real `dl-satan-intervention-create' (seeds projection + audit
+;;     transcript with the intervention.created event)
+;;   - real `dl-satan-intervention-write-manual-outcome' (classify +
+;;     counter-memory trace, append to the iv's own run-dir transcript
+;;     via `dl-satan-audit-reopen')
+;;   - real `dl-satan-intervention-lookup' against the projection
+;;
+;; Only stubs:
+;;   - `dl-satan-broker-locate-run-dir' → the audit's actual dir
+;;     (same as the manual-mark dispatch test; the broker call is a
+;;     thin run-id→fs-path translator the broker would otherwise
+;;     resolve via its denote chain)
+;;   - `dl-satan-memory-store-mark' → record call args + return ok
+;;     (avoids requiring the memory store DB write in this suite)
+
+(ert-deftest notes-at-satan-intervention/end-to-end-smoke ()
+  "Real broker integration: scan + done against a seeded run-dir and
+projection.  Verifies the directive writes a live outcome event into
+the iv's original transcript, updates the projection row, fires the
+counter-memory mark with inherited cue handles, and rewrites the
+notes line to the claimed shape."
+  (skip-unless (fboundp 'dl-satan-intervention-test--with-db))
+  (dl-satan-tools-atsatan-test--with-root scan-root
+    (dl-satan-intervention-test--with-db
+     (dl-satan-intervention--reset-counters)
+     (let* ((iv-run-root (make-temp-file "satan-iv-smoke-" t))
+            (run-id "20260523T120000-morning-aaaaaa")
+            (audit (dl-satan-intervention-test--open-audit
+                    iv-run-root run-id))
+            (iv-ctx (dl-satan-intervention-test--build-ctx audit run-id))
+            (consume-ctx (list :id "20260523T130000-tick-bbbbbb"
+                               :capabilities '(write-notes)
+                               :time-now "2026-05-23T13:00:00+1000"))
+            (mark-calls nil))
+       (unwind-protect
+           (let* ((iv-id (dl-satan-intervention-create
+                          :ctx iv-ctx :kind "notify"
+                          :target-surface "dbus"
+                          :message "morning kanban"
+                          :expected-outcome "user opens kanban.org"
+                          :outcome-window-minutes 30
+                          :severity "low"
+                          :cue-handles '("bough_node:abc")))
+                  (notes-file (expand-file-name "iv-smoke.org" scan-root)))
+             (let ((coding-system-for-write 'utf-8))
+               (write-region
+                (format
+                 "* heading\n@satan-intervention-harmful: iv_id=%s reason=\"interrupted\" conf=high evidence=/notes/x.org:88\n"
+                 iv-id)
+                nil notes-file))
+             (cl-letf*
+                 (((symbol-function 'dl-satan-broker-locate-run-dir)
+                   (lambda (_rid &optional _runs-dir)
+                     (dl-satan-audit-handle-dir audit)))
+                  ((symbol-function 'dl-satan-memory-store-mark)
+                   (lambda (&rest kvs)
+                     (push kvs mark-calls)
+                     (cons 'ok "trace_smoke"))))
+               (let* ((scan (dl-satan-tool/notes-at-satan-scan nil consume-ctx))
+                      (matches (plist-get (cdr scan) :matches))
+                      (id (plist-get (car matches) :id))
+                      (done (dl-satan-tool/notes-at-satan-intervention-done
+                             (list :match-id id) consume-ctx)))
+                 (should (eq 'ok (car scan)))
+                 (should (= 1 (length matches)))
+                 (should (eq 'ok (car done)))
+                 (should (equal "done"    (plist-get (cdr done) :status)))
+                 (should (equal "harmful" (plist-get (cdr done) :classification)))
+                 (should (equal iv-id     (plist-get (cdr done) :intervention-id)))
+                 (should (equal "intervention.outcome_classified"
+                                (plist-get (cdr done) :event)))))
+             ;; Projection row carries the manual outcome.
+             (let* ((row (dl-satan-intervention-lookup iv-id))
+                    (outcome (plist-get row :outcome)))
+               (should (equal "harmful" (plist-get outcome :classification)))
+               (should (equal "high"    (plist-get outcome :confidence)))
+               (should (equal "manual"  (plist-get outcome :source)))
+               (should (equal "notes-directive"
+                              (plist-get outcome :marked_by))))
+             ;; Outcome event landed in the iv's *original* transcript.
+             (let* ((events (dl-satan-intervention-test--transcript-events audit))
+                    (outcome-ev (cl-find "intervention.outcome_classified" events
+                                         :key (lambda (r) (plist-get r :event))
+                                         :test #'equal)))
+               (should outcome-ev))
+             ;; Counter-memory trace fired with cue-handle inheritance.
+             (should (= 1 (length mark-calls)))
+             (let* ((kvs (car mark-calls))
+                    (handles (plist-get kvs :handles)))
+               (should (equal "negative" (plist-get kvs :valence)))
+               (should (equal '("bough_node:abc")
+                              (mapcar (lambda (h) (plist-get h :handle))
+                                      handles))))
+             ;; Notes file rewritten: claimed marker + iv-harmful tag.
+             (with-temp-buffer
+               (insert-file-contents notes-file)
+               (let ((s (buffer-string)))
+                 (should (string-match-p "@satan-was-here:" s))
+                 (should-not (string-match-p "@satan-was-here-intervention" s))
+                 (should (string-match-p
+                          "#\\+BEGIN_QUOTE satan 20260523T130000-tick-bbbbbb,iv-harmful"
+                          s)))))
+         (delete-directory iv-run-root t))))))
 
 (provide 'dl-satan-tools-atsatan-test)
 ;;; dl-satan-tools-atsatan-test.el ends here
