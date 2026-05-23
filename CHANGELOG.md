@@ -22,6 +22,7 @@ Notable changes to this Emacs config. Loosely dated; not versioned.
 - Append `self-edit/output` test to `dl-satan-context-test.el` alongside the other self-edit lifecycle tests.
 - Extract `dl-satan-tick-test.el` (7 tests).
 - Extract `dl-satan-tools-agenda-test.el` (7 tests + `with-gcalcli-stub` macro).
+- Extract `dl-satan-tools-activity-test.el` (11 tests + fixture macros).
 
 ## 2026-05-23 — SATAN: extract refactor themes into `docs/satan/refactor/`
 
