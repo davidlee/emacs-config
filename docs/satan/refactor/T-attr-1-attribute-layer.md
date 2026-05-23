@@ -59,6 +59,65 @@ T-attr-1d lands capsule render: brief §4 ASCII bar block + one-line derived pre
 
 T-attr-1e wires additional sources (`:percept` / `:sensor` / `:resonance` / `:tool_error`) per brief §1 per-attribute "Raises when" sections.
 
+## Implementation locus (amendment 2026-05-23)
+
+T-attr-1b..1e implementation moves out of elisp and into a new Rust
+daemon at `~/dev/satan-attrd`. Rationale + tradeoffs recorded in
+[`extraction-policy.md`](extraction-policy.md) §"Active beachhead". The
+design contract at [`../attributes/design-contract.md`](../attributes/design-contract.md)
+remains normative on substance (schema, validators, semantics, caps,
+rebuild) and is now formally locus-split (contract §17 — "Implementation
+locus + pinned daemon design choices"). Elisp-specific file references
+in the original theme-doc body (`dl-satan-attribute-store.el`,
+`dl-satan-attribute-dispatcher.el`) are superseded by daemon-side
+modules under `~/dev/satan-attrd/src/`.
+
+Locus split:
+
+| Sub-theme | Lands in | Notes |
+|---|---|---|
+| T-attr-1a | `docs/` (this theme + contract) | unchanged; doc only |
+| T-attr-1b | `satan-attrd` (Rust) — migration + store. Broker (elisp) — audit-validator widening | substrate; daemon owns table+store, broker validates transcript writes |
+| T-attr-1c | `satan-attrd` (Rust) | dispatcher consuming intervention outcome events |
+| T-attr-1d | broker (elisp) | capsule render glue — capsule is still broker-assembled; daemon exposes a "snapshot attrs" RPC the broker queries pre-spawn |
+| T-attr-1e | `satan-attrd` (Rust) — dispatch + caps. Broker (elisp) — validator widening per source | additional sources (`:percept` / `:sensor` / `:resonance` / `:tool_error`) |
+
+Broker keeps: transcript write + audit-record validator, capsule render
+glue, `attribute-updates-enabled` switch + payload forwarding, any tool
+handlers exposed to the model (none in v1).
+
+Daemon scaffolding source: lifted from bough's `~/dev/vk/db` crate
+(`Cargo.toml` deps + Justfile gates + crate layout). Single binary
+crate, not a workspace. **Initial scaffold landed in
+`~/dev/satan-attrd` commit `d8a6a10` on 2026-05-23** — no schema or
+store code yet; T-attr-1b is the first code-bearing slice.
+
+Three design choices pinned before T-attr-1c lands (now reflected in
+contract §17.3–§17.5; see extraction-policy §"Active beachhead" for the
+discussion that produced them):
+
+1. Audit transcript path: daemon writes table row + RPCs event back
+   to broker which writes `transcript.jsonl` line (preserves
+   "transcript is audit truth").
+2. Event bus shape: broker emits intervention outcome events via PG
+   queue table + `pg_notify` (matches patch-listener pattern); daemon
+   LISTENs.
+3. Disable-switch placement: daemon-side (audit records "would have
+   applied X but disabled" — cleaner for rebuild semantics in
+   contract §10).
+
+**Contract status.** The design contract at
+[`../attributes/design-contract.md`](../attributes/design-contract.md)
+has been language-neutralised: §4/§4.2/§4.3/§5/§5.1/§9/§10/§11/§12
+rewritten in broker / daemon role-language (no more `dl-satan-*` /
+defcustom-name / ert-file leaks), and a new §17 adopts the three
+pinned daemon design choices into the contract proper. Substantive
+content (schema, deltas, caps, rebuild semantics, validator widening,
+A3 boundary) carries over verbatim. `metadata.status` stays `draft`
+for one more change-history row — it flips to `merged` when T-attr-1b's
+first code-bearing PR lands (T1.5a precedent: contract becomes
+canonical with first impl PR).
+
 ## Migration sketch
 
 - T-attr-1a (this theme): one PR, two documents (contract + this theme doc). No code.
@@ -96,8 +155,8 @@ These do not block 1b. 1c may surface tuning open questions on the delta magnitu
 
 ## PR log
 
-- [ ] T-attr-1a — [`docs/satan/attributes/design-contract.md`](../attributes/design-contract.md) + this theme doc (doc only). Resolves: vocabulary; scope = `global` (with explicit ambient-not-pattern-specific caution per §3.1); storage shapes (with `seq INTEGER` for deterministic replay + `disabled BOOLEAN` for filter); `attribute.delta_applied` event schema; outcome→delta table per brief §3.3 (with global-scope magnitude reductions: `worked shame` −0.025, `contradicted suspicion` −0.05); confidence weighting (upper-bound clamp only); revision net-delta semantics; multi-attribute pre-dispatch snapshot; friction_cap (forward-compat) + range_clamp; disable switch (capsule renders "disabled" not stale values); rebuild from event log with default-skip-disabled vs `--include-disabled` modes; replay-order rule `(ts, run_id, seq)`; source reservation vs implementation distinction; validator widening for `(source, reason)` pairing + required `evidence.confidence` for outcome; A3 boundary; v1 non-inferables. Patched 2026-05-23 from external review (disposition recorded in contract §16). Open questions punted to 1b+: confidence-weight magnitudes (Q1); decay schedule (Q2); per-scope (Q3); event-source-vs-upsert authority (Q4); repeated-neutral (Q5); evidence-json shape (Q6).
-- [ ] T-attr-1b — state + event log substrate (no dispatcher).
+- [x] T-attr-1a — [`docs/satan/attributes/design-contract.md`](../attributes/design-contract.md) + this theme doc (doc only). Resolves: vocabulary; scope = `global` (with explicit ambient-not-pattern-specific caution per §3.1); storage shapes (with `seq INTEGER` for deterministic replay + `disabled BOOLEAN` for filter); `attribute.delta_applied` event schema; outcome→delta table per brief §3.3 (with global-scope magnitude reductions: `worked shame` −0.025, `contradicted suspicion` −0.05); confidence weighting (upper-bound clamp only); revision net-delta semantics; multi-attribute pre-dispatch snapshot; friction_cap (forward-compat) + range_clamp; disable switch (capsule renders "disabled" not stale values); rebuild from event log with default-skip-disabled vs `--include-disabled` modes; replay-order rule `(ts, run_id, seq)`; source reservation vs implementation distinction; validator widening for `(source, reason)` pairing + required `evidence.confidence` for outcome; A3 boundary; v1 non-inferables. Patched 2026-05-23 from external review (disposition recorded in contract §16). Open questions punted to 1b+: confidence-weight magnitudes (Q1); decay schedule (Q2); per-scope (Q3); event-source-vs-upsert authority (Q4); repeated-neutral (Q5); evidence-json shape (Q6). Locus pivot + contract language-neutralising pass landed 2026-05-23 (contract §17 + `Implementation locus` section above; daemon scaffold at `~/dev/satan-attrd` commit `d8a6a10`).
+- [ ] T-attr-1b — state + event log substrate (no dispatcher). Daemon-side: `0007_attributes.sql` migration + store API (UPSERT projection, INSERT event, per-run `seq` counter, prior-event lookup by `intervention_id` with the §6.2.1 expression index) + Rust integration tests against live Postgres. Broker-side: audit-record validator widening for `attribute.delta_applied` (the `outcome` source + the §6 reasons enum + required `evidence.confidence`/`intervention_id`/`classification`) + ert.
 - [ ] T-attr-1c — Shame dispatcher (outcome → delta).
 - [ ] T-attr-1d — capsule render.
 - [ ] T-attr-1e — percept / sensor / resonance / tool_error sources.

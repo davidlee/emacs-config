@@ -41,3 +41,4 @@ metadata:
 - [bough-gaps](bough-gaps.md) — bough CLI gaps surfaced by SATAN
 - [follow-ups](follow-ups.md) — durable cleanup / audit items deferred during perceptual-layer v0
 - [refactor/plan](refactor/plan.md) — refactor themes index (T1, T1.5, T2–T4, T6–T8, T-attr-1)
+- [refactor/extraction-policy](refactor/extraction-policy.md) — guiding policy + standing candidates for moving modules out of `.emacs.d/`

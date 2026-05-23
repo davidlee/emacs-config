@@ -96,7 +96,7 @@ For each outcome event, `evidence_json` carries cue-dimension fields (`intervent
 
 ## 4. Storage
 
-Two Postgres tables under the existing `dl-satan-memory-migrate-database` connection, migration `0007_attributes.sql`.
+Two Postgres tables in the existing SATAN database (the same database the broker's memory substrate connects to), introduced by migration `0007_attributes.sql`. Migration is owned by the attribute daemon (`satan-attrd`) — runs explicitly via `satan-attrd migrate`, not on broker start.
 
 ### 4.1 `satan_attributes` — current state
 
@@ -141,23 +141,23 @@ CREATE INDEX satan_attribute_events_name_idx ON satan_attribute_events (scope, n
 CREATE INDEX satan_attribute_events_replay_idx ON satan_attribute_events (ts, run_id, seq);
 ```
 
-Append-only. `run_id` is **globally unique** across SATAN runs (the broker mints `<UTC-timestamp>-<mode>-<entropy>` ids; collision is not a concern). The `id` shape mirrors intervention id: `<run-id>.attr<NNN>` via a per-run session-local counter (`dl-satan-attribute-store--reset-counters`); the `NNN` portion is the human-readable rendering of `seq` and is **not** used for ordering. The `seq` column is the authoritative ordering key within a run; `(ts, run_id, seq)` is the authoritative global replay order (§10).
+Append-only. `run_id` is **globally unique** across SATAN runs (the broker mints `<UTC-timestamp>-<mode>-<entropy>` ids; collision is not a concern). The `id` shape mirrors intervention id: `<run-id>.attr<NNN>` via a per-run counter (maintained inside the attribute daemon, reset between runs); the `NNN` portion is the human-readable rendering of `seq` and is **not** used for ordering. The `seq` column is the authoritative ordering key within a run; `(ts, run_id, seq)` is the authoritative global replay order (§10).
 
 Test fixtures reset both counter + seq between cases.
 
 `caps_applied` is a JSONB array of cap-name strings whose application reduced the delta (empty `[]` = uncapped; `["friction_cap"]` = friction's `doubt+shame` cap kicked in; see §7).
 
-`disabled` is `true` for events emitted while `dl-satan-attribute-updates-enabled` is nil (§9). Rebuild defaults to skipping disabled events (§10).
+`disabled` is `true` for events emitted while the broker's `attribute-updates-enabled` switch is off (§9). Rebuild defaults to skipping disabled events (§10).
 
 ### 4.3 No outcome columns
 
-The brief §5 also sketches `satan_interventions` + `satan_intervention_outcomes`. Those tables exist already (migration `0006_interventions.sql`, shipped in T7). The attribute layer **reads** outcomes via `dl-satan-intervention-lookup`; it does not duplicate the intervention substrate.
+The brief §5 also sketches `satan_interventions` + `satan_intervention_outcomes`. Those tables exist already (migration `0006_interventions.sql`, shipped in T7) and remain broker-owned. The attribute daemon **reads** outcomes via the broker's intervention-outcome event stream (§17.2); it does not duplicate the intervention substrate.
 
 ---
 
 ## 5. Update event — audit transcript shape
 
-Every attribute write emits one `attribute.delta_applied` event into the current run's `transcript.jsonl` via `dl-satan-audit-record`. The event is the canonical wire record; the projection rows in §4 are derivable from replaying this event stream (see §10).
+Every attribute write emits one `attribute.delta_applied` event into the current run's `transcript.jsonl`. The transcript write is owned by the broker (it is the audit-truth surface — see §17.1); the daemon RPCs the event back to the broker after writing the `satan_attribute_events` row so the projection write, the event-log row, and the transcript line are all in agreement. The event is the canonical wire record; the projection rows in §4 are derivable from replaying this event stream (see §10).
 
 ```text
 {
@@ -199,11 +199,11 @@ A source name is **reserved** at the contract level but only **implemented** whe
 
 `reason` is a closed enum **per implemented source** (see §6 for the `outcome` source's reasons). Validator enforces `(source, reason)` pairing — `source=percept reason=worked` is invalid even when both keys are individually in their enums.
 
-`disabled: true` is emitted when `dl-satan-attribute-updates-enabled` is nil — the event is recorded, but the projection is NOT updated (§9).
+`disabled: true` is emitted when the broker's `attribute-updates-enabled` switch is off — the event is recorded, but the projection is NOT updated (§9).
 
 ### 5.1 Audit validator
 
-`dl-satan-audit--validate-record` (existing infra) gains `attribute.delta_applied` as an accepted event with required-key validation against the payload shape above. Validator must reject:
+The broker's existing audit-record validator gains `attribute.delta_applied` as an accepted event with required-key validation against the payload shape above. Validator stays broker-side (it guards transcript-write integrity, which the broker owns). Validator must reject:
 
 - unknown `source` (closed-set enforcement against the reserved list)
 - **unimplemented** source (in the reserved list but no `reason` enum defined in this contract)
@@ -214,7 +214,7 @@ A source name is **reserved** at the contract level but only **implemented** whe
 - `caps_applied` containing unknown cap names (closed-set: `friction_cap`, `range_clamp` in v1)
 - for `source=outcome`: missing or invalid `evidence.confidence` (must be `low|medium|high`); missing `evidence.intervention_id`; missing `evidence.classification`
 
-T-attr-1b ships the validator widening with the `outcome` source + the §6 reasons enum + the required-keys check above. T-attr-1e PRs widen the validator each time they implement a reserved source.
+T-attr-1b's broker-side PR ships the validator widening with the `outcome` source + the §6 reasons enum + the required-keys check above. T-attr-1e PRs widen the validator (broker-side) each time they implement a reserved source.
 
 ---
 
@@ -292,14 +292,14 @@ Revision-without-projection-change is allowed: if the actual-vs-new computation 
 
 ### 6.2.1 Tracking prior deltas
 
-The query in step 2a uses `evidence_json->>'intervention_id'` to find prior events for the same intervention. T-attr-1b's `satan_attribute_events` migration must add a GIN or expression index on `(evidence_json->>'intervention_id')` to keep the lookup cheap:
+The query in step 2a uses `evidence_json->>'intervention_id'` to find prior events for the same intervention. The `0007_attributes.sql` migration must add an expression index on `(evidence_json->>'intervention_id')` to keep the lookup cheap:
 
 ```sql
 CREATE INDEX satan_attribute_events_iv_idx
   ON satan_attribute_events ((evidence_json->>'intervention_id'));
 ```
 
-Dispatcher implementation reads back through prior events; revision is a *backwards-looking* operation and must not be optimised by maintaining a denormalised "last delta per (intervention, attribute)" projection — that projection would itself need invariant maintenance and provides no benefit over a single indexed lookup on the event log.
+The daemon reads back through prior events; revision is a *backwards-looking* operation and must not be optimised by maintaining a denormalised "last delta per (intervention, attribute)" projection — that projection would itself need invariant maintenance and provides no benefit over a single indexed lookup on the event log.
 
 ### 6.3 Multi-delta semantics — pre-dispatch snapshot
 
@@ -379,48 +379,48 @@ T-attr-2 should add a daily idle-decay rule (`-0.01/day` per brief recommendatio
 
 ## 9. Disable switch
 
-```elisp
-(defcustom dl-satan-attribute-updates-enabled t
-  "When non-nil, attribute.delta_applied events also UPSERT the
-satan_attributes projection.  When nil, events are still recorded
-in the run's transcript + satan_attribute_events table with
-disabled=true, but the projection is untouched and the capsule
+An operator-visible disable switch (held in the broker as the
+`attribute-updates-enabled` boolean, exposed via the broker's usual
+defcustom group) gates the projection write. The broker reports
+the current switch state in every outcome-event payload it emits
+on the §17.2 event bus; the daemon writes events accordingly. The
+switch is the rollback path for the attributes tranche
+(CODE_REVIEW.md §6 Q9).
+
+Default: enabled. When disabled: events are still recorded in the
+run's transcript + `satan_attribute_events` table with
+`disabled=true`, but the projection is untouched and the capsule
 renders an explicit disabled marker (not stale values) — the
 attribute layer is dark, behaviour reverts to pre-T-attr-1.
 
-Rollback path for the attributes tranche (CODE_REVIEW.md §6 Q9)."
-  :type 'boolean
-  :group 'dl-satan)
-```
-
-Behaviour when **enabled** (`t`, default):
+Behaviour when **enabled** (default):
 
 - Emit `attribute.delta_applied` event with `disabled: false`.
 - UPSERT `satan_attributes` projection.
 - INSERT `satan_attribute_events` row with `disabled = false`.
 - Capsule (T-attr-1d) renders attribute bars from the live projection.
 
-Behaviour when **disabled** (`nil`):
+Behaviour when **disabled**:
 
 - Emit `attribute.delta_applied` event with `disabled: true`.
 - Do **NOT** UPSERT `satan_attributes` — projection is frozen at its last-enabled values.
 - INSERT `satan_attribute_events` row with `disabled = true`.
 - **Capsule (T-attr-1d) MUST render an explicit "Attributes: disabled" marker — it MUST NOT expose the frozen projection values.** Stale frozen values would be semantically indistinguishable from "low" attribute pressure and would mislead the model. The capsule contract is: either omit the attribute block entirely, or render the single-line marker. The model never reads frozen post-disable values.
 
-Rationale: a stuck attribute writer should not corrupt agent behaviour silently. Operators flip the switch to nil; the capsule renders "disabled" so the model knows the layer is dark; the audit log preserves what the dispatcher *would have* written so a fix-forward can replay events to catch the projection up via `dl-satan-attribute-rebuild --include-disabled` (§10).
+Rationale: a stuck attribute writer should not corrupt agent behaviour silently. Operators flip the switch off; the capsule renders "disabled" so the model knows the layer is dark; the audit log preserves what the dispatcher *would have* written so a fix-forward can replay events to catch the projection up via `satan-attrd rebuild --include-disabled` (§10).
 
 ---
 
 ## 10. Rebuild semantics
 
-The projection (`satan_attributes`) is **derivable** from the event log (`satan_attribute_events`) by ordered replay. A `dl-satan-attribute-rebuild` driver (T-attr-1b) walks events `ORDER BY ts, run_id, seq` and UPSERTs the final value per `(scope, name)`.
+The projection (`satan_attributes`) is **derivable** from the event log (`satan_attribute_events`) by ordered replay. A `satan-attrd rebuild` subcommand (T-attr-1b) walks events `ORDER BY ts, run_id, seq` and UPSERTs the final value per `(scope, name)`.
 
 `(ts, run_id, seq)` is the authoritative replay order. `ts` is the primary key (real-world time of the event); `(run_id, seq)` deterministically tie-breaks events with identical timestamps within and across runs. The lexicographic `id`-string sort is **not** safe — `attr10` sorts before `attr9` without zero-padding. Replay must use `seq` (integer), not the `id` string.
 
 ### 10.1 Default replay — skips disabled events
 
 ```text
-dl-satan-attribute-rebuild
+satan-attrd rebuild
   WHERE disabled = false
   ORDER BY ts, run_id, seq
   → UPSERT projection
@@ -431,7 +431,7 @@ This reconstructs the projection's **actual** historical trajectory. A disabled-
 ### 10.2 Hypothetical replay — includes disabled events
 
 ```text
-dl-satan-attribute-rebuild --include-disabled
+satan-attrd rebuild --include-disabled
   ORDER BY ts, run_id, seq
   → UPSERT projection (using both disabled and live events)
 ```
@@ -460,26 +460,28 @@ For any totally-ordered sequence of events (by `(ts, run_id, seq)`), replay prod
 
 ## 11. A3 determinism boundary
 
-The dispatcher is a deterministic function of audit events whose timing was already non-deterministic post-T1.5b (intervention.outcome_classified carries the broker's `:time_now`, not a real clock). Attribute updates **inherit** that break — they do not introduce a new one. A3 (byte-identical-rerun) is already broken at the outcome layer; adding `attribute.delta_applied` events into the same transcript is not a new sanction.
+The dispatcher is a deterministic function of audit events whose timing was already non-deterministic post-T1.5b (`intervention.outcome_classified` carries the broker's `:time_now`, not a real clock). Attribute updates **inherit** that break — they do not introduce a new one. A3 (byte-identical-rerun) is already broken at the outcome layer; adding `attribute.delta_applied` events into the same transcript is not a new sanction.
 
-No transcript-level golden test exists for attributes. The percept A3 ert (`dl-satan-percept-test`) is unaffected. T-attr-1c must not introduce wall-clock dependencies into the dispatcher (use the broker's frozen `:time_now`).
+No transcript-level golden test exists for attributes. The broker's percept A3 ert is unaffected. T-attr-1c must not introduce wall-clock dependencies into the dispatcher — the daemon consumes `:time_now` from the source event payload and uses it for the new event's `ts` (no `now()` calls anywhere in the dispatch path).
 
 ---
 
 ## 12. Test surface
 
+Tests are split by which side of the broker/daemon line they exercise. The daemon's tests live in `satan-attrd` (Rust integration tests against a live Postgres); the broker's tests live in `~/.emacs.d/satan/` (ert against the broker's audit + capsule paths).
+
 T-attr-1b (state + event log) requires:
 
-- `dl-satan-attribute-store-test.el` — UPSERT round-trip; event INSERT round-trip; rebuild from events; counter reset between runs.
-- `dl-satan-audit-test.el` widens: `attribute.delta_applied` accepted; unknown source/reason rejected; old/new outside `[0,1]` rejected; delta-sign-mismatch rejected.
+- **Daemon (Rust integration):** UPSERT round-trip; event INSERT round-trip; rebuild from events; per-run seq counter monotonicity + reset between runs; expression-index lookup is the planned path (EXPLAIN ANALYZE check on `evidence_json->>'intervention_id'`).
+- **Broker (elisp ert):** audit validator widens — `attribute.delta_applied` accepted; unknown source/reason rejected; old/new outside `[0,1]` rejected; delta-sign-mismatch rejected; reserved-but-unimplemented sources rejected; for `source=outcome` the required `evidence.confidence` / `intervention_id` / `classification` keys enforced.
 
 T-attr-1c (dispatcher) requires:
 
-- `dl-satan-attribute-dispatcher-test.el` — golden delta table: 5 classifications × 3 confidence levels = 15 cases against the §6 table + §6.1 weighting (the table accounts for the `worked shame` −0.025 exception and the unclamped lower bound); pre-dispatch snapshot test (multi-attribute event ordering does not affect cap outputs); range_clamp at upper + lower; disable-switch records event with `disabled: true`, skips UPSERT; revision-against-actual-prior-deltas (per §6.2 — seed a prior outcome that hit range_clamp, then revise; assert the revision_delta = `new_theoretical - prior_actual`, NOT `new_theoretical - prior_theoretical`); revision chain (two-step revise; assert prior_actual sums across chain).
-- `friction_cap` test fixture uses a **direct-store helper** (not the outcome-dispatcher path) to synthesise a positive friction delta — no v1 outcome can produce one (§7.1 forward-compat note). T-attr-1e tests rerun the cap against real source events once `:percept` / `:resonance` can raise friction.
-- Rebuild ert (both modes): default-replay reproduces projection after disable-then-enable window; `--include-disabled` reproduces the hypothetical projection.
+- **Daemon (Rust integration):** golden delta table — 5 classifications × 3 confidence levels = 15 cases against the §6 table + §6.1 weighting (the table accounts for the `worked shame` −0.025 exception and the unclamped lower bound); pre-dispatch snapshot test (multi-attribute event ordering does not affect cap outputs); `range_clamp` at upper + lower; disable-switch behaviour (received in source-event payload) records event with `disabled: true`, skips UPSERT; revision-against-actual-prior-deltas (per §6.2 — seed a prior outcome that hit `range_clamp`, then revise; assert `revision_delta = new_theoretical − prior_actual`, NOT `new_theoretical − prior_theoretical`); revision chain (two-step revise; assert `prior_actual` sums across chain).
+- **Daemon (Rust integration):** `friction_cap` fixture uses a **direct-store helper** (not the outcome-dispatcher path) to synthesise a positive friction delta — no v1 outcome can produce one (§7.1 forward-compat note). T-attr-1e fixtures rerun the cap against real source events once `:percept` / `:resonance` can raise friction.
+- **Daemon (Rust integration):** rebuild driver, both modes — default-replay reproduces projection after disable-then-enable window; `--include-disabled` reproduces the hypothetical projection.
 
-T-attr-1d (capsule render) + T-attr-1e (other sources) add their own surfaces; not specified here.
+T-attr-1d (capsule render) lives entirely in the broker (capsule is broker-assembled, glue is elisp) and adds its own ert surface. T-attr-1e splits per source: daemon-side dispatch + cap fixture, broker-side validator widening.
 
 ---
 
@@ -513,7 +515,7 @@ Out of T-attr-1 scope. The contract reserves `:source :manual` for a future inte
 
 Decisions intentionally left for the implementation tranche, not the contract:
 
-1. **Confidence weighting (§6.1).** Multiplicative `0.5 / 1.0 / 1.5`, or only-magnitude-direction with no confidence scaling? Recommendation: ship the multiplier as `dl-satan-attribute-confidence-weights` defcustom so operators can disable by setting all three to `1.0` without amending the contract.
+1. **Confidence weighting (§6.1).** Multiplicative `0.5 / 1.0 / 1.5`, or only-magnitude-direction with no confidence scaling? Recommendation: ship the multiplier as broker-side operator config (`attribute-confidence-weights`) so operators can disable by setting all three to `1.0` without amending the contract. Daemon receives weights via source-event payload or startup config.
 2. **Decay schedule (§8).** Daily idle decay or stay manual? Recommendation: defer to T-attr-2; gather production data first.
 3. **Episode-local additive bias (§3).** Per the design note, `episode` and `motive:<id>` scopes are reserved as *additive bias terms* (small scalars layered onto global values while a motive is active), not full per-scope attribute vectors. Open: do v1 sources need any episode bias, or defer entirely? Recommendation: defer. No v1 consumer needs it; the column stays unused until a concrete bias requirement surfaces.
 4. **Event-source vs upsert authority (§10).** Is the projection authoritative or always recomputed from events? Recommendation: projection is authoritative for live reads; events are authoritative for rebuild. Same shape as `satan_intervention_outcomes` (T7).
@@ -532,3 +534,63 @@ These do not block T-attr-1b. T-attr-1b may proceed with the §4 storage shapes 
 | 2026-05-23 | Pre-implementation review patches: §0 doc hierarchy; §1 dispatcher-determinism softening; §3.1 ambient-not-pattern-specific caution + future-scope evidence preservation; §4.1 evidence_json scope clarification; §4.2 add `seq INTEGER` + `(run_id, seq)` UNIQUE + `disabled` column + replay-order index; §5 source-reservation vs implementation distinction + per-source reason enum; §5.1 validator widening for source/reason pairing + required `evidence.confidence` for outcome; §6 `worked shame` reduced to −0.025 + `contradicted suspicion` reduced to −0.05 + `harmful suspicion` documented as 0 with rationale; §6.1 lower-bound clamp removed; §6.3 new pre-dispatch snapshot rule; §7.1 friction_cap forward-compat note + test-fixture guidance; §7.3 step-0 snapshot; §9 capsule MUST render "disabled" not stale values; §10 rebuild splits into default-skip vs `--include-disabled` modes + replay-order rule + disaster-recovery chain; §12 friction_cap test fixture + rebuild ert; §13 extends non-inferables list with `harmful→suspicion`, zero-seeded baselines, manual path, maintenance-run nullable. | External review (item-by-item disposition). |
 | 2026-05-23 | Global-by-architecture reframe per [`patterns_attributes.design_note.md`](patterns_attributes.design_note.md): §3 attributes are global by design (not v1 narrowing); pattern-specific consequences live in separate pattern records (cooldowns, counters, scars). §3.1 ambient-not-pattern-specific rewritten — global Shame/Suspicion/Doubt are organism-metabolism, not prey-shape state. §6 footnotes 2+3 rationale repointed to pattern records rather than future scoped attributes. §13 non-inferables list adds explicit "pattern-specific attribute vectors" and "pattern records themselves" entries; "per-scope storage" entry reframed as bounded forward-compat (episode/motive bias only; never `hypothesis:<id>`). §15 Q3 narrowed to episode-local additive bias only. Reviewer finding #5/#6 (global scope blunt) dispositioned as "by design, not bug" — pattern records carry cue-specific consequences in a parallel theme. | External design note (architectural correction). |
 | 2026-05-23 | Round-2 review patches: §3 scope wording sharpened — explicit "never `pattern:<id>` or `hypothesis:<id>`"; §6 column-order reading note added (reviewer misread `contradicted hunger`); §6 footnotes 4+5 added — `worked doubt` interpreted as ambient inhibition (not pattern confidence); `contradicted hunger` held at 0 with rationale + revisit trigger; §6.2 revision algorithm rewritten — compute against actually-logged prior deltas via `evidence_json->>'intervention_id'` lookup; new §6.2.1 covers prior-delta tracking + the GIN/expression index for the migration; §12 dispatcher test surface adds revision-against-actual-prior-deltas + revision-chain cases. Reviewer finding #3 (`ignored` vs `neutral` classifier tightening) dispositioned as out-of-scope: lives in `outcome-semantics.md` (merged). | External review round 2. |
+| 2026-05-23 | Language-neutralising pass + locus pivot: §4/§4.2/§4.3/§5/§5.1/§9/§10/§11/§12 rewritten to remove elisp-specific implementation references (specific defcustom names, ert file names, `dl-satan-*` function names, `dl-satan-attribute-rebuild` driver name) and replace with broker / daemon role-language. Implementation locus split (daemon owns store + dispatcher + rebuild; broker owns capsule + audit-validator + transcript write + disable-switch UI) is now reflected throughout, not just in the theme doc amendment. New **§17 — Implementation locus + pinned daemon design choices** adopts (a) daemon-writes-table-then-RPCs-back, (b) PG queue + `pg_notify` event bus, (c) daemon-side disable check, all previously recorded only in `T-attr-1-attribute-layer.md` amendment + `extraction-policy.md`. Contract status stays **draft** for one more change-history row; flips to **merged** when T-attr-1b's first code-bearing PR lands. Forward references to broker UX (`my/satan-attribute-zero`, `my/satan-mark-intervention-*`) kept — they describe broker-side surfaces, not daemon implementation. | T-attr-1b scaffold pass (locus pivot landed in `satan-attrd` initial commit `d8a6a10`). |
+
+---
+
+## 17. Implementation locus + pinned daemon design choices
+
+The attribute layer is split across two processes. This section is normative; locus diagrams in `T-attr-1-attribute-layer.md` are illustrative.
+
+### 17.1 Broker (elisp, `~/.emacs.d/satan/`)
+
+Owns:
+
+- The `attribute-updates-enabled` config switch (operator-visible).
+- The capsule render block (T-attr-1d). Capsule is assembled broker-side; the daemon exposes a "snapshot attrs" RPC the broker queries pre-spawn.
+- `transcript.jsonl` writes. The broker is the audit-truth surface; the daemon RPCs `attribute.delta_applied` events back to the broker for transcript writing (§17.3).
+- The audit-record validator (`attribute.delta_applied` widening per §5.1). Validator runs at the transcript-write boundary, which the broker controls.
+- Intervention-outcome emission. The broker continues to mint `intervention.outcome_classified` / `intervention.outcome_revised` events from its existing outcome classifier; the daemon is a downstream consumer.
+- Any tool handlers exposed to the model (none in v1; the layer is read-only to the model via the capsule).
+
+### 17.2 Daemon (Rust, `~/dev/satan-attrd/`)
+
+Owns:
+
+- Migration `0007_attributes.sql` (§4). Run explicitly via `satan-attrd migrate`; never auto-migrated on broker start.
+- The store API (§4.1 + §4.2): UPSERT projection, INSERT event, per-run `seq` counter (reset between runs), prior-event lookup by `evidence_json->>'intervention_id'` (§6.2.1).
+- The outcome dispatcher (§6 + §6.1 + §6.3 + §7).
+- The rebuild driver (§10): `satan-attrd rebuild [--include-disabled]`.
+- The daemon-side LISTENer on the §17.3 event bus.
+
+### 17.3 Event bus shape — broker → daemon
+
+Broker emits `intervention.outcome_classified` / `intervention.outcome_revised` via a Postgres queue table + `pg_notify`. Daemon `LISTEN`s on the channel; on notify the daemon drains the queue row, applies §6 + §7, writes the event row, and RPCs the `attribute.delta_applied` event back to the broker for transcript writing.
+
+Matches the existing `dl-satan-patch-listener.el` pattern (the patch runner uses PG queue + `pg_notify` between broker and the patch daemon). Standardising on that pattern across SATAN-orbit daemons keeps the broker's transport story uniform.
+
+Alternative considered + rejected: direct broker→daemon RPC on each outcome emit. Simpler but couples broker outcome-classification timing to daemon liveness; the queue absorbs daemon restarts and slow consumers without back-pressuring the broker's classify path.
+
+### 17.4 Audit transcript path — daemon writes table, then RPCs event back
+
+After the daemon writes the `satan_attribute_events` row (and, if not disabled, UPSERTs `satan_attributes`), it RPCs the constructed `attribute.delta_applied` event back to the broker. The broker validates the event against §5.1 and appends it to the current run's `transcript.jsonl`.
+
+Rationale: keeps the existing "transcript.jsonl is audit truth" convention intact (every audit event ultimately lands on the broker's transcript-write path, regardless of which daemon emitted it). Alternative considered + rejected: daemon writes table only, no transcript line. Simpler but diverges from convention — audit verification (`dl-satan-audit-verify-run`) would have to read both `transcript.jsonl` and the daemon's table to reconstruct events.
+
+### 17.5 Disable-switch placement — daemon-side check
+
+The broker forwards the current `attribute-updates-enabled` state in every source-event payload it puts on the queue (§17.3). The daemon checks the flag at dispatch time:
+
+- If enabled: write event row with `disabled=false`, UPSERT projection, RPC event back to broker for transcript.
+- If disabled: write event row with `disabled=true`, **skip** UPSERT, RPC event back to broker for transcript.
+
+Daemon-side check is required so the event log preserves the "would have applied X but was disabled" delta — `satan-attrd rebuild --include-disabled` (§10.2) replays those rows to reconstruct the hypothetical projection. A broker-side filter (drop the source event before sending) would lose this information.
+
+### 17.6 Forward references
+
+Future broker-side affordances are referenced elsewhere in this contract without prejudice to the locus split:
+
+- `my/satan-attribute-zero` (§8) — broker-side interactive command to manually re-zero an attribute. Out of T-attr-1 scope.
+- `my/satan-mark-intervention-*` + `notes_at_satan_intervention_done` (§14) — broker-side manual-override pattern for the reserved `:source :manual` enum value. Out of T-attr-1 scope.
+
+These are broker UX, not daemon implementation; their inclusion does not pull additional logic into the daemon.
