@@ -10,6 +10,7 @@
 (require 'cl-lib)
 (require 'dl-satan-broker)               ; defines `dl-satan-runs-dir' defcustom
 (require 'dl-satan-context)
+(require 'dl-satan-mode)                 ; self-edit-mech / self-edit-mind specs
 
 (defun dl-satan-context-test--mkrun (root run-id &optional final-summary tools failed)
   "Create a fake run directory under ROOT for RUN-ID.
@@ -207,6 +208,211 @@ When FAILED is non-nil the directory name carries the `.FAILED' suffix."
            (bundle (dl-satan-context-tick spec))
            (prompt (plist-get bundle :prompt)))
       (should-not (string-match-p "# Recent SATAN runs" prompt)))))
+
+;; ---------------------------------------------------------------------
+;; Self-edit context-fn (relocated from dl-satan-test.el monolith)
+;; ---------------------------------------------------------------------
+
+(defun dl-satan-context-test--path-suffix-p (suffix sources)
+  (cl-some (lambda (s) (string-suffix-p suffix (plist-get s :path)))
+           sources))
+
+(defun dl-satan-context-test--write-framing (path)
+  "Write the canonical framing keys to PATH for context-fn tests.
+Context-fns under test render bundle sections via this file."
+  (with-temp-file path
+    (insert "now=# Now\n"
+            "today=# Today (raw)\n"
+            "sources=# Source files\n")))
+
+(ert-deftest dl-satan-self-edit/context-bundles-sources ()
+  "context-fn assembles scaffold + mode prompt and includes matching sources
+from every root in MODE-SPEC's :source-roots."
+  (let* ((tmp (make-temp-file "satan-se-" t))
+         (root-a (expand-file-name "root-a" tmp))
+         (root-b (expand-file-name "root-b" tmp))
+         (dl-satan-prompts-dir (expand-file-name "prompts/" tmp))
+         (dl-satan-system-scaffold-file
+          (expand-file-name "system/scaffold.txt" tmp))
+         (dl-satan-system-framing-file
+          (expand-file-name "system/framing.txt" tmp)))
+    (unwind-protect
+        (progn
+          (make-directory root-a t)
+          (make-directory root-b t)
+          (make-directory (expand-file-name "prompts" tmp))
+          (make-directory (expand-file-name "system" tmp))
+          (with-temp-file dl-satan-system-scaffold-file (insert "SCAFFOLD\n"))
+          (dl-satan-context-test--write-framing dl-satan-system-framing-file)
+          (with-temp-file (expand-file-name "prompts/se.txt" tmp)
+            (insert "PROMPT\n"))
+          (with-temp-file (expand-file-name "a.el" root-a) (insert "(provide 'a)"))
+          (with-temp-file (expand-file-name "b.py" root-b) (insert "x = 1"))
+          (with-temp-file (expand-file-name "a.elc" root-a) (insert "skip"))
+          (let* ((spec (list :name "self-edit-mech"
+                             :prompt-file (expand-file-name "prompts/se.txt" tmp)
+                             :source-roots (list root-a root-b)))
+                 (bundle (dl-satan-context-self-edit spec))
+                 (prompt (plist-get bundle :prompt))
+                 (sources (plist-get bundle :sources)))
+            (should (string-prefix-p "SCAFFOLD\n\nPROMPT" prompt))
+            (should (string-match-p "^# Now$" prompt))
+            (should (string-match-p "^# Source files$" prompt))
+            (should (dl-satan-context-test--path-suffix-p "/a.el" sources))
+            (should (dl-satan-context-test--path-suffix-p "/b.py" sources))
+            (should-not (dl-satan-context-test--path-suffix-p "/a.elc" sources))
+            (let ((a (cl-find "/a.el" sources
+                              :key (lambda (s) (plist-get s :path))
+                              :test (lambda (suf p) (string-suffix-p suf p)))))
+              (should (equal (plist-get a :content) "(provide 'a)")))))
+      (delete-directory tmp t))))
+
+(ert-deftest dl-satan-self-edit/bundle-budget-drops-overflow ()
+  "When sources exceed `dl-satan-self-edit-bundle-char-budget' the
+bundle keeps as much as fits in alphabetical order and reports the
+rest under :dropped-files."
+  (let* ((tmp (make-temp-file "satan-se-budget-" t))
+         (root (expand-file-name "r" tmp))
+         (dl-satan-prompts-dir (expand-file-name "prompts/" tmp))
+         (dl-satan-system-scaffold-file
+          (expand-file-name "system/scaffold.txt" tmp))
+         (dl-satan-system-framing-file
+          (expand-file-name "system/framing.txt" tmp))
+         (dl-satan-self-edit-bundle-char-budget 100))
+    (unwind-protect
+        (progn
+          (make-directory root t)
+          (make-directory (expand-file-name "prompts" tmp))
+          (make-directory (expand-file-name "system" tmp))
+          (with-temp-file dl-satan-system-scaffold-file (insert "S"))
+          (dl-satan-context-test--write-framing dl-satan-system-framing-file)
+          (with-temp-file (expand-file-name "prompts/se.txt" tmp) (insert "P"))
+          ;; Three 60-char files, alphabetical: a, b, c.  Budget = 100.
+          ;; a (60) packed.  a+b (120) would overflow → b dropped.
+          ;; a+c (120) likewise → c dropped.  Only a fits.
+          (with-temp-file (expand-file-name "a.el" root) (insert (make-string 60 ?a)))
+          (with-temp-file (expand-file-name "b.el" root) (insert (make-string 60 ?b)))
+          (with-temp-file (expand-file-name "c.el" root) (insert (make-string 60 ?c)))
+          (let* ((spec (list :name "self-edit-mech"
+                             :prompt-file (expand-file-name "prompts/se.txt" tmp)
+                             :source-roots (list root)))
+                 (bundle (dl-satan-context-self-edit spec))
+                 (sources (plist-get bundle :sources))
+                 (dropped (plist-get bundle :dropped-files)))
+            (should (= 1 (length sources)))
+            (should (dl-satan-context-test--path-suffix-p "/a.el" sources))
+            (should (= 2 (length dropped)))
+            (should (cl-some (lambda (p) (string-suffix-p "/b.el" p)) dropped))
+            (should (cl-some (lambda (p) (string-suffix-p "/c.el" p)) dropped))))
+      (delete-directory tmp t))))
+
+(ert-deftest dl-satan-self-edit/bundle-budget-nil-packs-everything ()
+  "With the budget set to nil every file is included; :dropped-files is empty."
+  (let* ((tmp (make-temp-file "satan-se-nobudget-" t))
+         (root (expand-file-name "r" tmp))
+         (dl-satan-prompts-dir (expand-file-name "prompts/" tmp))
+         (dl-satan-system-scaffold-file
+          (expand-file-name "system/scaffold.txt" tmp))
+         (dl-satan-system-framing-file
+          (expand-file-name "system/framing.txt" tmp))
+         (dl-satan-self-edit-bundle-char-budget nil))
+    (unwind-protect
+        (progn
+          (make-directory root t)
+          (make-directory (expand-file-name "prompts" tmp))
+          (make-directory (expand-file-name "system" tmp))
+          (with-temp-file dl-satan-system-scaffold-file (insert "S"))
+          (dl-satan-context-test--write-framing dl-satan-system-framing-file)
+          (with-temp-file (expand-file-name "prompts/se.txt" tmp) (insert "P"))
+          (with-temp-file (expand-file-name "a.el" root) (insert (make-string 5000 ?a)))
+          (with-temp-file (expand-file-name "b.el" root) (insert (make-string 5000 ?b)))
+          (let* ((spec (list :name "self-edit-mech"
+                             :prompt-file (expand-file-name "prompts/se.txt" tmp)
+                             :source-roots (list root)))
+                 (bundle (dl-satan-context-self-edit spec))
+                 (sources (plist-get bundle :sources))
+                 (dropped (plist-get bundle :dropped-files)))
+            (should (= 2 (length sources)))
+            (should (null dropped))))
+      (delete-directory tmp t))))
+
+(ert-deftest dl-satan-self-edit/source-roots-var-indirection ()
+  "When :source-roots is absent, context-fn dereferences :source-roots-var."
+  (let* ((tmp (make-temp-file "satan-se-" t))
+         (root (expand-file-name "rrr" tmp))
+         (dl-satan-prompts-dir (expand-file-name "prompts/" tmp))
+         (dl-satan-system-scaffold-file
+          (expand-file-name "system/scaffold.txt" tmp))
+         (dl-satan-system-framing-file
+          (expand-file-name "system/framing.txt" tmp)))
+    (unwind-protect
+        (progn
+          (make-directory root t)
+          (make-directory (expand-file-name "prompts" tmp))
+          (make-directory (expand-file-name "system" tmp))
+          (with-temp-file dl-satan-system-scaffold-file (insert "S"))
+          (dl-satan-context-test--write-framing dl-satan-system-framing-file)
+          (with-temp-file (expand-file-name "prompts/se.txt" tmp) (insert "P"))
+          (with-temp-file (expand-file-name "only.el" root) (insert "x"))
+          (defvar dl-satan-context-test--roots nil)
+          (let ((dl-satan-context-test--roots (list root))
+                (spec (list :name "self-edit-mech"
+                            :prompt-file (expand-file-name "prompts/se.txt" tmp)
+                            :source-roots-var 'dl-satan-context-test--roots)))
+            (should (dl-satan-context-test--path-suffix-p
+                     "/only.el"
+                     (plist-get (dl-satan-context-self-edit spec) :sources)))))
+      (delete-directory tmp t))))
+
+(ert-deftest dl-satan-self-edit/mech-and-mind-modes-registered-distinctly ()
+  "Both lanes resolve, share governance defaults, point at distinct roots."
+  (let ((mech (dl-satan-mode-resolve "self-edit-mech"))
+        (mind (dl-satan-mode-resolve "self-edit-mind")))
+    (should (eq (plist-get mech :auto-apply) 'none))
+    (should (eq (plist-get mind :auto-apply) 'none))
+    (dolist (tool '("proposal_stage" "sway_border_set" "sway_border_reset"))
+      (should (member tool (plist-get mech :tools)))
+      (should (member tool (plist-get mind :tools))))
+    (should (eq (plist-get mech :source-roots-var) 'dl-satan-self-edit-mech-roots))
+    (should (eq (plist-get mind :source-roots-var) 'dl-satan-self-edit-mind-roots))
+    (should-not (equal (plist-get mech :prompt-file)
+                       (plist-get mind :prompt-file)))))
+
+(ert-deftest dl-satan-context/missing-prompt-errors ()
+  "Mode prompt missing → context-fn signals; run cannot start."
+  (let* ((tmp (make-temp-file "satan-ctx-" t))
+         (dl-satan-prompts-dir (expand-file-name "prompts/" tmp))
+         (dl-satan-system-scaffold-file
+          (expand-file-name "system/scaffold.txt" tmp)))
+    (unwind-protect
+        (progn
+          (make-directory (expand-file-name "system" tmp))
+          (with-temp-file dl-satan-system-scaffold-file (insert "S"))
+          (let ((spec (list :name "self-edit-mech"
+                            :prompt-file
+                            (expand-file-name "prompts/never.txt" tmp)
+                            :source-roots (list tmp))))
+            (should-error (dl-satan-context-self-edit spec)
+                          :type 'error)))
+      (delete-directory tmp t))))
+
+(ert-deftest dl-satan-context/missing-scaffold-errors ()
+  "System scaffold missing → context-fn signals."
+  (let* ((tmp (make-temp-file "satan-ctx-" t))
+         (dl-satan-prompts-dir (expand-file-name "prompts/" tmp))
+         (dl-satan-system-scaffold-file
+          (expand-file-name "system/missing.txt" tmp)))
+    (unwind-protect
+        (progn
+          (make-directory (expand-file-name "prompts" tmp))
+          (with-temp-file (expand-file-name "prompts/se.txt" tmp) (insert "P"))
+          (let ((spec (list :name "self-edit-mech"
+                            :prompt-file
+                            (expand-file-name "prompts/se.txt" tmp)
+                            :source-roots (list tmp))))
+            (should-error (dl-satan-context-self-edit spec)
+                          :type 'error)))
+      (delete-directory tmp t))))
 
 (provide 'dl-satan-context-test)
 ;;; dl-satan-context-test.el ends here
