@@ -57,6 +57,26 @@ registration time (mode-level keys win)."
 (defun dl-satan-mode-names ()
   (mapcar #'car dl-satan-modes))
 
+(defun dl-satan-mode-check-tool-references ()
+  "Signal when any mode-spec's `:tools' names an unregistered tool.
+The mode-spec `:tools' list is the authoritative mode→tools
+allowlist; T4 removed the documentary `:modes' field from tool
+specs.  This load-time guard turns the missing convention into a
+hard error so typos surface at startup rather than at dispatch."
+  (let ((registered (mapcar #'car dl-satan-tools))
+        (errors nil))
+    (dolist (entry dl-satan-modes)
+      (let* ((mode-name (car entry))
+             (spec (cdr entry)))
+        (dolist (tool-name (plist-get spec :tools))
+          (unless (member tool-name registered)
+            (push (format "mode %S references unregistered tool %S"
+                          mode-name tool-name)
+                  errors)))))
+    (when errors
+      (error "SATAN mode/tool consistency check failed: %s"
+             (mapconcat #'identity (nreverse errors) "; ")))))
+
 (defvar dl-satan-prompts-dir
   (expand-file-name "satan/prompts/" dl-notes-root)
   "Directory holding mode prompt files.

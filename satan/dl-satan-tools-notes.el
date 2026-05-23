@@ -177,7 +177,6 @@ Returns (ok PLIST) | (error STRING)."
        :risk 'read
        :args-schema '(since-hours (:type integer :required nil)
                       limit       (:type integer :required nil))
-       :modes '("morning" "motd" "tick-pulse")
        :handler 'dl-satan-tool/notes-read))
 
 (provide 'dl-satan-tools-notes)

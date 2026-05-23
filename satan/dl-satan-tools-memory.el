@@ -8,9 +8,8 @@
 ;;
 ;; Handlers wire the existing memory subsystem (evidence assembler,
 ;; canonicalizer, store backend) into the broker's tool surface.
-;; Registration only — `:modes nil' until step 9 (the first shared-file
-;; touch).  No edit to `dl-satan-tools.el', `dl-satan.el', or
-;; `dl-satan-mode.el' here.
+;; Registration only — mode-allowlist wiring happens in
+;; `dl-satan-mode.el' via each mode-spec's `:tools'.
 ;;
 ;; Sweep items still open (`satan/HANDOVER.md'):
 ;;   - schema lacks `:type 'array' for some hint subfields (topic, links,
@@ -286,7 +285,6 @@ skipped — cue derivation only needs the current-moment context."
                'valence (list :type 'string
                               :enum dl-satan-tools-memory--valence-values)
                'links   (list :type 'array :items 'string))
-         :modes nil
          :handler 'dl-satan-tool/memory-mark))
 
   (dl-satan-tool-register
@@ -297,14 +295,12 @@ skipped — cue derivation only needs the current-moment context."
                'limit     (list :type 'integer)
                'kinds     (list :type 'array :items 'string)
                'min_score (list :type 'number))
-         :modes nil
          :handler 'dl-satan-tool/memory-resonate))
 
   (dl-satan-tool-register
    (list :name "memory_show_trace"
          :risk 'read
          :args-schema (list 'trace_id (list :type 'string :required t))
-         :modes nil
          :handler 'dl-satan-tool/memory-show-trace)))
 
 (provide 'dl-satan-tools-memory)

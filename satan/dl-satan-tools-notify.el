@@ -52,7 +52,6 @@ Returns (ok :id N) | (error MSG)."
                       urgency (:type string :required nil
                                :enum ("low" "normal" "critical"))
                       timeout (:type integer :required nil))
-       :modes '("morning" "motd")
        :handler 'dl-satan-tool/notify-send))
 
 (provide 'dl-satan-tools-notify)

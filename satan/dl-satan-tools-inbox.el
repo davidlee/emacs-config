@@ -95,7 +95,6 @@ mutates existing headlines.  Returns (ok :path P) | (error MSG)."
                       body    (:type string :required t)
                       urgency (:type string :required nil
                                :enum ("low" "normal" "urgent")))
-       :modes '("morning" "motd")
        :handler 'dl-satan-tool/inbox-append))
 
 (defun my/satan-inbox ()

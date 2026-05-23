@@ -347,7 +347,6 @@ nodes since SINCE.  Composes `bough --json node status-transitions
                               :pattern dl-satan-bough--date-pattern)
              'max_depth (list :type 'integer :required nil)
              'limit     (list :type 'integer :required nil))
-       :modes nil
        :handler 'dl-satan-tool/bough-read))
 
 (provide 'dl-satan-tools-bough)

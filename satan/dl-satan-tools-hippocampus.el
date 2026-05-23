@@ -139,7 +139,6 @@ trace cross-referencing PATH (§10.7); cross-ref errors are soft."
        :risk 'low
        :args-schema '(title (:type string :required t)
                       body  (:type string :required t))
-       :modes '("morning")
        :handler 'dl-satan-tool/hippocampus-write))
 
 (defun my/satan-hippocampus ()

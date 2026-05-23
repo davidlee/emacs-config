@@ -69,8 +69,10 @@ so the broker refused the call and the model fell back to
 - `dl-satan-mode.el` — same two added to `self-edit-mech` and
   `self-edit-mind`.
 
-Tool-spec `:modes` is documentary only; the broker does not consult
-it.  Don't be misled.
+Historic note: tool specs used to carry a `:modes` documentary list.
+T4 deleted it; the mode-spec `:tools' allowlist is now the only
+source of truth and `dl-satan-mode-check-tool-references' enforces
+consistency at load.
 
 ## Op-cache path port (the big one)
 

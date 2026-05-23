@@ -36,7 +36,7 @@ T4 / T8 / T6   (quick wins + test split; parallel to all)
 | [T1.5](T1.5-outcome-semantics.md)  | Outcome-semantics + neg classifier  | not-started | T1, T7 (1.5b)  | write `docs/satan/attributes/outcome-semantics.md` (1.5a) |
 | [T2](T2-pre-spawn.md)              | Pre-spawn pipeline extraction       | not-started | —              | `dl-satan-pre-spawn.el` + cutover |
 | [T3](T3-capsule-registry.md)       | Capsule render registry             | not-started | —              | (Path A gated; awaits rendering pain) |
-| [T4](T4-modes-field.md)            | Drop tool-spec `:modes` field       | not-started | —              | grep + delete + consistency check |
+| [T4](T4-modes-field.md)            | Drop tool-spec `:modes` field       | merged      | —              | done — `:modes' stripped from all tool specs; `dl-satan-mode-check-tool-references' enforces |
 | [T6](T6-test-monolith.md)          | Test monolith split                 | merged      | —              | done — monolith deleted, per-module files |
 | [T7](T7-intervention-records.md)   | Intervention records                | not-started | T1.5a contract | audit event types + validator + fixtures |
 | [T8](T8-pi-adapter-keys.md)        | pi-adapter API-key externalisation  | not-started | —              | TBD (JSON vs README; user-decidable) |

@@ -290,28 +290,24 @@ Phase 1 stub for the Phase 2 runner.  Returns (ok PLIST) or (error MSG)."
              'context      (list :type 'object)
              'checks       (list :type 'array :items 'string)
              'start        (list :type 'boolean))
-       :modes nil
        :handler 'dl-satan-tool/patch-job-create))
 
 (dl-satan-tool-register
  (list :name "patch_job_status"
        :risk 'read
        :args-schema (list 'job_id (list :type 'string :required t))
-       :modes nil
        :handler 'dl-satan-tool/patch-job-status))
 
 (dl-satan-tool-register
  (list :name "patch_job_result"
        :risk 'read
        :args-schema (list 'job_id (list :type 'string :required t))
-       :modes nil
        :handler 'dl-satan-tool/patch-job-result))
 
 (dl-satan-tool-register
  (list :name "patch_job_cancel"
        :risk 'low
        :args-schema (list 'job_id (list :type 'string :required t))
-       :modes nil
        :handler 'dl-satan-tool/patch-job-cancel))
 
 (dl-satan-tool-register
@@ -320,7 +316,6 @@ Phase 1 stub for the Phase 2 runner.  Returns (ok PLIST) or (error MSG)."
        :args-schema
        (list 'job_id        (list :type 'string  :required t)
              'delete_branch (list :type 'boolean))
-       :modes nil
        :handler 'dl-satan-tool/patch-job-cleanup))
 
 (provide 'dl-satan-tools-patch)

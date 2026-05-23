@@ -33,6 +33,11 @@
 (require 'dl-satan-patch)
 (require 'dl-satan-tank)
 
+;; Hard-fail at load if any mode :tools entry has no matching registration.
+;; Replaces the documentary-only `:modes' field that used to live on every
+;; tool spec (T4).
+(dl-satan-mode-check-tool-references)
+
 (defgroup dl-satan nil
   "SATAN local agent runtime."
   :group 'tools

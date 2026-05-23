@@ -95,7 +95,6 @@ for-write' (§A7 / §A8); on accept, atomic-writes
  (list :name "motive_read"
        :risk 'read
        :args-schema nil
-       :modes nil
        :handler 'dl-satan-tool/motive-read))
 
 (dl-satan-tool-register
@@ -103,7 +102,6 @@ for-write' (§A7 / §A8); on accept, atomic-writes
        :risk 'medium
        :capability 'motive-write
        :args-schema (list 'content (list :type 'string :required t))
-       :modes nil
        :handler 'dl-satan-tool/motive-replace))
 
 (provide 'dl-satan-tools-motive)

@@ -4,7 +4,7 @@ description: Collapse tool/mode-allowlist duality — drop documentary-only :mod
 metadata:
   type: refactor-theme
   topic: satan-refactor
-  status: not-started
+  status: merged
   blocked_by: []
   updated_at: 2026-05-23
 ---
@@ -34,4 +34,4 @@ PR that greps every tool spec for `:modes`, confirms no runtime consumer, delete
 
 ## PR log
 
-- [ ] PR 1: delete `:modes` field + load-time consistency check — pending
+- [x] PR 1: delete `:modes` field + load-time consistency check — merged 2026-05-23 (22 sites stripped across 14 modules; `dl-satan-mode-check-tool-references' enforces the invariant at load; affected tests rewritten; new `dl-satan-mode-test.el' covers the guard)

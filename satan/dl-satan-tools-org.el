@@ -139,7 +139,6 @@ output handler and written from `satan_final.summary'."
        :risk 'read
        :args-schema '(scope (:type string :required t
                              :enum ("today" "week" "inbox")))
-       :modes '("morning" "motd")
        :handler 'dl-satan-tool/org-read-context))
 
 (dl-satan-tool-register
@@ -149,7 +148,6 @@ output handler and written from `satan_final.summary'."
                               :enum ("today"))
                       block  (:type string :required t)
                       content (:type string :required t))
-       :modes '("morning")
        :handler 'dl-satan-tool/org-update-owned-block))
 
 (dl-satan-tool-register
@@ -157,7 +155,6 @@ output handler and written from `satan_final.summary'."
        :risk 'low
        :args-schema '(title (:type string :required t)
                       body  (:type string :required t))
-       :modes '("morning" "motd")
        :handler 'dl-satan-tool/proposal-stage))
 
 (provide 'dl-satan-tools-org)

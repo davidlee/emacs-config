@@ -361,7 +361,6 @@ item is the canonical user-facing surface for the result."
        :args-schema '(context-lines (:type integer :required nil)
                       max-results   (:type integer :required nil)
                       path-glob     (:type string  :required nil))
-       :modes '("morning" "tick-agent")
        :handler 'dl-satan-tool/notes-at-satan-scan))
 
 (dl-satan-tool-register
@@ -370,7 +369,6 @@ item is the canonical user-facing surface for the result."
        :args-schema '(match-id  (:type string :required t)
                       comment   (:type string :required nil)
                       patch-job (:type string :required nil))
-       :modes '("tick-agent")
        :handler 'dl-satan-tool/notes-at-satan-done))
 
 (dl-satan-tick-register

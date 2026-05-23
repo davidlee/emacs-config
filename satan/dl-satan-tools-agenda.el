@@ -87,7 +87,6 @@ Returns (ok :text STRING) | (error MSG)."
  (list :name "agenda_read"
        :risk 'read
        :args-schema '(days (:type integer :required nil))
-       :modes '("morning" "motd")
        :handler 'dl-satan-tool/agenda-read))
 
 (provide 'dl-satan-tools-agenda)

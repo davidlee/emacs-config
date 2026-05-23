@@ -225,7 +225,6 @@ With no filters set, returns all chunks (== `docs_list')."
  (list :name "docs_list"
        :risk 'read
        :args-schema nil
-       :modes nil
        :handler 'dl-satan-tool/docs-list))
 
 (dl-satan-tool-register
@@ -236,14 +235,12 @@ With no filters set, returns all chunks (== `docs_list')."
              'topic  (list :type 'string :required nil)
              'type   (list :type 'string :required nil)
              'status (list :type 'string :required nil))
-       :modes nil
        :handler 'dl-satan-tool/docs-search))
 
 (dl-satan-tool-register
  (list :name "docs_read"
        :risk 'read
        :args-schema (list 'name (list :type 'string :required t))
-       :modes nil
        :handler 'dl-satan-tool/docs-read))
 
 (provide 'dl-satan-tools-docs)

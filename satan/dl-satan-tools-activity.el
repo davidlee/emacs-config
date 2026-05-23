@@ -141,7 +141,6 @@ Returns (ok PLIST) | (error STRING)."
                              :enum ("today" "recent_focus"
                                     "recent_browser" "current"))
                       limit (:type integer :required nil))
-       :modes '("morning" "motd" "tick-pulse")
        :handler 'dl-satan-tool/activity-read))
 
 (provide 'dl-satan-tools-activity)

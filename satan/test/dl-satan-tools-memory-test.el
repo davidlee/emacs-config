@@ -130,9 +130,7 @@ FN-SYM to call it.  After BODY, VAR holds the captured arg list."
     (should (dl-satan-tool-lookup name)))
   (should (eq 'low  (plist-get (dl-satan-tool-lookup "memory_mark") :risk)))
   (should (eq 'read (plist-get (dl-satan-tool-lookup "memory_resonate") :risk)))
-  (should (eq 'read (plist-get (dl-satan-tool-lookup "memory_show_trace") :risk)))
-  ;; :modes intentionally nil at step 8 — mode allowlists wire at step 9.
-  (should (null (plist-get (dl-satan-tool-lookup "memory_mark") :modes))))
+  (should (eq 'read (plist-get (dl-satan-tool-lookup "memory_show_trace") :risk))))
 
 ;; ---------------------------------------------------------------------
 ;; ctx helper

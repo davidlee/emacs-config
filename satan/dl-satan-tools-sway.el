@@ -136,14 +136,12 @@ Reverts every border declaration to its sway.conf value."
                               (list :type 'object
                                     :required t
                                     :shape classes-shape))
-           :modes nil
            :handler 'dl-satan-tool/sway-border-set))))
 
 (dl-satan-tool-register
  (list :name "sway_border_reset"
        :risk 'medium
        :args-schema nil
-       :modes nil
        :handler 'dl-satan-tool/sway-border-reset))
 
 (provide 'dl-satan-tools-sway)

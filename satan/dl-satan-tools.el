@@ -1,16 +1,18 @@
 ;;; dl-satan-tools.el --- Tool registry + dispatch -*- lexical-binding: t; -*-
 
 ;; The broker holds a registry of tool-specs.  A tool-spec carries
-;; mechanism only — name, risk, schema, mode allowlist, handler:
+;; mechanism only — name, risk, schema, handler:
 ;;
 ;;   (:name        "org_read_context"
 ;;    :risk        read|low|medium|high
 ;;    :args-schema (KEY (:type symbol :required bool :enum (...)))*
-;;    :modes       ("morning" "motd" ...)
 ;;    :handler     dl-satan-tool/org-read-context)
 ;;
-;; The model-facing description for each tool lives outside dotfiles,
-;; under `dl-satan-tools-descriptions-dir' (default
+;; The mode→tools allowlist is authoritative on the mode-spec
+;; (`:tools' list in `dl-satan-mode.el'); `dl-satan-mode-check-tool-
+;; references' enforces that every name listed there resolves in this
+;; registry.  The model-facing description for each tool lives outside
+;; dotfiles, under `dl-satan-tools-descriptions-dir' (default
 ;; `~/notes/satan/tools/<name>.md').  See `dl-satan-tool-json-schema'.
 ;;
 ;; `dl-satan-tool-dispatch' performs lookup, allowlist check, schema

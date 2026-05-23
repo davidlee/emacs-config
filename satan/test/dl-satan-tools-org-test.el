@@ -27,12 +27,15 @@
          (tools (plist-get mode :tools)))
     (should-not (member "org_update_owned_block" tools))))
 
-(ert-deftest dl-satan-org/update-owned-block-only-registered-for-morning ()
-  "Tool registration restricts org_update_owned_block to morning mode."
-  (let* ((spec (dl-satan-tool-lookup "org_update_owned_block"))
-         (modes (plist-get spec :modes)))
-    (should (member "morning" modes))
-    (should-not (member "motd" modes))))
+(ert-deftest dl-satan-org/update-owned-block-only-listed-by-morning ()
+  "Mode `:tools' allowlist gates org_update_owned_block: morning yes, motd no.
+T4 dropped the documentary `:modes' field from tool specs; the
+mode-spec is now the single source of truth, enforced at load by
+`dl-satan-mode-check-tool-references'."
+  (let ((morning-tools (plist-get (dl-satan-mode-resolve "morning") :tools))
+        (motd-tools    (plist-get (dl-satan-mode-resolve "motd") :tools)))
+    (should     (member "org_update_owned_block" morning-tools))
+    (should-not (member "org_update_owned_block" motd-tools))))
 
 (provide 'dl-satan-tools-org-test)
 ;;; dl-satan-tools-org-test.el ends here

@@ -2,6 +2,14 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-23 — SATAN: T4 drop tool-spec `:modes` field
+
+- Delete the documentary `:modes` field from every `dl-satan-tool-register` site (22 occurrences across 14 tool modules) — the broker never consulted it; the mode-spec `:tools' allowlist (`dl-satan-mode.el`) is the only source of truth.
+- Add `dl-satan-mode-check-tool-references' (`dl-satan-mode.el') that signals at load if any mode-spec's `:tools' names an unregistered tool; call it from `dl-satan.el' after all tool/mode modules are required.
+- Rewrite `dl-satan-org/update-owned-block-only-registered-for-morning' to assert the mode `:tools' allowlist (renamed `…only-listed-by-morning'); drop the `:modes`-nil assertion in `dl-satan-tools-memory/registered'.
+- New `dl-satan-mode-test.el' covers the consistency check (passes on live registry; signals on a planted typo).
+- Update `docs/satan/patch/handover.md' + `docs/satan/at-satan/design.md' snippets to drop `:modes`.
+
 ## 2026-05-23 — SATAN: T1 observer file-split (PR 1)
 
 - Extract pure classifier + §S5 P1–P4 predicate registry + classifier defcustoms (`window-mature-seconds`, `emacs-title-suffix-re`) into new `satan/dl-satan-observer-classify.el` (~387 LOC). `dl-satan-observer.el` retains coordinator concerns (scan, dedup, maturity gate, verdict persistence, broker entry) and `(require 'dl-satan-observer-classify)`s the leaf. Symbol names preserved verbatim — no test churn. Observer drops from 859 → 503 LOC; tests 126/126 green.
