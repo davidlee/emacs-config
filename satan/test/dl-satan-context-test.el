@@ -427,13 +427,18 @@ rest under :dropped-files."
                             (:type "org_update_owned_block"
                              :args (:target "today" :block "satan" :content "x")))))
          (ctx (list :id "r1" :mode-name "self-edit-mech"
+                    :time-now "2026-05-23T12:00:00+1000"
+                    :run-started-at "2026-05-23T12:00:00+1000"
+                    :audit 'dl-satan-context-test--stub-audit
                     :capabilities '(stage-proposal))))
     (unwind-protect
-        (let ((p (dl-satan-output/self-edit final ctx)))
-          (should (equal (length (plist-get p :applied)) 1))
-          (should (equal (length (plist-get p :staged)) 1))
-          (should (equal (plist-get (car (plist-get p :applied)) :type)
-                         "proposal_stage")))
+        (cl-letf (((symbol-function 'dl-satan-intervention-create)
+                   (lambda (&rest _args) "iv-ctx-stub-01")))
+          (let ((p (dl-satan-output/self-edit final ctx)))
+            (should (equal (length (plist-get p :applied)) 1))
+            (should (equal (length (plist-get p :staged)) 1))
+            (should (equal (plist-get (car (plist-get p :applied)) :type)
+                           "proposal_stage"))))
       (delete-directory tmp t))))
 
 ;; ---------- :now ----------

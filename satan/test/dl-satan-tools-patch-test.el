@@ -10,8 +10,21 @@
 (require 'dl-satan-patch-store)
 (require 'dl-satan-patch-worktree)
 (require 'dl-satan-memory-migrate)
+(require 'dl-satan-intervention)
 
 (defconst dl-satan-tools-patch-test--db "satan_memory_test")
+
+(defconst dl-satan-tools-patch-test--ctx
+  '(:id "20260523T120000-self-edit-mech-deadbe"
+    :mode-name "self-edit-mech"
+    :time-now "2026-05-23T12:00:00+1000"
+    :run-started-at "2026-05-23T12:00:00+1000"
+    :capabilities ()
+    :audit dl-satan-tools-patch-test--stub-audit)
+  "Synthetic tool-ctx threaded into patch_job_create across tests.")
+
+(defvar dl-satan-tools-patch-test--captured nil
+  "Per-test list of kwarg plists handed to `dl-satan-intervention-create'.")
 
 (defun dl-satan-tools-patch-test--reachable-p ()
   (pcase (dl-satan-memory-migrate--psql
@@ -37,6 +50,9 @@
   dir)
 
 (defmacro dl-satan-tools-patch-test--with-fixture (var-repo &rest body)
+  "Stub Postgres-backed fixture; also stubs `dl-satan-intervention-create'.
+Inside BODY the symbol `dl-satan-tools-patch-test--captured' is a list of
+keyword-args plists handed to the stub."
   (declare (indent 1))
   `(progn
      (skip-unless (dl-satan-tools-patch-test--reachable-p))
@@ -45,13 +61,18 @@
      (let* ((,var-repo (make-temp-file "satan-patch-tools-repo-" t))
             (wt-root (make-temp-file "satan-patch-tools-wt-" t))
             (dl-satan-patch-store-database dl-satan-tools-patch-test--db)
-            (dl-satan-patch-worktree-root wt-root))
-       (unwind-protect
-           (progn
-             (dl-satan-tools-patch-test--mkrepo ,var-repo)
-             ,@body)
-         (when (file-directory-p ,var-repo) (delete-directory ,var-repo t))
-         (when (file-directory-p wt-root) (delete-directory wt-root t))))))
+            (dl-satan-patch-worktree-root wt-root)
+            (dl-satan-tools-patch-test--captured '()))
+       (cl-letf (((symbol-function 'dl-satan-intervention-create)
+                  (lambda (&rest args)
+                    (push args dl-satan-tools-patch-test--captured)
+                    "iv-patch-stub-01")))
+         (unwind-protect
+             (progn
+               (dl-satan-tools-patch-test--mkrepo ,var-repo)
+               ,@body)
+           (when (file-directory-p ,var-repo) (delete-directory ,var-repo t))
+           (when (file-directory-p wt-root) (delete-directory wt-root t)))))))
 
 (defun dl-satan-tools-patch-test--create-job (repo &rest overrides)
   "Call the patch_job_create handler against REPO and return the result.
@@ -63,7 +84,7 @@ nil so the runner is not kicked from Phase-1 tests."
                             :repo repo
                             :allowed_paths '("satan/" "test/")
                             :start nil))))
-    (dl-satan-tool/patch-job-create args nil)))
+    (dl-satan-tool/patch-job-create args dl-satan-tools-patch-test--ctx)))
 
 ;; ---------------------------------------------------------------------
 ;; create
@@ -78,6 +99,7 @@ nil so the runner is not kicked from Phase-1 tests."
        (should (string-prefix-p "satan/self-edit-mech/"
                                 (plist-get info :branch)))
        (should (equal (plist-get info :adapter) "pi"))
+       (should (equal (plist-get info :intervention_id) "iv-patch-stub-01"))
        ;; row is persisted
        (pcase (dl-satan-patch-store-get (plist-get info :job_id))
          (`(ok . ,row)
@@ -85,6 +107,23 @@ nil so the runner is not kicked from Phase-1 tests."
           (should (equal (plist-get row :allowed_paths_json)
                          '("satan/" "test/"))))
          (e (ert-fail (format "row missing: %S" e)))))
+      (err (ert-fail (format "create: %S" err))))))
+
+(ert-deftest dl-satan-tools-patch/create-emits-intervention-args ()
+  "patch_job_create threads §3.3 defaults into `dl-satan-intervention-create'."
+  (dl-satan-tools-patch-test--with-fixture repo
+    (pcase (dl-satan-tools-patch-test--create-job repo :base_ref "main")
+      (`(ok . ,info)
+       (let ((args (car dl-satan-tools-patch-test--captured)))
+         (should args)
+         (should (equal "patch_job" (plist-get args :kind)))
+         (should (equal (plist-get info :job_id)
+                        (plist-get args :target-surface)))
+         (should (equal "medium"    (plist-get args :severity)))
+         (should (equal 120         (plist-get args :outcome-window-minutes)))
+         (should (equal "fix the thing" (plist-get args :message)))
+         (should (string-match-p "reviews or applies"
+                                 (plist-get args :expected-outcome)))))
       (err (ert-fail (format "create: %S" err))))))
 
 (ert-deftest dl-satan-tools-patch/create-rejects-missing-repo ()

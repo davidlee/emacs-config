@@ -11,6 +11,7 @@
 (require 'dl-denote-journal)
 (require 'dl-satan-tools)
 (require 'dl-satan-block)
+(require 'dl-satan-intervention)
 
 (defcustom dl-satan-motd-path
   (expand-file-name "satan/motd.txt" dl-notes-root)
@@ -21,6 +22,14 @@
   (expand-file-name "satan/proposals" dl-notes-root)
   "Directory for staged proposals."
   :type 'directory :group 'dl-satan)
+
+(defconst dl-satan-proposal-intervention-window-minutes 120
+  "Default `outcome_window_minutes' for proposal interventions (outcome-semantics §3.3).
+Proposals need triage time.")
+
+(defconst dl-satan-proposal-intervention-expected-outcome
+  "user accepts or rejects the staged proposal within window"
+  "Default `expected_outcome' for proposal interventions (outcome-semantics §3.3).")
 
 (defun dl-satan-tools-org--read-file (path)
   (when (file-readable-p path)
@@ -99,7 +108,11 @@ output handler and written from `satan_final.summary'."
     (if (string-empty-p trim) "untitled" trim)))
 
 (defun dl-satan-tool/proposal-stage (args ctx)
-  "Implements proposal_stage.  ARGS: (:title STR :body STR)."
+  "Implements proposal_stage.  ARGS: (:title STR :body STR).
+
+On successful write the handler also emits a T7 `intervention.created'
+\(kind=proposal, target_surface=path) via `dl-satan-intervention-create'
+and surfaces the minted id in the result alongside `:path'."
   (let* ((title (plist-get args :title))
          (body  (plist-get args :body))
          (run-id (plist-get ctx :id))
@@ -108,25 +121,38 @@ output handler and written from `satan_final.summary'."
      ((not (and (stringp title) (stringp body)))
       (cons 'error "title and body must be strings"))
      (t
-      (unless (file-directory-p dl-satan-proposals-dir)
-        (make-directory dl-satan-proposals-dir t))
-      (let* ((id (format-time-string "%Y%m%dT%H%M%S" nil))
-             (slug (dl-satan-tools-org--slugify title))
-             (filename (format "%s--%s__satan_proposal.org" id slug))
-             (path (expand-file-name filename dl-satan-proposals-dir))
-             (coding-system-for-write 'utf-8))
-        (with-temp-file path
-          (insert "#+title:      " title "\n")
-          (insert "#+date:       " (format-time-string "[%Y-%m-%d %a %H:%M]" nil) "\n")
-          (insert "#+filetags:   :satan:proposal:\n")
-          (insert "#+identifier: " id "\n\n")
-          (insert ":PROPERTIES:\n")
-          (insert ":RUN_ID: " (or run-id "") "\n")
-          (insert ":MODE: "   (or mode-str "") "\n")
-          (insert ":END:\n\n")
-          (insert body)
-          (unless (string-suffix-p "\n" body) (insert "\n")))
-        (cons 'ok (list :path path)))))))
+      (condition-case err
+          (progn
+            (unless (file-directory-p dl-satan-proposals-dir)
+              (make-directory dl-satan-proposals-dir t))
+            (let* ((id (format-time-string "%Y%m%dT%H%M%S" nil))
+                   (slug (dl-satan-tools-org--slugify title))
+                   (filename (format "%s--%s__satan_proposal.org" id slug))
+                   (path (expand-file-name filename dl-satan-proposals-dir))
+                   (coding-system-for-write 'utf-8))
+              (with-temp-file path
+                (insert "#+title:      " title "\n")
+                (insert "#+date:       " (format-time-string "[%Y-%m-%d %a %H:%M]" nil) "\n")
+                (insert "#+filetags:   :satan:proposal:\n")
+                (insert "#+identifier: " id "\n\n")
+                (insert ":PROPERTIES:\n")
+                (insert ":RUN_ID: " (or run-id "") "\n")
+                (insert ":MODE: "   (or mode-str "") "\n")
+                (insert ":END:\n\n")
+                (insert body)
+                (unless (string-suffix-p "\n" body) (insert "\n")))
+              (let ((iv-id (dl-satan-intervention-create
+                            :ctx ctx
+                            :kind "proposal"
+                            :target-surface path
+                            :message title
+                            :expected-outcome
+                            dl-satan-proposal-intervention-expected-outcome
+                            :outcome-window-minutes
+                            dl-satan-proposal-intervention-window-minutes
+                            :severity "medium")))
+                (cons 'ok (list :path path :intervention_id iv-id)))))
+        (error (cons 'error (error-message-string err))))))))
 
 ;; ---- Registration ----
 

@@ -103,10 +103,14 @@
         :browser "ok" :bough "ok"))
 
 (defun dl-satan-sensor-alerts-test--silence-notify (body-fn)
-  "Stub `notifications-notify' to a counter; call BODY-FN with counter ref."
+  "Stub `notifications-notify' to a counter; call BODY-FN with counter ref.
+Also stubs `dl-satan-intervention-create' so the notify_send handler's
+T7 intervention path does not require a live audit handle / DB."
   (let ((counter (list 0)))
     (cl-letf (((symbol-function 'notifications-notify)
-               (lambda (&rest _) (cl-incf (car counter)) 42)))
+               (lambda (&rest _) (cl-incf (car counter)) 42))
+              ((symbol-function 'dl-satan-intervention-create)
+               (lambda (&rest _) "iv-sensor-stub-01")))
       (funcall body-fn counter))))
 
 ;; A15 — one dispatch per cause per cooldown window
@@ -277,7 +281,9 @@ streak-suppressed all share the invariant: |state.:causes keys| ==
       (cl-letf (((symbol-function 'notifications-notify)
                  (lambda (&rest args)
                    (setq seen args)
-                   42)))
+                   42))
+                ((symbol-function 'dl-satan-intervention-create)
+                 (lambda (&rest _) "iv-sensor-stub-02")))
         (dl-satan-sensor-alerts-check
          ss mode
          :time-now "2026-05-22T10:00:00+10:00"

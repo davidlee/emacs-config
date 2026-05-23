@@ -62,14 +62,16 @@ defcustoms, and ensure the fake adapter is registered before BODY."
             (dl-satan-patch-runner-enabled t)
             (dl-satan-patch-runner-hook nil))
        (with-temp-file prompt-tmp (insert "# test prompt\n"))
-       (unwind-protect
-           (progn
-             (dl-satan-patch-runner-test--mkrepo ,var-repo)
-             ,@body)
-         (when (file-directory-p ,var-repo) (delete-directory ,var-repo t))
-         (when (file-directory-p wt-root) (delete-directory wt-root t))
-         (when (file-directory-p log-root) (delete-directory log-root t))
-         (when (file-exists-p prompt-tmp) (delete-file prompt-tmp))))))
+       (cl-letf (((symbol-function 'dl-satan-intervention-create)
+                  (lambda (&rest _args) "iv-runner-stub-01")))
+         (unwind-protect
+             (progn
+               (dl-satan-patch-runner-test--mkrepo ,var-repo)
+               ,@body)
+           (when (file-directory-p ,var-repo) (delete-directory ,var-repo t))
+           (when (file-directory-p wt-root) (delete-directory wt-root t))
+           (when (file-directory-p log-root) (delete-directory log-root t))
+           (when (file-exists-p prompt-tmp) (delete-file prompt-tmp)))))))
 
 ;; ---------------------------------------------------------------------
 ;; fake adapter behaviours
@@ -128,6 +130,15 @@ BEHAVIOR is one of:
   (dl-satan-patch-adapter-register
    "fake" (dl-satan-patch-runner-test--fake-adapter behavior)))
 
+(defconst dl-satan-patch-runner-test--ctx
+  '(:id "20260523T120000-self-edit-mech-deadbe"
+    :mode-name "self-edit-mech"
+    :time-now "2026-05-23T12:00:00+1000"
+    :run-started-at "2026-05-23T12:00:00+1000"
+    :capabilities ()
+    :audit dl-satan-patch-runner-test--stub-audit)
+  "Synthetic tool-ctx threaded into patch_job_create for runner ert.")
+
 (defun dl-satan-patch-runner-test--enqueue (repo)
   "Insert a queued job pointing at REPO with adapter=fake.  Returns job-id."
   (pcase (dl-satan-tool/patch-job-create
@@ -138,7 +149,7 @@ BEHAVIOR is one of:
                 :base_ref "main"
                 :adapter "fake"
                 :start nil)
-          nil)
+          dl-satan-patch-runner-test--ctx)
     (`(ok . ,info) (plist-get info :job_id))
     (other (ert-fail (format "enqueue: %S" other)))))
 
@@ -348,7 +359,7 @@ BEHAVIOR is one of:
                          :base_ref "main"
                          :adapter "pi"
                          :start nil)
-                   nil))
+                   dl-satan-patch-runner-test--ctx))
                  (job-id (plist-get (cdr create) :job_id)))
             (dl-satan-patch-runner-tick)
             ;; wait up to 1800s for finish; in practice pi takes ~30-90s

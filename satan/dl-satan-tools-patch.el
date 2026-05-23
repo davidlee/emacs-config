@@ -25,6 +25,7 @@
 (require 'dl-satan-patch-store)
 (require 'dl-satan-patch-worktree)
 (require 'dl-satan-patch-runner)
+(require 'dl-satan-intervention)
 
 (defconst dl-satan-tools-patch--known-modes
   '("self-edit-mech" "self-edit-mind"
@@ -38,6 +39,14 @@
 (defconst dl-satan-tools-patch--cleanup-states
   '("needs_review" "failed" "cancelled" "accepted_external" "stale")
   "States `patch_job_cleanup' will operate on (terminal only).")
+
+(defconst dl-satan-tools-patch--intervention-window-minutes 120
+  "Default `outcome_window_minutes' for patch_job interventions (outcome-semantics §3.3).
+Patch jobs need triage time before review.")
+
+(defconst dl-satan-tools-patch--intervention-expected-outcome
+  "user reviews or applies the staged patch job within window"
+  "Default `expected_outcome' for patch_job interventions (outcome-semantics §3.3).")
 
 ;; ---------------------------------------------------------------------
 ;; helpers
@@ -84,10 +93,16 @@ Empty list when the job has produced no commits yet."
 ;; patch_job_create
 ;; ---------------------------------------------------------------------
 
-(defun dl-satan-tool/patch-job-create (args _ctx)
+(defun dl-satan-tool/patch-job-create (args ctx)
   "Handler for `patch_job_create'.
 ARGS plist (keyword keys): :directive :mode :repo :allowed_paths
-:base_ref :branch :worktree_path :source :context :checks :adapter."
+:base_ref :branch :worktree_path :source :context :checks :adapter.
+
+On successful row insert the handler emits a T7 `intervention.created'
+\(kind=patch_job, target_surface=<job_id>) via
+`dl-satan-intervention-create' and surfaces the minted id alongside
+the existing `:job_id' / `:state' / `:branch' / `:worktree_path' /
+`:adapter' result keys."
   (let* ((directive  (plist-get args :directive))
          (mode       (plist-get args :mode))
          (repo       (plist-get args :repo))
@@ -137,13 +152,26 @@ ARGS plist (keyword keys): :directive :mode :repo :allowed_paths
            (dl-satan-patch-store-event
             job-id "transition"
             (list :from nil :to "queued" :reason "created"))
-           (when start
-             (condition-case _err (dl-satan-patch-runner-kick) (error nil)))
-           (cons 'ok (list :job_id job-id
-                           :state "queued"
-                           :branch branch
-                           :worktree_path wt
-                           :adapter adapter)))
+           (condition-case err
+               (let ((iv-id (dl-satan-intervention-create
+                             :ctx ctx
+                             :kind "patch_job"
+                             :target-surface job-id
+                             :message directive
+                             :expected-outcome
+                             dl-satan-tools-patch--intervention-expected-outcome
+                             :outcome-window-minutes
+                             dl-satan-tools-patch--intervention-window-minutes
+                             :severity "medium")))
+                 (when start
+                   (condition-case _err (dl-satan-patch-runner-kick) (error nil)))
+                 (cons 'ok (list :job_id job-id
+                                 :state "queued"
+                                 :branch branch
+                                 :worktree_path wt
+                                 :adapter adapter
+                                 :intervention_id iv-id)))
+             (error (cons 'error (error-message-string err)))))
           (err err)))))))
 
 ;; ---------------------------------------------------------------------

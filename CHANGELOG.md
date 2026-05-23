@@ -2,6 +2,13 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-23 — SATAN: T7 PR 4 — remaining four handlers cut over to intervention API
+
+- `satan/dl-satan-tools-inbox.el` (`inbox_append`, kind=`inbox`, target=inbox-file path, window=30, severity=`medium`), `satan/dl-satan-tools-org.el` (`proposal_stage`, kind=`proposal`, target=proposal-file path, window=120, severity=`medium`), `satan/dl-satan-tools-patch.el` (`patch_job_create`, kind=`patch_job`, target=job-id, window=120, severity=`medium`), `satan/dl-satan-tools-sway.el` (`sway_border_set`, kind=`visible_sign`, target=`sway-mainbar`, window=30, severity=`low`) all route through `dl-satan-intervention-create` after their primary side-effect succeeds; the minted `intervention_id` surfaces on each `tool_result` alongside the pre-existing handler-specific keys (no replacement).
+- Per-handler ert mirror `dl-satan-tools-notify-test.el`'s `--with-stubs` macro: each stubs `dl-satan-intervention-create` to a fixed id and asserts (i) the kwarg shape against §3.3 defaults and (ii) `:intervention_id` carriage in `tool_result`. Existing handler tests retrofitted with enriched tool-ctx (`:audit` / `:id` / `:mode-name` / `:time-now`). +9 ert across the four files.
+- Side-cleanup of T7 gotcha #3 omitted by PR 2: `satan_intervention_outcomes, satan_interventions` prepended to the DROP TABLE list in `dl-satan-memory-store-test.el`, `dl-satan-tools-memory-test.el`, and `dl-satan-tools-hippocampus-test.el`. `satan/test/dl-satan-sensor-alerts-test.el`'s `silence-notify` and "successful dispatch" `cl-letf` now also stub `dl-satan-intervention-create`, fixing the regression introduced when PR 3 made `notify_send` require a live audit handle.
+- `docs/satan/refactor/T7-intervention-records.md` PR log ticks PR 4 merged; T7 status remains in-progress until PR 5 (observer read-path swap) lands.
+
 ## 2026-05-23 — SATAN: T7 PR 3 — intervention write/read API + `notify_send` cutover
 
 - Extend `satan/dl-satan-intervention.el` with the write+read surface T7 needs: `dl-satan-intervention-create` (mints a stable `<run-id>.iv<NNN>` id via a per-run session-local counter, emits `intervention.created` into the run's transcript, INSERTs the projection row with `ON CONFLICT (id) DO NOTHING` for retry-idempotency); `dl-satan-intervention-classify` (auto-detects revision via projection-lookup, emits `outcome_classified` or `outcome_revised` accordingly, UPSERTs the latest verdict); `dl-satan-intervention-lookup` (returns `(:intervention :outcome)` plist with JSONB columns reparsed); `dl-satan-intervention-pending` (returns interventions whose maturity window has elapsed and lack a verdict).

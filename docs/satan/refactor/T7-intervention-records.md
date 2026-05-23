@@ -74,5 +74,5 @@ PR that adds the three audit event types to the validator + fixtures + `docs/sat
 - [x] PR 1: audit event types + validator + fixtures + protocol.md — merged 2026-05-23
 - [x] PR 2: migration `0006_interventions.sql` + rebuild CLI — merged 2026-05-23
 - [x] PR 3: write API + first handler (`notify_send`) — merged 2026-05-23
-- [ ] PR 4: remaining 4 handlers wired through — pending
+- [x] PR 4: remaining 4 handlers wired through — merged 2026-05-23
 - [ ] PR 5: observer read-path swap — pending

@@ -8,6 +8,7 @@
 
 (require 'cl-lib)
 (require 'dl-satan-tools)
+(require 'dl-satan-intervention)
 
 (defconst dl-satan-sway-classes
   '("focused" "focused_inactive" "focused_tab_title"
@@ -19,6 +20,17 @@ needs a different shape.")
 (defconst dl-satan-sway-hex-pattern
   "\\`#[0-9a-fA-F]\\{6\\}\\'"
   "Strict #RRGGBB matcher.  Anchored on both ends.")
+
+(defconst dl-satan-sway-intervention-target-surface "sway-mainbar"
+  "Default `target_surface' for sway_border_set interventions (outcome-semantics §3.3).
+Kind `visible_sign'; the actual surface is the sway bar / window borders.")
+
+(defconst dl-satan-sway-intervention-window-minutes 30
+  "Default `outcome_window_minutes' for visible_sign interventions (outcome-semantics §3.3).")
+
+(defconst dl-satan-sway-intervention-expected-outcome
+  "user notices the border-colour change as an ambient signal"
+  "Default `expected_outcome' for visible_sign interventions (outcome-semantics §3.3).")
 
 (defcustom dl-satan-sway-swaymsg-program
   (or (executable-find "swaymsg") "swaymsg")
@@ -57,12 +69,15 @@ are optional but child_border requires indicator."
      (t
       (cons 'ok (delq nil (list border bg text ind child)))))))
 
-(defun dl-satan-tool/sway-border-set (args _ctx)
+(defun dl-satan-tool/sway-border-set (args ctx)
   "Batched border setter.  Issues one swaymsg per declared class.
 ARGS: (:classes (:CLASS (:border ... :background ... :text ...
         [:indicator ...] [:child_border ...]) ...)).
-At least one class must be declared.  Returns
-  (ok :applied (CLASS ...))
+At least one class must be declared.  On full success the handler
+also emits a T7 `intervention.created' (kind=visible_sign,
+target_surface=`sway-mainbar') via `dl-satan-intervention-create' and
+surfaces the minted id alongside `:applied'.  Returns
+  (ok :applied (CLASS ...) :intervention_id IV-ID)
 or
   (error MSG)
 on first failure; classes already applied stay applied (sway has
@@ -95,9 +110,24 @@ no atomic transaction).  The error includes which class failed."
                         (setq err (format "class %s: %s" class-name (cdr res)))
                       (push class-name applied))))))))
           (setq cursor (cddr cursor)))
-        (if err
-            (cons 'error err)
-          (cons 'ok (list :applied (nreverse applied)))))))))
+        (cond
+         (err (cons 'error err))
+         (t
+          (condition-case ierr
+              (let* ((applied-list (nreverse applied))
+                     (iv-id (dl-satan-intervention-create
+                             :ctx ctx
+                             :kind "visible_sign"
+                             :target-surface dl-satan-sway-intervention-target-surface
+                             :message (format "border set on: %s"
+                                              (mapconcat #'identity applied-list ", "))
+                             :expected-outcome
+                             dl-satan-sway-intervention-expected-outcome
+                             :outcome-window-minutes
+                             dl-satan-sway-intervention-window-minutes
+                             :severity "low")))
+                (cons 'ok (list :applied applied-list :intervention_id iv-id)))
+             (error (cons 'error (error-message-string ierr)))))))))))
 
 (defun dl-satan-tool/sway-border-reset (_args _ctx)
   "Re-read `~/.config/sway/config' via `swaymsg reload'.
