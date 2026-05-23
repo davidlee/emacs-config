@@ -15,25 +15,29 @@ Per-theme briefs live in this directory.
 
 ## Sequence
 
-Recommended landing order (from CODE_REVIEW.md §6 Q1):
+Recommended landing order (from CODE_REVIEW.md §6 Q1; updated 2026-05-23 with actual landing order):
 
 ```
 T4 / T8 / T6   (quick wins + test split; parallel to all)
-→ T1            observer file-split
-→ T1.5a         outcome-semantics design contract (doc only)
+→ T1            observer file-split                            ✓ merged
+→ T1.5a         outcome-semantics design contract (doc only)   ✓ merged
 → T2            pre-spawn extraction
-→ T7            intervention records (BLOCKER for attributes)
-→ [attributes core tranche]    (out of scope here)
-→ T1.5b         negative classifier implementation
+→ T7            intervention records (BLOCKER for attributes)  ✓ merged
+→ T1.5b         negative classifier implementation             ✓ merged
+→ T-attr-1      attribute layer (Shame dispatcher)             ← in-progress
+→ T-attr-2+     attribute layer (decay, additional sources)
 → T3 Path A     capsule registry (only if rendering pain real)
 ```
+
+T1.5b landed before the attributes tranche (the negative classifier was self-contained against T7's substrate). T-attr-1 is now the first theme of the attributes tranche — see [`T-attr-1-attribute-layer.md`](T-attr-1-attribute-layer.md).
 
 ## Status table
 
 | Theme | Title | Status | Blocked by | Next PR |
 |---|---|---|---|---|
 | [T1](T1-observer-split.md)         | Observer file-split                 | merged      | —              | done — classifier extracted to `dl-satan-observer-classify.el` |
-| [T1.5](T1.5-outcome-semantics.md)  | Outcome-semantics + neg classifier  | in-progress | T1             | 1.5a doc landed; 1.5b unblocked (T7 merged) |
+| [T1.5](T1.5-outcome-semantics.md)  | Outcome-semantics + neg classifier  | merged      | T1             | done — 1.5a doc + 1.5b PRs 1–4 merged 2026-05-23 |
+| [T-attr-1](T-attr-1-attribute-layer.md) | Attribute layer (state + Shame dispatcher) | in-progress | T1.5       | 1a contract + theme doc; 1b state substrate next |
 | [T2](T2-pre-spawn.md)              | Pre-spawn pipeline extraction       | not-started | —              | `dl-satan-pre-spawn.el` + cutover |
 | [T3](T3-capsule-registry.md)       | Capsule render registry             | not-started | —              | (Path A gated; awaits rendering pain) |
 | [T4](T4-modes-field.md)            | Drop tool-spec `:modes` field       | merged      | —              | done — `:modes' stripped from all tool specs; `dl-satan-mode-check-tool-references' enforces |
@@ -45,7 +49,7 @@ Status enum: `not-started | in-progress | merged | abandoned`.
 
 ## Cross-cutting
 
-- **A3 determinism.** T7 + T1.5b intentionally break byte-identical-rerun (new IDs, new classifier outputs). All other themes preserve it. See CODE_REVIEW.md §6 Q7.
+- **A3 determinism.** T7 + T1.5b intentionally break byte-identical-rerun (new IDs, new classifier outputs). T-attr-1's dispatcher inherits that break (no new sanction). All other themes preserve it. See CODE_REVIEW.md §6 Q7.
 - **CHANGELOG.md.** One line per merged PR per project convention. Refactor PR template:
   `refactor(satan): T<N> — <subtitle>`
 - **Rollback switches.** T7 + attributes tranche introduce `dl-satan-intervention-recording-enabled` + `dl-satan-attribute-updates-enabled` defcustoms (CODE_REVIEW.md §6 Q9). Wire in T7 PR sequence.
