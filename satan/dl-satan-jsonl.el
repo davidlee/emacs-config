@@ -15,21 +15,48 @@
   "Heuristic: X is a plist if it is a list whose car is a keyword."
   (and (consp x) (keywordp (car x))))
 
+(defun dl-satan-jsonl--alist-p (x)
+  "Heuristic: X is an alist of `(KEY . VAL)' dotted pairs.
+Every entry must be a cons whose car is not a keyword (those belong to
+plists) and whose cdr is not a list (proper lists belong to lists-of-
+lists / lists-of-plists, both walked as JSON arrays).  Empty list is
+not an alist."
+  (and (consp x) (listp (cdr x))
+       (cl-every (lambda (e)
+                   (and (consp e)
+                        (not (keywordp (car e)))
+                        (not (listp (cdr e)))))
+                 x)))
+
+(defun dl-satan-jsonl--alist-key-to-keyword (k)
+  "Coerce alist key K to a keyword `json-serialize' accepts for a plist."
+  (cond
+   ((keywordp k) k)
+   ((stringp k)  (intern (concat ":" k)))
+   ((symbolp k)  (intern (concat ":" (symbol-name k))))
+   (t            (intern (format ":%S" k)))))
+
 (defun dl-satan-jsonl-prepare (v)
   "Walk V and coerce non-plist lists into vectors so `json-serialize' accepts them.
-Plists (lists whose car is a keyword) are preserved.  Vectors are walked.
-Non-special symbols are stringified (`json-serialize' rejects symbols
-other than t / nil / :null / :false with `wrong-type-argument
-json-value-p'), so any in-memory symbol that leaks into a bundle /
-percept / transcript record survives the wire layer.  Regular symbols
-emit their `symbol-name'; keywords drop the leading colon.  Other
-atoms pass through untouched."
+Plists (lists whose car is a keyword) are preserved.  Alists (lists of
+`(KEY . VAL)' dotted pairs) are flattened into plists so they encode as
+JSON objects rather than crashing the serializer on a dotted cdr.
+Vectors are walked.  Non-special symbols are stringified
+(`json-serialize' rejects symbols other than t / nil / :null / :false
+with `wrong-type-argument json-value-p'), so any in-memory symbol that
+leaks into a bundle / percept / transcript record survives the wire
+layer.  Regular symbols emit their `symbol-name'; keywords drop the
+leading colon.  Other atoms pass through untouched."
   (cond
    ((vectorp v)
     (vconcat (mapcar #'dl-satan-jsonl-prepare (append v nil))))
    ((dl-satan-jsonl--plist-p v)
     (cl-loop for (k val) on v by #'cddr
              append (list k (dl-satan-jsonl-prepare val))))
+   ((dl-satan-jsonl--alist-p v)
+    (cl-loop for (k . val) in v
+             append (list (dl-satan-jsonl--alist-key-to-keyword k)
+                          (dl-satan-jsonl-prepare val))))
    ((and (consp v) (listp (cdr v)))
     (vconcat (mapcar #'dl-satan-jsonl-prepare v)))
    ((or (eq v t) (null v) (eq v :null) (eq v :false)) v)

@@ -109,6 +109,48 @@ transcript records survive any in-memory symbol leak (resonance
                                                 :dormant_reason :missing-cue))))
                     :null-object :null :false-object :false))))
 
+(ert-deftest dl-satan-jsonl/prepare-flattens-alists-to-plists ()
+  "Alists of `(KEY . VAL)' dotted pairs must encode as JSON objects.
+A live tick crashed `json-serialize' with `wrong-type-argument consp 1'
+because `dl-satan-context--tally-tool-calls' embeds an alist
+`((\"activity_read\" . 1) (\"notes_recent\" . 2))' under `:tools' inside
+each `:recent_runs' entry and `dl-satan-jsonl-prepare' used to coerce
+it to a vector of dotted-pair conses — a JSON-illegal shape."
+  ;; Direct alist coercion: keys become keywords, values are walked.
+  (let ((v (dl-satan-jsonl-prepare
+            '(("activity_read" . 1) ("notes_recent" . 2)))))
+    (should (equal 1 (plist-get v :activity_read)))
+    (should (equal 2 (plist-get v :notes_recent))))
+  ;; Nested under a plist: `:tools' is the production carrier.
+  (let* ((entry (list :when "2026-05-23 10:33"
+                      :tools '(("activity_read" . 3))))
+         (out (dl-satan-jsonl-prepare entry)))
+    (should (equal 3 (plist-get (plist-get out :tools) :activity_read))))
+  ;; Regression: the exact production failure round-trips through
+  ;; `json-serialize' without signalling.
+  (let* ((bundle (list :recent_runs
+                       (list (list :when "2026-05-23 10:33"
+                                   :mode "tick-pulse"
+                                   :status "ok"
+                                   :summary "x"
+                                   :tools '(("activity_read" . 1)
+                                            ("notes_recent" . 2))))))
+         (encoded (json-serialize (dl-satan-jsonl-prepare bundle)
+                                  :null-object :null :false-object :false)))
+    (should (stringp encoded))
+    (should (string-match-p "\"activity_read\":1" encoded))
+    (should (string-match-p "\"notes_recent\":2" encoded)))
+  ;; Lists of plists must still encode as JSON arrays, not get folded
+  ;; into a plist by the alist branch.
+  (let ((v (dl-satan-jsonl-prepare
+            (list (list :name "a") (list :name "b")))))
+    (should (vectorp v))
+    (should (equal "a" (plist-get (aref v 0) :name))))
+  ;; Lists of proper 2-lists must still encode as JSON arrays of arrays.
+  (let ((v (dl-satan-jsonl-prepare '(("a" 1) ("b" 2)))))
+    (should (vectorp v))
+    (should (vectorp (aref v 0)))))
+
 ;; ---------- dl-satan-block ----------
 
 (ert-deftest dl-satan-block/replace-ok ()

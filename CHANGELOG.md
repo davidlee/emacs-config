@@ -2,6 +2,38 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-23 — SATAN: fix `dl-satan-jsonl-prepare` chokes on alists
+
+Live tick crashed inside `dl-satan-audit--write-json` with
+
+    (wrong-type-argument consp 1)
+
+because `dl-satan-context--tally-tool-calls` returns a `(NAME . COUNT)`
+alist that gets embedded under `:tools` in every `:recent_runs` bundle
+entry.  The wire layer previously walked it via the
+`(consp v) (listp (cdr v))` branch and emitted a vector of dotted-pair
+conses — a shape `json-serialize` rejects.  Every tick fired after the
+first run with tool-call records in its transcript (i.e. from
+2026-05-23 01:09 onward) until this fix.
+
+Same chokepoint philosophy as `547ef003b` (symbol coercion): handle
+the shape at the encoder so producers stay free to use natural elisp
+data types.
+
+- **`dl-satan-jsonl--alist-p`** — detect lists of `(KEY . VAL)`
+  dotted pairs where each entry has a non-keyword car and a non-list
+  cdr.  Excludes list-of-plists (keyword car) and list-of-2-lists
+  (listp cdr) so existing JSON-array shapes still encode as arrays.
+- **`dl-satan-jsonl--alist-key-to-keyword`** — coerce string /
+  symbol keys to keywords so the flattened plist is acceptable to
+  `json-serialize`.
+- **`dl-satan-jsonl-prepare`** — new branch after the plist case
+  flattens alists into plists, so they encode as JSON objects
+  (`{"activity_read":1,"notes_recent":2}`).
+- One new ert exercising the exact production failure plus
+  guards that list-of-plists and list-of-2-lists still produce
+  vectors.
+
 ## 2026-05-23 — SATAN: perceptual-layer v0 Phase 6 (cooldown floor)
 
 Read-side enforcement of §S4.  When the broker renders the capsule's
