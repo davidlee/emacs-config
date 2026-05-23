@@ -1,81 +1,64 @@
 # 04-DUPLICATION.md — Duplication & near-duplication
 
-## Repeated pattern: mode/capability/tool allowlist specification
+## Repeated pattern: mode/tool allowlist specification
 
-The governance doc defines mode allowlists declaratively. The broker uses `dl-satan-mode.el`'s mode-spec `:tools` list to gate tool calls. However, several files replicate mode-to-tool mapping logic:
+Tool→mode mapping has two writers:
 
-**`dl-satan-tools-atsatan.el`** registers tick-agent with tool allowlist additions (`patch_job_create`, `patch_job_status`) via `dl-satan-tick-register` at load time. This duplicates the mode-spec tool list that `dl-satan-mode.el` already maintains for `self-edit-{mech,mind}`.
+- `dl-satan-mode.el` — every mode spec carries a `:tools` allowlist; the broker gates dispatch on this list.
+- `dl-satan-tools-atsatan.el` — adds tools to the tick-agent mode at load time via `dl-satan-tick-register` (`patch_job_create`, `patch_job_status`).
 
-**`dl-satan-mode.el`** defines all mode specs. **`dl-satan-tools-atsatan.el`** adds tools to the tick-agent mode at load time via `dl-satan-tick-register`. The governance doc (§2.6) warns: "Tool-spec `:modes` is documentary only; the broker does not consult it."
+The governance handover explicitly says: *"Tool-spec `:modes` is documentary only; the broker does not consult it."* So tool specs carry a `:modes` annotation that nothing reads, while mode specs carry the authoritative `:tools` list — except where `tick-register` mutates that list from outside. Two writers, one reader. confidence: medium.
 
-confidence: medium — the `:tools` allowlist lives in mode specs (`dl-satan-mode.el`), but tools-atsatan.el adds tools dynamically at register-time. Two sources of truth.
+## Imports across the memory substrate (positive finding, not duplication)
 
-## Repeated pattern: evidence-assembly imports across perceptual layer
+Files requiring the canon/evidence/grammar/store quad:
 
-Files importing from the memory substrate (grammar, canon, evidence, store):
+- `dl-satan-percept.el` — canon, evidence, grammar
+- `dl-satan-observer.el` — all four
+- `dl-satan-tools-hippocampus.el` — all four
+- `dl-satan-tools-memory.el` — all four
 
-- `dl-satan-percept.el`: requires `dl-satan-memory-canon`, `dl-satan-memory-evidence`, `dl-satan-memory-grammar`
-- `dl-satan-observer.el`: requires all four (`dl-satan-memory-canon`, `dl-satan-memory-evidence`, `dl-satan-memory-grammar`, `dl-satan-memory-store`)
-- `dl-satan-tools-hippocampus.el`: requires all four
-- `dl-satan-tools-memory.el`: requires all four
+These are legitimate consumers; each presents a different surface over the substrate. Not flagged. confidence: medium.
 
-These are legitimate consumers — each provides a different surface over the substrate. Not flagged as duplication.
+## Capability strings co-defined in tool specs and mode specs
 
-**Positive finding**: `dl-satan-tank.el` requires `dl-satan-memory-evidence`, `dl-satan-memory-store`, `dl-satan-memory-grammar`, and `dl-satan-broker` — this is a wide import set spanning both memory substrate and broker.
+Capability tokens (`"hippocampus-write"`, `"inbox-write"`, `"memory-write"`, `"patch-job-create"`, `"notify"`, `"write-daily"`, `"stage-proposal"`) appear in two places by design:
 
-confidence: medium
+- `:capability` field in each tool's spec (e.g. `dl-satan-tools-*.el`)
+- `:capabilities` list in each mode-spec (`dl-satan-mode.el`)
 
-## Repeated literal strings: capability names
-
-The capability string `"notify"` appears in 9 tool files:
-
-- `dl-satan-tools-activity.el`
-- `dl-satan-tools-agenda.el`  
-- `dl-satan-tools-bough.el`
-- `dl-satan-tools-docs.el`
-- `dl-satan-tools-hippocampus.el`
-- `dl-satan-tools-inbox.el`
-- `dl-satan-tools-notes.el`
-- `dl-satan-tools-org.el`
-- `dl-satan-tools-sway.el`
-
-Wait — `"notify"` is the risk level in tool specs, appearing in `(:risk "notify")` in tool registrations. This is the standard pattern; not duplication.
-
-More relevant: `"read-only"` risk level or `"notify"` as a capability name vs risk string.
-
-Let me check: capability strings like `"hippocampus-write"`, `"inbox-write"`, `"memory-write"`, `"patch-job-create"` appear in both:
-- Tool specs (risk/capability plists in `dl-satan-tools*.el`)
-- Mode specs (`:capabilities` in `dl-satan-mode.el`)
-
-The capability system is designed for this (governance §Permission governance) — these are references, not duplication.
-
-confidence: low — intentional coordination, not accidental duplication.
+This is the intended coordination pattern (governance §permission). Strings live nowhere central; renaming one requires touching N call sites. confidence: medium — not duplication in the bad sense, but rename-cost is real.
 
 ## Magic numbers: budget/token/timeout constants
 
-Several files define numeric budgets:
+Numeric budgets are scattered, by design:
 
 | File | Constant | Default |
 |---|---|---|
 | `dl-satan-budget.el` | `dl-satan-budget-daily-tokens` | 400000 (now 2M per CHANGELOG) |
-| `dl-satan-mode.el` | Per-mode `:budget-tokens` | 20000/10000/3000/50000 |
-| `dl-satan-tick.el` | `dl-satan-tick-register` defaults | 3000 tokens, 4 calls, 30s |
-| specific modes | Per-mode overrides | Various |
+| `dl-satan-mode.el` | per-mode `:budget-tokens` | 20000 / 10000 / 3000 / 50000 |
+| `dl-satan-tick.el` | `dl-satan-tick-register` defaults | 3000 tokens / 4 calls / 30s |
 
-These are intentional per-mode tunables, not magic numbers.
+Intentional per-mode tunables; not flagged.
 
-## Duplicate function bodies
+## Env-var forwarding to child processes
 
-Potential near-duplicate pairs to investigate:
+`dl-satan-broker.el:740-755` and `dl-satan-patch-adapter-pi.el:231-280` both build environment lists forwarding `SATAN_RUN_ID`, `SATAN_PROVIDER`, `SATAN_MODEL`, `SATAN_BUDGET_TOKENS`. Same five-ish keys, two construction sites. No shared helper. Currently in sync (verified in 02-DEPENDENCIES). Drift risk if a new key is added on one side only. confidence: high.
 
-1. `dl-satan-patch-worktree-create` (70 LOC) and `dl-satan-patch-store--parse-row` (238 LOC) — both parse worktree/branch paths. The worktree create function constructs paths; parse-row reads DB rows. Likely distinct but warrants a quick glance.
+## op:// secret resolution
 
-2. `dl-satan-observer.el` and `dl-satan-percept.el` both import memory-canon + memory-evidence + memory-grammar + audit, and both assemble data structures from the substrate and audit trail. Observer (`dl-satan-observer-classify` at L474, 51 LOC) and percept percept-build share some structural DNA.
+`my/scrub-op-refs-env` is the documented one-way scrub at the broker boundary. Op-cache lookup logic (`op://...` URI → cached secret) appears in:
 
-confidence: low — speculative; no actual body-level matching performed.
+- `dl-satan-broker.el` — model harness env scrub
+- `dl-satan-patch-adapter-pi.el` — pi adapter env scrub
 
-## Repeated env-var forwarding
+Both call the same helper (`my/scrub-op-refs-env`), so this is shared. The earlier scout draft flagged "op:// resolve duplication" — verified, no duplication, single helper. confidence: high.
 
-`dl-satan-broker.el` and `dl-satan-patch-adapter-pi.el` both forward `SATAN_RUN_ID`, `SATAN_PROVIDER`, `SATAN_MODEL`, `SATAN_BUDGET_TOKENS` into child process environments. This is intentional (broker for model harness, adapter-pi for coding agent) but the env-var list should be checked for drift. Both use the same set currently (verified in 02-DEPENDENCIES analysis).
+## Function-body duplication
 
-confidence: high — matched across both sides.
+Spot-checked two pairs hypothesised by earlier draft:
+
+- `dl-satan-patch-worktree-create` (`patch-worktree.el:81`) vs `dl-satan-patch-store--parse-row` (`patch-store.el:157`) — different shapes entirely (path construction vs DB-row parsing). No overlap.
+- `dl-satan-observer-classify` (`observer.el:474`, 46 LOC) vs `dl-satan-percept-build` (`percept.el:45`, 33 LOC) — `percept-build` wraps `evidence-assemble → canon-canonicalize`; `observer-classify` is a guard-cond tree dispatching to predicate functions. No body overlap.
+
+No function-body duplication identified across the codebase by inspection of the largest-19 list. confidence: medium.

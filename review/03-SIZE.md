@@ -7,7 +7,7 @@
 | 859 | `dl-satan-observer.el` | Largest file; 33 defuns; perceptual-layer Phase 5 |
 | 797 | `dl-satan-broker.el` | 35 defuns; orchestration hub |
 | 626 | `dl-satan-motive.el` | 22 defuns; motive file reader/renderer |
-| 570 | `dl-satan-memory-canon.el` | 14 defuns; canonicalizer + rules |
+| 570 | `dl-satan-memory-canon.el` | 14 defuns + 7 `defrule` macro calls; canonicalizer + rules |
 | 560 | `dl-satan-memory-evidence.el` | 25 defuns; evidence-window assembly |
 | 554 | `dl-satan-tank.el` | 28 defuns; observation tank |
 | 526 | `dl-satan-context.el` | 25 defuns; bundle assembly |
@@ -17,57 +17,50 @@
 
 ## Functions > 50 LOC
 
+Measured by paren-balanced span over every `(defun|defmacro|defsubst|cl-defun|cl-defmacro)` form in `satan/dl-satan*.el`.
+
 | LOC | File:line | Function |
 |---|---|---|
-| 296 | `dl-satan-memory-canon.el:190` | `dl-satan-memory-canon-normalize-hints` |
-| 238 | `dl-satan-patch-store.el:157` | `dl-satan-patch-store--parse-row` |
-| 175 | `dl-satan-memory-store.el:196` | `dl-satan-memory-store--build-mark-payload` |
-| 158 | `dl-satan-broker.el:638` | `dl-satan-broker--spawn` |
-| 91 | `dl-satan-mode.el:57` | `dl-satan-mode-names` |
-| 90 | `dl-satan-sensor-alerts.el:307` | `dl-satan-sensor-alerts--entry` |
-| 83 | `dl-satan-tools-patch.el:243` | `dl-satan-patch-prepare` |
-| 82 | `dl-satan-patch-adapter-pi.el:231` | `dl-satan-patch-adapter-pi--resolved-env` |
-| 72 | `dl-satan-memory-evidence.el:487` | `dl-satan-memory-evidence-assemble-with-bounds` |
-| 70 | `dl-satan-patch-worktree.el:81` | `dl-satan-patch-worktree-create` |
-| 70 | `dl-satan-observer.el:721` | `dl-satan-observer-process` |
-| 68 | `dl-satan-patch-inbox.el:12` | `dl-satan-patch-inbox--render-body` |
-| 67 | `dl-satan-tools-atsatan.el:324` | `dl-satan-tool/notes-at-satan-done` |
-| 66 | `dl-satan-tools-patch.el:87` | `dl-satan-tool/patch-job-create` |
-| 66 | `dl-satan-motive.el:522` | `dl-satan-motive--rewrite-section-footer` |
-| 66 | `dl-satan-motive.el:344` | `dl-satan-motive-render-block` |
-| 63 | `dl-satan-patch-adapter-pi.el:168` | `dl-satan-patch-adapter-pi--sentinel` |
-| 62 | `dl-satan-tools-org.el:101` | `dl-satan-tool/proposal-stage` |
-| 62 | `dl-satan-tools-hippocampus.el:34` | `dl-satan-tools-hippocampus--cross-ref` |
-| 62 | `dl-satan-motive.el:174` | `dl-satan-motive--parse-motive` |
-| 59 | `dl-satan-patch-runner.el:178` | `dl-satan-patch-runner--finish-success-path` |
-| 58 | `dl-satan-tools-memory.el:252` | `dl-satan-tool/memory-show-trace` |
-| 58 | `dl-satan-sensor-alerts.el:78` | `dl-satan-sensor-render-block` |
-| 57 | `dl-satan-tools-activity.el:90` | `dl-satan-tool/activity-read` |
-| 55 | `dl-satan-memory-store.el:117` | `dl-satan-memory-store--format-pg-array` |
-| 54 | `dl-satan-tank.el:237` | `dl-satan-tank--render-last-run` |
-| 54 | `dl-satan-patch-prompt.el:88` | `dl-satan-patch-prompt-build-directive` |
-| 54 | `dl-satan-memory-evidence.el:409` | `dl-satan-memory-evidence--truncate` |
-| 53 | `dl-satan-tools-memory.el:135` | `dl-satan-tools-memory--mark-impl` |
-| 53 | `dl-satan-tank.el:402` | `dl-satan-tank--last-run-state` |
-| 52 | `dl-satan-observer.el:614` | `dl-satan-observer--persist-positive` |
-| 52 | `dl-satan-context.el:406` | `dl-satan-context-tick` |
-| 51 | `dl-satan-tools-docs.el:198` | `dl-satan-tool/docs-read` |
-| 51 | `dl-satan-tools-atsatan.el:226` | `dl-satan-tools-atsatan--rewrite-line` |
-| 51 | `dl-satan-observer.el:474` | `dl-satan-observer-classify` |
+| 157 | `dl-satan-broker.el:638` | `dl-satan-broker--spawn` |
+| 76 | `dl-satan-sensor-alerts.el:320` | `dl-satan-sensor-alerts-check` |
+| 71 | `dl-satan-memory-evidence.el:487` | `dl-satan-memory-evidence-assemble-with-bounds` |
+| 69 | `dl-satan-observer.el:721` | `dl-satan-observer-process` |
+| 69 | `dl-satan-memory-canon.el:190` | `dl-satan-memory-canon-normalize-hints` |
+| 67 | `dl-satan-patch-inbox.el:12` | `dl-satan-patch-inbox--render-body` |
+| 65 | `dl-satan-patch-worktree.el:81` | `dl-satan-patch-worktree-create` |
+| 61 | `dl-satan-tools-hippocampus.el:34` | `dl-satan-tools-hippocampus--cross-ref` |
+| 61 | `dl-satan-tools-patch.el:87` | `dl-satan-tool/patch-job-create` |
+| 61 | `dl-satan-motive.el:174` | `dl-satan-motive--parse-motive` |
+| 58 | `dl-satan-patch-adapter-pi.el:168` | `dl-satan-patch-adapter-pi--sentinel` |
+| 58 | `dl-satan-memory-store.el:312` | `dl-satan-memory-store-recent` |
+| 56 | `dl-satan-patch-adapter-pi.el:253` | `dl-satan-patch-adapter-pi-invoke` |
+| 54 | `dl-satan-patch-store.el:177` | `dl-satan-patch-store-insert` |
+| 54 | `dl-satan-patch-runner.el:178` | `dl-satan-patch-runner--finish-success-path` |
+| 53 | `dl-satan-tank.el:237` | `dl-satan-tank--render-last-run` |
+| 52 | `dl-satan-tank.el:402` | `dl-satan-tank--last-run-state` |
+| 52 | `dl-satan-motive.el:344` | `dl-satan-motive-render-block` |
+| 51 | `dl-satan-observer.el:614` | `dl-satan-observer--persist-positive` |
 
-**36 functions** exceed 50 LOC. The largest is `normalize-hints` at 296 LOC.
+**19 functions** exceed 50 LOC. The largest is `dl-satan-broker--spawn` at 157 LOC.
+
+(Earlier draft of this file overstated several entries — e.g. `normalize-hints` at 296 LOC and `patch-store--parse-row` at 238 LOC — because the LOC counter treated trailing top-level macro calls as part of the preceding defun. Replaced with a paren-balanced count above.)
 
 ## Functions > 6 args
 
-**None found.** All function signatures stay within reasonable parameter counts.
+**None found.** All function signatures stay within reasonable parameter counts. `cl-defun` keyword-arg signatures (e.g. `dl-satan-patch-store-insert`) carry many `&key` slots but no positional args.
 
-## Nesting depth > 4
+## Nesting depth (sampled)
 
-Not checked by automated scan (missing a reliable static-analysis tool for nesting depth in elisp in this environment). Recommend manual spot-check on the largest functions listed above, particularly:
-- `dl-satan-memory-canon-normalize-hints` (296 LOC)
-- `dl-satan-patch-store--parse-row` (238 LOC)
-- `dl-satan-memory-store--build-mark-payload` (175 LOC)
-- `dl-satan-broker--spawn` (158 LOC)
+No automated elisp-nesting tool in scope. Spot-checked the 4 largest functions in the table above, max nesting depth observed (counting binding/branching forms `let`/`let*`/`if`/`cond`/`when`/`pcase`/`dolist`/`cl-loop`/`lambda`):
+
+| File:line | Function | Observed max depth | Note |
+|---|---|---|---|
+| `dl-satan-broker.el:638` | `--spawn` | 5 | nested `let*` chain (3 deep) + per-form `let*` body |
+| `dl-satan-memory-canon.el:190` | `normalize-hints` | 5 | outer `let` → per-field `let`/`let*` → `cond` → `push` → `list` |
+| `dl-satan-memory-store.el:196` | `--build-mark-payload` | 4 | `let` → `vconcat`/`mapcar` → `lambda` → `list` |
+| `dl-satan-patch-store.el:157` | `--parse-row` | 4 | `let*` → `cl-loop` → `setq plist-put` → `pcase` |
+
+No function in the top-20 nests > 5 deep on visual inspection. `broker--spawn` is the most pattern-heavy: a 3-level `let*` accumulator using repeated `plist-put` chaining around the run-ctx record.
 
 ## Files with > 20 top-level definitions
 
@@ -82,6 +75,11 @@ Not checked by automated scan (missing a reliable static-analysis tool for nesti
 | 22 | `dl-satan-memory-migrate.el` |
 | 20 | `dl-satan-sensor-alerts.el` |
 
-## Macros / metaprogramming hotspots
+## Macros / metaprogramming
 
-Not checked. Use `rg 'defmacro\|defsubst\|define-' satan/dl-satan*.el` to verify.
+| Path:line | Form |
+|---|---|
+| `dl-satan-memory-canon.el:114` | `(defmacro dl-satan-memory-canon-defrule …)` — canonicalization rule registrar; emits a `defun` + side-effect into the rule registry. 7 in-file callers (`defrule` invocations between L264–end). |
+| `dl-satan-tank.el:494` | `(define-derived-mode dl-satan-tank-mode special-mode "SatanTank" …)` — major-mode definition. |
+
+No other `defmacro` / `defsubst` / `define-derived-mode` / `define-minor-mode` in `satan/dl-satan*.el`. Total metaprogramming surface: 1 DSL macro + 1 major-mode definition.
