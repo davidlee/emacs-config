@@ -7,6 +7,8 @@ Notable changes to this Emacs config. Loosely dated; not versioned.
 - Extract `dl-satan-jsonl-test.el` (6 tests) from `satan/test/dl-satan-test.el` monolith.
 - Extract `dl-satan-block-test.el` (4 tests).
 - Start `dl-satan-tools-test.el` with schema validator subsection (12 tests).
+- Append dispatch capability guard tests to `dl-satan-tools-test.el` (+5 tests).
+- Start `dl-satan-broker-test.el` with capability-denial cross-cutter (1 test).
 
 ## 2026-05-23 — SATAN: extract refactor themes into `docs/satan/refactor/`
 

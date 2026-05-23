@@ -97,5 +97,78 @@
     (should (equal (plist-get res :ok) :false))
     (should (string-match-p "not allowed" (plist-get res :error)))))
 
+;; ---------- dispatch capability guard (Phase 0.2) ----------
+
+(ert-deftest dl-satan-tools/dispatch-capability-denied-by-dispatcher ()
+  "When a tool declares `:capability' and the mode's tool-ctx lacks it,
+the dispatcher denies the call *before* invoking the handler.  The
+handler stub must observe zero calls; the result error must name the
+capability."
+  (let ((called 0))
+    (dl-satan-tool-register
+     (list :name "test.cap-required"
+           :capability 'foo-write
+           :args-schema nil
+           :handler (lambda (_a _c) (cl-incf called) (cons 'ok '(:done t)))))
+    (let ((res (dl-satan-tool-dispatch
+                '(:type "tool_call" :id "c1" :name "test.cap-required" :args nil)
+                '("test.cap-required")
+                '(:capabilities (other-write)))))
+      (should (equal (plist-get res :ok) :false))
+      (should (string-match-p "capability" (plist-get res :error)))
+      (should (string-match-p "foo-write" (plist-get res :error)))
+      (should (= 0 called)))))
+
+(ert-deftest dl-satan-tools/dispatch-capability-allowed ()
+  "When the mode carries the required capability the handler runs."
+  (let ((called 0))
+    (dl-satan-tool-register
+     (list :name "test.cap-ok"
+           :capability 'foo-write
+           :args-schema nil
+           :handler (lambda (_a _c) (cl-incf called) (cons 'ok '(:done t)))))
+    (let ((res (dl-satan-tool-dispatch
+                '(:type "tool_call" :id "c2" :name "test.cap-ok" :args nil)
+                '("test.cap-ok")
+                '(:capabilities (foo-write)))))
+      (should (eq (plist-get res :ok) t))
+      (should (= 1 called)))))
+
+(ert-deftest dl-satan-tools/dispatch-no-capability-required ()
+  "Tools without `:capability' dispatch unchanged regardless of ctx caps."
+  (let ((called 0))
+    (dl-satan-tool-register
+     (list :name "test.no-cap"
+           :args-schema nil
+           :handler (lambda (_a _c) (cl-incf called) (cons 'ok '()))))
+    (let ((res (dl-satan-tool-dispatch
+                '(:type "tool_call" :id "c3" :name "test.no-cap" :args nil)
+                '("test.no-cap")
+                '(:capabilities ()))))
+      (should (eq (plist-get res :ok) t))
+      (should (= 1 called)))))
+
+(ert-deftest dl-satan-tools/notify-send-carries-notify-capability ()
+  "`notify_send' tool-spec declares the `notify' capability so the
+dispatcher can enforce it without each mode having to opt in."
+  (should (eq (plist-get (dl-satan-tool-lookup "notify_send") :capability)
+              'notify)))
+
+(ert-deftest dl-satan-tools/dispatch-rejects-notify-without-capability ()
+  "Remove `notify' from a mode's tool-ctx; `notify_send' is rejected by
+the dispatcher, the handler stub records zero calls."
+  (let ((handler-called 0))
+    (cl-letf (((symbol-function 'notifications-notify)
+               (lambda (&rest _args) (cl-incf handler-called) 42)))
+      (let ((res (dl-satan-tool-dispatch
+                  '(:type "tool_call" :id "n0" :name "notify_send"
+                    :args (:title "t" :body "b"))
+                  '("notify_send")
+                  '(:capabilities (inbox-write memory-write)))))
+        (should (equal (plist-get res :ok) :false))
+        (should (string-match-p "capability" (plist-get res :error)))
+        (should (string-match-p "notify" (plist-get res :error)))
+        (should (= 0 handler-called))))))
+
 (provide 'dl-satan-tools-test)
 ;;; dl-satan-tools-test.el ends here
