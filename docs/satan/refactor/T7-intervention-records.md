@@ -66,13 +66,13 @@ PR that adds the three audit event types to the validator + fixtures + `docs/sat
 ## Open questions
 
 - ~~Should rebuild-from-audit run on every migration, or only on operator demand?~~ **Resolved (PR 2): operator-demand only.** Migration `0006_interventions.sql` only creates the tables; population is via `my/satan-rebuild-interventions` / `satan/bin/satan-rebuild-interventions`. Matches `dl-satan-memory-renormalize` precedent.
-- Intervention-id exposure to the model in `tool_result` — yes/no?
+- ~~Intervention-id exposure to the model in `tool_result` — yes/no?~~ **Resolved (PR 3): id-only (no live verdict).** `notify_send`'s `tool_result` carries `:intervention_id` alongside the existing `:id`. The contract recommends v2 add an `intervention_status` tool for explicit lookups; PR 3 stops at id exposure to keep the model from optimising for the metric (per outcome-semantics §11.1).
 - Audit-log retention policy once Postgres projection is the only durable record.
 
 ## PR log
 
 - [x] PR 1: audit event types + validator + fixtures + protocol.md — merged 2026-05-23
 - [x] PR 2: migration `0006_interventions.sql` + rebuild CLI — merged 2026-05-23
-- [ ] PR 3: write API + first handler — pending
+- [x] PR 3: write API + first handler (`notify_send`) — merged 2026-05-23
 - [ ] PR 4: remaining 4 handlers wired through — pending
 - [ ] PR 5: observer read-path swap — pending

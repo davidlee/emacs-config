@@ -260,7 +260,14 @@ flat layout (filters by prefix on the leaf name)."
 Reads frozen `time_now' from RUN-CTX's prepare plist (allocated once
 by `dl-satan-broker--prepare') rather than calling `format-time-string'
 per tool call.  `run-started-at' aliases the same frozen value — a run
-has exactly one starting moment."
+has exactly one starting moment.
+
+`:audit' carries the live audit handle so the intervention write API
+\(T7 PR 3) can emit `intervention.created' into transcript.jsonl on
+the handler's behalf.  Handlers must not invoke `dl-satan-audit-record'
+directly with arbitrary event names; the only sanctioned route is
+through `dl-satan-intervention-create' (and the matching classify /
+lookup APIs)."
   (let* ((mode (dl-satan-run-mode run-ctx))
          (prepare (dl-satan-run-prepare run-ctx))
          (time-now (plist-get prepare :time_now)))
@@ -270,7 +277,8 @@ has exactly one starting moment."
           :run-dir (dl-satan-run-dir run-ctx)
           :hippocampus-dir dl-satan-hippocampus-dir
           :run-started-at time-now
-          :time-now time-now)))
+          :time-now time-now
+          :audit (dl-satan-run-audit run-ctx))))
 
 (defun dl-satan-broker--tee-stdout (path chunk)
   (let ((coding-system-for-write 'utf-8))

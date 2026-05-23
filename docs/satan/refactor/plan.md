@@ -38,7 +38,7 @@ T4 / T8 / T6   (quick wins + test split; parallel to all)
 | [T3](T3-capsule-registry.md)       | Capsule render registry             | not-started | —              | (Path A gated; awaits rendering pain) |
 | [T4](T4-modes-field.md)            | Drop tool-spec `:modes` field       | merged      | —              | done — `:modes' stripped from all tool specs; `dl-satan-mode-check-tool-references' enforces |
 | [T6](T6-test-monolith.md)          | Test monolith split                 | merged      | —              | done — monolith deleted, per-module files |
-| [T7](T7-intervention-records.md)   | Intervention records                | in-progress | —              | PR 3: write API + first handler |
+| [T7](T7-intervention-records.md)   | Intervention records                | in-progress | —              | PR 4: remaining 4 handlers |
 | [T8](T8-pi-adapter-keys.md)        | pi-adapter API-key externalisation  | not-started | —              | TBD (JSON vs README; user-decidable) |
 
 Status enum: `not-started | in-progress | merged | abandoned`.

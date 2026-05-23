@@ -367,5 +367,222 @@ The bucket is parsed from run-id's leading YYYYMMDD."
            (should (= 0 (dl-satan-intervention-test--count "satan_intervention_outcomes"))))
        (delete-directory root t)))))
 
+;; ---------- write/read API (PR 3) ------------------------------------
+
+(defun dl-satan-intervention-test--open-audit (root run-id)
+  "Open a fresh audit handle under ROOT/<bucket>/RUN-ID/."
+  (let* ((bucket (and (string-match
+                       "\\`\\([0-9]\\{4\\}\\)\\([0-9]\\{2\\}\\)\\([0-9]\\{2\\}\\)T"
+                       run-id)
+                      (format "%s-%s-%s"
+                              (match-string 1 run-id)
+                              (match-string 2 run-id)
+                              (match-string 3 run-id))))
+         (run-dir (expand-file-name
+                   (concat (or bucket "_legacy") "/" run-id) root)))
+    (dl-satan-audit-open run-dir
+                         (list :run_id run-id :mode (list :name "morning"))
+                         '(:bundle t))))
+
+(defun dl-satan-intervention-test--build-ctx (audit run-id &optional ts)
+  (list :id run-id
+        :mode-name "morning"
+        :time-now (or ts "2026-05-23T12:00:00+1000")
+        :run-started-at (or ts "2026-05-23T12:00:00+1000")
+        :capabilities '(notify)
+        :audit audit))
+
+(defun dl-satan-intervention-test--transcript-events (audit)
+  "Return all parsed transcript records appended to AUDIT."
+  (let ((path (dl-satan-audit-handle-transcript-path audit)))
+    (dl-satan-intervention--read-jsonl path)))
+
+(ert-deftest dl-satan-intervention/create-emits-audit-and-projects ()
+  (dl-satan-intervention-test--with-db
+   (dl-satan-intervention--reset-counters)
+   (let* ((root (make-temp-file "satan-iv-run-" t))
+          (run-id "20260523T120000-morning-aaaaaa")
+          (audit (dl-satan-intervention-test--open-audit root run-id))
+          (ctx (dl-satan-intervention-test--build-ctx audit run-id)))
+     (unwind-protect
+         (let ((iv-id (dl-satan-intervention-create
+                       :ctx ctx
+                       :kind "notify"
+                       :target-surface "dbus"
+                       :message "morning kanban — clean DONE"
+                       :expected-outcome "user opens kanban.org"
+                       :outcome-window-minutes 30
+                       :severity "low"
+                       :related-motive-id "morning.kanban-cleanup"
+                       :cue-handles '("bough_node:abc"))))
+           ;; Stable id shape: <run-id>.iv001
+           (should (equal (concat run-id ".iv001") iv-id))
+           ;; Audit log carries the created event.
+           (let* ((events (dl-satan-intervention-test--transcript-events audit))
+                  (created (cl-find "intervention.created" events
+                                    :key (lambda (r) (plist-get r :event))
+                                    :test #'equal)))
+             (should created)
+             (should (equal iv-id
+                            (plist-get (plist-get created :payload)
+                                       :intervention_id))))
+           ;; Projection holds the row.
+           (let ((row (dl-satan-intervention-lookup iv-id)))
+             (should row)
+             (should (equal iv-id (plist-get (plist-get row :intervention)
+                                             :intervention_id)))
+             (should (equal "notify" (plist-get (plist-get row :intervention) :kind)))
+             (should (equal "low"    (plist-get (plist-get row :intervention) :severity)))
+             (should (equal '("bough_node:abc")
+                            (plist-get (plist-get row :intervention) :cue_handles)))
+             (should-not (plist-get row :outcome))))
+       (delete-directory root t)))))
+
+(ert-deftest dl-satan-intervention/create-mints-monotonic-counter ()
+  (dl-satan-intervention-test--with-db
+   (dl-satan-intervention--reset-counters)
+   (let* ((root (make-temp-file "satan-iv-run-" t))
+          (run-id "20260523T120000-morning-aaaaaa")
+          (audit (dl-satan-intervention-test--open-audit root run-id))
+          (ctx (dl-satan-intervention-test--build-ctx audit run-id)))
+     (unwind-protect
+         (let* ((id1 (dl-satan-intervention-create
+                      :ctx ctx :kind "notify"
+                      :target-surface "dbus" :message "one"
+                      :expected-outcome "x" :outcome-window-minutes 30
+                      :severity "low"))
+                (id2 (dl-satan-intervention-create
+                      :ctx ctx :kind "notify"
+                      :target-surface "dbus" :message "two"
+                      :expected-outcome "x" :outcome-window-minutes 30
+                      :severity "low")))
+           (should (equal (concat run-id ".iv001") id1))
+           (should (equal (concat run-id ".iv002") id2))
+           (should (= 2 (dl-satan-intervention-test--count "satan_interventions"))))
+       (delete-directory root t)))))
+
+(ert-deftest dl-satan-intervention/classify-emits-classified-then-revised ()
+  (dl-satan-intervention-test--with-db
+   (dl-satan-intervention--reset-counters)
+   (let* ((root (make-temp-file "satan-iv-run-" t))
+          (run-id "20260523T120000-morning-aaaaaa")
+          (audit (dl-satan-intervention-test--open-audit root run-id))
+          (ctx (dl-satan-intervention-test--build-ctx audit run-id)))
+     (unwind-protect
+         (let ((iv-id (dl-satan-intervention-create
+                       :ctx ctx :kind "notify"
+                       :target-surface "dbus" :message "m"
+                       :expected-outcome "x" :outcome-window-minutes 30
+                       :severity "low")))
+           ;; First classify → outcome_classified.
+           (should (equal "intervention.outcome_classified"
+                          (dl-satan-intervention-classify
+                           :ctx ctx :intervention-id iv-id
+                           :classification "ignored" :confidence "medium"
+                           :evidence '(:source-events ()
+                                        :no-positive-predicates t)
+                           :maturity "mature"
+                           :next-revisit-at "2026-05-23T12:30:00+1000"
+                           :source "auto"
+                           :classified-at "2026-05-23T12:30:01+1000")))
+           ;; Second classify → outcome_revised (with :revises auto-set).
+           (should (equal "intervention.outcome_revised"
+                          (dl-satan-intervention-classify
+                           :ctx ctx :intervention-id iv-id
+                           :classification "worked" :confidence "high"
+                           :evidence '(:source-events ()
+                                        :predicates ("editor_edit_in_window"))
+                           :maturity "mature"
+                           :next-revisit-at "2026-05-23T12:30:00+1000"
+                           :source "auto"
+                           :classified-at "2026-05-23T13:00:00+1000")))
+           ;; Projection reflects the latest verdict.
+           (let* ((row (dl-satan-intervention-lookup iv-id))
+                  (outcome (plist-get row :outcome)))
+             (should outcome)
+             (should (equal "worked" (plist-get outcome :classification)))
+             (should (equal "high"   (plist-get outcome :confidence)))
+             (should (equal iv-id    (plist-get outcome :revises))))
+           ;; Audit log carries both events.
+           (let* ((events (dl-satan-intervention-test--transcript-events audit))
+                  (names (mapcar (lambda (r) (plist-get r :event)) events)))
+             (should (member "intervention.outcome_classified" names))
+             (should (member "intervention.outcome_revised" names))))
+       (delete-directory root t)))))
+
+(ert-deftest dl-satan-intervention/classify-rejects-auto-harmful ()
+  (dl-satan-intervention-test--with-db
+   (dl-satan-intervention--reset-counters)
+   (let* ((root (make-temp-file "satan-iv-run-" t))
+          (run-id "20260523T120000-morning-aaaaaa")
+          (audit (dl-satan-intervention-test--open-audit root run-id))
+          (ctx (dl-satan-intervention-test--build-ctx audit run-id)))
+     (unwind-protect
+         (let ((iv-id (dl-satan-intervention-create
+                       :ctx ctx :kind "notify"
+                       :target-surface "dbus" :message "m"
+                       :expected-outcome "x" :outcome-window-minutes 30
+                       :severity "low")))
+           (should-error
+            (dl-satan-intervention-classify
+             :ctx ctx :intervention-id iv-id
+             :classification "harmful" :confidence "high"
+             :evidence '(:source-events ())
+             :maturity "mature"
+             :next-revisit-at "2026-05-23T12:30:00+1000"
+             :source "auto"
+             :classified-at "2026-05-23T12:30:01+1000")
+            :type 'user-error))
+       (delete-directory root t)))))
+
+(ert-deftest dl-satan-intervention/pending-returns-only-matured-no-outcome ()
+  (dl-satan-intervention-test--with-db
+   (dl-satan-intervention--reset-counters)
+   (let* ((root (make-temp-file "satan-iv-run-" t))
+          (run-id "20260523T120000-morning-aaaaaa")
+          (audit-old (dl-satan-intervention-test--open-audit
+                      root run-id))
+          (audit-new (dl-satan-intervention-test--open-audit
+                      root "20260523T130000-morning-bbbbbb"))
+          (ctx-old (dl-satan-intervention-test--build-ctx
+                    audit-old run-id "2026-05-23T11:00:00+1000"))
+          (ctx-new (dl-satan-intervention-test--build-ctx
+                    audit-new "20260523T130000-morning-bbbbbb"
+                    "2026-05-23T13:00:00+1000")))
+     (unwind-protect
+         (let* ((iv-old (dl-satan-intervention-create
+                         :ctx ctx-old :kind "notify"
+                         :target-surface "dbus" :message "old"
+                         :expected-outcome "x" :outcome-window-minutes 30
+                         :severity "low"))
+                (_iv-new (dl-satan-intervention-create
+                          :ctx ctx-new :kind "notify"
+                          :target-surface "dbus" :message "fresh"
+                          :expected-outcome "x" :outcome-window-minutes 30
+                          :severity "low"))
+                ;; Probe time: window-elapsed for old, not for new.
+                (pending (dl-satan-intervention-pending
+                          "2026-05-23T12:00:00+1000")))
+           (should (= 1 (length pending)))
+           (should (equal iv-old
+                          (plist-get (car pending) :intervention_id)))
+           ;; Classifying iv-old removes it from pending.
+           (dl-satan-intervention-classify
+            :ctx ctx-old :intervention-id iv-old
+            :classification "ignored" :confidence "medium"
+            :evidence '(:source-events ())
+            :maturity "mature"
+            :next-revisit-at "2026-05-23T11:30:00+1000"
+            :source "auto"
+            :classified-at "2026-05-23T11:30:01+1000")
+           (should-not (dl-satan-intervention-pending
+                        "2026-05-23T12:00:00+1000")))
+       (delete-directory root t)))))
+
+(ert-deftest dl-satan-intervention/lookup-missing-returns-nil ()
+  (dl-satan-intervention-test--with-db
+   (should-not (dl-satan-intervention-lookup
+                "20260523T120000-morning-zzzzzz.iv999"))))
+
 (provide 'dl-satan-intervention-test)
 ;;; dl-satan-intervention-test.el ends here

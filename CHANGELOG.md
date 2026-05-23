@@ -2,6 +2,14 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-23 — SATAN: T7 PR 3 — intervention write/read API + `notify_send` cutover
+
+- Extend `satan/dl-satan-intervention.el` with the write+read surface T7 needs: `dl-satan-intervention-create` (mints a stable `<run-id>.iv<NNN>` id via a per-run session-local counter, emits `intervention.created` into the run's transcript, INSERTs the projection row with `ON CONFLICT (id) DO NOTHING` for retry-idempotency); `dl-satan-intervention-classify` (auto-detects revision via projection-lookup, emits `outcome_classified` or `outcome_revised` accordingly, UPSERTs the latest verdict); `dl-satan-intervention-lookup` (returns `(:intervention :outcome)` plist with JSONB columns reparsed); `dl-satan-intervention-pending` (returns interventions whose maturity window has elapsed and lack a verdict).
+- `satan/dl-satan-broker.el` exposes the live audit handle on tool-ctx (`:audit`) so handlers can route writes through the intervention API; handlers must NOT call `dl-satan-audit-record` with arbitrary event names — the only sanctioned channel is the intervention module.
+- `satan/dl-satan-tools-notify.el` is the first handler cutover: after firing the D-Bus notification it calls `dl-satan-intervention-create` (kind=`notify`, target_surface=`dbus`, severity mapped from urgency, 30-min outcome window per §3.3), and surfaces the minted `intervention_id` in the `tool_result` alongside the existing notification `:id` (per outcome-semantics §11.1: id-only, no live verdict).
+- Tests: `dl-satan-intervention-test.el` gains 6 ert covering create→audit+projection round-trip, monotonic counter, classify→outcome_classified then revised on second call (auto-detected), auto-`harmful` rejection through the API, pending gating + post-classify removal, missing lookup. `dl-satan-tools-notify-test.el` adds 4 ert (stubbing `dl-satan-intervention-create`) for intervention_id surface, kwarg shape, severity mapping, and default; existing tests retrofitted with the enriched tool-ctx.
+- **Open question resolved (PR 3 decision):** `intervention_id` in `tool_result` is id-only — the model sees the id but not the live classification. A future `intervention_status` tool can expose verdict state on explicit query.
+
 ## 2026-05-23 — SATAN: T7 PR 2 — intervention projection + rebuild CLI
 
 - Add migration `satan/memory/migrations/0006_interventions.sql` — `satan_interventions` (immutable created-rows, kind/severity CHECK enums) + `satan_intervention_outcomes` (latest-verdict-per-intervention, `ON DELETE CASCADE`, CHECK constraints mirroring §9 invariants: auto-harmful, auto-contradicted, pending⇒unknown). Indexes on `(run_id)`, `(ts)`, `(mode, kind)`, `(classification)`, `(next_revisit_at)`, `(maturity)`.
