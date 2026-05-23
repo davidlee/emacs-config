@@ -48,4 +48,5 @@ PR that extracts `dl-satan-jsonl-test.el` from `test/dl-satan-test.el` L44–112
 - [x] PR 2: extract `dl-satan-block-test.el` — merged 2026-05-23
 - [x] PR 3: extract `dl-satan-tools-test.el` (schema validator subsection) — merged 2026-05-23
 - [x] PR 4: dispatch capability guard → `dl-satan-tools-test.el` + cross-cutter to `dl-satan-broker-test.el` — merged 2026-05-23
-- [ ] PR 5..N: remaining modules, one per PR — pending
+- [x] PR 5: extract `dl-satan-tools-notify-test.el` — merged 2026-05-23
+- [ ] PR 6..N: remaining modules, one per PR — pending

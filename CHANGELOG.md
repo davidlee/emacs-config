@@ -9,6 +9,7 @@ Notable changes to this Emacs config. Loosely dated; not versioned.
 - Start `dl-satan-tools-test.el` with schema validator subsection (12 tests).
 - Append dispatch capability guard tests to `dl-satan-tools-test.el` (+5 tests).
 - Start `dl-satan-broker-test.el` with capability-denial cross-cutter (1 test).
+- Extract `dl-satan-tools-notify-test.el` (4 tests).
 
 ## 2026-05-23 — SATAN: extract refactor themes into `docs/satan/refactor/`
 
