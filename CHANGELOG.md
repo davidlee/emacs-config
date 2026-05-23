@@ -5,6 +5,7 @@ Notable changes to this Emacs config. Loosely dated; not versioned.
 ## 2026-05-23 — SATAN: T6 test monolith split
 
 - Extract `dl-satan-jsonl-test.el` (6 tests) from `satan/test/dl-satan-test.el` monolith.
+- Extract `dl-satan-block-test.el` (4 tests).
 
 ## 2026-05-23 — SATAN: extract refactor themes into `docs/satan/refactor/`
 
