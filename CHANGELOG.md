@@ -23,6 +23,7 @@ Notable changes to this Emacs config. Loosely dated; not versioned.
 - Extract `dl-satan-tick-test.el` (7 tests).
 - Extract `dl-satan-tools-agenda-test.el` (7 tests + `with-gcalcli-stub` macro).
 - Extract `dl-satan-tools-activity-test.el` (11 tests + fixture macros).
+- Extract `dl-satan-tools-notes-test.el` (7 tests + fd-stub macro + touch helper).
 
 ## 2026-05-23 — SATAN: extract refactor themes into `docs/satan/refactor/`
 
