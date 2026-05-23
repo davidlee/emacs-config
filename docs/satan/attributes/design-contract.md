@@ -4,7 +4,7 @@ description: Design contract — attribute layer vocabulary, storage, event sche
 metadata:
   type: design-contract
   topic: attributes
-  status: draft
+  status: merged
   feeds: [T-attr-1b, T-attr-1c, T-attr-1d, T-attr-1e]
   authority: blocking
   updated_at: 2026-05-23
@@ -535,6 +535,7 @@ These do not block T-attr-1b. T-attr-1b may proceed with the §4 storage shapes 
 | 2026-05-23 | Global-by-architecture reframe per [`patterns_attributes.design_note.md`](patterns_attributes.design_note.md): §3 attributes are global by design (not v1 narrowing); pattern-specific consequences live in separate pattern records (cooldowns, counters, scars). §3.1 ambient-not-pattern-specific rewritten — global Shame/Suspicion/Doubt are organism-metabolism, not prey-shape state. §6 footnotes 2+3 rationale repointed to pattern records rather than future scoped attributes. §13 non-inferables list adds explicit "pattern-specific attribute vectors" and "pattern records themselves" entries; "per-scope storage" entry reframed as bounded forward-compat (episode/motive bias only; never `hypothesis:<id>`). §15 Q3 narrowed to episode-local additive bias only. Reviewer finding #5/#6 (global scope blunt) dispositioned as "by design, not bug" — pattern records carry cue-specific consequences in a parallel theme. | External design note (architectural correction). |
 | 2026-05-23 | Round-2 review patches: §3 scope wording sharpened — explicit "never `pattern:<id>` or `hypothesis:<id>`"; §6 column-order reading note added (reviewer misread `contradicted hunger`); §6 footnotes 4+5 added — `worked doubt` interpreted as ambient inhibition (not pattern confidence); `contradicted hunger` held at 0 with rationale + revisit trigger; §6.2 revision algorithm rewritten — compute against actually-logged prior deltas via `evidence_json->>'intervention_id'` lookup; new §6.2.1 covers prior-delta tracking + the GIN/expression index for the migration; §12 dispatcher test surface adds revision-against-actual-prior-deltas + revision-chain cases. Reviewer finding #3 (`ignored` vs `neutral` classifier tightening) dispositioned as out-of-scope: lives in `outcome-semantics.md` (merged). | External review round 2. |
 | 2026-05-23 | Language-neutralising pass + locus pivot: §4/§4.2/§4.3/§5/§5.1/§9/§10/§11/§12 rewritten to remove elisp-specific implementation references (specific defcustom names, ert file names, `dl-satan-*` function names, `dl-satan-attribute-rebuild` driver name) and replace with broker / daemon role-language. Implementation locus split (daemon owns store + dispatcher + rebuild; broker owns capsule + audit-validator + transcript write + disable-switch UI) is now reflected throughout, not just in the theme doc amendment. New **§17 — Implementation locus + pinned daemon design choices** adopts (a) daemon-writes-table-then-RPCs-back, (b) PG queue + `pg_notify` event bus, (c) daemon-side disable check, all previously recorded only in `T-attr-1-attribute-layer.md` amendment + `extraction-policy.md`. Contract status stays **draft** for one more change-history row; flips to **merged** when T-attr-1b's first code-bearing PR lands. Forward references to broker UX (`my/satan-attribute-zero`, `my/satan-mark-intervention-*`) kept — they describe broker-side surfaces, not daemon implementation. | T-attr-1b scaffold pass (locus pivot landed in `satan-attrd` initial commit `d8a6a10`). |
+| 2026-05-23 | T-attr-1c pre-implementation pin: §17.4 adds **RPC error policy on validator reject** — daemon logs at `ERROR` and drops the event, no retry; rationale is that validator rejects are deterministic and a retry loop wastes cycles on contract violations. Transport errors remain retryable with backoff and live in the wiring PR. New §17.7 **Per-run Counter eviction** pins a bounded LRU at capacity 64 with `tracing::info!` on evict; defers explicit `intervention.run_ended` broker signal until the LRU heuristic is shown wrong. `metadata.status` flips **draft → merged** per the precedent set in T-attr-1a (contract becomes canonical with first code-bearing implementation PR; T-attr-1c is that PR for the daemon dispatcher). | T-attr-1c PR (dispatcher pre-flight; pin open questions before code lands). |
 
 ---
 
@@ -577,6 +578,8 @@ After the daemon writes the `satan_attribute_events` row (and, if not disabled, 
 
 Rationale: keeps the existing "transcript.jsonl is audit truth" convention intact (every audit event ultimately lands on the broker's transcript-write path, regardless of which daemon emitted it). Alternative considered + rejected: daemon writes table only, no transcript line. Simpler but diverges from convention — audit verification (`dl-satan-audit-verify-run`) would have to read both `transcript.jsonl` and the daemon's table to reconstruct events.
 
+**RPC error policy on validator reject.** If the broker rejects an `attribute.delta_applied` event at §5.1 validation, the daemon **logs at `ERROR` level and drops the event** — it does NOT retry. Validator rejects are deterministic (a coherent dispatcher cannot fix the payload by sending it again); a retry loop would burn cycles on a contract violation. The event row remains in `satan_attribute_events` (the projection write already happened or was skipped per §9), so `satan-attrd rebuild` continues to reflect the daemon's view; the divergence between table-truth and transcript-truth is the operator's signal that a daemon bug needs investigation. Daemon emits one `tracing::error!` per reject carrying the rejected payload + the broker's error string. Transport-layer errors (connection drop, queue unavailable) are distinct and DO get retried with backoff — that policy lives in the wiring PR.
+
 ### 17.5 Disable-switch placement — daemon-side check
 
 The broker forwards the current `attribute-updates-enabled` state in every source-event payload it puts on the queue (§17.3). The daemon checks the flag at dispatch time:
@@ -594,3 +597,13 @@ Future broker-side affordances are referenced elsewhere in this contract without
 - `my/satan-mark-intervention-*` + `notes_at_satan_intervention_done` (§14) — broker-side manual-override pattern for the reserved `:source :manual` enum value. Out of T-attr-1 scope.
 
 These are broker UX, not daemon implementation; their inclusion does not pull additional logic into the daemon.
+
+### 17.7 Per-run Counter eviction
+
+The daemon maintains a `HashMap<run_id, Counter>` so each run's `seq` allocation is independent (matches the event-id shape `<run-id>.attr<NNN>` per §4.2). Without eviction, the map grows unboundedly across a long-running daemon's lifetime.
+
+V1 eviction: **bounded LRU**, capacity 64. When a new run-id arrives and the map is at capacity, evict the least-recently-touched entry. 64 is generous — a real broker session emits ~one outcome per intervention, with run boundaries on every broker restart; 64 concurrent active runs is well past any observed workload.
+
+Alternative considered + deferred: explicit `intervention.run_ended` broker signal. Cleaner (no LRU heuristic) but requires a new broker-emitted audit event + matching consumer in the daemon. Defer until the LRU heuristic shows wrong (e.g. an evicted run resurfaces with a stale Counter). Eviction is observable: the daemon logs `tracing::info!` on every evict so operators can see when the cap is being hit.
+
+Eviction does NOT touch the event log — only the in-memory Counter. If an evicted run-id resurfaces, the daemon allocates a fresh Counter starting at 1. The `UNIQUE (run_id, seq)` constraint protects against duplicate-seq writes in that case (insert fails on collision; the daemon surfaces the error). In practice, resurfacing only happens if the broker re-emits stale outcomes from a long-gone run, which is itself a bug.
