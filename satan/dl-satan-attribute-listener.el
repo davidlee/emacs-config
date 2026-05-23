@@ -1,9 +1,9 @@
 ;;; dl-satan-attribute-listener.el --- LISTEN satan_audit_inbox -*- lexical-binding: t; -*-
 
-;; Long-running `psql' subprocess that LISTENs on the daemon → broker
-;; audit-event queue.  On notify the listener claims the inbox row, runs
-;; the §5.1 validator (`dl-satan-audit-validate-attribute-event'), and
-;; either:
+;; Long-running `satan-attrd notify-stream' subprocess that LISTENs on
+;; the daemon → broker audit-event queue.  On notify the listener
+;; claims the inbox row, runs the §5.1 validator
+;; (`dl-satan-audit-validate-attribute-event'), and either:
 ;;
 ;;   accept → append `attribute.delta_applied' to the run's transcript.jsonl
 ;;            (the canonical audit-truth surface — design-contract §17.1)
@@ -13,7 +13,11 @@
 ;;            DELETE the inbox row, NOTIFY satan_audit_reply <inbox_id>.
 ;;            Daemon logs ERROR per §17.4 log-and-drop.
 ;;
-;; Pattern verbatim from `dl-satan-patch-listener.el'.
+;; Transport rationale: a raw `psql ... LISTEN ...' subprocess buffers
+;; async notifications until the next stdin command, so notifies never
+;; surface in a long-running pipe consumer.  `satan-attrd notify-stream'
+;; holds a real libpq connection (via tokio-postgres in the daemon
+;; binary) and writes one JSON line per notification, flushed.
 
 (require 'cl-lib)
 (require 'json)
@@ -41,6 +45,11 @@ manual transcript-write path."
   "Application name used for the D-Bus death notification."
   :type 'string :group 'dl-satan-attribute)
 
+(defcustom dl-satan-attribute-listener-program
+  (or (executable-find "satan-attrd") "satan-attrd")
+  "Path to the `satan-attrd' binary used as the LISTEN transport."
+  :type 'string :group 'dl-satan-attribute)
+
 ;; ---------------------------------------------------------------------
 ;; internals
 ;; ---------------------------------------------------------------------
@@ -52,13 +61,18 @@ manual transcript-write path."
   '("satan_audit_inbox")
   "Channels we subscribe to.  Daemon writes audit events here.")
 
-(defconst dl-satan-attribute-listener--notify-rx
-  (rx "Asynchronous notification \""
-      (group (+ (not (any ?\"))))
-      "\" with payload \""
-      (group (+ (not (any ?\"))))
-      "\"")
-  "Match psql async-notification lines.  Group 1 channel, group 2 payload.")
+(defun dl-satan-attribute-listener--parse-line (line)
+  "Parse one JSON line from `satan-attrd notify-stream'.
+Returns a plist (:channel STR :payload STR) or nil if LINE is not a
+notification (e.g. tracing diagnostic from the binary)."
+  (when (and (> (length line) 0) (= (aref line 0) ?{))
+    (condition-case _
+        (let* ((obj (json-parse-string line :object-type 'plist))
+               (ch (plist-get obj :channel))
+               (pl (plist-get obj :payload)))
+          (when (and (stringp ch) (stringp pl))
+            (list :channel ch :payload pl)))
+      (error nil))))
 
 (defun dl-satan-attribute-listener--claim-row (inbox-id)
   "Atomically claim INBOX-ID's row.  Return its parsed payload plist on
@@ -217,13 +231,12 @@ on-disk line shape is identical."
 
 (defun dl-satan-attribute-listener--maybe-dispatch (line)
   "If LINE is a satan_audit_inbox notification, dispatch its row."
-  (when (string-match dl-satan-attribute-listener--notify-rx line)
-    (let ((channel (match-string 1 line))
-          (payload (match-string 2 line)))
-      (when (member channel dl-satan-attribute-listener--channels)
-        (let ((id (string-to-number payload)))
-          (when (> id 0)
-            (dl-satan-attribute-listener--handle id)))))))
+  (when-let* ((evt (dl-satan-attribute-listener--parse-line line))
+              (channel (plist-get evt :channel))
+              ((member channel dl-satan-attribute-listener--channels))
+              (id (string-to-number (plist-get evt :payload))))
+    (when (> id 0)
+      (dl-satan-attribute-listener--handle id))))
 
 (defun dl-satan-attribute-listener--make-filter ()
   "Return a stateful filter closure parsing notifications line-by-line."
@@ -278,25 +291,27 @@ on-disk line shape is identical."
 
 ;;;###autoload
 (defun dl-satan-attribute-listener-start ()
-  "Spawn the LISTEN subprocess if enabled.  No-op when already running.
-Returns the process, or nil if disabled or `psql' is missing."
+  "Spawn the `satan-attrd notify-stream' subprocess if enabled.
+No-op when already running.  Returns the process, or nil if disabled
+or the program is missing."
   (interactive)
   (cond
    ((not dl-satan-attribute-listener-enabled) nil)
    ((process-live-p dl-satan-attribute-listener--proc)
     dl-satan-attribute-listener--proc)
    (t
-    (let* ((psql dl-satan-attribute-psql-program)
+    (let* ((prog dl-satan-attribute-listener-program)
            (db   dl-satan-attribute-database)
            (host dl-satan-attribute-host)
+           (database-url (format "postgres:///%s?host=%s" db host))
+           (process-environment
+            (cons (concat "DATABASE_URL=" database-url) process-environment))
            (stderr (generate-new-buffer
                     (format " *dl-satan-attribute-listener-stderr*")))
            (proc (make-process
                   :name "dl-satan-attribute-listener"
-                  :command (list psql
-                                 "-h" host
-                                 "-d" db
-                                 "--no-psqlrc" "-X" "-A" "-t" "-q")
+                  :command (append (list prog "notify-stream")
+                                   dl-satan-attribute-listener--channels)
                   :connection-type 'pipe
                   :coding 'utf-8
                   :noquery t
@@ -304,12 +319,6 @@ Returns the process, or nil if disabled or `psql' is missing."
                   :filter (dl-satan-attribute-listener--make-filter)
                   :sentinel #'dl-satan-attribute-listener--sentinel)))
       (process-put proc 'stderr-buffer stderr)
-      (process-send-string
-       proc
-       (concat
-        (mapconcat (lambda (ch) (format "LISTEN %s;" ch))
-                   dl-satan-attribute-listener--channels " ")
-        "\n"))
       (setq dl-satan-attribute-listener--proc proc)
       proc))))
 
@@ -343,7 +352,7 @@ Returns the process, or nil if disabled or `psql' is missing."
                  "")))
     state))
 
-(when dl-satan-attribute-listener-enabled
+(when (and (not noninteractive) dl-satan-attribute-listener-enabled)
   (dl-satan-attribute-listener-start))
 
 (provide 'dl-satan-attribute-listener)

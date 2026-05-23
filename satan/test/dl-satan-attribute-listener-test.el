@@ -55,9 +55,7 @@
     base))
 
 (defun dl-satan-attribute-listener-test--notif-line (channel payload)
-  (format
-   "Asynchronous notification \"%s\" with payload \"%s\" received from server process with PID 12345.\n"
-   channel payload))
+  (format "{\"channel\":\"%s\",\"payload\":\"%s\"}\n" channel payload))
 
 (defmacro dl-satan-attribute-listener-test--with-mocks
     (claimed-payload calls-var &rest body)

@@ -1,19 +1,25 @@
 ;;; dl-satan-patch-listener.el --- postgres NOTIFY → inbox handoff -*- lexical-binding: t; -*-
 
-;; Long-running `psql' subprocess that LISTENs on the two channels the
-;; runner daemon emits at terminal job transitions, and feeds each
-;; payload to `dl-satan-patch-inbox-handoff' via
-;; `dl-satan-patch-store-get'.
+;; Long-running `satan-attrd notify-stream' subprocess that LISTENs on
+;; the two channels the runner daemon emits at terminal job
+;; transitions, and feeds each payload to `dl-satan-patch-inbox-handoff'
+;; via `dl-satan-patch-store-get'.
 ;;
 ;; The listener exists so the inbox keeps working when the elisp
 ;; runner is disabled (`dl-satan-patch-runner-enabled' = nil) and the
 ;; daemon owns the queue.  When the elisp runner is enabled the
 ;; runner-hook in `dl-satan-patch-inbox.el' is the path; they share
 ;; the same handoff function.
+;;
+;; Transport rationale: a raw `psql ... LISTEN ...' subprocess buffers
+;; async notifications until the next stdin command, so notifies never
+;; surface in a long-running pipe consumer.  `satan-attrd notify-stream'
+;; holds a real libpq connection (via tokio-postgres in the daemon
+;; binary) and writes one JSON line per notification, flushed.
 
 (require 'cl-lib)
+(require 'json)
 (require 'subr-x)
-(require 'rx)
 (require 'dl-satan-patch-store)
 (require 'dl-satan-patch-inbox)
 
@@ -33,6 +39,11 @@ manual inbox checks."
   "Application name used for the D-Bus death notification."
   :type 'string :group 'dl-satan-patch)
 
+(defcustom dl-satan-patch-listener-program
+  (or (executable-find "satan-attrd") "satan-attrd")
+  "Path to the `satan-attrd' binary used as the LISTEN transport."
+  :type 'string :group 'dl-satan-patch)
+
 ;; ---------------------------------------------------------------------
 ;; internals
 ;; ---------------------------------------------------------------------
@@ -44,13 +55,18 @@ manual inbox checks."
   '("patch_jobs_done" "patch_jobs_failed")
   "Notification channels we subscribe to.")
 
-(defconst dl-satan-patch-listener--notify-rx
-  (rx "Asynchronous notification \""
-      (group (+ (not (any ?\"))))
-      "\" with payload \""
-      (group (+ (not (any ?\"))))
-      "\"")
-  "Match `psql' async-notification lines.  Group 1 channel, group 2 payload.")
+(defun dl-satan-patch-listener--parse-line (line)
+  "Parse one JSON line from `satan-attrd notify-stream'.
+Returns a plist (:channel STR :payload STR) or nil if LINE is not a
+notification (e.g. tracing diagnostic from the binary)."
+  (when (and (> (length line) 0) (= (aref line 0) ?{))
+    (condition-case _
+        (let* ((obj (json-parse-string line :object-type 'plist))
+               (ch (plist-get obj :channel))
+               (pl (plist-get obj :payload)))
+          (when (and (stringp ch) (stringp pl))
+            (list :channel ch :payload pl)))
+      (error nil))))
 
 (defun dl-satan-patch-listener--dispatch (channel job-id)
   "Look up JOB-ID and feed the row to the inbox handoff.
@@ -66,11 +82,10 @@ CHANNEL is informational; payload is already on a registered channel."
 
 (defun dl-satan-patch-listener--maybe-dispatch (line)
   "If LINE is a notification on a registered channel, dispatch it."
-  (when (string-match dl-satan-patch-listener--notify-rx line)
-    (let ((channel (match-string 1 line))
-          (payload (match-string 2 line)))
-      (when (member channel dl-satan-patch-listener--channels)
-        (dl-satan-patch-listener--dispatch channel payload)))))
+  (when-let* ((evt (dl-satan-patch-listener--parse-line line))
+              (channel (plist-get evt :channel))
+              ((member channel dl-satan-patch-listener--channels)))
+    (dl-satan-patch-listener--dispatch channel (plist-get evt :payload))))
 
 (defun dl-satan-patch-listener--make-filter ()
   "Return a stateful filter closure parsing notifications line-by-line."
@@ -126,25 +141,27 @@ CHANNEL is informational; payload is already on a registered channel."
 
 ;;;###autoload
 (defun dl-satan-patch-listener-start ()
-  "Spawn the LISTEN subprocess if enabled.  No-op when already running.
-Returns the process, or nil if disabled or `psql' is missing."
+  "Spawn the `satan-attrd notify-stream' subprocess if enabled.
+No-op when already running.  Returns the process, or nil if disabled
+or the program is missing."
   (interactive)
   (cond
    ((not dl-satan-patch-listener-enabled) nil)
    ((process-live-p dl-satan-patch-listener--proc)
     dl-satan-patch-listener--proc)
    (t
-    (let* ((psql dl-satan-patch-store-psql-program)
+    (let* ((prog dl-satan-patch-listener-program)
            (db   dl-satan-patch-store-database)
            (host dl-satan-patch-store-host)
+           (database-url (format "postgres:///%s?host=%s" db host))
+           (process-environment
+            (cons (concat "DATABASE_URL=" database-url) process-environment))
            (stderr (generate-new-buffer
                     (format " *dl-satan-patch-listener-stderr*")))
            (proc (make-process
                   :name "dl-satan-patch-listener"
-                  :command (list psql
-                                 "-h" host
-                                 "-d" db
-                                 "--no-psqlrc" "-X" "-A" "-t" "-q")
+                  :command (append (list prog "notify-stream")
+                                   dl-satan-patch-listener--channels)
                   :connection-type 'pipe
                   :coding 'utf-8
                   :noquery t
@@ -152,12 +169,6 @@ Returns the process, or nil if disabled or `psql' is missing."
                   :filter (dl-satan-patch-listener--make-filter)
                   :sentinel #'dl-satan-patch-listener--sentinel)))
       (process-put proc 'stderr-buffer stderr)
-      (process-send-string
-       proc
-       (concat
-        (mapconcat (lambda (ch) (format "LISTEN %s;" ch))
-                   dl-satan-patch-listener--channels " ")
-        "\n"))
       (setq dl-satan-patch-listener--proc proc)
       proc))))
 
@@ -191,7 +202,7 @@ When called interactively, also `message' the same."
                  "")))
     state))
 
-(when dl-satan-patch-listener-enabled
+(when (and (not noninteractive) dl-satan-patch-listener-enabled)
   (dl-satan-patch-listener-start))
 
 (provide 'dl-satan-patch-listener)

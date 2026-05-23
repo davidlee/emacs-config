@@ -14,10 +14,8 @@
 ;; ---------------------------------------------------------------------
 
 (defun dl-satan-patch-listener-test--notif-line (channel payload)
-  "Build a psql-shaped async notification line for CHANNEL + PAYLOAD."
-  (format
-   "Asynchronous notification \"%s\" with payload \"%s\" received from server process with PID 12345.\n"
-   channel payload))
+  "Build a `satan-attrd notify-stream' JSON line for CHANNEL + PAYLOAD."
+  (format "{\"channel\":\"%s\",\"payload\":\"%s\"}\n" channel payload))
 
 (defmacro dl-satan-patch-listener-test--with-mocked-deps
     (received-var &rest body)
