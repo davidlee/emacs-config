@@ -263,52 +263,76 @@ dormant')."
 Order matters only for the `:predicate' slot recorded on the
 verdict — the verdict itself is `\"positive\"' regardless.")
 
+(defun dl-satan-observer-classify--unknown (reason)
+  "Build an `:unknown' / `:low' verdict carrying REASON.
+Per outcome-semantics §3 + §4: `:unknown' always emits at `:low'
+confidence; `:predicates' is empty (no positive fired)."
+  (list :classification :unknown
+        :confidence :low
+        :predicates nil
+        :reason reason))
+
 (defun dl-satan-observer-classify (intervention motive)
   "Return a verdict plist for INTERVENTION against MOTIVE (§S5).
 Pure: no state writes.  Reads INTERVENTION's `:run_dir'/bundle.json
-for the baseline; assembles the after-state via
-`--after-state'.  Returns:
+for the baseline; assembles the after-state via `--after-state'.
 
-  (:verdict   \"positive\" | \"none\"
-   :predicate KEYWORD or nil   ; which P fired, when positive
-   :reason    KEYWORD or nil)  ; why none, when negative
+T1.5b PR 1 widens the legacy `(:verdict :predicate :reason)' shape
+to the outcome-semantics §2 vocabulary:
+
+  (:classification :worked | :unknown
+   :confidence     :low | :medium | :high
+   :predicates     (KEYWORD ...)   ; which P fired; nil when none
+   :reason         KEYWORD or nil) ; why `:unknown', when applicable
+
+Confidence derivation (§4): 1 predicate fires → `:medium'; ≥2 →
+`:high'; none → `:low' (always paired with `:unknown').
 
 Guard order:
-  1. A14 — MOTIVE marked `:dormant' → `:verdict \"none\"
-     :reason :motive_dormant'.
-  2. Window crosses calendar-day boundary →
-     `:reason :crosses_midnight' (v0 punts cross-day per §S5
-     watch-out — assemble-with-bounds would read tomorrow's
-     panopticon segment file).
+  1. A14 — MOTIVE marked `:dormant' → `:unknown :motive_dormant'.
+  2. Window crosses calendar-day boundary → `:crosses_midnight'.
+     (v0 punts cross-day per §S5 watch-out —
+     assemble-with-bounds would read tomorrow's panopticon
+     segment file.)
   3. Baseline absent (budget-denied / pre_spawn-denied runs lack
-     `bundle.json') → `:reason :no_baseline'.
-  4. P1 → P2 → P3 → P4 in `dl-satan-observer--predicates' order;
-     first fire wins.
-  5. None fire → `:verdict \"none\" :reason nil'.
+     `bundle.json') → `:no_baseline'.
+  4. Run all P1–P4; ≥1 fires → `:worked' + firers list.
+  5. None fire → `:unknown' with `:reason nil'.
+
+Step 4 replaces today's first-fire-wins semantics: PR 1 needs the
+full firers list to derive `:confidence :high' on multi-fire.
+PR 2 will refine step 5 into `:ignored' / `:neutral' based on
+intervention surface.
 
 Single-motive only (§S5 multi-motive correlation by overlap-count
 + file-order tiebreak lands in 5.7); callers iterate motives and
 combine themselves until then."
   (cond
    ((plist-get motive :dormant)
-    (list :verdict "none" :reason :motive_dormant))
+    (dl-satan-observer-classify--unknown :motive_dormant))
    ((dl-satan-observer--window-crosses-midnight-p intervention)
-    (list :verdict "none" :reason :crosses_midnight))
+    (dl-satan-observer-classify--unknown :crosses_midnight))
    (t
     (let ((baseline (dl-satan-observer--baseline-read
                      (plist-get intervention :run_dir))))
       (cond
        ((null baseline)
-        (list :verdict "none" :reason :no_baseline))
+        (dl-satan-observer-classify--unknown :no_baseline))
        (t
         (let* ((after (dl-satan-observer--after-state intervention motive))
-               (hit (cl-find-if
-                     (lambda (p)
-                       (funcall (cdr p) baseline after motive intervention))
-                     dl-satan-observer--predicates)))
-          (if hit
-              (list :verdict "positive" :predicate (car hit))
-            (list :verdict "none")))))))))
+               (firers
+                (delq nil
+                      (mapcar
+                       (lambda (p)
+                         (and (funcall (cdr p) baseline after motive intervention)
+                              (car p)))
+                       dl-satan-observer--predicates))))
+          (if firers
+              (list :classification :worked
+                    :confidence (if (> (length firers) 1) :high :medium)
+                    :predicates firers
+                    :reason nil)
+            (dl-satan-observer-classify--unknown nil)))))))))
 
 ;; ---------------------------------------------------------------------
 ;; Multi-motive correlation (Phase 5.7) — overlap + file-order tiebreak
@@ -364,20 +388,22 @@ Reads INTERVENTION's `:run_dir'/bundle.json for percept handles;
 intersects each motive's `:cue' against them; highest count wins,
 file-order breaks ties.
 
-Returns the 5.4 verdict plist augmented with `:motive_id':
-  (:motive_id STR :verdict STR :predicate KW-or-nil :reason KW-or-nil)
+Returns `dl-satan-observer-classify''s verdict shape (§2)
+augmented with `:motive_id'.
 
 When no motive overlaps with the intervention's percept handles
 (or motives list is empty / bundle missing percept handles),
-returns `(:motive_id nil :verdict \"none\" :reason :no_correlation)'
-— no work for `persist-verdict' to do beyond dedup (5.8 will
-still call mark-classified to record the result)."
+returns the §2 `:unknown' shape with `:reason :no_correlation' and
+`:motive_id' nil — `persist-verdict' still commits the verdict so
+the projection retires the pending row."
   (let* ((handles (dl-satan-observer--intervention-percept-handles
                    intervention))
          (ranked (dl-satan-observer--rank-motives-by-overlap motives handles)))
     (if (null ranked)
         (list :motive_id nil
-              :verdict "none"
+              :classification :unknown
+              :confidence :low
+              :predicates nil
               :reason :no_correlation)
       (let* ((winner (plist-get (car ranked) :motive))
              (verdict (dl-satan-observer-classify intervention winner)))

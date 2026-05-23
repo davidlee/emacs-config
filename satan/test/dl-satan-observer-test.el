@@ -188,12 +188,22 @@ predicate ert that drive `dl-satan-observer-classify' directly."
               (dl-satan-observer-test--stub-after-state ,after)))
      ,@body))
 
-(defun dl-satan-observer-test--positive-verdict (&optional predicate)
-  (list :verdict "positive"
-        :predicate (or predicate :git_head_changed)))
+(defun dl-satan-observer-test--positive-verdict (&optional predicate confidence)
+  "Build a T1.5b §2-shape `:worked' verdict for persist tests.
+PREDICATE defaults to `:git_head_changed' (the §S5 P2 firer).
+CONFIDENCE defaults to `:medium' (single-fire); pass `:high' to
+simulate a multi-predicate firing."
+  (list :classification :worked
+        :confidence (or confidence :medium)
+        :predicates (list (or predicate :git_head_changed))
+        :reason nil))
 
 (defun dl-satan-observer-test--negative-verdict (&optional reason)
-  (list :verdict "none" :reason reason))
+  "Build a T1.5b §2-shape `:unknown' verdict for persist tests."
+  (list :classification :unknown
+        :confidence :low
+        :predicates nil
+        :reason reason))
 
 (defun dl-satan-observer-test--full-motive (&rest overrides)
   "Motive plist with worked_count + cue for persist tests."
@@ -481,7 +491,9 @@ last_title that resolves under `:project_cwd'."
   (let* ((motive (dl-satan-observer-test--motive :dormant t))
          (iv (dl-satan-observer-test--intervention))
          (out (dl-satan-observer-classify iv motive)))
-    (should (equal "none" (plist-get out :verdict)))
+    (should (eq :unknown (plist-get out :classification)))
+    (should (eq :low (plist-get out :confidence)))
+    (should (null (plist-get out :predicates)))
     (should (eq :motive_dormant (plist-get out :reason)))))
 
 (ert-deftest dl-satan-observer/classify-midnight-crossing-skips ()
@@ -490,7 +502,8 @@ last_title that resolves under `:project_cwd'."
                         :intervention_emitted_at
                         "2026-05-22T23:50:00+1000"))
          (out (dl-satan-observer-classify iv motive)))
-    (should (equal "none" (plist-get out :verdict)))
+    (should (eq :unknown (plist-get out :classification)))
+    (should (eq :low (plist-get out :confidence)))
     (should (eq :crosses_midnight (plist-get out :reason)))))
 
 (ert-deftest dl-satan-observer/classify-no-baseline-yields-reason ()
@@ -502,7 +515,8 @@ last_title that resolves under `:project_cwd'."
             (iv (plist-put (dl-satan-observer-test--intervention)
                            :run_dir dir))
             (out (dl-satan-observer-classify iv motive)))
-       (should (equal "none" (plist-get out :verdict)))
+       (should (eq :unknown (plist-get out :classification)))
+       (should (eq :low (plist-get out :confidence)))
        (should (eq :no_baseline (plist-get out :reason)))))))
 
 (ert-deftest dl-satan-observer/classify-positive-via-git-head ()
@@ -528,10 +542,46 @@ last_title that resolves under `:project_cwd'."
         dir (list :percept (list :evidence_window baseline-ev)))
        (dl-satan-observer-test--with-stubbed-after-state after-ev
          (let ((out (dl-satan-observer-classify iv motive)))
-           (should (equal "positive" (plist-get out :verdict)))
-           (should (eq :git_head_changed (plist-get out :predicate)))))))))
+           (should (eq :worked (plist-get out :classification)))
+           (should (eq :medium (plist-get out :confidence)))
+           (should (equal '(:git_head_changed)
+                          (plist-get out :predicates)))
+           (should (null (plist-get out :reason)))))))))
 
-(ert-deftest dl-satan-observer/classify-no-fire-returns-none-no-reason ()
+(ert-deftest dl-satan-observer/classify-multi-fire-yields-high-confidence ()
+  "T1.5b PR 1 §4 — `:confidence :high' when ≥2 predicates fire.
+Here P2 (git head) and P3 (fs recent delta) both fire on the
+same scan."
+  (dl-satan-observer-test--in-tmp
+   (lambda (root)
+     (let* ((dir (expand-file-name "20260522T100000-tick-aaa" root))
+            (cwd dl-satan-observer-test--cwd)
+            (baseline-ev
+             (list :git_state (list :head_short "aaaaaaa" :remote "r")
+                   :fs_state (list :cwd cwd :recent_files (list "old.el"))
+                   :focus_segments nil :bough_recent nil))
+            (after-ev
+             (list :git_state (list :head_short "bbbbbbb" :remote "r")
+                   :fs_state (list :cwd cwd
+                                   :recent_files (list "old.el" "new.el"))
+                   :focus_segments nil :bough_recent nil))
+            (motive (dl-satan-observer-test--motive))
+            (iv (plist-put (dl-satan-observer-test--intervention)
+                           :run_dir dir)))
+       (dl-satan-observer-test--write-bundle
+        dir (list :percept (list :evidence_window baseline-ev)))
+       (dl-satan-observer-test--with-stubbed-after-state after-ev
+         (let ((out (dl-satan-observer-classify iv motive)))
+           (should (eq :worked (plist-get out :classification)))
+           (should (eq :high (plist-get out :confidence)))
+           ;; predicates order mirrors `dl-satan-observer--predicates'.
+           (should (equal '(:git_head_changed :fs_recent_delta)
+                          (plist-get out :predicates)))))))))
+
+(ert-deftest dl-satan-observer/classify-no-fire-yields-unknown ()
+  "PR 1: no predicate fire → `:unknown :low' with no reason.
+PR 2 will refine this branch into `:ignored' / `:neutral' based
+on the intervention's target surface."
   (dl-satan-observer-test--in-tmp
    (lambda (root)
      (let* ((dir (expand-file-name "20260522T100000-tick-aaa" root))
@@ -547,8 +597,9 @@ last_title that resolves under `:project_cwd'."
         dir (list :percept (list :evidence_window stable)))
        (dl-satan-observer-test--with-stubbed-after-state stable
          (let ((out (dl-satan-observer-classify iv motive)))
-           (should (equal "none" (plist-get out :verdict)))
-           (should (null (plist-get out :predicate)))
+           (should (eq :unknown (plist-get out :classification)))
+           (should (eq :low (plist-get out :confidence)))
+           (should (null (plist-get out :predicates)))
            (should (null (plist-get out :reason)))))))))
 
 (ert-deftest dl-satan-observer/classify-a12-fs-coincidence-does-not-fire ()
@@ -571,7 +622,7 @@ last_title that resolves under `:project_cwd'."
         dir (list :percept (list :evidence_window baseline-ev)))
        (dl-satan-observer-test--with-stubbed-after-state after-ev
          (let ((out (dl-satan-observer-classify iv motive)))
-           (should (equal "none" (plist-get out :verdict)))))))))
+           (should (eq :unknown (plist-get out :classification)))))))))
 
 ;; ---------------------------------------------------------------------
 ;; Phase 5.7 — multi-motive resolver (overlap + file-order tiebreak)
@@ -628,7 +679,8 @@ last_title that resolves under `:project_cwd'."
             (motives (list (list :id "m" :cue (list "app:firefox"))))
             (out (dl-satan-observer-classify-for-motives iv motives)))
        (should (null (plist-get out :motive_id)))
-       (should (equal "none" (plist-get out :verdict)))
+       (should (eq :unknown (plist-get out :classification)))
+       (should (eq :low (plist-get out :confidence)))
        (should (eq :no_correlation (plist-get out :reason)))))))
 
 (ert-deftest dl-satan-observer/classify-for-motives-no-overlap-no-correlation ()
@@ -641,6 +693,7 @@ last_title that resolves under `:project_cwd'."
                            :run_dir dir))
             (motives (list (list :id "m" :cue (list "app:firefox"))))
             (out (dl-satan-observer-classify-for-motives iv motives)))
+       (should (eq :unknown (plist-get out :classification)))
        (should (eq :no_correlation (plist-get out :reason)))))))
 
 (ert-deftest dl-satan-observer/classify-for-motives-picks-best-and-classifies ()
@@ -671,8 +724,10 @@ last_title that resolves under `:project_cwd'."
                  :focus_segments nil :bough_recent nil)
          (let ((out (dl-satan-observer-classify-for-motives iv motives)))
            (should (equal "strong" (plist-get out :motive_id)))
-           (should (equal "positive" (plist-get out :verdict)))
-           (should (eq :git_head_changed (plist-get out :predicate)))))))))
+           (should (eq :worked (plist-get out :classification)))
+           (should (eq :medium (plist-get out :confidence)))
+           (should (equal '(:git_head_changed)
+                          (plist-get out :predicates)))))))))
 
 (ert-deftest dl-satan-observer/classify-for-motives-tie-file-order ()
   (dl-satan-observer-test--in-tmp
@@ -689,7 +744,7 @@ last_title that resolves under `:project_cwd'."
                  :focus_segments nil :bough_recent nil)
          (let ((out (dl-satan-observer-classify-for-motives iv motives)))
            (should (equal "first" (plist-get out :motive_id)))
-           (should (equal "none" (plist-get out :verdict)))))))))
+           (should (eq :unknown (plist-get out :classification)))))))))
 
 ;; ---------------------------------------------------------------------
 ;; T7 PR 5 — read path: dl-satan-observer-pending wraps the projection
@@ -796,15 +851,18 @@ with classification=worked and confidence=medium (single-predicate)."
              (should (= 1 (plist-get out :new_worked_count)))
              (should (equal '(ok . "tid-stub")
                             (plist-get out :trace_result)))
-             ;; Trace metadata carries intervention_id + motive_id + predicate.
+             ;; Trace metadata carries intervention_id + motive_id +
+             ;; predicates (list, T1.5b PR 1 widening).
              (let ((args (car captured)))
                (let ((md (plist-get args :metadata-json)))
                  (should (equal iv-id (plist-get md :intervention_id)))
                  (should (equal run-id (plist-get md :run_id)))
                  (should (equal "docs-after-error"
                                 (plist-get md :motive_id)))
-                 (should (eq :git_head_changed
-                             (plist-get md :predicate)))))
+                 (should (equal '(:git_head_changed)
+                                (plist-get md :predicates)))
+                 (should (eq :worked (plist-get md :classification)))
+                 (should (eq :medium (plist-get md :confidence)))))
              ;; Projection now carries the worked outcome.
              (let* ((row (dl-satan-intervention-lookup iv-id))
                     (oc (plist-get row :outcome)))
@@ -954,7 +1012,8 @@ no longer surfaces the same intervention."
              (should (= 0 (plist-get out :positive)))
              (let ((v (car (plist-get out :verdicts))))
                (should (null (plist-get v :motive_id)))
-               (should (equal "none" (plist-get v :verdict)))
+               (should (eq :unknown (plist-get v :classification)))
+               (should (eq :low (plist-get v :confidence)))
                (should (eq :no_correlation (plist-get v :reason)))
                (should (equal "intervention.outcome_classified"
                               (plist-get v :classify_event)))))
@@ -1022,9 +1081,10 @@ and git head changed; motive footer bumps, projection holds worked."
                  (should (equal iv-id (plist-get v :intervention_id)))
                  (should (equal "docs-after-error"
                                 (plist-get v :motive_id)))
-                 (should (equal "positive" (plist-get v :verdict)))
-                 (should (eq :git_head_changed
-                             (plist-get v :predicate))))
+                 (should (eq :worked (plist-get v :classification)))
+                 (should (eq :medium (plist-get v :confidence)))
+                 (should (equal '(:git_head_changed)
+                                (plist-get v :predicates))))
                ;; Trace written.
                (should (= 1 (length captured)))
                ;; Motive footer bumped 0 → 1.

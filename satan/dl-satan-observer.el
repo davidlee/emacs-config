@@ -138,17 +138,22 @@ N)'."
           (funcall touch-fn (plist-get motive :id) new-count now motive-path))
          (handles (dl-satan-observer--motive-handle-rows motive))
          (iv-id (plist-get intervention :intervention_id))
+         (firers (plist-get verdict :predicates))
          (metadata
           (list :intervention_id iv-id
                 :run_id (plist-get intervention :run_id)
                 :motive_id (plist-get motive :id)
-                :predicate (plist-get verdict :predicate)
-                :verdict (plist-get verdict :verdict)))
-         (payload (format "%s: %s → motive %s via %s"
-                          (plist-get verdict :verdict)
+                :predicates firers
+                :classification (plist-get verdict :classification)
+                :confidence (plist-get verdict :confidence)))
+         (payload (format "worked: %s → motive %s via %s"
                           iv-id
                           (plist-get motive :id)
-                          (or (plist-get verdict :predicate) "_")))
+                          (if firers
+                              (mapconcat
+                               (lambda (kw) (substring (symbol-name kw) 1))
+                               firers ",")
+                            "_")))
          (trace-result
           (funcall mark-fn
                    :kind "observation"
@@ -183,55 +188,63 @@ N)'."
 (defun dl-satan-observer--verdict-classify-args (intervention verdict now)
   "Translate a classifier VERDICT plist into `intervention-classify' kwargs.
 
-PR 5 mapping (T1.5b widens this):
-  verdict `\"positive\"' → classification `\"worked\"', confidence `\"medium\"',
-                           evidence `(:source_events ()
-                                       :predicates (STR)
-                                       :motive_id STR-or-nil)'.
-  verdict `\"none\"'     → classification `\"unknown\"', confidence `\"low\"',
-                           evidence `(:source_events ()
-                                       :reason STR-or-nil)'.
+T1.5b PR 1 mapping (PR 2 widens `:unknown' into `:ignored' /
+`:neutral'; PR 3 wires the lifecycle so `:maturity' stops being
+hardcoded):
+
+  `:classification :worked'
+    → classification \"worked\", confidence per verdict's
+      `:confidence' (`:medium' or `:high'), evidence
+      `(:source_events () :predicates (STR ...)
+        :motive_id STR-or-:null)'.
+
+  `:classification :unknown'
+    → classification \"unknown\", confidence \"low\", evidence
+      `(:source_events () :reason STR-or-:null)'.
+
+Keywords cross the audit boundary as their lower-case names
+without the leading colon (per `outcome-semantics.md' §1).
 
 INTERVENTION is the classifier-shaped plist (after
 `--projection-to-classifier-plist').  NOW is the broker's frozen
 `:time_now' ISO string."
-  (let ((positive (equal "positive" (plist-get verdict :verdict))))
-    (if positive
-        (list :classification "worked"
-              :confidence "medium"
-              :evidence
-              (list :source_events '()
-                    :predicates
-                    (let ((p (dl-satan-observer--keyword-to-string
-                              (plist-get verdict :predicate))))
-                      (if p (list p) '()))
-                    :motive_id (or (plist-get verdict :motive_id) :null))
-              :maturity "mature"
-              :next-revisit-at (dl-satan-observer--next-revisit-iso intervention)
-              :source "auto"
-              :classified-at now)
-      (list :classification "unknown"
-            :confidence "low"
-            :evidence
-            (list :source_events '()
-                  :reason (or (dl-satan-observer--keyword-to-string
-                               (plist-get verdict :reason))
-                              :null))
-            :maturity "mature"
-            :next-revisit-at (dl-satan-observer--next-revisit-iso intervention)
-            :source "auto"
-            :classified-at now))))
+  (let* ((classification (plist-get verdict :classification))
+         (confidence (plist-get verdict :confidence))
+         (common (list :classification
+                       (dl-satan-observer--keyword-to-string classification)
+                       :confidence
+                       (dl-satan-observer--keyword-to-string confidence)
+                       :maturity "mature"
+                       :next-revisit-at
+                       (dl-satan-observer--next-revisit-iso intervention)
+                       :source "auto"
+                       :classified-at now))
+         (evidence
+          (pcase classification
+            (:worked
+             (list :source_events '()
+                   :predicates
+                   (mapcar #'dl-satan-observer--keyword-to-string
+                           (plist-get verdict :predicates))
+                   :motive_id (or (plist-get verdict :motive_id) :null)))
+            (_
+             (list :source_events '()
+                   :reason (or (dl-satan-observer--keyword-to-string
+                                (plist-get verdict :reason))
+                               :null))))))
+    (append common (list :evidence evidence))))
 
 (defun dl-satan-observer-persist-verdict
     (intervention motive verdict now &optional opts)
   "Persist VERDICT for INTERVENTION at NOW.
 
-When VERDICT is `:verdict \"positive\"' and MOTIVE is non-nil this credits
-the motive: text-level rewrite of MOTIVE's `:worked_count' +
-`:last_intervention_at' via `dl-satan-motive-touch-footer'; an
-observation/auto_rule trace via `dl-satan-memory-store-mark'.
+When VERDICT carries `:classification :worked' and MOTIVE is non-nil
+this credits the motive: text-level rewrite of MOTIVE's
+`:worked_count' + `:last_intervention_at' via
+`dl-satan-motive-touch-footer'; an observation / auto_rule trace via
+`dl-satan-memory-store-mark'.
 
-Every verdict — positive or otherwise — is committed through
+Every verdict — `:worked' or otherwise — is committed through
 `dl-satan-intervention-classify', which emits an `intervention.
 outcome_classified' (or `outcome_revised') audit event and UPSERTs
 the `satan_intervention_outcomes' row.  The classify call is LAST:
@@ -256,7 +269,7 @@ Returns plist:
    :trace_result     CONS-or-nil
    :new_worked_count N-or-nil)"
   (let* ((opts (or opts '()))
-         (positive (and motive (equal "positive" (plist-get verdict :verdict))))
+         (positive (and motive (eq :worked (plist-get verdict :classification))))
          (result (when positive
                    (dl-satan-observer--persist-positive
                     intervention motive verdict now opts)))
@@ -328,8 +341,9 @@ OPTS forwards to the lower-level helpers (used in tests):
 Returns a summary plist for audit visibility:
   (:processed N
    :positive  N
-   :verdicts  LIST-OF (:intervention_id :run_id :motive_id :verdict
-                       :predicate :reason :classify_event :error?))"
+   :verdicts  LIST-OF (:intervention_id :run_id :motive_id
+                       :classification :confidence :predicates
+                       :reason :classify_event :error?))"
   (let* ((opts (or opts '()))
          (now (or (plist-get run-ctx :time_now)
                   (format-time-string "%Y-%m-%dT%T%:z")))
@@ -363,13 +377,14 @@ Returns a summary plist for audit visibility:
                           (plist-get verdict :motive_id) motives))
                  (out (dl-satan-observer-persist-verdict
                        iv motive verdict now persist-opts)))
-            (when (equal "positive" (plist-get verdict :verdict))
+            (when (eq :worked (plist-get verdict :classification))
               (setq positive (1+ positive)))
             (push (list :intervention_id (plist-get iv :intervention_id)
                         :run_id (plist-get iv :run_id)
                         :motive_id (plist-get verdict :motive_id)
-                        :verdict (plist-get verdict :verdict)
-                        :predicate (plist-get verdict :predicate)
+                        :classification (plist-get verdict :classification)
+                        :confidence (plist-get verdict :confidence)
+                        :predicates (plist-get verdict :predicates)
                         :reason (plist-get verdict :reason)
                         :classify_event (plist-get out :classify_event))
                   verdicts))
