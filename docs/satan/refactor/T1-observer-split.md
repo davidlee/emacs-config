@@ -4,7 +4,7 @@ description: Split the outcome observer into a thin coordinator + a pure classif
 metadata:
   type: refactor-theme
   topic: satan-refactor
-  status: not-started
+  status: in-progress
   blocked_by: []
   updated_at: 2026-05-23
 ---
@@ -45,4 +45,4 @@ PR that creates `satan/dl-satan-observer-classify.el`, moves `classify` + `class
 
 ## PR log
 
-- [ ] PR 1: extract classifier + predicate registry → `dl-satan-observer-classify.el` — pending
+- [x] PR 1: extract classifier + predicate registry → `dl-satan-observer-classify.el` — merged 2026-05-23 (observer 859 → 503 LOC, classify 387 LOC, 126/126 tests green, byte-compile clean)

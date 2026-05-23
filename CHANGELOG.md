@@ -2,6 +2,10 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-23 — SATAN: T1 observer file-split (PR 1)
+
+- Extract pure classifier + §S5 P1–P4 predicate registry + classifier defcustoms (`window-mature-seconds`, `emacs-title-suffix-re`) into new `satan/dl-satan-observer-classify.el` (~387 LOC). `dl-satan-observer.el` retains coordinator concerns (scan, dedup, maturity gate, verdict persistence, broker entry) and `(require 'dl-satan-observer-classify)`s the leaf. Symbol names preserved verbatim — no test churn. Observer drops from 859 → 503 LOC; tests 126/126 green.
+
 ## 2026-05-23 — SATAN: T6 test monolith split
 
 - Extract `dl-satan-jsonl-test.el` (6 tests) from `satan/test/dl-satan-test.el` monolith.
