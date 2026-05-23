@@ -1,5 +1,7 @@
 # SATAN code review — refactor recommendations before attributes lands
 
+> **Note (2026-05-23):** Themes extracted into [`docs/satan/refactor/`](docs/satan/refactor/plan.md) as living per-theme briefs. This file preserved as the frozen point-in-time review.
+
 ## 1. Executive summary
 
 The downstream work tranche is `docs/satan/attributes.brief.md` — an 8-attribute metabolic layer in which Shame mechanically remembers wrongness and depends on observing negative outcomes of prior interventions. The current codebase has no first-class intervention record, a positive-only outcome observer, and a 157-LOC pre-spawn pipeline that accretes a new step every phase. Landing attributes on top of the current shape would encode lifecycle, audit timing, and error policy into an already-overloaded `broker--spawn` and an 859-LOC observer module whose name "intervention" today refers to a transcript-derived candidate, not a declared record. The themes below clear that path before attributes begins.

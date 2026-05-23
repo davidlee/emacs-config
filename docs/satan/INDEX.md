@@ -34,3 +34,4 @@ metadata:
 ## Tracking
 - [bough-gaps](bough-gaps.md) — bough CLI gaps surfaced by SATAN
 - [follow-ups](follow-ups.md) — durable cleanup / audit items deferred during perceptual-layer v0
+- [refactor/plan](refactor/plan.md) — pre-attributes refactor themes index (T1, T1.5, T2–T4, T6–T8)

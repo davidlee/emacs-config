@@ -2,6 +2,24 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-23 — SATAN: T6 test monolith split
+
+- Extract `dl-satan-jsonl-test.el` (6 tests) from `satan/test/dl-satan-test.el` monolith.
+
+## 2026-05-23 — SATAN: extract refactor themes into `docs/satan/refactor/`
+
+`CODE_REVIEW.md` (309 lines, 8 themes) was a frozen point-in-time
+review document — wrong shape for execution. Extracted each theme
+(T1, T1.5, T2, T3, T4, T6, T7, T8) into its own brief under
+`docs/satan/refactor/`, plus a living `plan.md` index with a status
+table, sequence, open questions, and the working procedure for
+flipping status as PRs land. Mirrors the existing
+`docs/satan/patch/{brief,plan}.md` precedent. `CODE_REVIEW.md` stays
+in place as the frozen artifact with a one-line pointer up top;
+`docs/satan/INDEX.md` gained a tracking link.
+
+No code changes.
+
 ## 2026-05-23 — SATAN: fix `dl-satan-jsonl-prepare` chokes on alists
 
 Live tick crashed inside `dl-satan-audit--write-json` with
