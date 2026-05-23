@@ -11,6 +11,7 @@
 (require 'dl-satan-broker)               ; defines `dl-satan-runs-dir' defcustom
 (require 'dl-satan-context)
 (require 'dl-satan-mode)                 ; self-edit-mech / self-edit-mind specs
+(require 'dl-satan-output)                ; self-edit output handler
 
 (defun dl-satan-context-test--mkrun (root run-id &optional final-summary tools failed)
   "Create a fake run directory under ROOT for RUN-ID.
@@ -412,6 +413,27 @@ rest under :dropped-files."
                             :source-roots (list tmp))))
             (should-error (dl-satan-context-self-edit spec)
                           :type 'error)))
+      (delete-directory tmp t))))
+
+;; ---------- self-edit output (relocated from monolith) ----------
+
+(ert-deftest dl-satan-self-edit/output-only-applies-proposal-stage ()
+  "Output handler auto-applies proposal.stage; everything else gets staged."
+  (let* ((tmp (make-temp-file "satan-se-out-" t))
+         (dl-satan-proposals-dir tmp)
+         (final '(:summary "x"
+                  :actions ((:type "proposal_stage"
+                             :args (:title "fix" :body "do the thing"))
+                            (:type "org_update_owned_block"
+                             :args (:target "today" :block "satan" :content "x")))))
+         (ctx (list :id "r1" :mode-name "self-edit-mech"
+                    :capabilities '(stage-proposal))))
+    (unwind-protect
+        (let ((p (dl-satan-output/self-edit final ctx)))
+          (should (equal (length (plist-get p :applied)) 1))
+          (should (equal (length (plist-get p :staged)) 1))
+          (should (equal (plist-get (car (plist-get p :applied)) :type)
+                         "proposal_stage")))
       (delete-directory tmp t))))
 
 (provide 'dl-satan-context-test)

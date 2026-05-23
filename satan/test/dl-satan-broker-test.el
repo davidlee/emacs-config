@@ -11,8 +11,23 @@
 (require 'dl-satan-jsonl)
 (require 'dl-satan-audit)
 (require 'dl-satan-broker)
-(require 'dl-satan-tools-notify)
 (require 'cl-macs)                       ; cl-letf used in tool-ctx tests
+(require 'dl-satan-mode)                 ; manifest-tools-shape resolves "morning"
+;; Tool modules must be loaded so each registers via `dl-satan-tool-register'
+;; before `dl-satan-broker--build-manifest' looks them up.
+(require 'dl-satan-tools-notify)
+(require 'dl-satan-tools-hippocampus)
+(require 'dl-satan-tools-inbox)
+(require 'dl-satan-tools-org)
+(require 'dl-satan-tools-agenda)
+(require 'dl-satan-tools-activity)
+(require 'dl-satan-tools-notes)
+(require 'dl-satan-tools-atsatan)
+(require 'dl-satan-tools-sway)
+(require 'dl-satan-tools-docs)
+(require 'dl-satan-tools-memory)
+(require 'dl-satan-tools-motive)
+(require 'dl-satan-tools-bough)
 
 ;; Cross-cutter: assertion subject is broker (action-failed audit
 ;; emission); secondary subject is the tools dispatcher's
@@ -313,6 +328,70 @@ read from the prepare-phase run_ctx plist."
          (frozen (plist-get run-ctx :time_now)))
     (sleep-for 0.05)
     (should (equal frozen (plist-get run-ctx :time_now)))))
+
+;; ---------- dl-satan-broker manifest assembly ----------
+
+(defun dl-satan-broker-test--with-tool-descriptions (alist body-fn)
+  "Run BODY-FN with `dl-satan-tools-descriptions-dir' bound to a tmp dir
+populated from ALIST `((NAME . CONTENT) …)'."
+  (let ((tmp (make-temp-file "satan-tools-" t)))
+    (unwind-protect
+        (let ((dl-satan-tools-descriptions-dir tmp))
+          (dolist (pair alist)
+            (with-temp-file (expand-file-name (concat (car pair) ".md") tmp)
+              (insert (cdr pair))))
+          (funcall body-fn))
+      (delete-directory tmp t))))
+
+(ert-deftest dl-satan-broker/manifest-tools-shape ()
+  "Manifest carries one JSON Schema per allowed tool plus satan_final."
+  (dl-satan-broker-test--with-tool-descriptions
+   '(("org_read_context"      . "Read a slice of the notes corpus.")
+     ("org_update_owned_block" . "Replace a SATAN-owned org block.")
+     ("proposal_stage"         . "Stage a proposal.")
+     ("notify_send"            . "Send a desktop notification.")
+     ("hippocampus_write"      . "Write to the hippocampus.")
+     ("inbox_append"           . "Append to the inbox.")
+     ("agenda_read"            . "Read the agenda.")
+     ("activity_read"          . "Read the user's recent activity.")
+     ("notes_recent"           . "List recently changed notes files.")
+     ("notes_at_satan_scan"    . "Scan @satan directives.")
+     ("sway_border_set"        . "Retint sway window borders.")
+     ("sway_border_reset"      . "Restore sway borders.")
+     ("bough_read"             . "Read from bough.")
+     ("memory_mark"            . "Mark a memory trace.")
+     ("memory_resonate"        . "Resonate against handles.")
+     ("memory_show_trace"      . "Show a memory trace.")
+     ("docs_list"              . "List doc chunks.")
+     ("docs_search"            . "Filter doc chunks.")
+     ("docs_read"              . "Read a doc chunk.")
+     ("motive_read"            . "Read motive entries.")
+     ("motive_replace"         . "Replace a motive entry.")
+     ("satan_final"            . "Terminate the run."))
+   (lambda ()
+     (let* ((mode (dl-satan-mode-resolve "morning"))
+            (manifest (dl-satan-broker--build-manifest mode "test-run"))
+            (tools (append (plist-get manifest :tools) nil))
+            (names (mapcar (lambda (t-) (plist-get (plist-get t- :function) :name))
+                           tools)))
+       (should (equal (plist-get manifest :run_id) "test-run"))
+       (should (member "org_read_context" names))
+       (should (member "org_update_owned_block" names))
+       (should (member "notify_send" names))
+       (should (member "hippocampus_write" names))
+       (should (member "inbox_append" names))
+       (should (member "agenda_read" names))
+       (should (member "activity_read" names))
+       (should (member "notes_recent" names))
+       (should (member "satan_final" names))
+       ;; Descriptions came from notes files, not elisp.
+       (let ((notify (cl-find "notify_send" tools
+                              :key (lambda (t-)
+                                     (plist-get (plist-get t- :function) :name))
+                              :test #'equal)))
+         (should (string-match-p
+                  "Send a desktop notification"
+                  (plist-get (plist-get notify :function) :description))))))))
 
 (provide 'dl-satan-broker-test)
 ;;; dl-satan-broker-test.el ends here
