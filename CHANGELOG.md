@@ -16,6 +16,8 @@ Notable changes to this Emacs config. Loosely dated; not versioned.
 - Merge 7 self-edit context-fn tests into existing `dl-satan-context-test.el`; helpers renamed to `dl-satan-context-test--*`. Shared helpers temporarily restored in monolith for two later sections still using them.
 - Append 4 JSON Schema builder tests to `dl-satan-tools-test.el`; `with-tool-descriptions` helper migrated.
 - Append 3 `dl-satan-broker--prepare` (Phase 0.1) tests to `dl-satan-broker-test.el`.
+- Append 9 broker tool-ctx + run-dir enumeration + announce-failure + locate-run-dir tests to `dl-satan-broker-test.el`.
+- Spin out `dl-secret-test.el` for the `scrub-op-refs-env` test (subject is dl-secret, not SATAN broker).
 
 ## 2026-05-23 — SATAN: extract refactor themes into `docs/satan/refactor/`
 
