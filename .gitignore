@@ -10,6 +10,8 @@ oauth2.*
 
 .emacs.desktop
 .emacs.desktop.lock
+/auto-save
+/auto-save-list
 
 HANDOVER.md
 
