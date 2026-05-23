@@ -170,5 +170,79 @@ the dispatcher, the handler stub records zero calls."
         (should (string-match-p "notify" (plist-get res :error)))
         (should (= 0 handler-called))))))
 
+;; ---------- JSON Schema builder ----------
+
+(defun dl-satan-tools-test--with-tool-descriptions (alist body-fn)
+  "Run BODY-FN with `dl-satan-tools-descriptions-dir' bound to a tmp dir
+populated from ALIST `((NAME . CONTENT) …)'."
+  (let ((tmp (make-temp-file "satan-tools-" t)))
+    (unwind-protect
+        (let ((dl-satan-tools-descriptions-dir tmp))
+          (dolist (pair alist)
+            (with-temp-file (expand-file-name (concat (car pair) ".md") tmp)
+              (insert (cdr pair))))
+          (funcall body-fn))
+      (delete-directory tmp t))))
+
+(ert-deftest dl-satan-tools/json-schema-from-notes ()
+  "json-schema dict pulls description from notes and shape from elisp."
+  (dl-satan-tools-test--with-tool-descriptions
+   '(("fake.tool" . "Stage a fake test thing.\n\nParams:\n- title: a string."))
+   (lambda ()
+     (let* ((spec (list :name "fake.tool"
+                        :risk 'low
+                        :args-schema '(title (:type string :required t)
+                                       count (:type integer :required nil))
+                        :modes '("morning")
+                        :handler (lambda (_a _c) (cons 'ok '()))))
+            (js (dl-satan-tool-json-schema spec))
+            (fn (plist-get js :function))
+            (params (plist-get fn :parameters))
+            (props (plist-get params :properties)))
+       (should (equal (plist-get js :type) "function"))
+       (should (equal (plist-get fn :name) "fake.tool"))
+       (should (string-match-p "Stage a fake" (plist-get fn :description)))
+       (should (equal (plist-get params :type) "object"))
+       (should (equal (plist-get (plist-get props :title) :type) "string"))
+       (should (equal (plist-get (plist-get props :count) :type) "integer"))
+       (should (equal (append (plist-get params :required) nil) '("title")))))))
+
+(ert-deftest dl-satan-tools/json-schema-includes-enum ()
+  (dl-satan-tools-test--with-tool-descriptions
+   '(("fake.enum" . "desc"))
+   (lambda ()
+     (let* ((spec (list :name "fake.enum"
+                        :args-schema '(scope (:type string :required t
+                                              :enum ("a" "b")))
+                        :handler #'ignore))
+            (js (dl-satan-tool-json-schema spec))
+            (scope (plist-get (plist-get
+                               (plist-get (plist-get js :function) :parameters)
+                               :properties)
+                              :scope)))
+       (should (equal (append (plist-get scope :enum) nil) '("a" "b")))))))
+
+(ert-deftest dl-satan-tools/missing-description-errors ()
+  "Missing tool description file signals; manifest build cannot proceed."
+  (let ((dl-satan-tools-descriptions-dir
+         (make-temp-file "satan-tools-empty-" t)))
+    (unwind-protect
+        (let ((spec (list :name "fake.absent"
+                          :args-schema nil
+                          :handler #'ignore)))
+          (should-error (dl-satan-tool-json-schema spec) :type 'error))
+      (delete-directory dl-satan-tools-descriptions-dir t))))
+
+(ert-deftest dl-satan-tools/final-schema-uses-notes-description ()
+  (dl-satan-tools-test--with-tool-descriptions
+   '(("satan_final" . "Terminate the run; describe what you did."))
+   (lambda ()
+     (let* ((js (dl-satan-tool-final-schema))
+            (fn (plist-get js :function))
+            (params (plist-get fn :parameters)))
+       (should (equal (plist-get fn :name) "satan_final"))
+       (should (string-match-p "Terminate" (plist-get fn :description)))
+       (should (equal (append (plist-get params :required) nil) '("summary")))))))
+
 (provide 'dl-satan-tools-test)
 ;;; dl-satan-tools-test.el ends here

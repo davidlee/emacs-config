@@ -53,4 +53,5 @@ PR that extracts `dl-satan-jsonl-test.el` from `test/dl-satan-test.el` L44–112
 - [x] PR 7: merge file-side hippocampus tests into `dl-satan-tools-hippocampus-test.el` — merged 2026-05-23
 - [x] PR 8: extract `dl-satan-tools-org-test.el` — merged 2026-05-23
 - [x] PR 9: merge self-edit context-fn tests into `dl-satan-context-test.el` — merged 2026-05-23
-- [ ] PR 10..N: remaining modules, one per PR — pending
+- [x] PR 10: append JSON Schema builder tests to `dl-satan-tools-test.el` — merged 2026-05-23
+- [ ] PR 11..N: remaining modules, one per PR — pending
