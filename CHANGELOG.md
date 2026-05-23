@@ -21,6 +21,7 @@ Notable changes to this Emacs config. Loosely dated; not versioned.
 - Append broker manifest-assembly test to `dl-satan-broker-test.el`; pull in tool-module requires so registrations land before the manifest build.
 - Append `self-edit/output` test to `dl-satan-context-test.el` alongside the other self-edit lifecycle tests.
 - Extract `dl-satan-tick-test.el` (7 tests).
+- Extract `dl-satan-tools-agenda-test.el` (7 tests + `with-gcalcli-stub` macro).
 
 ## 2026-05-23 — SATAN: extract refactor themes into `docs/satan/refactor/`
 
