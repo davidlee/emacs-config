@@ -46,4 +46,5 @@ PR that extracts `dl-satan-jsonl-test.el` from `test/dl-satan-test.el` L44–112
 
 - [x] PR 1: extract `dl-satan-jsonl-test.el` (proof of pattern) — merged 2026-05-23
 - [x] PR 2: extract `dl-satan-block-test.el` — merged 2026-05-23
-- [ ] PR 3..N: remaining modules, one per PR — pending
+- [x] PR 3: extract `dl-satan-tools-test.el` (schema validator subsection) — merged 2026-05-23
+- [ ] PR 4..N: remaining modules, one per PR — pending
