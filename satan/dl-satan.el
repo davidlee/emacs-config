@@ -33,6 +33,7 @@
 (require 'dl-satan-patch)
 (require 'dl-satan-tank)
 (require 'dl-satan-intervention)
+(require 'dl-satan-attribute-listener)   ; daemon → broker audit LISTEN (opt-in)
 
 ;; Hard-fail at load if any mode :tools entry has no matching registration.
 ;; Replaces the documentary-only `:modes' field that used to live on every

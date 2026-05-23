@@ -54,6 +54,7 @@
 (require 'dl-satan-memory-migrate)    ; psql runner + database defcustoms
 (require 'dl-satan-memory-grammar)    ; grammar-current-version (counter-memory)
 (require 'dl-satan-memory-store)      ; memory-store-mark (counter-memory)
+(require 'dl-satan-attribute)         ; outcome → satan_outcome_inbox enqueue
 
 ;; ---------- runs-dir resolution ----------
 
@@ -428,7 +429,9 @@ CTX is the broker-supplied tool-ctx (provides the audit handle).
 DB defaults to the migrate database.  Returns the audit event-name
 string on success; signals `user-error' on validator/DB failure."
   (dl-satan-intervention--ctx-required ctx)
-  (let* ((audit (plist-get ctx :audit))
+  (let* ((run-id (plist-get ctx :id))
+         (ts (plist-get ctx :time-now))
+         (audit (plist-get ctx :audit))
          (existing (dl-satan-intervention-lookup intervention-id db))
          (revision-p (and existing (plist-get existing :outcome)))
          (event (if revision-p
@@ -459,7 +462,35 @@ string on success; signals `user-error' on validator/DB failure."
      db (concat "BEGIN;\n"
                 (dl-satan-intervention--upsert-outcome-sql payload)
                 "\nCOMMIT;\n"))
+    (dl-satan-intervention--enqueue-attribute-outcome
+     run-id ts intervention-id classification confidence revision-p existing)
     event))
+
+(defun dl-satan-intervention--enqueue-attribute-outcome
+    (run-id ts intervention-id classification confidence revision-p existing)
+  "Forward the outcome to the attribute daemon via satan_outcome_inbox
+\(design-contract §17.3).  Failures are logged but do NOT signal — the
+broker's audit transcript + outcome projection write already succeeded,
+and a missed enqueue is recoverable via the operator pulling rows from
+the projection.  EXISTING is the prior `dl-satan-intervention-lookup'
+result; its `:intervention' slot carries the cue dimensions."
+  (let* ((iv (and existing (plist-get existing :intervention)))
+         (payload (dl-satan-attribute-build-outcome-payload
+                   :run-id run-id
+                   :ts ts
+                   :intervention-id intervention-id
+                   :classification classification
+                   :confidence confidence
+                   :intervention-kind (and iv (plist-get iv :kind))
+                   :related-motive-id (and iv (plist-get iv :related_motive_id))
+                   :cue-handles (and iv (plist-get iv :cue_handles))
+                   :is-revision revision-p
+                   :revises (and revision-p intervention-id))))
+    (pcase (dl-satan-attribute-enqueue-outcome payload)
+      (`(error . ,msg)
+       (message "dl-satan-intervention-classify: attribute enqueue failed: %s"
+                msg))
+      (_ nil))))
 
 ;; --- manual override writer (T1.5b PR 4) ---
 

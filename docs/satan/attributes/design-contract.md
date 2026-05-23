@@ -7,7 +7,7 @@ metadata:
   status: merged
   feeds: [T-attr-1b, T-attr-1c, T-attr-1d, T-attr-1e]
   authority: blocking
-  updated_at: 2026-05-23
+  updated_at: 2026-05-24
 ---
 
 # Attribute layer — design contract (T-attr-1a)
@@ -536,6 +536,7 @@ These do not block T-attr-1b. T-attr-1b may proceed with the §4 storage shapes 
 | 2026-05-23 | Round-2 review patches: §3 scope wording sharpened — explicit "never `pattern:<id>` or `hypothesis:<id>`"; §6 column-order reading note added (reviewer misread `contradicted hunger`); §6 footnotes 4+5 added — `worked doubt` interpreted as ambient inhibition (not pattern confidence); `contradicted hunger` held at 0 with rationale + revisit trigger; §6.2 revision algorithm rewritten — compute against actually-logged prior deltas via `evidence_json->>'intervention_id'` lookup; new §6.2.1 covers prior-delta tracking + the GIN/expression index for the migration; §12 dispatcher test surface adds revision-against-actual-prior-deltas + revision-chain cases. Reviewer finding #3 (`ignored` vs `neutral` classifier tightening) dispositioned as out-of-scope: lives in `outcome-semantics.md` (merged). | External review round 2. |
 | 2026-05-23 | Language-neutralising pass + locus pivot: §4/§4.2/§4.3/§5/§5.1/§9/§10/§11/§12 rewritten to remove elisp-specific implementation references (specific defcustom names, ert file names, `dl-satan-*` function names, `dl-satan-attribute-rebuild` driver name) and replace with broker / daemon role-language. Implementation locus split (daemon owns store + dispatcher + rebuild; broker owns capsule + audit-validator + transcript write + disable-switch UI) is now reflected throughout, not just in the theme doc amendment. New **§17 — Implementation locus + pinned daemon design choices** adopts (a) daemon-writes-table-then-RPCs-back, (b) PG queue + `pg_notify` event bus, (c) daemon-side disable check, all previously recorded only in `T-attr-1-attribute-layer.md` amendment + `extraction-policy.md`. Contract status stays **draft** for one more change-history row; flips to **merged** when T-attr-1b's first code-bearing PR lands. Forward references to broker UX (`my/satan-attribute-zero`, `my/satan-mark-intervention-*`) kept — they describe broker-side surfaces, not daemon implementation. | T-attr-1b scaffold pass (locus pivot landed in `satan-attrd` initial commit `d8a6a10`). |
 | 2026-05-23 | T-attr-1c pre-implementation pin: §17.4 adds **RPC error policy on validator reject** — daemon logs at `ERROR` and drops the event, no retry; rationale is that validator rejects are deterministic and a retry loop wastes cycles on contract violations. Transport errors remain retryable with backoff and live in the wiring PR. New §17.7 **Per-run Counter eviction** pins a bounded LRU at capacity 64 with `tracing::info!` on evict; defers explicit `intervention.run_ended` broker signal until the LRU heuristic is shown wrong. `metadata.status` flips **draft → merged** per the precedent set in T-attr-1a (contract becomes canonical with first code-bearing implementation PR; T-attr-1c is that PR for the daemon dispatcher). | T-attr-1c PR (dispatcher pre-flight; pin open questions before code lands). |
+| 2026-05-24 | T-attr-1c slice 2 wiring pre-flight pins: §17.3 expanded with the broker→daemon outcome payload v1.0 shape + `schema_version` major-rejection rule + queue table DDL (`satan_outcome_inbox`, `satan_audit_inbox`) + single-thread run-loop concurrency note (no `SELECT FOR UPDATE` in v1 because dispatch is serialized; flagged as a future multi-worker concern). §17.4 expanded with the **reject reply transport** — new `satan_audit_replies` table + `satan_audit_reply` channel; rejects-only (silence on accept). §17.1 expanded to name the broker-side LISTENer + sentinel-death `notifications-notify` defcustoms (`dl-satan-attribute-listener-enabled`, `dl-satan-attribute-listener-notify-app`). | T-attr-1c slice 2 (wiring PR — broker enqueue + daemon run loop + broker LISTENer). |
 
 ---
 
@@ -552,6 +553,7 @@ Owns:
 - `transcript.jsonl` writes. The broker is the audit-truth surface; the daemon RPCs `attribute.delta_applied` events back to the broker for transcript writing (§17.3).
 - The audit-record validator (`attribute.delta_applied` widening per §5.1). Validator runs at the transcript-write boundary, which the broker controls.
 - Intervention-outcome emission. The broker continues to mint `intervention.outcome_classified` / `intervention.outcome_revised` events from its existing outcome classifier; the daemon is a downstream consumer.
+- The broker-side LISTENer on the `satan_audit_inbox` channel (§17.3 → §17.4). Sentinel reports subprocess death via `notifications-notify` with critical urgency, mirroring `dl-satan-patch-listener.el`. Defcustom `dl-satan-attribute-listener-enabled` (default `t`) gates the LISTENer; `dl-satan-attribute-listener-notify-app` (default `"SATAN"`) names the desktop notification app field.
 - Any tool handlers exposed to the model (none in v1; the layer is read-only to the model via the capsule).
 
 ### 17.2 Daemon (Rust, `~/dev/satan-attrd/`)
@@ -572,6 +574,54 @@ Matches the existing `dl-satan-patch-listener.el` pattern (the patch runner uses
 
 Alternative considered + rejected: direct broker→daemon RPC on each outcome emit. Simpler but couples broker outcome-classification timing to daemon liveness; the queue absorbs daemon restarts and slow consumers without back-pressuring the broker's classify path.
 
+**Queue tables (daemon-owned migrations).**
+
+```sql
+CREATE TABLE satan_outcome_inbox (        -- broker → daemon
+  id           SERIAL PRIMARY KEY,
+  payload_json JSONB       NOT NULL,
+  enqueued_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  claimed_at   TIMESTAMPTZ
+);
+-- channel: satan_outcome_inbox; NOTIFY carries id as text.
+
+CREATE TABLE satan_audit_inbox (          -- daemon → broker
+  id           SERIAL PRIMARY KEY,
+  payload_json JSONB       NOT NULL,
+  enqueued_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  claimed_at   TIMESTAMPTZ
+);
+-- channel: satan_audit_inbox; NOTIFY carries id as text.
+```
+
+**Payload schema versioning.** Both `satan_outcome_inbox.payload_json` and `satan_audit_inbox.payload_json` carry a top-level `"schema_version": "<MAJOR>.<MINOR>"` string. Consumers reject payloads whose **major** does not match the consumer's compiled major. Minor differences are forward-compatible (consumer ignores unknown fields). V1 ships `"schema_version": "1.0"` on both directions. Daemon hard-codes the accepted major; broker validator rejects mismatched major with a clear error string per §17.4.
+
+**Broker → daemon outcome payload (v1.0):**
+
+```json
+{
+  "schema_version": "1.0",
+  "run_id":         "<UTC-mode-entropy>",
+  "ts":             "<ISO8601>",
+  "intervention_id":"<run-id>.iv<NNN>",
+  "classification": "worked|neutral|ignored|contradicted|harmful",
+  "confidence":     "low|medium|high",
+  "evidence": {
+    "intervention_kind":  "<kind>" | null,
+    "related_motive_id":  "<motive-id>" | null,
+    "cue_handles":        ["..."],
+    "related_trace_ids":  ["..."]
+  },
+  "is_revision":    false,
+  "revises":        "<prior outcome pointer>" | null,
+  "enabled":        true
+}
+```
+
+The daemon reads `(doubt, shame)` snapshot + the projection itself from the local `satan_attributes` table — those are not carried across the queue.
+
+**Concurrency / read consistency.** The daemon's run loop is single-threaded (`tokio` `current_thread` runtime) and processes inbox rows sequentially: one notify → claim row → snapshot read → dispatch → write events → next notify. Within one daemon process there is **no** inter-event interleave; the §6.3 pre-dispatch snapshot is naturally coherent without `SELECT FOR UPDATE`. A future multi-worker daemon MUST re-introduce row-level locks on the 8 `satan_attributes` rows for the duration of a dispatch — flag is in run-loop comment.
+
 ### 17.4 Audit transcript path — daemon writes table, then RPCs event back
 
 After the daemon writes the `satan_attribute_events` row (and, if not disabled, UPSERTs `satan_attributes`), it RPCs the constructed `attribute.delta_applied` event back to the broker. The broker validates the event against §5.1 and appends it to the current run's `transcript.jsonl`.
@@ -579,6 +629,27 @@ After the daemon writes the `satan_attribute_events` row (and, if not disabled, 
 Rationale: keeps the existing "transcript.jsonl is audit truth" convention intact (every audit event ultimately lands on the broker's transcript-write path, regardless of which daemon emitted it). Alternative considered + rejected: daemon writes table only, no transcript line. Simpler but diverges from convention — audit verification (`dl-satan-audit-verify-run`) would have to read both `transcript.jsonl` and the daemon's table to reconstruct events.
 
 **RPC error policy on validator reject.** If the broker rejects an `attribute.delta_applied` event at §5.1 validation, the daemon **logs at `ERROR` level and drops the event** — it does NOT retry. Validator rejects are deterministic (a coherent dispatcher cannot fix the payload by sending it again); a retry loop would burn cycles on a contract violation. The event row remains in `satan_attribute_events` (the projection write already happened or was skipped per §9), so `satan-attrd rebuild` continues to reflect the daemon's view; the divergence between table-truth and transcript-truth is the operator's signal that a daemon bug needs investigation. Daemon emits one `tracing::error!` per reject carrying the rejected payload + the broker's error string. Transport-layer errors (connection drop, queue unavailable) are distinct and DO get retried with backoff — that policy lives in the wiring PR.
+
+**Reject reply transport.** The daemon receives the broker's reject verdict on a dedicated channel + table (daemon-owned migration):
+
+```sql
+CREATE TABLE satan_audit_replies (        -- broker → daemon, rejects only
+  inbox_id   INTEGER PRIMARY KEY,         -- references the original satan_audit_inbox.id
+  ts         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  error_msg  TEXT NOT NULL
+);
+-- channel: satan_audit_reply; NOTIFY carries inbox_id as text.
+```
+
+Flow:
+
+1. Daemon enqueues `attribute.delta_applied` payload onto `satan_audit_inbox`, NOTIFY `satan_audit_inbox <id>`.
+2. Broker LISTENs `satan_audit_inbox`, claims the row, runs the §5.1 validator.
+3. On **accept**: broker appends to `transcript.jsonl`, DELETE FROM `satan_audit_inbox` WHERE id = $. No reply; silence is success.
+4. On **reject**: broker INSERTs `(inbox_id, error_msg)` into `satan_audit_replies`, DELETE FROM `satan_audit_inbox` WHERE id = $, NOTIFY `satan_audit_reply <inbox_id>`.
+5. Daemon LISTENs `satan_audit_reply`, SELECTs the row, emits `tracing::error!`, DELETE FROM `satan_audit_replies` WHERE inbox_id = $.
+
+Rejects-only-reply chosen because §17.4 only requires the daemon to log on reject; success acknowledgements would add noise without observability value.
 
 ### 17.5 Disable-switch placement — daemon-side check
 
