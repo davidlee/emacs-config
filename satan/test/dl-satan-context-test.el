@@ -520,5 +520,103 @@ rest under :dropped-files."
             (should (stringp (plist-get now :iso_date)))))
       (delete-directory tmp t))))
 
+;; ---------- framing rendering ----------
+
+(defun dl-satan-context-test--with-framing (body-fn)
+  "Run BODY-FN with `dl-satan-system-framing-file' bound to a temp file."
+  (let* ((tmp (make-temp-file "satan-framing-" t))
+         (path (expand-file-name "framing.txt" tmp)))
+    (unwind-protect
+        (let ((dl-satan-system-framing-file path))
+          (dl-satan-context-test--write-framing path)
+          (funcall body-fn))
+      (delete-directory tmp t))))
+
+(ert-deftest dl-satan-context/framing-parses-key-value ()
+  (let ((alist (dl-satan-context--parse-framing
+                "# comment\nnow=# Now\n\ntoday=# Today (raw)\nsources=# Source files\n")))
+    (should (equal (cdr (assoc "now" alist)) "# Now"))
+    (should (equal (cdr (assoc "today" alist)) "# Today (raw)"))
+    (should (equal (cdr (assoc "sources" alist)) "# Source files"))))
+
+(ert-deftest dl-satan-context/framing-missing-key-errors ()
+  (let* ((tmp (make-temp-file "satan-framing-" t))
+         (path (expand-file-name "framing.txt" tmp))
+         (dl-satan-system-framing-file path))
+    (unwind-protect
+        (progn
+          (with-temp-file path (insert "now=# Now\n"))
+          (should-error (dl-satan-context--framing) :type 'error))
+      (delete-directory tmp t))))
+
+(ert-deftest dl-satan-context/framing-missing-file-errors ()
+  (let ((dl-satan-system-framing-file "/tmp/satan-framing-does-not-exist-XYZ.txt"))
+    (should-error (dl-satan-context--framing) :type 'error)))
+
+(ert-deftest dl-satan-context/render-prompt-now-block ()
+  "Rendered prompt prepends scaffold+mode and emits a `# Now' block."
+  (dl-satan-context-test--with-framing
+   (lambda ()
+     (let* ((bundle (list :now (list :iso_date "2026-05-19"
+                                     :weekday "Tuesday"
+                                     :iso_week "2026-W21"
+                                     :time "09:00"
+                                     :tz_offset "+1000"
+                                     :tz_name "AEST")))
+            (out (dl-satan-context--render-prompt "ASSEMBLED" bundle)))
+       (should (string-prefix-p "ASSEMBLED\n\n# Now\n" out))
+       (should (string-match-p "^date: 2026-05-19 (Tuesday, ISO 2026-W21)$" out))
+       (should (string-match-p "^time: 09:00 \\+1000 AEST$" out))))))
+
+(ert-deftest dl-satan-context/render-prompt-skips-empty-now ()
+  "Missing or empty `:now' produces no `# Now' header."
+  (dl-satan-context-test--with-framing
+   (lambda ()
+     (let ((out (dl-satan-context--render-prompt "ASSEMBLED" '())))
+       (should (equal out "ASSEMBLED"))
+       (should-not (string-match-p "^# Now$" out))))))
+
+(ert-deftest dl-satan-context/render-prompt-today-block ()
+  "Non-empty `:today_text' produces a `# Today (raw)' block; empty skips."
+  (dl-satan-context-test--with-framing
+   (lambda ()
+     (let ((with-today (dl-satan-context--render-prompt
+                       "ASSEMBLED" (list :today_text "body text"))))
+       (should (string-match-p "# Today (raw)\nbody text" with-today)))
+     (let ((sans-today (dl-satan-context--render-prompt
+                       "ASSEMBLED" (list :today_text ""))))
+       (should-not (string-match-p "# Today (raw)" sans-today))))))
+
+(ert-deftest dl-satan-context/render-prompt-sources-block ()
+  "Each source emits a fenced `## PATH' subsection under `# Source files'."
+  (dl-satan-context-test--with-framing
+   (lambda ()
+     (let* ((sources (list (list :path "satan/x.el" :content "(provide 'x)")
+                           (list :path "satan/y.py" :content "x = 1")))
+            (out (dl-satan-context--render-prompt
+                  "ASSEMBLED" (list :sources sources))))
+       (should (string-match-p "^# Source files$" out))
+       (should (string-match-p "^## satan/x.el$" out))
+       (should (string-match-p "(provide 'x)" out))
+       (should (string-match-p "^## satan/y.py$" out))
+       (should (string-match-p "^x = 1$" out))))))
+
+(ert-deftest dl-satan-context/render-prompt-section-ordering ()
+  "Sections render in canonical order: Now, then Today, then Source files."
+  (dl-satan-context-test--with-framing
+   (lambda ()
+     (let* ((bundle (list :now (list :iso_date "2026-05-19" :time "09:00")
+                          :today_text "BODY"
+                          :sources (list (list :path "p" :content "c"))))
+            (out (dl-satan-context--render-prompt "A" bundle))
+            (i-now    (string-match "^# Now$"          out))
+            (i-today  (string-match "^# Today (raw)$"  out))
+            (i-source (string-match "^# Source files$" out)))
+       (should i-now)
+       (should i-today)
+       (should i-source)
+       (should (< i-now i-today))
+       (should (< i-today i-source))))))
+
 (provide 'dl-satan-context-test)
 ;;; dl-satan-context-test.el ends here

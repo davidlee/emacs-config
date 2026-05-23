@@ -66,4 +66,5 @@ PR that extracts `dl-satan-jsonl-test.el` from `test/dl-satan-test.el` L44–112
 - [x] PR 20: append broker pre_spawn threading (Phase 4.4) tests to `dl-satan-broker-test.el` — merged 2026-05-23
 - [x] PR 21: append audit pre_spawn (Phase 0.3) tests to `dl-satan-audit-test.el` — merged 2026-05-23
 - [x] PR 22: append context `:now` tests to `dl-satan-context-test.el` — merged 2026-05-23
-- [ ] PR 23..N: remaining modules, one per PR — pending
+- [x] PR 23: append context framing rendering tests to `dl-satan-context-test.el`; drop orphan helpers from monolith — merged 2026-05-23
+- [ ] PR 24: finalize — extract protocol, delete monolith, flip status — pending
