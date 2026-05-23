@@ -352,10 +352,51 @@ the classify API boundary
 Per outcome-semantics §2 invariants 1+2 those classifications
 are manual-only in v1; the auto-classifier must never construct
 them.  Signals on violation; returns VERDICT on success so the
-guard is composable in tail position."
-  (cl-check-type (plist-get verdict :classification)
-                 (member :worked :neutral :ignored :unknown))
+guard is composable in tail position.  Nil verdict (the `:stale'
+short-circuit from PR 3) passes through unchecked — there is no
+classification to assert against."
+  (when verdict
+    (cl-check-type (plist-get verdict :classification)
+                   (member :worked :neutral :ignored :unknown)))
   verdict)
+
+;; ---------------------------------------------------------------------
+;; Maturity (T1.5b PR 3) — outcome-semantics §3 + §6.1/§6.2 lifecycle
+;; ---------------------------------------------------------------------
+
+(defconst dl-satan-observer-stale-after-seconds (* 24 60 60)
+  "Seconds past the maturity window's close before a verdict freezes.
+Per outcome-semantics §6.2 the `:stale' cutoff is
+`created_at + outcome_window_minutes + 24h'; auto-classification is
+forbidden past this point.  Matches `dl-satan-observer-scan-window-
+hours' (today's 24h re-scan horizon) so a missed-tick day does not
+prematurely freeze the projection.")
+
+(defun dl-satan-observer--maturity-state (intervention now)
+  "Return `:pending' / `:mature' / `:stale' for INTERVENTION at NOW.
+INTERVENTION carries `:ts' (created_at, the intervention.created
+audit-event ts) and `:outcome_window_minutes' (declared per-kind by
+the handler at create time).  NOW is the broker's frozen
+`:time_now' ISO8601 string.
+
+Per outcome-semantics §3 + §6.2:
+
+  :pending — NOW < `:ts' + `:outcome_window_minutes'
+  :mature  — `:ts' + `:outcome_window_minutes' ≤ NOW
+             < `:ts' + `:outcome_window_minutes' + 24 h
+  :stale   — NOW ≥ that 24 h cutoff."
+  (let* ((ts (plist-get intervention :ts))
+         (mins (or (plist-get intervention :outcome_window_minutes) 0))
+         (created (date-to-time ts))
+         (mature-at (time-add created (seconds-to-time (* 60 mins))))
+         (stale-at (time-add mature-at
+                             (seconds-to-time
+                              dl-satan-observer-stale-after-seconds)))
+         (now-time (date-to-time now)))
+    (cond
+     ((time-less-p now-time mature-at) :pending)
+     ((time-less-p now-time stale-at) :mature)
+     (t :stale))))
 
 ;; ---------------------------------------------------------------------
 ;; Public entry
@@ -384,7 +425,7 @@ confidence; `:predicates' is empty (no positive fired)."
         :predicates nil
         :reason reason))
 
-(defun dl-satan-observer-classify (intervention motive)
+(defun dl-satan-observer-classify (intervention motive &optional now)
   "Return a verdict plist for INTERVENTION against MOTIVE (§S5).
 Pure: no state writes.  Reads INTERVENTION's `:run_dir'/bundle.json
 for the baseline; assembles the after-state via `--after-state'.
@@ -395,15 +436,38 @@ T1.5b PR 2 refines the §S5 vocabulary into outcome-semantics §2:
    :confidence     :low | :medium | :high
    :predicates     (KEYWORD ...)   ; which P fired; nil when none
    :reason         KEYWORD or nil  ; why `:unknown', when applicable
-   :evidence       PLIST)          ; PR 2: present on `:ignored' /
-                                   ; `:neutral'; absent on `:worked' /
-                                   ; `:unknown' (writer builds it).
+   :evidence       PLIST            ; PR 2: present on `:ignored' /
+                                    ; `:neutral'; absent on `:worked' /
+                                    ; `:unknown' (writer builds it).
+   :maturity       :pending | :mature)  ; PR 3 — see below.
 
 Confidence derivation (§4): 1 predicate fires → `:medium'; ≥2 →
 `:high'; none → `:low' (always paired with `:unknown' / `:ignored'
 / `:neutral').
 
-Guard order:
+T1.5b PR 3 wires the lifecycle (outcome-semantics §3, §6.1/§6.2).
+Optional NOW (broker's frozen `:time_now' ISO string) toggles the
+maturity guard:
+
+  NOW nil          → maturity check skipped; verdict carries
+                     `:maturity :mature' (test-fixture convenience —
+                     direct classify callers in ert don't need to
+                     thread NOW).
+
+  NOW + :pending   → returns `(:classification :unknown :confidence
+                     :low :predicates nil :reason :pending
+                     :maturity :pending)' without consulting
+                     predicates (§2 invariant 3).
+
+  NOW + :stale     → returns nil; the caller (observer-process)
+                     skips persist (§3 + §6.3 — auto re-pass forbidden
+                     past stale cutoff).  Production never lands here
+                     because `dl-satan-intervention-pending' excludes
+                     stale rows in SQL; the branch is defence-in-depth.
+
+  NOW + :mature    → existing flow below.
+
+Guard order (for `:mature' / NOW-nil):
   1. A14 — MOTIVE marked `:dormant' → `:unknown :motive_dormant'.
   2. Window crosses calendar-day boundary → `:crosses_midnight'.
      (v0 punts cross-day per §S5 watch-out —
@@ -426,33 +490,46 @@ The final verdict passes through
 `dl-satan-observer--assert-auto-classification' so auto callers
 can never construct `:harmful' / `:contradicted' (manual-only per
 §2 invariants 1+2)."
-  (dl-satan-observer--assert-auto-classification
-   (cond
-    ((plist-get motive :dormant)
-     (dl-satan-observer-classify--unknown :motive_dormant))
-    ((dl-satan-observer--window-crosses-midnight-p intervention)
-     (dl-satan-observer-classify--unknown :crosses_midnight))
-    (t
-     (let ((baseline (dl-satan-observer--baseline-read
-                      (plist-get intervention :run_dir))))
-       (cond
-        ((null baseline)
-         (dl-satan-observer-classify--unknown :no_baseline))
-        (t
-         (let* ((after (dl-satan-observer--after-state intervention motive))
-                (firers
-                 (delq nil
-                       (mapcar
-                        (lambda (p)
-                          (and (funcall (cdr p) baseline after motive intervention)
-                               (car p)))
-                        dl-satan-observer--predicates))))
-           (if firers
-               (list :classification :worked
-                     :confidence (if (> (length firers) 1) :high :medium)
-                     :predicates firers
-                     :reason nil)
-             (dl-satan-observer-classify-negative intervention after))))))))))
+  (let ((maturity (and now (dl-satan-observer--maturity-state intervention now))))
+    (pcase maturity
+      (:stale nil)
+      (:pending
+       (dl-satan-observer--assert-auto-classification
+        (list :classification :unknown
+              :confidence :low
+              :predicates nil
+              :reason :pending
+              :maturity :pending)))
+      (_
+       (dl-satan-observer--assert-auto-classification
+        (plist-put
+         (cond
+          ((plist-get motive :dormant)
+           (dl-satan-observer-classify--unknown :motive_dormant))
+          ((dl-satan-observer--window-crosses-midnight-p intervention)
+           (dl-satan-observer-classify--unknown :crosses_midnight))
+          (t
+           (let ((baseline (dl-satan-observer--baseline-read
+                            (plist-get intervention :run_dir))))
+             (cond
+              ((null baseline)
+               (dl-satan-observer-classify--unknown :no_baseline))
+              (t
+               (let* ((after (dl-satan-observer--after-state intervention motive))
+                      (firers
+                       (delq nil
+                             (mapcar
+                              (lambda (p)
+                                (and (funcall (cdr p) baseline after motive intervention)
+                                     (car p)))
+                              dl-satan-observer--predicates))))
+                 (if firers
+                     (list :classification :worked
+                           :confidence (if (> (length firers) 1) :high :medium)
+                           :predicates firers
+                           :reason nil)
+                   (dl-satan-observer-classify-negative intervention after))))))))
+         :maturity :mature))))))
 
 ;; ---------------------------------------------------------------------
 ;; Multi-motive correlation (Phase 5.7) — overlap + file-order tiebreak
@@ -502,7 +579,7 @@ Returns list of `(:motive PLIST :order INT :overlap INT)' plists."
                ((< oa ob) nil)
                (t (< (plist-get a :order) (plist-get b :order)))))))))
 
-(defun dl-satan-observer-classify-for-motives (intervention motives)
+(defun dl-satan-observer-classify-for-motives (intervention motives &optional now)
   "Pick the strongest-correlated motive in MOTIVES, then classify.
 Reads INTERVENTION's `:run_dir'/bundle.json for percept handles;
 intersects each motive's `:cue' against them; highest count wins,
@@ -515,20 +592,49 @@ When no motive overlaps with the intervention's percept handles
 (or motives list is empty / bundle missing percept handles),
 returns the §2 `:unknown' shape with `:reason :no_correlation' and
 `:motive_id' nil — `persist-verdict' still commits the verdict so
-the projection retires the pending row."
-  (let* ((handles (dl-satan-observer--intervention-percept-handles
-                   intervention))
-         (ranked (dl-satan-observer--rank-motives-by-overlap motives handles)))
-    (dl-satan-observer--assert-auto-classification
-     (if (null ranked)
-         (list :motive_id nil
-               :classification :unknown
-               :confidence :low
-               :predicates nil
-               :reason :no_correlation)
-       (let* ((winner (plist-get (car ranked) :motive))
-              (verdict (dl-satan-observer-classify intervention winner)))
-         (plist-put verdict :motive_id (plist-get winner :id)))))))
+the projection retires the pending row.
+
+T1.5b PR 3 — optional NOW (broker's frozen `:time_now') routes the
+maturity guard before any motive ranking or bundle read:
+
+  :stale   → returns nil; `observer-process' records `:skipped :stale'
+             and does not persist (production never reaches here
+             because `dl-satan-intervention-pending' excludes stale
+             rows in SQL; defensive only).
+  :pending → returns `(:motive_id nil :classification :unknown
+             :confidence :low :predicates nil :reason :pending
+             :maturity :pending)' without consulting motives
+             (§2 invariant 3).
+  :mature  → existing flow; classify gets the same NOW threaded
+             through so its internal maturity check agrees."
+  (let ((maturity (and now (dl-satan-observer--maturity-state intervention now))))
+    (pcase maturity
+      (:stale nil)
+      (:pending
+       (dl-satan-observer--assert-auto-classification
+        (list :motive_id nil
+              :classification :unknown
+              :confidence :low
+              :predicates nil
+              :reason :pending
+              :maturity :pending)))
+      (_
+       (let* ((handles (dl-satan-observer--intervention-percept-handles
+                        intervention))
+              (ranked (dl-satan-observer--rank-motives-by-overlap
+                       motives handles)))
+         (dl-satan-observer--assert-auto-classification
+          (if (null ranked)
+              (list :motive_id nil
+                    :classification :unknown
+                    :confidence :low
+                    :predicates nil
+                    :reason :no_correlation
+                    :maturity :mature)
+            (let* ((winner (plist-get (car ranked) :motive))
+                   (verdict (dl-satan-observer-classify
+                             intervention winner now)))
+              (plist-put verdict :motive_id (plist-get winner :id))))))))))
 
 (provide 'dl-satan-observer-classify)
 ;;; dl-satan-observer-classify.el ends here

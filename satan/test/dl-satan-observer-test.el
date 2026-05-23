@@ -1395,5 +1395,187 @@ and continues with the next."
                               (plist-get out :verdicts))))
                  (should (= 1 (length errors)))))))))))))
 
+;; ---------------------------------------------------------------------
+;; T1.5b PR 3 — lifecycle (maturity-state + pending/stale dispatch)
+;; ---------------------------------------------------------------------
+
+(defconst dl-satan-observer-test--pr3-iv-ts "2026-05-23T10:00:00+1000"
+  "Created-at for PR 3 maturity-state ert; default window 30 min so
+mature opens at 10:30 and stale opens at 10:30 + 24 h.")
+
+(defun dl-satan-observer-test--pr3-iv (&rest overrides)
+  "Classifier-shaped plist with PR 3 maturity slots (`:ts',
+`:outcome_window_minutes', `:intervention_emitted_at') seeded."
+  (let ((base (list :ts dl-satan-observer-test--pr3-iv-ts
+                    :outcome_window_minutes 30
+                    :intervention_emitted_at dl-satan-observer-test--pr3-iv-ts
+                    :kind "notify"
+                    :target_surface "sway-mainbar")))
+    (while overrides
+      (setq base (plist-put base (pop overrides) (pop overrides))))
+    base))
+
+(ert-deftest dl-satan-observer/maturity-state-pending ()
+  "PR 3 — NOW before window close → `:pending'."
+  (let ((iv (dl-satan-observer-test--pr3-iv)))
+    (should (eq :pending
+                (dl-satan-observer--maturity-state
+                 iv "2026-05-23T10:15:00+1000")))))
+
+(ert-deftest dl-satan-observer/maturity-state-mature-at-boundary ()
+  "PR 3 — NOW exactly at window close → `:mature' (inclusive lower
+bound, matching the pending SQL filter)."
+  (let ((iv (dl-satan-observer-test--pr3-iv)))
+    (should (eq :mature
+                (dl-satan-observer--maturity-state
+                 iv "2026-05-23T10:30:00+1000")))))
+
+(ert-deftest dl-satan-observer/maturity-state-mature-inside-24h ()
+  (let ((iv (dl-satan-observer-test--pr3-iv)))
+    (should (eq :mature
+                (dl-satan-observer--maturity-state
+                 iv "2026-05-24T10:00:00+1000")))))
+
+(ert-deftest dl-satan-observer/maturity-state-stale ()
+  "PR 3 — NOW past mature + 24 h → `:stale'."
+  (let ((iv (dl-satan-observer-test--pr3-iv)))
+    (should (eq :stale
+                (dl-satan-observer--maturity-state
+                 iv "2026-05-24T10:30:01+1000")))))
+
+(ert-deftest dl-satan-observer/classify-pending-short-circuits ()
+  "PR 3 — classify with NOW inside pending window emits
+`:unknown :pending'; does not consult motive / baseline / predicates."
+  (let* ((motive (dl-satan-observer-test--motive))
+         (iv (dl-satan-observer-test--pr3-iv))
+         (out (dl-satan-observer-classify
+               iv motive "2026-05-23T10:15:00+1000")))
+    (should (eq :unknown (plist-get out :classification)))
+    (should (eq :low (plist-get out :confidence)))
+    (should (eq :pending (plist-get out :reason)))
+    (should (eq :pending (plist-get out :maturity)))))
+
+(ert-deftest dl-satan-observer/classify-stale-returns-nil ()
+  "PR 3 — classify with NOW past `:stale' cutoff returns nil; caller
+skips persist (auto re-pass forbidden, §6.3)."
+  (let* ((motive (dl-satan-observer-test--motive))
+         (iv (dl-satan-observer-test--pr3-iv)))
+    (should (null (dl-satan-observer-classify
+                   iv motive "2026-05-24T10:30:01+1000")))))
+
+(ert-deftest dl-satan-observer/classify-mature-injects-maturity ()
+  "PR 3 — every `:mature' verdict carries `:maturity :mature'."
+  (dl-satan-observer-test--in-tmp
+   (lambda (root)
+     (let* ((dir (expand-file-name "20260523T100000-tick-aaa" root))
+            (baseline-ev
+             (list :git_state (list :head_short "aaaaaaa" :remote "r")
+                   :fs_state (list :cwd dl-satan-observer-test--cwd
+                                   :recent_files nil)
+                   :focus_segments nil :bough_recent nil))
+            (after-ev
+             (list :git_state (list :head_short "bbbbbbb" :remote "r")
+                   :fs_state (list :cwd dl-satan-observer-test--cwd
+                                   :recent_files nil)
+                   :focus_segments nil :bough_recent nil))
+            (motive (dl-satan-observer-test--motive))
+            (iv (plist-put (dl-satan-observer-test--pr3-iv)
+                           :run_dir dir)))
+       (dl-satan-observer-test--write-bundle
+        dir (list :percept (list :evidence_window baseline-ev)))
+       (dl-satan-observer-test--with-stubbed-after-state after-ev
+         (let ((out (dl-satan-observer-classify
+                     iv motive "2026-05-23T10:30:01+1000")))
+           (should (eq :worked (plist-get out :classification)))
+           (should (eq :mature (plist-get out :maturity)))))))))
+
+(ert-deftest dl-satan-observer/classify-without-now-defaults-mature ()
+  "PR 3 backward-compat — NOW omitted → maturity check skipped, verdict
+carries `:maturity :mature' so existing test fixtures keep working."
+  (dl-satan-observer-test--in-tmp
+   (lambda (root)
+     (let* ((dir (expand-file-name "20260522T100000-tick-aaa" root))
+            (_ (make-directory dir t))
+            (motive (dl-satan-observer-test--motive))
+            (iv (plist-put (dl-satan-observer-test--intervention)
+                           :run_dir dir))
+            (out (dl-satan-observer-classify iv motive)))
+       (should (eq :unknown (plist-get out :classification)))
+       (should (eq :mature (plist-get out :maturity)))))))
+
+(ert-deftest dl-satan-observer/classify-for-motives-pending-skips-bundle ()
+  "PR 3 — `:pending' in classify-for-motives returns the pending verdict
+shape with `:motive_id nil' and does not read bundle.json (an
+unreachable `:run_dir' would otherwise surface as nil handles, not
+an error — but the branch must not invoke the helper at all)."
+  (let* ((motives (list (list :id "m" :cue (list "app:firefox"))))
+         (iv (dl-satan-observer-test--pr3-iv :run_dir "/nonexistent"))
+         (out (dl-satan-observer-classify-for-motives
+               iv motives "2026-05-23T10:15:00+1000")))
+    (should (null (plist-get out :motive_id)))
+    (should (eq :unknown (plist-get out :classification)))
+    (should (eq :pending (plist-get out :reason)))
+    (should (eq :pending (plist-get out :maturity)))))
+
+(ert-deftest dl-satan-observer/classify-for-motives-stale-returns-nil ()
+  "PR 3 — `:stale' propagates through classify-for-motives as nil."
+  (let ((motives (list (list :id "m" :cue (list "app:firefox"))))
+        (iv (dl-satan-observer-test--pr3-iv :run_dir "/nonexistent")))
+    (should (null (dl-satan-observer-classify-for-motives
+                   iv motives "2026-05-24T10:30:01+1000")))))
+
+(ert-deftest dl-satan-observer/pending-sql-excludes-stale ()
+  "PR 3 — pending SQL skips rows past `created_at + window + 24 h'.
+Mint at 10:00 with the default 30-min window; NOW one minute past the
+24 h cutoff ⇒ row already stale ⇒ empty pending result."
+  (dl-satan-observer-test--with-db
+   (dl-satan-observer-test--in-tmp
+    (lambda (root)
+      (let* ((dl-satan-runs-dir root)
+             (stale-id "20260522T100000-morning-stalee")
+             (audit (dl-satan-observer-test--open-audit root stale-id))
+             (ctx (dl-satan-observer-test--build-ctx
+                   audit stale-id "2026-05-22T10:00:00+1000"))
+             (_ (dl-satan-observer-test--mint ctx))
+             (now "2026-05-23T10:31:00+1000"))
+        (should-not (dl-satan-intervention-pending now)))))))
+
+(ert-deftest dl-satan-observer/persist-pending-writes-maturity-pending ()
+  "PR 3 — verdict carrying `:maturity :pending' propagates to the
+projection as `maturity = \"pending\"' (per outcome-semantics §9 +
+audit validator §2 invariant 3)."
+  (dl-satan-observer-test--with-db
+   (dl-satan-observer-test--in-tmp
+    (lambda (root)
+      (let* ((dl-satan-runs-dir root)
+             (run-id "20260523T110000-morning-pndng1")
+             (audit (dl-satan-observer-test--open-audit root run-id))
+             (ctx (dl-satan-observer-test--build-ctx
+                   audit run-id "2026-05-23T11:00:00+1000"))
+             (iv-id (dl-satan-observer-test--mint ctx)))
+        (dl-satan-motive-test--with-tmp-file
+         mpath dl-satan-motive-test--well-formed
+         (dl-satan-observer-test--capture-mark _captured
+           (let* ((iv (car (dl-satan-observer-pending
+                            "2026-05-23T12:00:00+1000" root)))
+                  (motive (dl-satan-observer-test--full-motive))
+                  (verdict (list :classification :unknown
+                                 :confidence :low
+                                 :predicates nil
+                                 :reason :pending
+                                 :maturity :pending))
+                  (out (dl-satan-observer-persist-verdict
+                        iv motive verdict "2026-05-23T12:00:00+1000"
+                        (list :ctx ctx
+                              :motive-path mpath
+                              :memory-mark-fn mark-fn))))
+             (should (equal "intervention.outcome_classified"
+                            (plist-get out :classify_event)))
+             (let* ((row (dl-satan-intervention-lookup iv-id))
+                    (oc (plist-get row :outcome)))
+               (should oc)
+               (should (equal "unknown" (plist-get oc :classification)))
+               (should (equal "pending" (plist-get oc :maturity))))))))))))
+
 (provide 'dl-satan-observer-test)
 ;;; dl-satan-observer-test.el ends here

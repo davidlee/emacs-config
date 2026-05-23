@@ -580,9 +580,14 @@ returns nil for empty `{}'."
   "Return intervention plists whose maturity window ≤ NOW and that lack outcomes.
 NOW is an ISO8601 string accepted by PostgreSQL's `timestamptz' parser.
 Excludes interventions whose `created_at + outcome_window_minutes' is
-later than NOW, and excludes any intervention that already has an
-outcome row in the projection."
+later than NOW (still `:pending' — see outcome-semantics §3), whose
+`created_at + outcome_window_minutes + 24h' is earlier than NOW
+(already `:stale' — auto re-pass forbidden per §6.3, T1.5b PR 3),
+and any intervention that already has an outcome row in the
+projection."
   (let* ((db (or db dl-satan-memory-migrate-database))
+         (now-lit (concat (dl-satan-intervention--quote-text now)
+                          "::timestamptz"))
          (sql (concat
                "SELECT "
                (mapconcat
@@ -593,7 +598,9 @@ outcome row in the projection."
                "  ON i.id = o.intervention_id "
                "WHERE o.intervention_id IS NULL "
                "  AND i.ts + (i.outcome_window_minutes * INTERVAL '1 minute') "
-               "      <= " (dl-satan-intervention--quote-text now) "::timestamptz "
+               "      <= " now-lit " "
+               "  AND i.ts + (i.outcome_window_minutes * INTERVAL '1 minute') "
+               "      + INTERVAL '24 hours' >= " now-lit " "
                "ORDER BY i.ts ASC"))
          (result (dl-satan-memory-migrate--psql
                   db (list "-A" "-t" "-F" "|" "-c" sql))))

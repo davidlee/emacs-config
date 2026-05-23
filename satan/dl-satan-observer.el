@@ -188,8 +188,9 @@ N)'."
 (defun dl-satan-observer--verdict-classify-args (intervention verdict now)
   "Translate a classifier VERDICT plist into `intervention-classify' kwargs.
 
-T1.5b PR 2 mapping (PR 3 wires the lifecycle so `:maturity'
-stops being hardcoded):
+T1.5b PR 3 derives `:maturity' from the verdict (`:pending' or
+`:mature' — `:stale' is filtered earlier; `observer-process' never
+calls this helper for a nil/stale verdict).
 
   `:classification :worked'
     → classification \"worked\", confidence per verdict's
@@ -215,10 +216,10 @@ stops being hardcoded):
 
   `:classification :unknown'
     → classification \"unknown\", confidence \"low\", evidence
-      `(:source_events () :reason STR-or-:null)'.  Reached both
-      from the maturity / baseline / motive guards AND from
-      `classify-negative' when a user-facing intervention has
-      `ack_events_found > 0' (per outcome-semantics §1).
+      `(:source_events () :reason STR-or-:null)'.  Reached from the
+      maturity (`:pending'), baseline, motive, and midnight guards
+      AND from `classify-negative' when a user-facing intervention
+      has `ack_events_found > 0' (per outcome-semantics §1).
 
 Keywords cross the audit boundary as their lower-case names
 without the leading colon (per `outcome-semantics.md' §1).
@@ -233,7 +234,9 @@ INTERVENTION is the classifier-shaped plist (after
                        (dl-satan-observer--keyword-to-string classification)
                        :confidence
                        (dl-satan-observer--keyword-to-string confidence)
-                       :maturity "mature"
+                       :maturity
+                       (dl-satan-observer--keyword-to-string
+                        (or (plist-get verdict :maturity) :mature))
                        :next-revisit-at
                        (dl-satan-observer--next-revisit-iso intervention)
                        :source "auto"
@@ -361,6 +364,14 @@ captured into that entry's `:error' slot; the loop continues so
 one bad bundle (or postgres outage) does not block the rest of the
 tick.
 
+T1.5b PR 3 — the broker's frozen `:time_now' threads into
+`dl-satan-observer-classify-for-motives' to drive the maturity
+guard (outcome-semantics §3 + §6.1).  A nil verdict from the
+classifier means `:stale' (defence-in-depth — `dl-satan-
+intervention-pending' already excludes stale rows in SQL) and is
+captured in the summary with `:skipped :stale' rather than
+persisted.
+
 OPTS forwards to the lower-level helpers (used in tests):
   :motive-path        override `dl-satan-motive-file'
   :runs-dir           override `dl-satan-runs-dir'
@@ -375,7 +386,8 @@ Returns a summary plist for audit visibility:
    :positive  N
    :verdicts  LIST-OF (:intervention_id :run_id :motive_id
                        :classification :confidence :predicates
-                       :reason :classify_event :error?))"
+                       :reason :maturity :classify_event
+                       :skipped? :error?))"
   (let* ((opts (or opts '()))
          (now (or (plist-get run-ctx :time_now)
                   (format-time-string "%Y-%m-%dT%T%:z")))
@@ -404,22 +416,33 @@ Returns a summary plist for audit visibility:
          (positive 0))
     (dolist (iv pending)
       (condition-case err
-          (let* ((verdict (dl-satan-observer-classify-for-motives iv motives))
-                 (motive (dl-satan-observer--lookup-motive
-                          (plist-get verdict :motive_id) motives))
-                 (out (dl-satan-observer-persist-verdict
-                       iv motive verdict now persist-opts)))
-            (when (eq :worked (plist-get verdict :classification))
-              (setq positive (1+ positive)))
-            (push (list :intervention_id (plist-get iv :intervention_id)
-                        :run_id (plist-get iv :run_id)
-                        :motive_id (plist-get verdict :motive_id)
-                        :classification (plist-get verdict :classification)
-                        :confidence (plist-get verdict :confidence)
-                        :predicates (plist-get verdict :predicates)
-                        :reason (plist-get verdict :reason)
-                        :classify_event (plist-get out :classify_event))
-                  verdicts))
+          (let ((verdict (dl-satan-observer-classify-for-motives
+                          iv motives now)))
+            (cond
+             ((null verdict)
+              ;; PR 3 — `:stale' short-circuit from the classifier
+              ;; (defence-in-depth; pending SQL already excluded).
+              (push (list :intervention_id (plist-get iv :intervention_id)
+                          :run_id (plist-get iv :run_id)
+                          :skipped :stale)
+                    verdicts))
+             (t
+              (let* ((motive (dl-satan-observer--lookup-motive
+                              (plist-get verdict :motive_id) motives))
+                     (out (dl-satan-observer-persist-verdict
+                           iv motive verdict now persist-opts)))
+                (when (eq :worked (plist-get verdict :classification))
+                  (setq positive (1+ positive)))
+                (push (list :intervention_id (plist-get iv :intervention_id)
+                            :run_id (plist-get iv :run_id)
+                            :motive_id (plist-get verdict :motive_id)
+                            :classification (plist-get verdict :classification)
+                            :confidence (plist-get verdict :confidence)
+                            :predicates (plist-get verdict :predicates)
+                            :reason (plist-get verdict :reason)
+                            :maturity (plist-get verdict :maturity)
+                            :classify_event (plist-get out :classify_event))
+                      verdicts)))))
         (error
          (push (list :intervention_id (plist-get iv :intervention_id)
                      :run_id (plist-get iv :run_id)
