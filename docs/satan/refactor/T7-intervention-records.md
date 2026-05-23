@@ -4,8 +4,8 @@ description: First-class intervention records — audit events + Postgres projec
 metadata:
   type: refactor-theme
   topic: satan-refactor
-  status: not-started
-  blocked_by: [T1.5a]
+  status: in-progress
+  blocked_by: []
   updated_at: 2026-05-23
 ---
 
@@ -71,7 +71,7 @@ PR that adds the three audit event types to the validator + fixtures + `docs/sat
 
 ## PR log
 
-- [ ] PR 1: audit event types + validator + fixtures + protocol.md — pending
+- [x] PR 1: audit event types + validator + fixtures + protocol.md — merged 2026-05-23
 - [ ] PR 2: migration `0006_interventions.sql` + rebuild CLI — pending
 - [ ] PR 3: write API + first handler — pending
 - [ ] PR 4: remaining 4 handlers wired through — pending

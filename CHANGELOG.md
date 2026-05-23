@@ -2,6 +2,13 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-23 — SATAN: T7 PR 1 — intervention audit-event validator
+
+- Add three intervention audit-event names (`intervention.created`, `intervention.outcome_classified`, `intervention.outcome_revised`) + closed-set constants (`classifications`, `confidences`, `maturities`, `sources`, `severities`, `kinds`) + `dl-satan-audit-validate-intervention-event` / `dl-satan-audit-validate-intervention-stream` in `satan/dl-satan-audit.el`, encoding the §9 invariants from `outcome-semantics.md` (auto-harmful / auto-contradicted rejection; pending-maturity ⇒ unknown classification; replay-safety against the per-stream created-id set).
+- New `satan/test/dl-satan-audit-intervention-test.el` (32 ert) covers valid payloads (all kinds; null `related_motive_id`; pending + unknown; manual harmful/contradicted; revised supersedes prior) and rejections (auto harmful/contradicted; pending + non-unknown; missing prior `created`; missing/dangling `revises`; closed-set violations on every enum; non-integer + negative `outcome_window_minutes`).
+- `docs/satan/protocol.md` gains an "Audit log event types (broker-internal)" section documenting the three payload shapes verbatim; flags these as broker-internal (`:dir broker`) rather than membrane messages.
+- No callers wired yet — PR 2–5 land the projection, write API, handler cutovers, observer read-path swap.
+
 ## 2026-05-23 — SATAN: T1.5a outcome-semantics design contract (doc only)
 
 - Land `docs/satan/attributes/outcome-semantics.md` (~400 lines) defining the closed verdict vocabulary, lifecycle (`:pending|:mature|:stale`), verdict-plist shape, `:low|:medium|:high` confidence enum, per-classification evidence handles, clock + window semantics (broker `:time_now` frozen at `--prepare`; 24 h `:stale` cutoff), revision policy, manual-mark workflow (interactive command + `@satan-intervention-{harmful,contradicted}` notes directive), and the explicit list of what v1 refuses to infer (causal harm; auto contradiction; fine-grained ignored-vs-pending; cross-intervention amplification; continuous-float confidence).

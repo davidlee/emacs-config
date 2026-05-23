@@ -144,3 +144,86 @@ behaviour matches the fixture's `kind`.
 
 Adding a message type or required field means: update this doc, add
 fixtures, update both validators. Tests fail loudly otherwise.
+
+## Audit log event types (broker-internal)
+
+The events below do **not** cross the membrane. They are emitted
+broker-side into `runs/<run-id>/transcript.jsonl` via
+`dl-satan-audit-record` and consumed only by broker / observer code +
+the projection rebuild CLI. The harness never sees them. They share
+the file with membrane records (which carry `:dir in|out`) but use
+`:dir broker`.
+
+Authority for vocabulary: [`attributes/outcome-semantics.md`](attributes/outcome-semantics.md)
+§9. The validator (`dl-satan-audit-validate-intervention-event` in
+`satan/dl-satan-audit.el`) enforces this shape; tests live in
+`satan/test/dl-satan-audit-intervention-test.el`.
+
+Closed sets at the audit boundary are **strings**, not elisp keywords
+(`"worked"`, not `:worked`).
+
+### Event names
+
+- `intervention.created` — emitted by the user-facing tool handler
+  (`notify_send`, `inbox_append`, `proposal_stage`, `patch_job_create`,
+  `sway_border_set`) at tool-call time.
+- `intervention.outcome_classified` — emitted by the observer (auto)
+  or the manual-mark writer when the maturity gate fires.
+- `intervention.outcome_revised` — emitted when a later run updates a
+  prior classification (auto only while `:mature`; manual any time).
+
+### `intervention.created` payload
+
+| Field                    | Type                  | Notes |
+|--------------------------|-----------------------|-------|
+| `intervention_id`        | string                | Stable id; recommended schema `<run-id>.iv<N>` (e.g. `20260523T120000-morning-deadbe.iv03`). Per-run handler-assigned counter. |
+| `run_id`                 | string                | Owning run. |
+| `ts`                     | string (ISO8601)      | Emission time (broker `:time_now` frozen at `--prepare`). |
+| `mode`                   | string                | Owning mode (e.g. `"morning"`). |
+| `kind`                   | string (enum)         | One of `inbox`, `notify`, `visible_sign`, `proposal`, `patch_job`, `accuse`, `ask`, `delay`, `quarantine`, `surface`. |
+| `target_surface`         | string                | Concrete surface (e.g. `"sway-mainbar"`, `"/notes/inbox.org"`). |
+| `message`                | string                | User-visible payload. |
+| `related_motive_id`      | string \| null        | Motive tie or `null`. |
+| `cue_handles`            | array&lt;string&gt;   | Bough cue handles. May be empty. |
+| `expected_outcome`       | string                | Freeform; handler-picked counterfactual. |
+| `outcome_window_minutes` | non-negative integer  | Per-kind handler default per outcome-semantics §3.3. |
+| `severity`               | string (enum)         | `"low" | "medium" | "high"`. |
+
+### `intervention.outcome_classified` payload
+
+| Field             | Type                | Notes |
+|-------------------|---------------------|-------|
+| `intervention_id` | string              | Must match a prior `intervention.created` in the same audit stream (replay safety). |
+| `classification`  | string (enum)       | `worked | neutral | ignored | contradicted | harmful | unknown`. |
+| `confidence`      | string (enum)       | `low | medium | high`. |
+| `evidence`        | object              | Classification-specific (outcome-semantics §5). Required, may be `{}`. |
+| `maturity`        | string (enum)       | `pending | mature | stale`. `pending` ⇒ `classification` must be `unknown`. |
+| `next_revisit_at` | string (ISO8601)    | Window close. |
+| `source`          | string (enum)       | `auto | manual`. v1 rejects `auto` + (`harmful` | `contradicted`). |
+| `classified_at`   | string (ISO8601)    | Emission time. |
+| `marked_by`       | string \| null      | Optional; `"interactive-command" | "notes-directive" | null`. |
+| `notes`           | string \| null      | Optional manual-mark notes. |
+
+### `intervention.outcome_revised` payload
+
+Same as `outcome_classified` plus:
+
+| Field     | Type   | Notes |
+|-----------|--------|-------|
+| `revises` | string | `intervention_id` of the prior verdict this supersedes; must be a known `intervention.created`. |
+
+### Validator-rejected combinations
+
+The validator refuses any record where:
+
+1. `classification = "harmful"` and `source = "auto"`.
+2. `classification = "contradicted"` and `source = "auto"` (v1 only; v2 amendment may relax).
+3. `maturity = "pending"` and `classification ≠ "unknown"`.
+4. `intervention_id` references no prior `intervention.created` in the same stream.
+5. (on `outcome_revised`) `revises` is missing, or names no prior `intervention.created`.
+
+Adding an event kind or field means: update this section, extend
+`dl-satan-audit-intervention-events` (and the relevant closed-set
+constants), add ert coverage in
+`dl-satan-audit-intervention-test.el`, and amend
+`outcome-semantics.md` §9 if the contract itself moves.

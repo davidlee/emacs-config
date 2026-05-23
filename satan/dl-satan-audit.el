@@ -156,6 +156,217 @@ and knows about `final.json'."
           (cl-incf idx)))
       err))))
 
+;; ---------- Intervention event validators (T7) ----------
+;;
+;; Three audit-log event kinds carry intervention lifecycle per
+;; `docs/satan/attributes/outcome-semantics.md' §9.  The validator is
+;; broker-internal: it checks payloads before/after they hit
+;; `transcript.jsonl', and it checks replay-safety (every
+;; `outcome_classified' / `outcome_revised' references a previously-seen
+;; `created' in the same stream).
+;;
+;; Strings (not keywords) at the audit boundary: every closed-set
+;; value below is matched against its JSON-string form (e.g. "worked",
+;; not :worked).  Elisp keywords survive only inside the classifier.
+
+(defconst dl-satan-audit-intervention-events
+  '("intervention.created"
+    "intervention.outcome_classified"
+    "intervention.outcome_revised")
+  "Closed set of intervention audit-event names.")
+
+(defconst dl-satan-audit-intervention-classifications
+  '("worked" "neutral" "ignored" "contradicted" "harmful" "unknown")
+  "Closed set of outcome classifications (outcome-semantics §1).")
+
+(defconst dl-satan-audit-intervention-confidences
+  '("low" "medium" "high")
+  "Closed set of confidence levels (outcome-semantics §4).")
+
+(defconst dl-satan-audit-intervention-maturities
+  '("pending" "mature" "stale")
+  "Closed set of maturity states (outcome-semantics §3).")
+
+(defconst dl-satan-audit-intervention-sources
+  '("auto" "manual")
+  "Closed set of verdict-emit sources (outcome-semantics §2).")
+
+(defconst dl-satan-audit-intervention-severities
+  '("low" "medium" "high")
+  "Closed set of intervention severities (attributes.brief §3.1).")
+
+(defconst dl-satan-audit-intervention-kinds
+  '("inbox" "notify" "visible_sign" "proposal" "patch_job"
+    "accuse" "ask" "delay" "quarantine" "surface")
+  "Closed set of intervention kinds (attributes.brief §3.1).")
+
+(defun dl-satan-audit--iv-key-name (key)
+  (substring (symbol-name key) 1))
+
+(defun dl-satan-audit--iv-require-string (payload key)
+  "Require KEY in PAYLOAD to be a non-empty string."
+  (cond
+   ((not (plist-member payload key))
+    (format "missing required field: %s" (dl-satan-audit--iv-key-name key)))
+   ((not (stringp (plist-get payload key)))
+    (format "field %s must be string" (dl-satan-audit--iv-key-name key)))
+   ((string-empty-p (plist-get payload key))
+    (format "field %s must be non-empty" (dl-satan-audit--iv-key-name key)))))
+
+(defun dl-satan-audit--iv-require-enum (payload key allowed)
+  "Require KEY in PAYLOAD to be a string drawn from ALLOWED."
+  (or (dl-satan-audit--iv-require-string payload key)
+      (unless (member (plist-get payload key) allowed)
+        (format "field %s must be one of %S, got %S"
+                (dl-satan-audit--iv-key-name key)
+                allowed
+                (plist-get payload key)))))
+
+(defun dl-satan-audit--iv-require-integer (payload key)
+  "Require KEY in PAYLOAD to be a non-negative integer."
+  (cond
+   ((not (plist-member payload key))
+    (format "missing required field: %s" (dl-satan-audit--iv-key-name key)))
+   ((not (integerp (plist-get payload key)))
+    (format "field %s must be integer" (dl-satan-audit--iv-key-name key)))
+   ((< (plist-get payload key) 0)
+    (format "field %s must be non-negative" (dl-satan-audit--iv-key-name key)))))
+
+(defun dl-satan-audit--iv-require-array (payload key)
+  "Require KEY in PAYLOAD to be a JSON array (nil counts as the empty array)."
+  (cond
+   ((not (plist-member payload key))
+    (format "missing required field: %s" (dl-satan-audit--iv-key-name key)))
+   ((not (listp (plist-get payload key)))
+    (format "field %s must be array" (dl-satan-audit--iv-key-name key)))))
+
+(defun dl-satan-audit--iv-require-object (payload key)
+  "Require KEY in PAYLOAD to be a JSON object (plist; nil treated as `{}')."
+  (cond
+   ((not (plist-member payload key))
+    (format "missing required field: %s" (dl-satan-audit--iv-key-name key)))
+   (t
+    (let ((v (plist-get payload key)))
+      (cond
+       ((eq v :null) nil)
+       ((null v) nil)
+       ((and (consp v) (keywordp (car v))) nil)
+       (t (format "field %s must be object"
+                  (dl-satan-audit--iv-key-name key))))))))
+
+(defun dl-satan-audit--iv-require-string-or-null (payload key)
+  "Require KEY in PAYLOAD to be a string OR null (`:null'/nil)."
+  (cond
+   ((not (plist-member payload key))
+    (format "missing required field: %s" (dl-satan-audit--iv-key-name key)))
+   (t (let ((v (plist-get payload key)))
+        (unless (or (eq v :null) (null v) (stringp v))
+          (format "field %s must be string or null"
+                  (dl-satan-audit--iv-key-name key)))))))
+
+(defun dl-satan-audit--validate-intervention-created (payload)
+  "Validate an `intervention.created' payload.  Return error string or nil."
+  (or (dl-satan-audit--iv-require-string  payload :intervention_id)
+      (dl-satan-audit--iv-require-string  payload :run_id)
+      (dl-satan-audit--iv-require-string  payload :ts)
+      (dl-satan-audit--iv-require-string  payload :mode)
+      (dl-satan-audit--iv-require-enum    payload :kind
+                                          dl-satan-audit-intervention-kinds)
+      (dl-satan-audit--iv-require-string  payload :target_surface)
+      (dl-satan-audit--iv-require-string  payload :message)
+      (dl-satan-audit--iv-require-string-or-null payload :related_motive_id)
+      (dl-satan-audit--iv-require-array   payload :cue_handles)
+      (dl-satan-audit--iv-require-string  payload :expected_outcome)
+      (dl-satan-audit--iv-require-integer payload :outcome_window_minutes)
+      (dl-satan-audit--iv-require-enum    payload :severity
+                                          dl-satan-audit-intervention-severities)))
+
+(defun dl-satan-audit--validate-intervention-outcome (payload revision-p created-ids)
+  "Validate an outcome payload.  REVISION-P t for `outcome_revised'.
+CREATED-IDS hash-table (string → t) of seen intervention_ids.  Returns
+nil or an error string."
+  (or (dl-satan-audit--iv-require-string payload :intervention_id)
+      (let ((iid (plist-get payload :intervention_id)))
+        (unless (gethash iid created-ids)
+          (format "intervention_id %S has no prior intervention.created" iid)))
+      (dl-satan-audit--iv-require-enum payload :classification
+                                       dl-satan-audit-intervention-classifications)
+      (dl-satan-audit--iv-require-enum payload :confidence
+                                       dl-satan-audit-intervention-confidences)
+      (dl-satan-audit--iv-require-object payload :evidence)
+      (dl-satan-audit--iv-require-enum payload :maturity
+                                       dl-satan-audit-intervention-maturities)
+      (dl-satan-audit--iv-require-string payload :next_revisit_at)
+      (dl-satan-audit--iv-require-enum payload :source
+                                       dl-satan-audit-intervention-sources)
+      (dl-satan-audit--iv-require-string payload :classified_at)
+      ;; §9 invariants — classifications restricted to manual source in v1.
+      (let ((cls (plist-get payload :classification))
+            (src (plist-get payload :source)))
+        (cond
+         ((and (equal cls "harmful") (equal src "auto"))
+          "classification=harmful requires source=manual (outcome-semantics §2 invariant 1)")
+         ((and (equal cls "contradicted") (equal src "auto"))
+          "classification=contradicted requires source=manual in v1 (outcome-semantics §2 invariant 2)")))
+      ;; §2 invariant 3 — pending maturity ⇒ unknown classification.
+      (let ((mat (plist-get payload :maturity))
+            (cls (plist-get payload :classification)))
+        (when (and (equal mat "pending") (not (equal cls "unknown")))
+          "maturity=pending requires classification=unknown (outcome-semantics §2 invariant 3)"))
+      (when revision-p
+        (or (dl-satan-audit--iv-require-string payload :revises)
+            (let ((rid (plist-get payload :revises)))
+              (unless (gethash rid created-ids)
+                (format "revises %S has no prior intervention.created" rid)))))))
+
+(defun dl-satan-audit-validate-intervention-event (event payload created-ids)
+  "Validate an intervention audit-log EVENT with PAYLOAD.
+EVENT is the event-name string (one of
+`dl-satan-audit-intervention-events').  CREATED-IDS is a hash-table
+\(string → t) of intervention_ids whose `intervention.created' has
+appeared earlier in the same audit stream.  Returns nil on success or
+an error string on failure.  Does NOT mutate CREATED-IDS — the caller
+inserts after a successful `created' record."
+  (cond
+   ((not (stringp event)) "event must be string")
+   ((not (member event dl-satan-audit-intervention-events))
+    (format "unknown intervention event: %s" event))
+   ((not (or (null payload) (and (consp payload) (keywordp (car payload)))))
+    "payload must be plist")
+   (t
+    (pcase event
+      ("intervention.created"
+       (dl-satan-audit--validate-intervention-created payload))
+      ("intervention.outcome_classified"
+       (dl-satan-audit--validate-intervention-outcome payload nil created-ids))
+      ("intervention.outcome_revised"
+       (dl-satan-audit--validate-intervention-outcome payload t created-ids))))))
+
+(defun dl-satan-audit-validate-intervention-stream (events)
+  "Validate EVENTS (list of (EVENT . PAYLOAD) in transcript order).
+Maintains the created-ids set across the stream so replay-safety
+\(`outcome_classified' / `outcome_revised' must follow a `created' with
+the same `intervention_id') is enforced.
+
+Returns nil on success or `(:idx N :reason STR)' on the first failure."
+  (let ((created-ids (make-hash-table :test 'equal))
+        (idx 0)
+        (failure nil))
+    (catch 'done
+      (dolist (rec events)
+        (let* ((event (car rec))
+               (payload (cdr rec))
+               (err (dl-satan-audit-validate-intervention-event
+                     event payload created-ids)))
+          (if err
+              (progn
+                (setq failure (list :idx idx :reason err))
+                (throw 'done nil))
+            (when (equal event "intervention.created")
+              (puthash (plist-get payload :intervention_id) t created-ids))))
+        (cl-incf idx)))
+    failure))
+
 ;; ---------- Verifier ----------
 
 (defun dl-satan-audit--read-json (path)
