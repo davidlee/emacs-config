@@ -30,6 +30,7 @@ Notable changes to this Emacs config. Loosely dated; not versioned.
 - Append 7 audit pre_spawn (Phase 0.3) tests to `dl-satan-audit-test.el`; monolith drops its `write-run` helper as the audit sections are now consolidated.
 - Append 4 context `:now` tests (now-plist shape; motd/tick/self-edit bundles carry `:now`) to `dl-satan-context-test.el` — reuses the existing `dl-satan-context-test--write-framing` helper.
 - Append 8 context framing rendering tests (parse-framing, render-prompt now/today/sources/ordering) to `dl-satan-context-test.el`; helper renamed `dl-satan-context-test--with-framing`. Monolith drops the three orphan top-of-file helpers (`path-suffix-p`, `write-framing`, `with-tool-descriptions`).
+- Finalize: extract 5 wire-protocol tests into new `dl-satan-protocol-test.el`; cross-cutter the 2 actions-fixtures tests (subject = `dl-satan-audit-validate-actions`) to `dl-satan-audit-test.el`. Monolith `satan/test/dl-satan-test.el` deleted. T6 status flipped to `merged`. `docs/satan/governance.md` references updated.
 
 ## 2026-05-23 — SATAN: extract refactor themes into `docs/satan/refactor/`
 

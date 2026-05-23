@@ -4,7 +4,7 @@ description: Split the 2337-LOC test/dl-satan-test.el monolith into per-module t
 metadata:
   type: refactor-theme
   topic: satan-refactor
-  status: in-progress
+  status: merged
   blocked_by: []
   updated_at: 2026-05-23
 ---
@@ -67,4 +67,4 @@ PR that extracts `dl-satan-jsonl-test.el` from `test/dl-satan-test.el` L44–112
 - [x] PR 21: append audit pre_spawn (Phase 0.3) tests to `dl-satan-audit-test.el` — merged 2026-05-23
 - [x] PR 22: append context `:now` tests to `dl-satan-context-test.el` — merged 2026-05-23
 - [x] PR 23: append context framing rendering tests to `dl-satan-context-test.el`; drop orphan helpers from monolith — merged 2026-05-23
-- [ ] PR 24: finalize — extract protocol, delete monolith, flip status — pending
+- [x] PR 24: finalize — new `dl-satan-protocol-test.el` (5 wire tests); 2 actions-fixtures cross-cutters appended to `dl-satan-audit-test.el`; monolith deleted; T6 status → merged — merged 2026-05-23

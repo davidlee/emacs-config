@@ -417,7 +417,7 @@ justification):
 | `harness/runloop.py` | Turn loop + budget guard + tool-call dispatch. |
 | `harness/providers/{base,openrouter}.py`, `__init__.py` | `Provider` ABC, OpenAI-v1 adapter, `build_provider` registry. |
 | `harness/test_gptel_harness.py` | stdlib unittest cases (no network). |
-| `test/dl-satan-test.el` | Phase-3 unit ert. |
+| `test/dl-satan-MODULE-test.el` | Phase-3 unit ert, split per source module (T6). |
 | `test/dl-satan-integration-test.el` | 1 e2e ert (skips unless `SATAN_TEST_JAIL_BIN` set). |
 
 ### Wiring
@@ -553,9 +553,9 @@ JAIL=$(nix build .#satan-jailed-fake-harness --no-link --print-out-paths)/bin/ja
 mkdir -p /tmp/satan-smoke && SATAN_RUN_ID=smoke SATAN_RUN_DIR=/tmp/satan-smoke \
   "$JAIL" <<< '{"type":"tool_result","id":"c1","ok":true,"result":{"content":""}}'
 
-# Unit ert.
+# Unit ert (per-module — load any test file in satan/test/dl-satan-*-test.el).
 emacs --batch -L core -L lisp -L org -L satan -L satan/test \
-  -l satan/test/dl-satan-test.el -f ert-run-tests-batch-and-exit
+  -l satan/test/dl-satan-broker-test.el -f ert-run-tests-batch-and-exit
 
 # Integration ert (real bwrap jail, fake harness).
 JAIL=$(nix build .#satan-jailed-fake-harness --no-link --print-out-paths)/bin/jailed-satan-fake-harness

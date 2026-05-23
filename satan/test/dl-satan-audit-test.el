@@ -9,6 +9,7 @@
 (require 'cl-lib)
 (require 'json)
 (require 'dl-satan-audit)
+(require 'dl-satan-protocol)             ; fixtures shared with protocol-test
 
 (defun dl-satan-audit-test--write-run (dir final actions status &optional transcript)
   "Open a run under DIR, optionally record TRANSCRIPT entries, close with
@@ -164,6 +165,40 @@ the actions.json shape — usable from fixtures without touching disk."
   (should (stringp (dl-satan-audit-validate-actions
                     (list :applied () :staged () :rejected () :failed ()
                           :pre_spawn (list (list :cause "no_kind")))))))
+
+;; ---------- actions fixtures (cross-cutter: fixtures shipped with
+;; dl-satan-protocol; assertion subject is dl-satan-audit-validate-actions) ----------
+
+(ert-deftest dl-satan-audit/fixtures-actions-valid-pass ()
+  "Every actions fixture marked `valid' passes `validate-actions'.
+Asserts the suite is non-empty so a fixture-file regression is loud."
+  (let ((seen 0))
+    (dolist (entry (dl-satan-protocol-fixtures))
+      (when (and (string= (plist-get entry :kind) "valid")
+                 (string= (plist-get entry :direction) "actions"))
+        (cl-incf seen)
+        (let* ((msg (plist-get entry :message))
+               (err (dl-satan-audit-validate-actions msg))
+               (name (plist-get entry :name)))
+          (should (null err))
+          (ignore name))))
+    (should (> seen 0))))
+
+(ert-deftest dl-satan-audit/fixtures-actions-invalid-fail ()
+  "Every actions fixture marked `invalid' fails with the fixture's reason."
+  (let ((seen 0))
+    (dolist (entry (dl-satan-protocol-fixtures))
+      (when (and (string= (plist-get entry :kind) "invalid")
+                 (string= (plist-get entry :direction) "actions"))
+        (cl-incf seen)
+        (let* ((msg (plist-get entry :message))
+               (expected (plist-get entry :reason))
+               (name (plist-get entry :name))
+               (err (dl-satan-audit-validate-actions msg)))
+          (should (stringp err))
+          (should (equal expected err))
+          (ignore name))))
+    (should (> seen 0))))
 
 (ert-deftest dl-satan-audit/verifier-detects-orphan-call ()
   (let ((dir (make-temp-file "satan-run-" t)))
