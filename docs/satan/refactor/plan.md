@@ -33,7 +33,7 @@ T4 / T8 / T6   (quick wins + test split; parallel to all)
 | Theme | Title | Status | Blocked by | Next PR |
 |---|---|---|---|---|
 | [T1](T1-observer-split.md)         | Observer file-split                 | merged      | —              | done — classifier extracted to `dl-satan-observer-classify.el` |
-| [T1.5](T1.5-outcome-semantics.md)  | Outcome-semantics + neg classifier  | not-started | T1, T7 (1.5b)  | write `docs/satan/attributes/outcome-semantics.md` (1.5a) |
+| [T1.5](T1.5-outcome-semantics.md)  | Outcome-semantics + neg classifier  | in-progress | T1, T7 (1.5b)  | 1.5a doc landing; 1.5b blocked on T7 |
 | [T2](T2-pre-spawn.md)              | Pre-spawn pipeline extraction       | not-started | —              | `dl-satan-pre-spawn.el` + cutover |
 | [T3](T3-capsule-registry.md)       | Capsule render registry             | not-started | —              | (Path A gated; awaits rendering pain) |
 | [T4](T4-modes-field.md)            | Drop tool-spec `:modes` field       | merged      | —              | done — `:modes' stripped from all tool specs; `dl-satan-mode-check-tool-references' enforces |

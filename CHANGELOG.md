@@ -2,6 +2,12 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-23 — SATAN: T1.5a outcome-semantics design contract (doc only)
+
+- Land `docs/satan/attributes/outcome-semantics.md` (~400 lines) defining the closed verdict vocabulary, lifecycle (`:pending|:mature|:stale`), verdict-plist shape, `:low|:medium|:high` confidence enum, per-classification evidence handles, clock + window semantics (broker `:time_now` frozen at `--prepare`; 24 h `:stale` cutoff), revision policy, manual-mark workflow (interactive command + `@satan-intervention-{harmful,contradicted}` notes directive), and the explicit list of what v1 refuses to infer (causal harm; auto contradiction; fine-grained ignored-vs-pending; cross-intervention amplification; continuous-float confidence).
+- Encodes T7's three audit-event shapes (`intervention.created`, `intervention.outcome_classified`, `intervention.outcome_revised`) so T7 can land the validator + projection migration without re-litigating vocabulary.
+- T1.5b implementation (4 PRs in `dl-satan-observer-classify.el`) remains blocked on T7's substrate.
+
 ## 2026-05-23 — SATAN: T4 drop tool-spec `:modes` field
 
 - Delete the documentary `:modes` field from every `dl-satan-tool-register` site (22 occurrences across 14 tool modules) — the broker never consulted it; the mode-spec `:tools' allowlist (`dl-satan-mode.el`) is the only source of truth.
