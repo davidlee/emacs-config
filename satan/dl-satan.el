@@ -32,6 +32,7 @@
 (require 'dl-satan-tools-atsatan)
 (require 'dl-satan-patch)
 (require 'dl-satan-tank)
+(require 'dl-satan-intervention)
 
 ;; Hard-fail at load if any mode :tools entry has no matching registration.
 ;; Replaces the documentary-only `:modes' field that used to live on every

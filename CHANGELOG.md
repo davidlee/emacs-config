@@ -2,6 +2,14 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-23 — SATAN: T7 PR 2 — intervention projection + rebuild CLI
+
+- Add migration `satan/memory/migrations/0006_interventions.sql` — `satan_interventions` (immutable created-rows, kind/severity CHECK enums) + `satan_intervention_outcomes` (latest-verdict-per-intervention, `ON DELETE CASCADE`, CHECK constraints mirroring §9 invariants: auto-harmful, auto-contradicted, pending⇒unknown). Indexes on `(run_id)`, `(ts)`, `(mode, kind)`, `(classification)`, `(next_revisit_at)`, `(maturity)`.
+- Add `satan/dl-satan-intervention.el` with `dl-satan-intervention-rebuild` — walks every `transcript.jsonl` under `dl-satan-runs-dir`, filters intervention events, sorts by `(ts, run-id, seq)`, runs the audit-side stream validator, replays into the projection (TRUNCATE + INSERT/UPSERT) inside one `psql --single-transaction`. Idempotent: rebuild twice ⇒ byte-identical rows. Validation failure leaves the projection untouched. `my/satan-rebuild-interventions` interactive entrypoint; `satan/bin/satan-rebuild-interventions` shell wrapper invoking it via `emacsclient`.
+- New `satan/test/dl-satan-intervention-test.el` (8 ert) covers: nested-runs transcript discovery, intervention-event filtering against other transcript records, sort tiebreaker, empty-runs rebuild, end-to-end projection, idempotency across two runs (created + classified + revised + harmful-manual), head-reflects-latest-revision (`ignored` → `worked` via outcome_revised), validation refusal (outcome before created leaves projection untouched). DB-touching tests `skip-unless` `satan_memory_test` reachable.
+- Update `dl-satan-memory-migrate-test.el` (`applies-real-migrations`: 5→6) and the reset-db DROP lists in migrate + renormalize tests to include the new tables; no other call-site changes.
+- **Open question resolved (PR 2 decision):** rebuild is operator-demand only — `0006_interventions.sql` itself just creates the tables; population happens via the CLI. Matches the `dl-satan-memory-renormalize` precedent.
+
 ## 2026-05-23 — SATAN: T7 PR 1 — intervention audit-event validator
 
 - Add three intervention audit-event names (`intervention.created`, `intervention.outcome_classified`, `intervention.outcome_revised`) + closed-set constants (`classifications`, `confidences`, `maturities`, `sources`, `severities`, `kinds`) + `dl-satan-audit-validate-intervention-event` / `dl-satan-audit-validate-intervention-stream` in `satan/dl-satan-audit.el`, encoding the §9 invariants from `outcome-semantics.md` (auto-harmful / auto-contradicted rejection; pending-maturity ⇒ unknown classification; replay-safety against the per-stream created-id set).
