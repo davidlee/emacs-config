@@ -27,6 +27,7 @@ Notable changes to this Emacs config. Loosely dated; not versioned.
 - Extract `dl-satan-budget-test.el` (4 tests + transcript/usage helpers). The cross-cutter `dl-satan-broker/refuses-spawn-when-budget-exceeded` relocates to `dl-satan-broker-test.el` (assertion subject = broker; secondary = budget).
 - Start `dl-satan-audit-test.el` with the verifier-ok smoke test; the `write-run` helper migrates renamed (`dl-satan-audit-test--write-run`). Monolith retains its copy until the pre_spawn section extracts.
 - Append 2 broker pre_spawn threading (Phase 4.4) tests to `dl-satan-broker-test.el` — `finalize` copies `:pre_spawn` from prepare into `actions.json`, omitting the key when nil.
+- Append 7 audit pre_spawn (Phase 0.3) tests to `dl-satan-audit-test.el`; monolith drops its `write-run` helper as the audit sections are now consolidated.
 
 ## 2026-05-23 — SATAN: extract refactor themes into `docs/satan/refactor/`
 
