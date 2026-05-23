@@ -12,6 +12,7 @@ Notable changes to this Emacs config. Loosely dated; not versioned.
 - Extract `dl-satan-tools-notify-test.el` (4 tests).
 - Extract `dl-satan-tools-inbox-test.el` (4 tests).
 - Merge 3 file-side hippocampus tests into existing `dl-satan-tools-hippocampus-test.el`.
+- Extract `dl-satan-tools-org-test.el` (3 tests).
 
 ## 2026-05-23 — SATAN: extract refactor themes into `docs/satan/refactor/`
 

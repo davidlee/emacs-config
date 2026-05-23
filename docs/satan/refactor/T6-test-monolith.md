@@ -51,4 +51,5 @@ PR that extracts `dl-satan-jsonl-test.el` from `test/dl-satan-test.el` L44–112
 - [x] PR 5: extract `dl-satan-tools-notify-test.el` — merged 2026-05-23
 - [x] PR 6: extract `dl-satan-tools-inbox-test.el` — merged 2026-05-23
 - [x] PR 7: merge file-side hippocampus tests into `dl-satan-tools-hippocampus-test.el` — merged 2026-05-23
-- [ ] PR 8..N: remaining modules, one per PR — pending
+- [x] PR 8: extract `dl-satan-tools-org-test.el` — merged 2026-05-23
+- [ ] PR 9..N: remaining modules, one per PR — pending
