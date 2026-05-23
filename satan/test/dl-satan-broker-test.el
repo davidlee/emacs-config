@@ -74,5 +74,37 @@ record using the canonical failed-action plist shape
                 (should (string-match-p "notify" reason))))))
       (delete-directory dir t))))
 
+;; ---------- dl-satan-broker--prepare (Phase 0.1) ----------
+
+(ert-deftest dl-satan-broker/prepare-plist-shape ()
+  "prepare returns a run_ctx plist with frozen run_id + time_now and v0 placeholders."
+  (let* ((mode '(:name "tick-pulse"))
+         (run-ctx (dl-satan-broker--prepare mode)))
+    (should (stringp (plist-get run-ctx :run_id)))
+    (should (string-prefix-p (format-time-string "%Y%m%dT")
+                             (plist-get run-ctx :run_id)))
+    (should (stringp (plist-get run-ctx :time_now)))
+    (should (string-match-p
+             "\\`[0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\}T[0-9]\\{2\\}:[0-9]\\{2\\}:[0-9]\\{2\\}"
+             (plist-get run-ctx :time_now)))
+    (dolist (k '(:evidence :percept :sensor_status :pre_spawn :motive))
+      (should (plist-member run-ctx k))
+      (should (null (plist-get run-ctx k))))))
+
+(ert-deftest dl-satan-broker/prepare-mints-distinct-run-ids ()
+  "Two calls to prepare allocate different run_ids."
+  (let* ((mode '(:name "x"))
+         (a (dl-satan-broker--prepare mode))
+         (b (dl-satan-broker--prepare mode)))
+    (should-not (equal (plist-get a :run_id) (plist-get b :run_id)))))
+
+(ert-deftest dl-satan-broker/prepare-freezes-time-now-once ()
+  "time_now is computed exactly once at prepare; identical across reads."
+  (let* ((mode '(:name "tick-pulse"))
+         (run-ctx (dl-satan-broker--prepare mode))
+         (frozen (plist-get run-ctx :time_now)))
+    (sleep-for 0.05)
+    (should (equal frozen (plist-get run-ctx :time_now)))))
+
 (provide 'dl-satan-broker-test)
 ;;; dl-satan-broker-test.el ends here
