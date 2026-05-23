@@ -8,9 +8,11 @@
 
 (require 'ert)
 (require 'cl-lib)
+(require 'json)                          ; budget gating test parses final.json
 (require 'dl-satan-jsonl)
 (require 'dl-satan-audit)
 (require 'dl-satan-broker)
+(require 'dl-satan-budget)               ; budget gating cross-cutter
 (require 'cl-macs)                       ; cl-letf used in tool-ctx tests
 (require 'dl-satan-mode)                 ; manifest-tools-shape resolves "morning"
 ;; Tool modules must be loaded so each registers via `dl-satan-tool-register'
@@ -392,6 +394,90 @@ populated from ALIST `((NAME . CONTENT) …)'."
          (should (string-match-p
                   "Send a desktop notification"
                   (plist-get (plist-get notify :function) :description))))))))
+
+;; ---------- budget gating (cross-cutter: assertion subject = broker) ----------
+
+(defun dl-satan-broker-test--write-transcript (dir lines)
+  "Write LINES (each a plist) as transcript.jsonl under DIR."
+  (make-directory dir t)
+  (let ((coding-system-for-write 'utf-8))
+    (with-temp-file (expand-file-name "transcript.jsonl" dir)
+      (dolist (l lines)
+        (insert (json-serialize
+                 (dl-satan-jsonl-prepare l)
+                 :null-object :null :false-object :false))
+        (insert "\n")))))
+
+(defun dl-satan-broker-test--usage-record (tokens-total)
+  (list :ts "2026-05-19T09:00:00.000000+1000"
+        :dir "in" :event "log"
+        :payload (list :type "log" :kind "usage"
+                       :tokens_in 0 :tokens_out 0
+                       :tokens_total tokens-total)))
+
+(ert-deftest dl-satan-broker/refuses-spawn-when-budget-exceeded ()
+  "Pre-spawn gate writes status=budget-exceeded; no child spawned.
+Secondary subject: dl-satan-budget (gating policy)."
+  (dl-satan-broker-test--with-tool-descriptions
+   '(("org_read_context"       . "Read.")
+     ("org_update_owned_block" . "Write owned.")
+     ("proposal_stage"         . "Stage.")
+     ("notify_send"            . "Notify.")
+     ("hippocampus_write"      . "Write hippo.")
+     ("inbox_append"           . "Append inbox.")
+     ("agenda_read"            . "Read agenda.")
+     ("activity_read"          . "Read activity.")
+     ("notes_recent"           . "List recent notes.")
+     ("notes_at_satan_scan"    . "Scan @satan directives.")
+     ("sway_border_set"        . "Retint sway borders.")
+     ("sway_border_reset"      . "Restore sway borders.")
+     ("bough_read"             . "Read bough.")
+     ("memory_mark"            . "Mark.")
+     ("memory_resonate"        . "Resonate.")
+     ("memory_show_trace"      . "Show.")
+     ("docs_list"              . "List docs.")
+     ("docs_search"            . "Search docs.")
+     ("docs_read"              . "Read doc.")
+     ("motive_read"            . "Read motives.")
+     ("motive_replace"         . "Replace motive.")
+     ("satan_final"            . "Terminate."))
+   (lambda ()
+     (let* ((root (make-temp-file "satan-bud-broker-" t))
+            (now (current-time))
+            (today (format-time-string "%Y%m%dT" now))
+            (existing (expand-file-name (concat today "080000-x-eeeeee") root))
+            (dl-satan-runs-dir root)
+            (dl-satan-budget-daily-tokens 400000))
+       (unwind-protect
+           (progn
+             (dl-satan-broker-test--write-transcript
+              existing (list (dl-satan-broker-test--usage-record 500000)))
+             (let* ((run-id (dl-satan-broker-run "morning"))
+                    (dir (dl-satan-broker-locate-run-dir run-id root))
+                    (status-path (expand-file-name "status" dir)))
+               (should (string-suffix-p ".FAILED" dir))
+               (should (file-directory-p dir))
+               (should (file-readable-p status-path))
+               (should (equal (string-trim
+                               (with-temp-buffer
+                                 (insert-file-contents status-path)
+                                 (buffer-string)))
+                              "budget-exceeded"))
+               (should (eq (dl-satan-audit-verify-run dir) t))
+               (let* ((final-path (expand-file-name "final.json" dir))
+                      (final (with-temp-buffer
+                               (insert-file-contents final-path)
+                               (goto-char (point-min))
+                               (json-parse-buffer
+                                :object-type 'plist
+                                :array-type 'list
+                                :null-object :null
+                                :false-object :false))))
+                 (should (string-match-p "budget-exceeded"
+                                         (plist-get final :summary)))
+                 (should (equal (plist-get final :reason)
+                                "budget_daily_tokens")))))
+         (delete-directory root t))))))
 
 (provide 'dl-satan-broker-test)
 ;;; dl-satan-broker-test.el ends here
