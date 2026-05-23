@@ -50,4 +50,5 @@ PR that extracts `dl-satan-jsonl-test.el` from `test/dl-satan-test.el` L44–112
 - [x] PR 4: dispatch capability guard → `dl-satan-tools-test.el` + cross-cutter to `dl-satan-broker-test.el` — merged 2026-05-23
 - [x] PR 5: extract `dl-satan-tools-notify-test.el` — merged 2026-05-23
 - [x] PR 6: extract `dl-satan-tools-inbox-test.el` — merged 2026-05-23
-- [ ] PR 7..N: remaining modules, one per PR — pending
+- [x] PR 7: merge file-side hippocampus tests into `dl-satan-tools-hippocampus-test.el` — merged 2026-05-23
+- [ ] PR 8..N: remaining modules, one per PR — pending

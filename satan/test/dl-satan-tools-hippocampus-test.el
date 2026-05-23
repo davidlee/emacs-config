@@ -1,9 +1,9 @@
-;;; dl-satan-tools-hippocampus-test.el --- cross-ref tests -*- lexical-binding: t; -*-
+;;; dl-satan-tools-hippocampus-test.el --- file-side + cross-ref tests -*- lexical-binding: t; -*-
 
-;; Step 12: hippocampus_write emits an `auto_rule' observation trace
-;; cross-referencing the org file path (§10.7).  These tests focus on
-;; the cross-ref side-effect; the file-side hippocampus tests live in
-;; `dl-satan-test.el'.
+;; File-side `dl-satan-tool/hippocampus-write' tests (denote write,
+;; capability gate, schema gate) plus the Step 12 cross-ref tests:
+;; `hippocampus_write' emits an `auto_rule' observation trace
+;; cross-referencing the org file path (§10.7).
 ;;
 ;; DB-touching tests skip-unless the `satan_memory_test' DB is
 ;; reachable; they reset and re-apply migrations 0001-0004.
@@ -133,6 +133,46 @@ succeeds and the handler returns ok."
           (should (eq (car res) 'ok))
           (should (file-exists-p (plist-get (cdr res) :path))))
       (delete-directory tmp t))))
+
+;; ---------------------------------------------------------------------
+;; File-side tests (relocated from dl-satan-test.el monolith)
+;; ---------------------------------------------------------------------
+
+(ert-deftest dl-satan-hippocampus/handler-writes-denote-file ()
+  (let* ((tmp (make-temp-file "satan-hippo-" t))
+         (dl-satan-hippocampus-dir tmp))
+    (unwind-protect
+        (let* ((res (dl-satan-tool/hippocampus-write
+                     '(:title "Avoid mocking the DB"
+                       :body "User burned by a mock/prod divergence in 2026 Q1.")
+                     '(:id "r1" :mode-name "morning"
+                       :capabilities (hippocampus-write)))))
+          (should (eq (car res) 'ok))
+          (let* ((path (plist-get (cdr res) :path))
+                 (text (with-temp-buffer
+                         (insert-file-contents path)
+                         (buffer-string))))
+            (should (string-match-p "__satan_hippocampus\\.org$" path))
+            (should (string-match-p ":satan:hippocampus:" text))
+            (should (string-match-p ":RUN_ID: r1" text))
+            (should (string-match-p "mock/prod divergence" text))))
+      (delete-directory tmp t))))
+
+(ert-deftest dl-satan-hippocampus/capability-required ()
+  (let ((res (dl-satan-tool/hippocampus-write
+              '(:title "t" :body "b")
+              '(:capabilities (write-daily)))))
+    (should (eq (car res) 'error))
+    (should (string-match-p "hippocampus-write" (cdr res)))))
+
+(ert-deftest dl-satan-hippocampus/schema-required ()
+  (let ((res (dl-satan-tool-dispatch
+              '(:type "tool_call" :id "m1" :name "hippocampus_write"
+                :args (:body "x"))
+              '("hippocampus_write")
+              '(:capabilities (hippocampus-write)))))
+    (should (equal (plist-get res :ok) :false))
+    (should (string-match-p "title" (plist-get res :error)))))
 
 (provide 'dl-satan-tools-hippocampus-test)
 ;;; dl-satan-tools-hippocampus-test.el ends here

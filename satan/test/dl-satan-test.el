@@ -39,44 +39,6 @@
 (require 'dl-satan-tick)
 (require 'dl-satan-percept-test)
 
-;; ---------- dl-satan-tools-hippocampus ----------
-
-(ert-deftest dl-satan-hippocampus/handler-writes-denote-file ()
-  (let* ((tmp (make-temp-file "satan-hippo-" t))
-         (dl-satan-hippocampus-dir tmp))
-    (unwind-protect
-        (let* ((res (dl-satan-tool/hippocampus-write
-                     '(:title "Avoid mocking the DB"
-                       :body "User burned by a mock/prod divergence in 2026 Q1.")
-                     '(:id "r1" :mode-name "morning"
-                       :capabilities (hippocampus-write)))))
-          (should (eq (car res) 'ok))
-          (let* ((path (plist-get (cdr res) :path))
-                 (text (with-temp-buffer
-                         (insert-file-contents path)
-                         (buffer-string))))
-            (should (string-match-p "__satan_hippocampus\\.org$" path))
-            (should (string-match-p ":satan:hippocampus:" text))
-            (should (string-match-p ":RUN_ID: r1" text))
-            (should (string-match-p "mock/prod divergence" text))))
-      (delete-directory tmp t))))
-
-(ert-deftest dl-satan-hippocampus/capability-required ()
-  (let ((res (dl-satan-tool/hippocampus-write
-              '(:title "t" :body "b")
-              '(:capabilities (write-daily)))))
-    (should (eq (car res) 'error))
-    (should (string-match-p "hippocampus-write" (cdr res)))))
-
-(ert-deftest dl-satan-hippocampus/schema-required ()
-  (let ((res (dl-satan-tool-dispatch
-              '(:type "tool_call" :id "m1" :name "hippocampus_write"
-                :args (:body "x"))
-              '("hippocampus_write")
-              '(:capabilities (hippocampus-write)))))
-    (should (equal (plist-get res :ok) :false))
-    (should (string-match-p "title" (plist-get res :error)))))
-
 ;; ---------- dl-satan-tools-org ----------
 
 (ert-deftest dl-satan-org/update-owned-block-rejects-motd-target ()

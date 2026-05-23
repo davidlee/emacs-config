@@ -11,6 +11,7 @@ Notable changes to this Emacs config. Loosely dated; not versioned.
 - Start `dl-satan-broker-test.el` with capability-denial cross-cutter (1 test).
 - Extract `dl-satan-tools-notify-test.el` (4 tests).
 - Extract `dl-satan-tools-inbox-test.el` (4 tests).
+- Merge 3 file-side hippocampus tests into existing `dl-satan-tools-hippocampus-test.el`.
 
 ## 2026-05-23 — SATAN: extract refactor themes into `docs/satan/refactor/`
 
