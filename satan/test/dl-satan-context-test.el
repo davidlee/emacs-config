@@ -436,5 +436,89 @@ rest under :dropped-files."
                          "proposal_stage")))
       (delete-directory tmp t))))
 
+;; ---------- :now ----------
+
+(ert-deftest dl-satan-context/now-plist-shape ()
+  "`:now' carries every key the harness renders into `# Now'."
+  (let* ((time (encode-time 0 30 14 19 5 2026 nil nil 36000)) ; +1000
+         (now (dl-satan-context-now time)))
+    (should (stringp (plist-get now :iso_date)))
+    (should (string-match-p "\\`[0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\}\\'"
+                            (plist-get now :iso_date)))
+    (should (stringp (plist-get now :weekday)))
+    (should (string-match-p "\\`[0-9]\\{4\\}-W[0-9]\\{2\\}\\'"
+                            (plist-get now :iso_week)))
+    (should (string-match-p "\\`[0-9]\\{2\\}:[0-9]\\{2\\}\\'"
+                            (plist-get now :time)))
+    (should (stringp (plist-get now :tz_offset)))
+    (should (stringp (plist-get now :tz_name)))))
+
+(ert-deftest dl-satan-context/motd-bundle-carries-now ()
+  (let* ((tmp (make-temp-file "satan-now-" t))
+         (dl-satan-system-scaffold-file
+          (expand-file-name "system/scaffold.txt" tmp))
+         (dl-satan-system-framing-file
+          (expand-file-name "system/framing.txt" tmp)))
+    (unwind-protect
+        (progn
+          (make-directory (expand-file-name "system" tmp))
+          (make-directory (expand-file-name "prompts" tmp))
+          (with-temp-file dl-satan-system-scaffold-file (insert "S"))
+          (dl-satan-context-test--write-framing dl-satan-system-framing-file)
+          (with-temp-file (expand-file-name "prompts/p.txt" tmp) (insert "P"))
+          (let* ((spec (list :name "motd"
+                             :prompt-file (expand-file-name "prompts/p.txt" tmp)))
+                 (bundle (dl-satan-context-motd spec))
+                 (now (plist-get bundle :now)))
+            (should (plistp now))
+            (should (stringp (plist-get now :iso_date)))))
+      (delete-directory tmp t))))
+
+(ert-deftest dl-satan-context/tick-bundle-carries-now ()
+  (let* ((tmp (make-temp-file "satan-now-" t))
+         (dl-satan-system-scaffold-file
+          (expand-file-name "system/scaffold.txt" tmp))
+         (dl-satan-system-framing-file
+          (expand-file-name "system/framing.txt" tmp)))
+    (unwind-protect
+        (progn
+          (make-directory (expand-file-name "system" tmp))
+          (make-directory (expand-file-name "prompts" tmp))
+          (with-temp-file dl-satan-system-scaffold-file (insert "S"))
+          (dl-satan-context-test--write-framing dl-satan-system-framing-file)
+          (with-temp-file (expand-file-name "prompts/p.txt" tmp) (insert "P"))
+          (let* ((spec (list :name "tick-pulse"
+                             :prompt-file (expand-file-name "prompts/p.txt" tmp)))
+                 (bundle (dl-satan-context-tick spec))
+                 (now (plist-get bundle :now)))
+            (should (plistp now))
+            (should (stringp (plist-get now :time)))))
+      (delete-directory tmp t))))
+
+(ert-deftest dl-satan-context/self-edit-bundle-carries-now ()
+  (let* ((tmp (make-temp-file "satan-now-" t))
+         (root (expand-file-name "rrr" tmp))
+         (dl-satan-system-scaffold-file
+          (expand-file-name "system/scaffold.txt" tmp))
+         (dl-satan-system-framing-file
+          (expand-file-name "system/framing.txt" tmp)))
+    (unwind-protect
+        (progn
+          (make-directory root t)
+          (make-directory (expand-file-name "system" tmp))
+          (make-directory (expand-file-name "prompts" tmp))
+          (with-temp-file dl-satan-system-scaffold-file (insert "S"))
+          (dl-satan-context-test--write-framing dl-satan-system-framing-file)
+          (with-temp-file (expand-file-name "prompts/se.txt" tmp) (insert "P"))
+          (with-temp-file (expand-file-name "only.el" root) (insert "x"))
+          (let* ((spec (list :name "self-edit-mech"
+                             :prompt-file (expand-file-name "prompts/se.txt" tmp)
+                             :source-roots (list root)))
+                 (bundle (dl-satan-context-self-edit spec))
+                 (now (plist-get bundle :now)))
+            (should (plistp now))
+            (should (stringp (plist-get now :iso_date)))))
+      (delete-directory tmp t))))
+
 (provide 'dl-satan-context-test)
 ;;; dl-satan-context-test.el ends here
