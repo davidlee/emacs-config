@@ -246,6 +246,118 @@ dormant')."
           (plist-get after :bough_recent)))))
 
 ;; ---------------------------------------------------------------------
+;; Negative classification (T1.5b PR 2) — :ignored / :neutral
+;; ---------------------------------------------------------------------
+
+(defconst dl-satan-observer-user-facing-kinds
+  '("inbox" "notify" "visible_sign" "proposal" "patch_job"
+    "accuse" "ask" "surface")
+  "Intervention kinds whose target surface is a place the user is
+expected to notice the intervention.  When such an intervention
+matures without a positive predicate firing,
+`dl-satan-observer-classify-negative' emits `:ignored' (per
+outcome-semantics §1 + §10 step 2).  Anything outside this set is
+non-user-facing and becomes `:neutral'.
+
+Closed against `dl-satan-audit-intervention-kinds'; kinds not
+listed (`delay', `quarantine', plus any future
+`sway_border_set'-style non-user-facing kinds) fall into the
+`:neutral' bucket.")
+
+(defun dl-satan-observer--ack-checked-p (after)
+  "Return non-nil when AFTER's panopticon focus probe succeeded.
+The probe status is `ok' iff the focus-segments JSONL was
+readable across the maturity window; any other state
+(`absent', `error', etc.) means we cannot assert presence or
+absence of acknowledgement events."
+  (eq 'ok (plist-get (plist-get after :sensor_status) :focus)))
+
+(defun dl-satan-observer--count-ack-events (after intervention)
+  "Count AFTER's `:focus_segments' starting strictly after
+INTERVENTION's `:intervention_emitted_at'.  v1 does not narrow by
+surface — any focus segment in the window counts (per
+outcome-semantics §8 deferral).  A stricter surface mapping is a
+follow-up."
+  (let ((emitted (plist-get intervention :intervention_emitted_at)))
+    (cl-count-if
+     (lambda (seg)
+       (let ((start (plist-get seg :start_ts)))
+         (and (stringp start) (string< emitted start))))
+     (plist-get after :focus_segments))))
+
+(defun dl-satan-observer-classify-negative (intervention after)
+  "Decide `:ignored' / `:neutral' / `:unknown' for a no-fire scan.
+Called from `dl-satan-observer-classify' when all P1–P4 returned
+nil.  INTERVENTION is the classifier-shaped plist (carrying
+`:kind' + `:target_surface' from the projection row); AFTER is
+the assembled evidence window.
+
+Dispatch (outcome-semantics §1 + §10 step 2 + T1.5b PR 2 brief):
+
+  kind ∈ user-facing AND ack-events-found = 0
+    →  `:ignored' with `:confidence :medium' when ack was
+       checkable (focus probe ok), `:low' when not.
+
+  kind ∈ user-facing AND ack-events-found > 0
+    →  `:unknown :low :reason nil'.  Per §1, `:ignored' requires
+       no acknowledgement event in window; presence of any focus
+       segment after the emit puts the verdict outside the
+       contracted gate.  v1 punts here rather than extending the
+       `:unknown' reason vocabulary.
+
+  kind ∉ user-facing
+    →  `:neutral :low'.
+
+`:harmful' and `:contradicted' are not reachable from this
+function — they require manual marking (§7) and are rejected at
+the classify API boundary
+(`dl-satan-observer--assert-auto-classification')."
+  (let* ((kind (plist-get intervention :kind))
+         (surface (plist-get intervention :target_surface))
+         (user-facing (and (stringp kind)
+                           (member kind
+                                   dl-satan-observer-user-facing-kinds))))
+    (cond
+     (user-facing
+      (let* ((checked (dl-satan-observer--ack-checked-p after))
+             (found (if checked
+                        (dl-satan-observer--count-ack-events after intervention)
+                      0)))
+        (cond
+         ((and checked (> found 0))
+          (list :classification :unknown
+                :confidence :low
+                :predicates nil
+                :reason nil))
+         (t
+          (list :classification :ignored
+                :confidence (if checked :medium :low)
+                :predicates nil
+                :reason nil
+                :evidence (list :target-surface surface
+                                :no-positive-predicates t
+                                :acknowledgement-checked
+                                (if checked t :false)
+                                :ack-events-found found))))))
+     (t
+      (list :classification :neutral
+            :confidence :low
+            :predicates nil
+            :reason nil
+            :evidence (list :target-surface surface
+                            :no-positive-predicates t))))))
+
+(defun dl-satan-observer--assert-auto-classification (verdict)
+  "Guard the classify API boundary against `:harmful' / `:contradicted'.
+Per outcome-semantics §2 invariants 1+2 those classifications
+are manual-only in v1; the auto-classifier must never construct
+them.  Signals on violation; returns VERDICT on success so the
+guard is composable in tail position."
+  (cl-check-type (plist-get verdict :classification)
+                 (member :worked :neutral :ignored :unknown))
+  verdict)
+
+;; ---------------------------------------------------------------------
 ;; Public entry
 ;; ---------------------------------------------------------------------
 
@@ -277,16 +389,19 @@ confidence; `:predicates' is empty (no positive fired)."
 Pure: no state writes.  Reads INTERVENTION's `:run_dir'/bundle.json
 for the baseline; assembles the after-state via `--after-state'.
 
-T1.5b PR 1 widens the legacy `(:verdict :predicate :reason)' shape
-to the outcome-semantics §2 vocabulary:
+T1.5b PR 2 refines the §S5 vocabulary into outcome-semantics §2:
 
-  (:classification :worked | :unknown
+  (:classification :worked | :ignored | :neutral | :unknown
    :confidence     :low | :medium | :high
    :predicates     (KEYWORD ...)   ; which P fired; nil when none
-   :reason         KEYWORD or nil) ; why `:unknown', when applicable
+   :reason         KEYWORD or nil  ; why `:unknown', when applicable
+   :evidence       PLIST)          ; PR 2: present on `:ignored' /
+                                   ; `:neutral'; absent on `:worked' /
+                                   ; `:unknown' (writer builds it).
 
 Confidence derivation (§4): 1 predicate fires → `:medium'; ≥2 →
-`:high'; none → `:low' (always paired with `:unknown').
+`:high'; none → `:low' (always paired with `:unknown' / `:ignored'
+/ `:neutral').
 
 Guard order:
   1. A14 — MOTIVE marked `:dormant' → `:unknown :motive_dormant'.
@@ -297,42 +412,47 @@ Guard order:
   3. Baseline absent (budget-denied / pre_spawn-denied runs lack
      `bundle.json') → `:no_baseline'.
   4. Run all P1–P4; ≥1 fires → `:worked' + firers list.
-  5. None fire → `:unknown' with `:reason nil'.
-
-Step 4 replaces today's first-fire-wins semantics: PR 1 needs the
-full firers list to derive `:confidence :high' on multi-fire.
-PR 2 will refine step 5 into `:ignored' / `:neutral' based on
-intervention surface.
+  5. None fire → `dl-satan-observer-classify-negative' →
+     `:ignored' (user-facing kind) or `:neutral'
+     (non-user-facing); `:unknown :low :reason nil' when the
+     intervention's `:kind' is user-facing AND ≥1 focus segment
+     starts after the emit ts (per outcome-semantics §1).
 
 Single-motive only (§S5 multi-motive correlation by overlap-count
 + file-order tiebreak lands in 5.7); callers iterate motives and
-combine themselves until then."
-  (cond
-   ((plist-get motive :dormant)
-    (dl-satan-observer-classify--unknown :motive_dormant))
-   ((dl-satan-observer--window-crosses-midnight-p intervention)
-    (dl-satan-observer-classify--unknown :crosses_midnight))
-   (t
-    (let ((baseline (dl-satan-observer--baseline-read
-                     (plist-get intervention :run_dir))))
-      (cond
-       ((null baseline)
-        (dl-satan-observer-classify--unknown :no_baseline))
-       (t
-        (let* ((after (dl-satan-observer--after-state intervention motive))
-               (firers
-                (delq nil
-                      (mapcar
-                       (lambda (p)
-                         (and (funcall (cdr p) baseline after motive intervention)
-                              (car p)))
-                       dl-satan-observer--predicates))))
-          (if firers
-              (list :classification :worked
-                    :confidence (if (> (length firers) 1) :high :medium)
-                    :predicates firers
-                    :reason nil)
-            (dl-satan-observer-classify--unknown nil)))))))))
+combine themselves until then.
+
+The final verdict passes through
+`dl-satan-observer--assert-auto-classification' so auto callers
+can never construct `:harmful' / `:contradicted' (manual-only per
+§2 invariants 1+2)."
+  (dl-satan-observer--assert-auto-classification
+   (cond
+    ((plist-get motive :dormant)
+     (dl-satan-observer-classify--unknown :motive_dormant))
+    ((dl-satan-observer--window-crosses-midnight-p intervention)
+     (dl-satan-observer-classify--unknown :crosses_midnight))
+    (t
+     (let ((baseline (dl-satan-observer--baseline-read
+                      (plist-get intervention :run_dir))))
+       (cond
+        ((null baseline)
+         (dl-satan-observer-classify--unknown :no_baseline))
+        (t
+         (let* ((after (dl-satan-observer--after-state intervention motive))
+                (firers
+                 (delq nil
+                       (mapcar
+                        (lambda (p)
+                          (and (funcall (cdr p) baseline after motive intervention)
+                               (car p)))
+                        dl-satan-observer--predicates))))
+           (if firers
+               (list :classification :worked
+                     :confidence (if (> (length firers) 1) :high :medium)
+                     :predicates firers
+                     :reason nil)
+             (dl-satan-observer-classify-negative intervention after))))))))))
 
 ;; ---------------------------------------------------------------------
 ;; Multi-motive correlation (Phase 5.7) — overlap + file-order tiebreak
@@ -399,15 +519,16 @@ the projection retires the pending row."
   (let* ((handles (dl-satan-observer--intervention-percept-handles
                    intervention))
          (ranked (dl-satan-observer--rank-motives-by-overlap motives handles)))
-    (if (null ranked)
-        (list :motive_id nil
-              :classification :unknown
-              :confidence :low
-              :predicates nil
-              :reason :no_correlation)
-      (let* ((winner (plist-get (car ranked) :motive))
-             (verdict (dl-satan-observer-classify intervention winner)))
-        (plist-put verdict :motive_id (plist-get winner :id))))))
+    (dl-satan-observer--assert-auto-classification
+     (if (null ranked)
+         (list :motive_id nil
+               :classification :unknown
+               :confidence :low
+               :predicates nil
+               :reason :no_correlation)
+       (let* ((winner (plist-get (car ranked) :motive))
+              (verdict (dl-satan-observer-classify intervention winner)))
+         (plist-put verdict :motive_id (plist-get winner :id)))))))
 
 (provide 'dl-satan-observer-classify)
 ;;; dl-satan-observer-classify.el ends here

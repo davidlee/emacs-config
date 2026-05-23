@@ -188,9 +188,8 @@ N)'."
 (defun dl-satan-observer--verdict-classify-args (intervention verdict now)
   "Translate a classifier VERDICT plist into `intervention-classify' kwargs.
 
-T1.5b PR 1 mapping (PR 2 widens `:unknown' into `:ignored' /
-`:neutral'; PR 3 wires the lifecycle so `:maturity' stops being
-hardcoded):
+T1.5b PR 2 mapping (PR 3 wires the lifecycle so `:maturity'
+stops being hardcoded):
 
   `:classification :worked'
     → classification \"worked\", confidence per verdict's
@@ -198,9 +197,28 @@ hardcoded):
       `(:source_events () :predicates (STR ...)
         :motive_id STR-or-:null)'.
 
+  `:classification :ignored'
+    → classification \"ignored\", confidence \"low\" or
+      \"medium\", evidence
+      `(:source_events ()
+        :target_surface STR-or-:null
+        :no_positive_predicates t
+        :acknowledgement_checked t-or-:false
+        :ack_events_found N)' (kebab→snake from the verdict's
+      `:evidence' plist).
+
+  `:classification :neutral'
+    → classification \"neutral\", confidence \"low\", evidence
+      `(:source_events ()
+        :target_surface STR-or-:null
+        :no_positive_predicates t)'.
+
   `:classification :unknown'
     → classification \"unknown\", confidence \"low\", evidence
-      `(:source_events () :reason STR-or-:null)'.
+      `(:source_events () :reason STR-or-:null)'.  Reached both
+      from the maturity / baseline / motive guards AND from
+      `classify-negative' when a user-facing intervention has
+      `ack_events_found > 0' (per outcome-semantics §1).
 
 Keywords cross the audit boundary as their lower-case names
 without the leading colon (per `outcome-semantics.md' §1).
@@ -210,6 +228,7 @@ INTERVENTION is the classifier-shaped plist (after
 `:time_now' ISO string."
   (let* ((classification (plist-get verdict :classification))
          (confidence (plist-get verdict :confidence))
+         (ev (plist-get verdict :evidence))
          (common (list :classification
                        (dl-satan-observer--keyword-to-string classification)
                        :confidence
@@ -227,6 +246,19 @@ INTERVENTION is the classifier-shaped plist (after
                    (mapcar #'dl-satan-observer--keyword-to-string
                            (plist-get verdict :predicates))
                    :motive_id (or (plist-get verdict :motive_id) :null)))
+            (:ignored
+             (list :source_events '()
+                   :target_surface (or (plist-get ev :target-surface) :null)
+                   :no_positive_predicates t
+                   :acknowledgement_checked
+                   (if (eq :false (plist-get ev :acknowledgement-checked))
+                       :false
+                     t)
+                   :ack_events_found (or (plist-get ev :ack-events-found) 0)))
+            (:neutral
+             (list :source_events '()
+                   :target_surface (or (plist-get ev :target-surface) :null)
+                   :no_positive_predicates t))
             (_
              (list :source_events '()
                    :reason (or (dl-satan-observer--keyword-to-string

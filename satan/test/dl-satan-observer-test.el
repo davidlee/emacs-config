@@ -166,16 +166,23 @@ tests only override what they care about."
       (setq base (plist-put base (pop overrides) (pop overrides))))
     base))
 
-(defun dl-satan-observer-test--intervention ()
+(cl-defun dl-satan-observer-test--intervention
+    (&key (kind "notify") (target-surface "sway-mainbar"))
   "Classifier-shaped intervention plist (the result of
 `dl-satan-observer-pending' projection-normalisation).  Used by
-predicate ert that drive `dl-satan-observer-classify' directly."
+predicate ert that drive `dl-satan-observer-classify' directly.
+
+KIND defaults to a user-facing kind (`notify') so a no-fire scan
+classifies as `:ignored' per T1.5b PR 2.  Tests exercising the
+non-user-facing branch (`:neutral') override KIND."
   (list :intervention_id "20260522T100000-tick-aaa.iv001"
         :run_id "20260522T100000-tick-aaa"
         :applied_index 1
         :ts dl-satan-observer-test--emitted
         :intervention_emitted_at dl-satan-observer-test--emitted
-        :outcome_window_minutes 30))
+        :outcome_window_minutes 30
+        :kind kind
+        :target_surface target-surface))
 
 (defun dl-satan-observer-test--stub-after-state (after-plist)
   "Return a function that mimics `--after-state' by returning AFTER-PLIST."
@@ -204,6 +211,28 @@ simulate a multi-predicate firing."
         :confidence :low
         :predicates nil
         :reason reason))
+
+(cl-defun dl-satan-observer-test--ignored-verdict
+    (&key (confidence :low) (target-surface "sway-mainbar")
+          (acknowledgement-checked :false) (ack-events-found 0))
+  "Build a T1.5b PR 2 `:ignored' verdict for persist tests."
+  (list :classification :ignored
+        :confidence confidence
+        :predicates nil
+        :reason nil
+        :evidence (list :target-surface target-surface
+                        :no-positive-predicates t
+                        :acknowledgement-checked acknowledgement-checked
+                        :ack-events-found ack-events-found)))
+
+(defun dl-satan-observer-test--neutral-verdict (&optional target-surface)
+  "Build a T1.5b PR 2 `:neutral' verdict for persist tests."
+  (list :classification :neutral
+        :confidence :low
+        :predicates nil
+        :reason nil
+        :evidence (list :target-surface (or target-surface "internal")
+                        :no-positive-predicates t)))
 
 (defun dl-satan-observer-test--full-motive (&rest overrides)
   "Motive plist with worked_count + cue for persist tests."
@@ -578,10 +607,10 @@ same scan."
            (should (equal '(:git_head_changed :fs_recent_delta)
                           (plist-get out :predicates)))))))))
 
-(ert-deftest dl-satan-observer/classify-no-fire-yields-unknown ()
-  "PR 1: no predicate fire → `:unknown :low' with no reason.
-PR 2 will refine this branch into `:ignored' / `:neutral' based
-on the intervention's target surface."
+(ert-deftest dl-satan-observer/classify-no-fire-user-facing-yields-ignored ()
+  "T1.5b PR 2 — no positive predicate + user-facing kind (default
+fixture is `notify') → `:ignored'.  Stubbed AFTER carries no
+`:sensor_status' so the ack probe is unverified → `:low'."
   (dl-satan-observer-test--in-tmp
    (lambda (root)
      (let* ((dir (expand-file-name "20260522T100000-tick-aaa" root))
@@ -596,13 +625,113 @@ on the intervention's target surface."
        (dl-satan-observer-test--write-bundle
         dir (list :percept (list :evidence_window stable)))
        (dl-satan-observer-test--with-stubbed-after-state stable
+         (let* ((out (dl-satan-observer-classify iv motive))
+                (ev (plist-get out :evidence)))
+           (should (eq :ignored (plist-get out :classification)))
+           (should (eq :low (plist-get out :confidence)))
+           (should (null (plist-get out :predicates)))
+           (should (null (plist-get out :reason)))
+           (should (equal "sway-mainbar" (plist-get ev :target-surface)))
+           (should (eq t (plist-get ev :no-positive-predicates)))
+           (should (eq :false (plist-get ev :acknowledgement-checked)))
+           (should (= 0 (plist-get ev :ack-events-found)))))))))
+
+(ert-deftest dl-satan-observer/classify-no-fire-non-user-facing-yields-neutral ()
+  "T1.5b PR 2 — no positive predicate + non-user-facing kind →
+`:neutral :low'."
+  (dl-satan-observer-test--in-tmp
+   (lambda (root)
+     (let* ((dir (expand-file-name "20260522T100000-tick-aaa" root))
+            (stable (list :git_state (list :head_short "aaaaaaa"
+                                           :remote "github.com/u/r")
+                          :fs_state (list :cwd dl-satan-observer-test--cwd
+                                          :recent_files nil)
+                          :focus_segments nil :bough_recent nil))
+            (motive (dl-satan-observer-test--motive))
+            (iv (plist-put (dl-satan-observer-test--intervention
+                            :kind "delay" :target-surface "internal")
+                           :run_dir dir)))
+       (dl-satan-observer-test--write-bundle
+        dir (list :percept (list :evidence_window stable)))
+       (dl-satan-observer-test--with-stubbed-after-state stable
+         (let* ((out (dl-satan-observer-classify iv motive))
+                (ev (plist-get out :evidence)))
+           (should (eq :neutral (plist-get out :classification)))
+           (should (eq :low (plist-get out :confidence)))
+           (should (null (plist-get out :predicates)))
+           (should (equal "internal" (plist-get ev :target-surface)))
+           (should (eq t (plist-get ev :no-positive-predicates)))))))))
+
+(ert-deftest dl-satan-observer/classify-no-fire-ack-checked-zero-yields-medium ()
+  "T1.5b PR 2 — when AFTER's panopticon focus probe is `ok' and
+no focus segment starts after the emit, `:ignored' confidence
+ratchets up to `:medium'."
+  (dl-satan-observer-test--in-tmp
+   (lambda (root)
+     (let* ((dir (expand-file-name "20260522T100000-tick-aaa" root))
+            (baseline-ev
+             (list :git_state (list :head_short "aaaaaaa" :remote "r")
+                   :fs_state (list :cwd dl-satan-observer-test--cwd
+                                   :recent_files nil)
+                   :focus_segments nil :bough_recent nil))
+            (after-ev
+             (list :git_state (list :head_short "aaaaaaa" :remote "r")
+                   :fs_state (list :cwd dl-satan-observer-test--cwd
+                                   :recent_files nil)
+                   :focus_segments nil
+                   :bough_recent nil
+                   :sensor_status (list :focus 'ok)))
+            (motive (dl-satan-observer-test--motive))
+            (iv (plist-put (dl-satan-observer-test--intervention)
+                           :run_dir dir)))
+       (dl-satan-observer-test--write-bundle
+        dir (list :percept (list :evidence_window baseline-ev)))
+       (dl-satan-observer-test--with-stubbed-after-state after-ev
+         (let* ((out (dl-satan-observer-classify iv motive))
+                (ev (plist-get out :evidence)))
+           (should (eq :ignored (plist-get out :classification)))
+           (should (eq :medium (plist-get out :confidence)))
+           (should (eq t (plist-get ev :acknowledgement-checked)))
+           (should (= 0 (plist-get ev :ack-events-found)))))))))
+
+(ert-deftest dl-satan-observer/classify-no-fire-ack-checked-found-yields-unknown ()
+  "T1.5b PR 2 — user-facing intervention with ≥1 focus segment
+starting after the emit puts the verdict outside the `:ignored'
+gate (per outcome-semantics §1).  Result: `:unknown :low' with
+`:reason nil' — v1 punts rather than extending the reason
+vocabulary."
+  (dl-satan-observer-test--in-tmp
+   (lambda (root)
+     (let* ((dir (expand-file-name "20260522T100000-tick-aaa" root))
+            (baseline-ev
+             (list :git_state (list :head_short "aaaaaaa" :remote "r")
+                   :fs_state (list :cwd dl-satan-observer-test--cwd
+                                   :recent_files nil)
+                   :focus_segments nil :bough_recent nil))
+            (after-ev
+             (list :git_state (list :head_short "aaaaaaa" :remote "r")
+                   :fs_state (list :cwd dl-satan-observer-test--cwd
+                                   :recent_files nil)
+                   :focus_segments
+                   (list (list :app_id "firefox"
+                               :start_ts "2026-05-22T10:05:00+1000"))
+                   :bough_recent nil
+                   :sensor_status (list :focus 'ok)))
+            (motive (dl-satan-observer-test--motive))
+            (iv (plist-put (dl-satan-observer-test--intervention)
+                           :run_dir dir)))
+       (dl-satan-observer-test--write-bundle
+        dir (list :percept (list :evidence_window baseline-ev)))
+       (dl-satan-observer-test--with-stubbed-after-state after-ev
          (let ((out (dl-satan-observer-classify iv motive)))
            (should (eq :unknown (plist-get out :classification)))
            (should (eq :low (plist-get out :confidence)))
-           (should (null (plist-get out :predicates)))
            (should (null (plist-get out :reason)))))))))
 
 (ert-deftest dl-satan-observer/classify-a12-fs-coincidence-does-not-fire ()
+  "A12 — recent_files delta outside `:project_cwd' must not fire P3.
+PR 2: the no-fire fallback for the default user-facing fixture
+is now `:ignored', not `:unknown'."
   (dl-satan-observer-test--in-tmp
    (lambda (root)
      (let* ((dir (expand-file-name "20260522T100000-tick-aaa" root))
@@ -622,7 +751,8 @@ on the intervention's target surface."
         dir (list :percept (list :evidence_window baseline-ev)))
        (dl-satan-observer-test--with-stubbed-after-state after-ev
          (let ((out (dl-satan-observer-classify iv motive)))
-           (should (eq :unknown (plist-get out :classification)))))))))
+           (should (eq :ignored (plist-get out :classification)))
+           (should (null (plist-get out :predicates)))))))))
 
 ;; ---------------------------------------------------------------------
 ;; Phase 5.7 — multi-motive resolver (overlap + file-order tiebreak)
@@ -730,6 +860,9 @@ on the intervention's target surface."
                           (plist-get out :predicates)))))))))
 
 (ert-deftest dl-satan-observer/classify-for-motives-tie-file-order ()
+  "Tie-broken winner runs through classify; default fixture kind is
+user-facing so the no-fire fallback now lands on `:ignored'
+(PR 2)."
   (dl-satan-observer-test--in-tmp
    (lambda (root)
      (let* ((dir (expand-file-name "20260522T100000-tick-aaa" root))
@@ -744,7 +877,7 @@ on the intervention's target surface."
                  :focus_segments nil :bough_recent nil)
          (let ((out (dl-satan-observer-classify-for-motives iv motives)))
            (should (equal "first" (plist-get out :motive_id)))
-           (should (eq :unknown (plist-get out :classification)))))))))
+           (should (eq :ignored (plist-get out :classification)))))))))
 
 ;; ---------------------------------------------------------------------
 ;; T7 PR 5 — read path: dl-satan-observer-pending wraps the projection
@@ -914,6 +1047,107 @@ T1.5b widens this to ignored / neutral."
                (should oc)
                (should (equal "unknown" (plist-get oc :classification)))
                (should (equal "low"     (plist-get oc :confidence))))))))))))
+
+(ert-deftest dl-satan-observer/persist-ignored-classifies-ignored ()
+  "T1.5b PR 2 — `:ignored' verdict UPSERTs classification=\"ignored\"
+with evidence carrying target_surface + ack_events_found in
+snake_case (per outcome-semantics §9)."
+  (dl-satan-observer-test--with-db
+   (dl-satan-observer-test--in-tmp
+    (lambda (root)
+      (let* ((dl-satan-runs-dir root)
+             (run-id "20260523T110000-morning-ignr01")
+             (audit (dl-satan-observer-test--open-audit root run-id))
+             (ctx (dl-satan-observer-test--build-ctx
+                   audit run-id "2026-05-23T11:00:00+1000"))
+             (iv-id (dl-satan-observer-test--mint ctx)))
+        (dl-satan-motive-test--with-tmp-file
+         mpath dl-satan-motive-test--well-formed
+         (dl-satan-observer-test--capture-mark captured
+           (let* ((iv (car (dl-satan-observer-pending
+                            "2026-05-23T12:00:00+1000" root)))
+                  (motive (dl-satan-observer-test--full-motive))
+                  (verdict (dl-satan-observer-test--ignored-verdict
+                            :confidence :medium
+                            :acknowledgement-checked t))
+                  (out (dl-satan-observer-persist-verdict
+                        iv motive verdict "2026-05-23T12:00:00+1000"
+                        (list :ctx ctx
+                              :motive-path mpath
+                              :memory-mark-fn mark-fn))))
+             (should (equal "intervention.outcome_classified"
+                            (plist-get out :classify_event)))
+             (should-not (plist-get out :motive_written))
+             (should-not (plist-get out :trace_result))
+             (should (null captured))
+             (let* ((row (dl-satan-intervention-lookup iv-id))
+                    (oc (plist-get row :outcome))
+                    (ev (plist-get oc :evidence)))
+               (should oc)
+               (should (equal "ignored" (plist-get oc :classification)))
+               (should (equal "medium"  (plist-get oc :confidence)))
+               (should (equal "sway-mainbar"
+                              (plist-get ev :target_surface)))
+               (should (eq t (plist-get ev :no_positive_predicates)))
+               (should (eq t (plist-get ev :acknowledgement_checked)))
+               (should (= 0 (plist-get ev :ack_events_found))))))))))))
+
+(ert-deftest dl-satan-observer/persist-neutral-classifies-neutral ()
+  "T1.5b PR 2 — `:neutral' verdict UPSERTs classification=\"neutral\"
+with bare target_surface evidence."
+  (dl-satan-observer-test--with-db
+   (dl-satan-observer-test--in-tmp
+    (lambda (root)
+      (let* ((dl-satan-runs-dir root)
+             (run-id "20260523T110000-morning-neut01")
+             (audit (dl-satan-observer-test--open-audit root run-id))
+             (ctx (dl-satan-observer-test--build-ctx
+                   audit run-id "2026-05-23T11:00:00+1000"))
+             ;; Non-user-facing kind — `delay' is not in
+             ;; `dl-satan-observer-user-facing-kinds'.
+             (iv-id (dl-satan-observer-test--mint
+                     ctx :kind "delay" :target "internal")))
+        (dl-satan-motive-test--with-tmp-file
+         mpath dl-satan-motive-test--well-formed
+         (dl-satan-observer-test--capture-mark captured
+           (let* ((iv (car (dl-satan-observer-pending
+                            "2026-05-23T12:00:00+1000" root)))
+                  (motive (dl-satan-observer-test--full-motive))
+                  (verdict (dl-satan-observer-test--neutral-verdict
+                            "internal"))
+                  (out (dl-satan-observer-persist-verdict
+                        iv motive verdict "2026-05-23T12:00:00+1000"
+                        (list :ctx ctx
+                              :motive-path mpath
+                              :memory-mark-fn mark-fn))))
+             (should (equal "intervention.outcome_classified"
+                            (plist-get out :classify_event)))
+             (should-not (plist-get out :motive_written))
+             (should-not (plist-get out :trace_result))
+             (should (null captured))
+             (let* ((row (dl-satan-intervention-lookup iv-id))
+                    (oc (plist-get row :outcome))
+                    (ev (plist-get oc :evidence)))
+               (should oc)
+               (should (equal "neutral" (plist-get oc :classification)))
+               (should (equal "low"     (plist-get oc :confidence)))
+               (should (equal "internal"
+                              (plist-get ev :target_surface)))
+               (should (eq t (plist-get ev :no_positive_predicates))))))))))))
+
+(ert-deftest dl-satan-observer/classify-auto-rejects-harmful ()
+  "T1.5b PR 2 — `:harmful' / `:contradicted' are manual-only.
+The classifier API guards against accidental construction via
+`cl-check-type'; constructing a verdict with `:harmful' and
+running it through the assert helper signals."
+  (should-error
+   (dl-satan-observer--assert-auto-classification
+    (list :classification :harmful))
+   :type 'wrong-type-argument)
+  (should-error
+   (dl-satan-observer--assert-auto-classification
+    (list :classification :contradicted))
+   :type 'wrong-type-argument))
 
 (ert-deftest dl-satan-observer/persist-twice-emits-revised ()
   "A second persist for the same intervention surfaces as
