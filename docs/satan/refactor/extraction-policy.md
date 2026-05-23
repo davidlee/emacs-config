@@ -289,10 +289,21 @@ arrives, the carve has already been argued and the answer is known.
 - **Trust boundary stays in Emacs.** Daemons are dumb transports +
   pure transforms. Authority over user-visible surfaces lives in the
   broker.
-- **One project per extraction.** Resist consolidating §2 + §3 + §4
-  into a single `satan-daemon` just because they could share a Rust
-  workspace — independent extractions stay independently
-  disable-able.
+- **One binary per extraction; workspace consolidation is fine.**
+  Independent extractions stay independently disable-able and
+  separately deployable — resist a single `satan-daemon` mega-binary.
+  But a shared Rust workspace (with a `satan-core` crate for PG
+  client setup, schema-versioning discipline, event envelopes, RPC
+  framing) is the right home for related daemons; splitting later is
+  cheap iff shared types live in `satan-core` from day one. The
+  discipline: types and protocol shapes are shared; processes and
+  disable switches are not. Audit CLI is a workspace member, separate
+  binary, zero runtime coupling. Memory substrate and attribute
+  daemon plausibly end up as siblings in the same workspace; merging
+  them into one binary buys little and forfeits disable-switch
+  granularity. Patcher stays its own project until/unless rewritten;
+  rewrite would likely join the workspace as another member but stay
+  binary-separate.
 - **Preserve test corpora across the port.** Existing ert becomes
   acceptance fixtures; the new daemon must pass them before the
   switch flips.

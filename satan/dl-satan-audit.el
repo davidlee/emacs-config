@@ -399,6 +399,163 @@ Returns nil on success or `(:idx N :reason STR)' on the first failure."
         (cl-incf idx)))
     failure))
 
+;; ---------- Attribute event validators (T-attr-1b) ----------
+;;
+;; `attribute.delta_applied' carries one attribute update emitted by the
+;; satan-attrd daemon and RPC'd back to the broker for transcript write.
+;; The validator gates the transcript-write boundary per design contract
+;; §5.1.  Closed sets in this section live in lockstep with the daemon's
+;; typed enums in `~/dev/satan-attrd/src/types.rs'.
+
+(defconst dl-satan-audit-attribute-events
+  '("attribute.delta_applied")
+  "Closed set of attribute audit-event names.")
+
+(defconst dl-satan-audit-attribute-names
+  '("curiosity" "hunger" "suspicion" "doubt"
+    "friction" "shame" "brooding" "metamorphosis")
+  "Closed set of attribute internal names (design-contract §2).")
+
+(defconst dl-satan-audit-attribute-scopes
+  '("global")
+  "Closed set of attribute scopes (design-contract §3 — only global in v1).")
+
+(defconst dl-satan-audit-attribute-sources-reserved
+  '("outcome" "percept" "resonance" "sensor" "tool_error" "manual")
+  "Reserved attribute event sources (design-contract §5).")
+
+(defconst dl-satan-audit-attribute-sources-implemented
+  '("outcome")
+  "Sources whose `reason' enum is defined in the contract and accepted
+by the validator today.  Reserved-but-unimplemented sources are
+REJECTED (contract §5.1) — reservation alone does not unlock the
+validator.  Widens with each T-attr-1e PR.")
+
+(defconst dl-satan-audit-attribute-outcome-reasons
+  '("worked" "neutral" "ignored" "contradicted" "harmful")
+  "Closed set of reasons for source=outcome (design-contract §6).")
+
+(defconst dl-satan-audit-attribute-caps
+  '("friction_cap" "range_clamp")
+  "Closed set of cap names that may appear in `caps_applied'
+(design-contract §7).")
+
+(defun dl-satan-audit--iv-require-number-in-range (payload key lo hi)
+  "Require KEY in PAYLOAD to be a finite number in `[LO, HI]'."
+  (cond
+   ((not (plist-member payload key))
+    (format "missing required field: %s" (dl-satan-audit--iv-key-name key)))
+   ((not (numberp (plist-get payload key)))
+    (format "field %s must be number" (dl-satan-audit--iv-key-name key)))
+   ((let ((v (plist-get payload key)))
+      (or (< v lo) (> v hi)))
+    (format "field %s must be in [%s, %s], got %S"
+            (dl-satan-audit--iv-key-name key)
+            lo hi (plist-get payload key)))))
+
+(defun dl-satan-audit--iv-require-bool (payload key)
+  "Require KEY in PAYLOAD to be a JSON boolean (`t' or `:false')."
+  (cond
+   ((not (plist-member payload key))
+    (format "missing required field: %s" (dl-satan-audit--iv-key-name key)))
+   ((not (memq (plist-get payload key) '(t :false)))
+    (format "field %s must be boolean (t or :false)"
+            (dl-satan-audit--iv-key-name key)))))
+
+(defun dl-satan-audit--attribute-reasons-for-source (source)
+  "Return the closed reason enum for an IMPLEMENTED SOURCE, else nil."
+  (cond
+   ((equal source "outcome") dl-satan-audit-attribute-outcome-reasons)
+   (t nil)))
+
+(defun dl-satan-audit--validate-attribute-source-and-reason (payload)
+  "Validate the `(source, reason)' pair against the reserved/implemented
+split and the per-source closed reason enum.  Returns nil or error string."
+  (or (dl-satan-audit--iv-require-string payload :source)
+      (let ((src (plist-get payload :source)))
+        (cond
+         ((not (member src dl-satan-audit-attribute-sources-reserved))
+          (format "unknown source %S (not in reserved list)" src))
+         ((not (member src dl-satan-audit-attribute-sources-implemented))
+          (format "source %S is reserved but unimplemented in this contract version" src))))
+      (dl-satan-audit--iv-require-string payload :reason)
+      (let* ((src (plist-get payload :source))
+             (reasons (dl-satan-audit--attribute-reasons-for-source src))
+             (reason (plist-get payload :reason)))
+        (unless (member reason reasons)
+          (format "reason %S is not valid for source=%S (allowed: %S)"
+                  reason src reasons)))))
+
+(defun dl-satan-audit--validate-attribute-caps (payload)
+  "Validate `:caps_applied' is an array of cap-name strings from the
+closed set.  Returns nil or error string."
+  (or (dl-satan-audit--iv-require-array payload :caps_applied)
+      (let ((caps (plist-get payload :caps_applied))
+            (idx 0)
+            (err nil))
+        (catch 'done
+          (dolist (c caps)
+            (cond
+             ((not (stringp c))
+              (setq err (format "caps_applied[%d] must be string" idx))
+              (throw 'done nil))
+             ((not (member c dl-satan-audit-attribute-caps))
+              (setq err (format "caps_applied[%d]=%S not in closed set %S"
+                                idx c dl-satan-audit-attribute-caps))
+              (throw 'done nil)))
+            (cl-incf idx)))
+        err)))
+
+(defun dl-satan-audit--validate-attribute-outcome-evidence (payload)
+  "For `source=outcome', enforce that `:evidence' carries the required
+cue-dimension fields (design-contract §5.1)."
+  (let ((ev (plist-get payload :evidence)))
+    (or (dl-satan-audit--iv-require-string ev :intervention_id)
+        (dl-satan-audit--iv-require-enum ev :classification
+                                         dl-satan-audit-intervention-classifications)
+        (dl-satan-audit--iv-require-enum ev :confidence
+                                         dl-satan-audit-intervention-confidences))))
+
+(defun dl-satan-audit--validate-attribute-delta-applied (payload)
+  "Validate an `attribute.delta_applied' payload.  Return error string or nil."
+  (or (dl-satan-audit--iv-require-string payload :id)
+      (dl-satan-audit--iv-require-enum payload :scope
+                                       dl-satan-audit-attribute-scopes)
+      (dl-satan-audit--iv-require-enum payload :name
+                                       dl-satan-audit-attribute-names)
+      (dl-satan-audit--iv-require-number-in-range payload :old 0 1)
+      (dl-satan-audit--iv-require-number-in-range payload :new 0 1)
+      (dl-satan-audit--iv-require-number-in-range payload :delta -1 1)
+      ;; Sign + magnitude coherence: delta = new - old (epsilon for float).
+      (let* ((old (plist-get payload :old))
+             (new (plist-get payload :new))
+             (delta (plist-get payload :delta))
+             (expected (- new old)))
+        (when (> (abs (- delta expected)) 1e-9)
+          (format "delta %S does not match new - old (= %S)" delta expected)))
+      (dl-satan-audit--validate-attribute-source-and-reason payload)
+      (dl-satan-audit--iv-require-object payload :evidence)
+      (let ((src (plist-get payload :source)))
+        (when (equal src "outcome")
+          (dl-satan-audit--validate-attribute-outcome-evidence payload)))
+      (dl-satan-audit--validate-attribute-caps payload)
+      (dl-satan-audit--iv-require-bool payload :disabled)))
+
+(defun dl-satan-audit-validate-attribute-event (event payload)
+  "Validate an attribute audit-log EVENT with PAYLOAD.
+EVENT is one of `dl-satan-audit-attribute-events'.  Returns nil on
+success or an error string on failure."
+  (cond
+   ((not (stringp event)) "event must be string")
+   ((not (member event dl-satan-audit-attribute-events))
+    (format "unknown attribute event: %s" event))
+   ((not (or (null payload) (and (consp payload) (keywordp (car payload)))))
+    "payload must be plist")
+   (t
+    (pcase event
+      ("attribute.delta_applied"
+       (dl-satan-audit--validate-attribute-delta-applied payload))))))
+
 ;; ---------- Verifier ----------
 
 (defun dl-satan-audit--read-json (path)
