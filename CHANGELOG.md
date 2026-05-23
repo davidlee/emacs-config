@@ -20,6 +20,7 @@ Notable changes to this Emacs config. Loosely dated; not versioned.
 - Spin out `dl-secret-test.el` for the `scrub-op-refs-env` test (subject is dl-secret, not SATAN broker).
 - Append broker manifest-assembly test to `dl-satan-broker-test.el`; pull in tool-module requires so registrations land before the manifest build.
 - Append `self-edit/output` test to `dl-satan-context-test.el` alongside the other self-edit lifecycle tests.
+- Extract `dl-satan-tick-test.el` (7 tests).
 
 ## 2026-05-23 — SATAN: extract refactor themes into `docs/satan/refactor/`
 

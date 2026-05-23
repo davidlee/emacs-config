@@ -57,4 +57,5 @@ PR that extracts `dl-satan-jsonl-test.el` from `test/dl-satan-test.el` L44–112
 - [x] PR 11: append `dl-satan-broker--prepare` tests to `dl-satan-broker-test.el` — merged 2026-05-23
 - [x] PR 12: append broker tool-ctx tests to `dl-satan-broker-test.el`; spin out `dl-secret-test.el` for env-scrub — merged 2026-05-23
 - [x] PR 13: append broker manifest assembly + self-edit output tests — merged 2026-05-23
-- [ ] PR 14..N: remaining modules, one per PR — pending
+- [x] PR 14: extract `dl-satan-tick-test.el` — merged 2026-05-23
+- [ ] PR 15..N: remaining modules, one per PR — pending
