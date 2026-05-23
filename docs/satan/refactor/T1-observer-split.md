@@ -4,7 +4,7 @@ description: Split the outcome observer into a thin coordinator + a pure classif
 metadata:
   type: refactor-theme
   topic: satan-refactor
-  status: in-progress
+  status: merged
   blocked_by: []
   updated_at: 2026-05-23
 ---
