@@ -4,7 +4,7 @@ description: First-class intervention records — audit events + Postgres projec
 metadata:
   type: refactor-theme
   topic: satan-refactor
-  status: in-progress
+  status: merged
   blocked_by: []
   updated_at: 2026-05-23
 ---
@@ -75,4 +75,47 @@ PR that adds the three audit event types to the validator + fixtures + `docs/sat
 - [x] PR 2: migration `0006_interventions.sql` + rebuild CLI — merged 2026-05-23
 - [x] PR 3: write API + first handler (`notify_send`) — merged 2026-05-23
 - [x] PR 4: remaining 4 handlers wired through — merged 2026-05-23
-- [ ] PR 5: observer read-path swap — pending
+- [x] PR 5: observer read-path swap — merged 2026-05-23
+  - Delete `dl-satan-observer--applied-interventions-in-run`,
+    `dl-satan-observer-scan-prior-interventions`,
+    `dl-satan-observer-mark-classified`, the
+    `dl-satan-observer-state-file` dedup path, and the supporting
+    `--read-state`/`--write-state`/`--classified-p`/`--key-of`/`--mature-p`/
+    `--in-scan-window-p`/`--run-id-from-dir`/`--run-started-at` helpers.
+  - `dl-satan-observer-pending` becomes a thin wrapper over
+    `dl-satan-intervention-pending`, mapping projection rows to the plist
+    shape the classifier already consumes (`:run_id`, `:run_dir` resolved
+    under the runs root, `:intervention_emitted_at` from `:ts`,
+    `:applied_index` derived from the `<run-id>.ivNNN` counter so existing
+    metadata callers keep working).
+  - `dl-satan-observer-persist-verdict` drops `mark-classified` and instead
+    calls `dl-satan-intervention-classify` with the
+    `outcome-semantics §2` payload (`:classification`, `:confidence`,
+    `:evidence`, `:maturity "mature"`, `:next_revisit_at`, `:source "auto"`,
+    `:classified_at`).  Translation table for PR 5 (T1.5b widens this):
+    - `verdict "positive"` → classification `"worked"`, confidence
+      `"medium"` (single predicate; ≥2-predicate `"high"` lands in T1.5b
+      with the verdict-shape extension), evidence carries `:predicates`
+      `:motive_id` `:handle_overlap`.
+    - `verdict "none"` (any reason / no fire) → classification
+      `"unknown"`, confidence `"low"`, evidence carries `:reason`.
+  - Broker (`dl-satan-broker--spawn`) opens the audit handle *before*
+    `observer-process` so the observer can emit
+    `intervention.outcome_classified` / `outcome_revised` into the
+    current run's transcript.  `dl-satan-audit-open` now permits a `nil`
+    bundle (deferred) and a new `dl-satan-audit-attach-bundle` writes
+    `bundle.json` once the context-fn has produced it.
+  - Observer test: drops the file-walk / scan-window / state-file ert
+    that exercise the deleted helpers; new DB-touching ert mirror
+    `dl-satan-intervention-test--with-db` (skip-unless reachable +
+    reset-and-migrate) and assert pending + classify writes through the
+    projection.  Reset-list prepends `satan_intervention_outcomes,
+    satan_interventions`.
+  - **A3 determinism boundary:** observer's
+    `intervention.outcome_classified` events now appear in transcript
+    timestamps + carry intervention ids minted from the prior runs, so
+    two byte-identical reruns of `--spawn` may diverge.  No current
+    transcript-level golden test asserts byte-identical broker reruns;
+    the percept-level A3 ert (`dl-satan-percept-test`) is unaffected.
+    Boundary noted at the module header of `dl-satan-observer.el` and in
+    the CHANGELOG line for PR 5.

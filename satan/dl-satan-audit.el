@@ -50,14 +50,29 @@
 RUN-CTX is the prepare-phase run_ctx plist (Phase 0.1); it is stored
 on the handle so audit-close can read percept / sensor-status / etc.
 without re-deriving them.  Optional for backwards compatibility with
-callers that have not been threaded through prepare yet."
+callers that have not been threaded through prepare yet.
+
+BUNDLE may be nil — T7 PR 5 opens the handle before the context-fn
+has produced the bundle so the observer can emit
+`intervention.outcome_*' events into the run's transcript.  Caller
+finishes the open by invoking `dl-satan-audit-attach-bundle' once
+the bundle is built."
   (unless (file-directory-p dir) (make-directory dir t))
   (dl-satan-audit--write-json (expand-file-name "manifest.json" dir) manifest)
-  (dl-satan-audit--write-json (expand-file-name "bundle.json"   dir) bundle)
+  (when bundle
+    (dl-satan-audit--write-json (expand-file-name "bundle.json" dir) bundle))
   (let ((tp (expand-file-name "transcript.jsonl" dir)))
     (with-temp-file tp (insert ""))
     (make-dl-satan-audit-handle :dir dir :transcript-path tp :last-ts nil
                                 :run-ctx run-ctx)))
+
+(defun dl-satan-audit-attach-bundle (handle bundle)
+  "Write BUNDLE plist as `bundle.json' under HANDLE's run directory.
+Used by the broker when `dl-satan-audit-open' was called with a nil
+bundle to allow pre-bundle observer emits (T7 PR 5)."
+  (dl-satan-audit--write-json
+   (expand-file-name "bundle.json" (dl-satan-audit-handle-dir handle))
+   bundle))
 
 (defun dl-satan-audit-record (handle dir event payload)
   "Append a transcript record.

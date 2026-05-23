@@ -129,6 +129,7 @@ surprises."
          (time-now (format-time-string
                     dl-satan-broker--iso-time-format start)))
     (list :run_id run-id
+          :mode_name name
           :time_now time-now
           :start_time start
           :evidence nil
@@ -674,13 +675,23 @@ Returns the run-id."
     ;; `dl-satan-motive-read' returns an empty parse and the capsule
     ;; renderer self-suppresses the block (§S3 silent omission).
     ;;
-    ;; Phase 5.8 — observer.process runs BEFORE the motive read so the
-    ;; in-tick motive snapshot sees freshly-incremented `:worked_count'
-    ;; and updated `:last_intervention_at' from prior-run interventions
-    ;; whose 30-minute attribution window has matured.  Errors are
-    ;; caught so a stale bundle / postgres outage cannot fail the
-    ;; tick — the run proceeds without an observer pass when it does.
-    (let* ((observer (condition-case _err
+    ;; Phase 5.8 / T7 PR 5 — observer.process must run BEFORE the motive
+    ;; read so the in-tick motive snapshot sees freshly-incremented
+    ;; `:worked_count' and updated `:last_intervention_at' from prior-run
+    ;; interventions whose attribution window has matured.  PR 5 added
+    ;; the audit handle as a prerequisite (the observer now emits
+    ;; `intervention.outcome_classified' events into the current run's
+    ;; transcript), so the broker opens the handle here — manifest is
+    ;; built up-front, `bundle.json' is deferred until the context-fn
+    ;; has assembled it (see `dl-satan-audit-attach-bundle' below).
+    ;;
+    ;; Observer errors are caught so a stale bundle / postgres outage
+    ;; cannot fail the tick — the run proceeds without an observer pass
+    ;; when it does.
+    (let* ((manifest (dl-satan-broker--build-manifest mode run-id))
+           (audit (dl-satan-audit-open dir manifest nil prepare))
+           (prepare (plist-put prepare :audit audit))
+           (observer (condition-case _err
                          (dl-satan-observer-process prepare)
                        (error nil)))
            (prepare (plist-put prepare :observer observer))
@@ -714,8 +725,7 @@ Returns the run-id."
                      :pre_spawn pre-spawn)))
     (let* ((bundle (funcall (or (plist-get mode :context-fn) #'ignore)
                             mode prepare))
-           (manifest (dl-satan-broker--build-manifest mode run-id))
-           (audit (dl-satan-audit-open dir manifest bundle prepare))
+           (_attached (dl-satan-audit-attach-bundle audit bundle))
            (run-ctx (make-dl-satan-run
                      :id run-id
                      :mode mode
