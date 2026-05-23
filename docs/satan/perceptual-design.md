@@ -4,9 +4,9 @@ description: SATAN perceptual loop (v0) — percept capsule, auto-resonance, mot
 metadata:
   type: design
   topic: satan
-  status: phase-4-shipped
-  updated_at: 2026-05-22
-  verified_at: 2026-05-22
+  status: phase-6-shipped
+  updated_at: 2026-05-23
+  verified_at: 2026-05-23
 ---
 
 # SATAN — Perceptual Loop (Design, v0)
@@ -64,6 +64,33 @@ What the substrate **does not** do today, and v0 will add:
 3. Carry a small motive file across runs, edited by both SATAN and user.
 4. Observe basic outcomes of prior interventions, deterministically, no LLM.
 5. Detect degraded sensors and notify loudly.
+
+---
+
+## 1.5 Implementation status (v0 shipped)
+
+All seven v0 phases shipped 2026-05-22 → 2026-05-23. See `CHANGELOG.md`
+and `git log --oneline -- satan/` for per-sub-phase commits and test
+counts; this section is just the high-level map.
+
+| Phase | Landed | Commits | Notes |
+|---|---|---|---|
+| 0 — broker prerequisites | 2026-05-22 | `d9aa1cf5d`, `ab4c3f300`, `ea80c483f`, `ac4ef283c` (0.1–0.4) | prepare phase + run_ctx + dispatch capability + pre_spawn schema + python mirror |
+| 1 — percept skeleton | 2026-05-22 | `fded5338a`, `ed9a23c11`, `8b53d5159` (1.1–1.4) | builder + persist + render + golden tests |
+| 2 — auto-resonance | 2026-05-22 | `0cef55039`, `470e3f791`, `8a6d4ee66` (2.1–2.4) | §S2 gate, broker call, render, fixtures |
+| 3 — motive file | 2026-05-22 | `3df47f0c1`, `e1ef890be`, `b49d1b776`, `65962c882` (3.1–3.4) | parser, motive_read/motive_replace, broker call, motive_replace precedence + bound-naming contract |
+| 4 — sensor alerts | 2026-05-22 | `80f357c88`, `f4f6e8847`, `a10c8b971`, `41b11e354` (4.1–4.4) | freshness, capsule block, dispatcher + cooldown + notify, pre_spawn integration |
+| 5 — outcome observer | 2026-05-22 | `6422688d3` (5.1 evidence bounds), `9a02562ce` (5.0 `:project_cwd:`), `783d4b2e8` (5.2 skeleton + 24h scan), `1938943e2` (5.3 window-mature + dedup), `67e311e30`/`99fac686a`/`270e72ea2` (5.4a/b/c predicate + classifier), `2d8f36ccb` (5.5 footer rewriter), `3c422c911` (5.6 verdict persistence), `1f3f6398a` (5.7 multi-motive resolver), `a5f38ce2f` (5.8 broker integration) | observer.process now runs in `--spawn` before percept-build; positive-only `auto_rule` traces |
+| 6 — cooldown floor | 2026-05-23 | `1a9c9c591` | read-side annotation in `dl-satan-motive-render-block`; cooling-down motives flip to `[cooling-down (Nm remaining)]` |
+| fixes | 2026-05-23 | `7179e276a`, `547ef003b` | evidence `:truncated_at` JSON-serializable; jsonl coerces symbols |
+
+What this means for the rest of the doc: §2 (settled decisions) S1–S7
+all map to landed code; §5 (architecture) describes the broker flow
+that now executes verbatim; §6 (file layout) lists files that exist;
+§7 (build sequence) is the as-built order, in commit time-order; §8
+(acceptance) criteria all have ert coverage (see CHANGELOG per-phase
+totals). The doc body remains the design of record; this status block
+exists so a future reader doesn't mistake design language for plan.
 
 ---
 
@@ -512,11 +539,10 @@ These don't block v0 implementation but should be resolved during it.
 
 1. **`current_window` staleness threshold.** Start at 5 minutes; tune
    from observed sway focus cadence and false-positive notify rate.
-2. **"Plausibly related" path predicate.** The outcome observer's
-   positive signal needs a definition of which file edits count. Two
-   candidates: (a) any edit under the project handle's cwd; (b) any
-   edit, narrow by recency only. Lean (a) — record candidates and
-   see which fires sensibly during P5 implementation.
+2. **"Plausibly related" path predicate.** ✅ resolved (Phase 5.4).
+   Observer scopes positive signal to file edits under the motive's
+   `:project_cwd:` (option (a)). Predicate guard order
+   `dormant → midnight → missing title` per §S5 / commit `270e72ea2`.
 3. **Rumination prune horizon.** Start 14 days, revisit at first
    observed churn.
 4. **Auto-resonance threshold.** Inject only matches with `score ≥ X`?
@@ -525,17 +551,10 @@ These don't block v0 implementation but should be resolved during it.
 5. **Capsule placement.** Does percept live inside `system` prompt
    (always-present) or inside a user-turn pre-amble? Lean system —
    the model treats it as oriented framing, not data.
-6. **Baseline storage for the observer's diff.** The observer needs an
-   intervention-time baseline of git refs and fs mtimes to compare
-   against the after-state. Two candidates:
-   (a) read the intervention-run's `bundle.json` and pull the baseline
-       out of its `evidence_window` (already persisted; cheap; tied
-       to a possibly-stale recentf snapshot);
-   (b) at intervention time, write a small `baseline.json` next to
-       `percept.json` capturing git HEAD + dirty + mtimes for files
-       under the motive's project cwd.
-   Lean (a) first — it requires no new write path. Promote to (b) if
-   (a) proves insufficient for clean delta detection during P5.
+6. **Baseline storage for the observer's diff.** ✅ resolved (Phase 5.4a,
+   commit `67e311e30`). Observer reads baseline from the
+   intervention-run's `bundle.json` `evidence_window` (option (a)); no
+   new `baseline.json` write path was required.
 7. **Handling of "always-on" motives whose cooldown is short.** With
    `:cooldown_s: 1800` and a tick every ~30 min, a motive that
    triggers every tick may never get a clean window-mature outcome
@@ -627,8 +646,13 @@ Phase 0 is a hard prerequisite — phases 1–6 all assume `run_ctx`
 threading. Phases 1–4 within v0 are otherwise independent. Phases
 5–6 read state written by phases 1–3.
 
+All phases below shipped (see §1.5 for landing dates and commits).
+The as-built sub-step numbering and the spec sub-step numbering
+diverged slightly during implementation — when reading code, trust
+commit subjects (`phase N.M: …`) over the numbering here.
+
 ```text
-Phase 0 — broker prerequisites (NEW; ~100–150 lines)
+Phase 0 — broker prerequisites (NEW; ~100–150 lines)   ✅ 2026-05-22
   0.1  dl-satan-broker--prepare:
          allocate run_id, freeze time_now ONCE
          build run_ctx plist {run_id, time_now, evidence, percept,
@@ -650,27 +674,27 @@ Phase 0 — broker prerequisites (NEW; ~100–150 lines)
          python audit/fixture validator learns the same `pre_spawn` key
          (parity with elisp; required by harness/protocol.py)
 
-Phase 1 — percept skeleton
+Phase 1 — percept skeleton                             ✅ 2026-05-22
   1.1  percept builder (reuses evidence + canon)
   1.2  persist percept.json
   1.3  render compact handles into capsule
   1.4  unit + golden tests
 
-Phase 2 — auto-resonance
+Phase 2 — auto-resonance                               ✅ 2026-05-22
   2.1  broker call to memory_resonate with derived cue
   2.2  apply §S2 gate (require ≥1 sensor-observed handle, excluding
        ctx, day, week, project-from-cwd, file_kind)
   2.3  inject top 1–3 into capsule when match count ≥ 1
   2.4  fixtures: gate-skip path, zero-matches path, psql-down path
 
-Phase 3 — motive
+Phase 3 — motive                                       ✅ 2026-05-22
   3.1  motives.org schema + footer parse (incl. required :cue:)
   3.2  motive_read + motive_replace tool handlers
   3.3  broker injects motive file into capsule
   3.4  motive_replace bound enforcement
        (3 motives, 10 ruminations, valid :cue: on every active motive)
 
-Phase 4 — sensor alerts
+Phase 4 — sensor alerts                                ✅ 2026-05-22
   4.1  freshness check in evidence assembler
   4.2  sensor_status plist returned
   4.3  capsule sensor line
@@ -680,7 +704,7 @@ Phase 4 — sensor alerts
          record every fire AND every suppression in
          actions.json.pre_spawn
 
-Phase 5 — outcome observer
+Phase 5 — outcome observer                             ✅ 2026-05-22
   5.1  start-of-tick scan over prior 24h transcripts
   5.2  window-mature gate: only classify interventions with
        intervention_emitted_at + 30m <= time_now
@@ -699,7 +723,7 @@ Phase 5 — outcome observer
   5.8  observation-kind auto_rule trace write (positive only)
   5.9  per-intervention id dedup (max one increment per intervention)
 
-Phase 6 — cooldown floor enforcement
+Phase 6 — cooldown floor enforcement                   ✅ 2026-05-23
   6.1  broker pre-capsule check: motives in cooldown rendered as
        `cooling-down (Nm remaining)`
   6.2  test: cooldown-not-elapsed → motive marked cooling-down in capsule

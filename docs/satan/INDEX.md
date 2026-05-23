@@ -15,7 +15,7 @@ metadata:
 - [governance](governance.md) — proposal-first, source of truth, scope of agency, file map, modes, tools, ops
 - [architecture](architecture.md) — invocation / broker / adapter / model / tool / output / state
 - [protocol](protocol.md) — JSONL wire protocol (message types, fixtures)
-- [perceptual-design](perceptual-design.md) — v0 percept capsule, auto-resonance, motive file, outcome observer, sensor alerts (draft)
+- [perceptual-design](perceptual-design.md) — v0 percept capsule, auto-resonance, motive file, outcome observer, sensor alerts, cooldown floor (Phases 0–6 shipped 2026-05-22→23; see doc §1.5)
 
 ## Memory substrate
 - [memory/design](memory/design.md) — grammar, canonicalizer, evidence window, schema

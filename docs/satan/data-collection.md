@@ -5,8 +5,8 @@ metadata:
   type: reference
   topic: satan
   status: living
-  updated_at: 03398479
-  verified_at: 03398479
+  updated_at: 2026-05-23
+  verified_at: 2026-05-23
 ---
 
 # SATAN — Data Collection & Context Influence
@@ -217,6 +217,20 @@ Returns scored matches with matched handles.
 model cannot directly influence the canonicalizer (it is deterministic,
 broker-side).
 
+### 3.9 `motive_read`
+
+**Source:** `~/notes/satan/motives.org` parsed via `dl-satan-motive-parse`.
+**What comes through:** Whole motive file — active motives with prose,
+`:cue:` handles, `:cooldown_s:`, `:worked_count:`, `:last_intervention_at:`,
+optional `:project_cwd:`, plus background ruminations (≤10 lines).
+**Risk:** read. Available to: tick-* (motives also auto-render into
+the tick capsule via broker §S3, so the model rarely needs to ask).
+**Control:** User edits motives.org directly; SATAN edits it via
+`motive_replace` (model) or the observer footer rewriter (broker, §4.12).
+Cooling-down motives render in the capsule with a
+`[cooling-down (Nm remaining)]` header annotation per
+[[satan-perceptual-design]] §S4 + Phase 6.
+
 ---
 
 ## 4. Write surfaces (environment influence)
@@ -362,6 +376,59 @@ Jobs produce branches the user can cherry-pick or merge. The model
 cannot auto-apply patch results — only the user can accept them via
 git. This is SATAN's escape valve for multi-file edits it should not
 perform inline.
+
+### 4.11 `motive_replace` (motive file rewrite, model-driven)
+
+| Property | Value |
+|----------|-------|
+| **Risk** | low |
+| **Capability** | `motive-write` |
+| **Auto-apply** | yes |
+| **Target** | `~/notes/satan/motives.org` (+ `motives.archive.org` on demote) |
+| **Effect** | Atomic full-file replace; broker validates ≤3 active motives, ≤10 ruminations, `:cue:` syntax + sensor-observed-handle requirement, rejects `:ceiling:` |
+| **Side effect** | Next tick's motive block in the capsule reflects the new state |
+
+The model authors prose and `:cue:` lines. The broker is the only
+writer of `:worked_count:` and `:last_intervention_at:` (see §4.12).
+The broker's `motive_replace` handler preserves footer fields it owns
+when the model omits them, refuses to accept model-supplied values for
+those fields when they differ from the canonical state, and rejects
+the call entirely on bound breach.
+
+### 4.12 Observer verdict (broker-side, post-window-mature)
+
+Not a model tool. Broker module `dl-satan-observer.el` (Phase 5) runs
+in `dl-satan-broker--spawn` before percept-build, scans the prior 24h
+of `transcript.jsonl` files for interventions whose 30-min attribution
+window has matured (`dl-satan-observer-window-mature-seconds`,
+default 1800), classifies each per [[satan-perceptual-design]] §S5
+predicate, and on a positive verdict triggers three writes via
+`dl-satan-observer-persist-verdict`:
+
+| Write | Surface | Effect |
+|---|---|---|
+| Motive footer touch | `~/notes/satan/motives.org` via `dl-satan-motive-touch-footer` | `:worked_count:` increment + `:last_intervention_at:` ISO bump; prose, ruminations, other footer fields preserved verbatim; atomic tmp + rename |
+| Memory trace | `satan_memory.traces` (kind `observation`, origin `auto_rule`) via `dl-satan-memory-store-mark` | Records run_id, applied_index, motive_id, predicate metadata; future `memory_resonate` calls can surface it |
+| Dedup mark | observer state file (`~/.local/state/satan/observer.json`) | Per-intervention-id mark prevents double-count across ticks; written last so partial failures retry |
+
+Negative verdicts write only the dedup mark — absence of a positive
+trace is the only negative signal v0 records. The model cannot author
+these writes directly; only the deterministic broker-side classifier
+fires them.
+
+### 4.13 Sensor alerts (broker-side, pre-model-turn)
+
+Not a model tool. Broker module `dl-satan-sensor-alerts.el` (Phase 4)
+runs in `dl-satan-broker--prepare` after evidence assembly, evaluates
+the freshness thresholds in [[satan-perceptual-design]] §S6, and on a
+fire dispatches through the **same `notify_send` tool handler** the
+model uses (so capability checks + audit apply). Every fire AND every
+suppression is recorded in `actions.json.pre_spawn` as a `sensor_alert`
+entry (`{kind, cause, severity, message, remediation, suppressed?,
+dispatched_at?}`). Per-cause cooldown (default 24h) and quiet-hours
+suppression live in `~/.local/state/satan/notified.json`. Audit
+verifier requires a one-to-one correspondence between `notified.json`
+entries this run and `actions.json.pre_spawn` entries (acceptance A16).
 
 ---
 
@@ -547,6 +614,38 @@ user writes @satan in note →
       file now bears @satan-was-here →
         next scan excludes it
 ```
+
+### 8.7 Observer → motive → capsule loop (Phase 5 + 6)
+
+The newest feedback chain. Entirely broker-side; the model never
+authors it.
+
+```
+run N: model emits intervention (notify_send / inbox_append / …) →
+  transcript.jsonl persists intervention_emitted_at + cue handles →
+run N+k: observer at start of next spawn scans prior 24h →
+  intervention's 30-min window has matured →
+    observer.classify-for-motives intersects intervention's percept
+    handles ∩ each active motive's :cue: handles →
+      positive predicate fires (file edit under :project_cwd:, git
+      HEAD delta, mtime delta, or bough_event) →
+        observer.persist-verdict:
+          1. motive footer :worked_count: increment + :last_intervention_at: ISO
+          2. observation/auto_rule trace into satan_memory
+          3. dedup mark into observer.json
+→ same spawn's percept-build / motive-read reads the just-updated
+  footer →
+    broker pre-capsule cooldown check (Phase 6) flips motives in
+    cooldown to read-only [cooling-down (Nm remaining)] in the
+    capsule →
+      model sees updated worked_count + cooling-down state
+```
+
+Net effect: a successful intervention this run dampens the same
+motive's pressure on the next tick (cooldown floor) AND surfaces as a
+prior trace for future `memory_resonate` calls. No live loop, no
+callbacks, no LLM in the path — the same frozen `time_now` carried in
+`run_ctx` gates window-mature and cooldown-remaining symmetrically.
 
 ---
 
