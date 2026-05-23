@@ -63,4 +63,5 @@ PR that extracts `dl-satan-jsonl-test.el` from `test/dl-satan-test.el` L44–112
 - [x] PR 17: extract `dl-satan-tools-notes-test.el` — merged 2026-05-23
 - [x] PR 18: extract `dl-satan-budget-test.el` + budget cross-cutter to broker-test — merged 2026-05-23
 - [x] PR 19: start `dl-satan-audit-test.el` with verifier smoke test — merged 2026-05-23
-- [ ] PR 20..N: remaining modules, one per PR — pending
+- [x] PR 20: append broker pre_spawn threading (Phase 4.4) tests to `dl-satan-broker-test.el` — merged 2026-05-23
+- [ ] PR 21..N: remaining modules, one per PR — pending
