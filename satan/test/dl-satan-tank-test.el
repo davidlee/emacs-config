@@ -100,6 +100,34 @@
     (should (string-match-p "/home/david/.emacs.d" out))
     (should (string-match-p "truncated_at:  focus_segments_middle" out))))
 
+;; ---------------------------------------------------------------------
+;; Attribute section
+;; ---------------------------------------------------------------------
+
+(ert-deftest dl-satan-tank/render-attributes-populated ()
+  (let* ((snapshot '(("curiosity" . 0.30) ("shame" . 0.50)
+                     ("friction" . 0.60)))
+         (out (dl-satan-tank--render-attributes snapshot)))
+    (should (string-match-p "ATTRIBUTES" out))
+    (should (string-match-p "Curiosity" out))
+    (should (string-match-p "Shame" out))
+    (should (string-match-p "Cruelty" out))
+    (should (string-match-p "0\\.30" out))))
+
+(ert-deftest dl-satan-tank/render-attributes-disabled ()
+  (let ((out (dl-satan-tank--render-attributes 'disabled)))
+    (should (string-match-p "ATTRIBUTES" out))
+    (should (string-match-p "(disabled)" out))))
+
+(ert-deftest dl-satan-tank/render-attributes-nil ()
+  (let ((out (dl-satan-tank--render-attributes nil)))
+    (should (string-match-p "ATTRIBUTES" out))
+    (should (string-match-p "(unavailable)" out))))
+
+(ert-deftest dl-satan-tank/gather-attributes-disabled ()
+  (let ((dl-satan-attribute-updates-enabled nil))
+    (should (eq 'disabled (dl-satan-tank--gather-attributes)))))
+
 (ert-deftest dl-satan-tank/render-traces-empty ()
   (let ((out (dl-satan-tank--render-traces nil)))
     (should (string-match-p "RECENT TRACES (last 0)" out))

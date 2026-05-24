@@ -1,17 +1,18 @@
 ;;; dl-satan-tank.el --- SATAN observation tank -*- lexical-binding: t; -*-
 
 ;; Composite read-only buffer that mirrors what SATAN sees right now.
-;; Four sections refresh on a timer (`g' for manual refresh, `q' to
+;; Five sections refresh on a timer (`g' for manual refresh, `q' to
 ;; quit):
 ;;
 ;;   1. EVIDENCE WINDOW   `dl-satan-memory-evidence-assemble' output
 ;;                        (current panopticon window, focus / browser
 ;;                        segment counts, active bough nodes, git + cwd)
-;;   2. RECENT TRACES     `dl-satan-memory-store-recent' last N rows
-;;   3. LAST RUN          summary of the newest run under
+;;   2. ATTRIBUTES        live attribute bars from `satan_attributes'
+;;   3. RECENT TRACES     `dl-satan-memory-store-recent' last N rows
+;;   4. LAST RUN          summary of the newest run under
 ;;                        `dl-satan-runs-dir': mode, status, duration,
 ;;                        token spend, ordered tool calls, final text
-;;   4. RECENT EVENTS     tail of run transcripts under `dl-satan-runs-dir'
+;;   5. RECENT EVENTS     tail of run transcripts under `dl-satan-runs-dir'
 ;;
 ;; Section renderers are pure (state plist in, string out) so they are
 ;; tested without DB / panopticon / bough access.  Gatherers wrap the
@@ -25,6 +26,7 @@
 (require 'dl-satan-memory-evidence)
 (require 'dl-satan-memory-store)
 (require 'dl-satan-memory-grammar)
+(require 'dl-satan-attribute-render)
 
 ;; ---------------------------------------------------------------------
 ;; Customisation
@@ -198,6 +200,19 @@ outside an active SATAN run.  Default is 30 minutes."
           "")))))
    "\n"))
 
+(defun dl-satan-tank--render-attributes (snapshot)
+  "Render the ATTRIBUTES section.
+SNAPSHOT is the result of `dl-satan-attribute-snapshot' (alist), or
+the symbol `disabled' when the switch is off, or nil on query failure."
+  (concat
+   (dl-satan-tank--section "ATTRIBUTES")
+   (cond
+    ((eq snapshot 'disabled) "(disabled)\n")
+    ((null snapshot) "(unavailable)\n")
+    (t (mapconcat (lambda (line) (concat line "\n"))
+                  (dl-satan-attribute-render--rows snapshot) "")))
+   "\n"))
+
 (defun dl-satan-tank--render-traces (rows)
   "Render the RECENT TRACES section for ROWS (list of store-recent plists)."
   (concat
@@ -331,6 +346,14 @@ Returns the state plist on success; nil if any read errors."
         (dl-satan-memory-evidence-assemble
          ctx (list :run_started_at run-started :seg_limit 5)))
     (error nil)))
+
+(defun dl-satan-tank--gather-attributes ()
+  "Return attribute snapshot alist, symbol `disabled', or nil on error."
+  (cond
+   ((not dl-satan-attribute-updates-enabled) 'disabled)
+   (t (condition-case _err
+          (dl-satan-attribute-snapshot)
+        (error nil)))))
 
 (defun dl-satan-tank--gather-traces ()
   (pcase (condition-case _err
@@ -515,6 +538,8 @@ Returns one of: `final', `timeout', `error', `in-progress'."
           (insert (dl-satan-tank--header (dl-satan-tank--time-iso)))
           (insert (dl-satan-tank--render-evidence
                    (dl-satan-tank--gather-evidence)))
+          (insert (dl-satan-tank--render-attributes
+                   (dl-satan-tank--gather-attributes)))
           (insert (dl-satan-tank--render-traces
                    (dl-satan-tank--gather-traces)))
           (insert (dl-satan-tank--render-last-run
