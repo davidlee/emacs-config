@@ -86,5 +86,12 @@ handler) and no race."
         (rename-file tmp dl-satan-motd-path t)))
     partition))
 
+(defun dl-satan-output/ruminate (final _ctx)
+  "Ruminate: no auto-apply. All actions staged for review."
+  (list :applied  '()
+        :staged   (plist-get final :actions)
+        :rejected '()
+        :failed   '()))
+
 (provide 'dl-satan-output)
 ;;; dl-satan-output.el ends here

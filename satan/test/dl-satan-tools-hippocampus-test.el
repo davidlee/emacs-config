@@ -136,6 +136,248 @@ succeeds and the handler returns ok."
       (delete-directory tmp t))))
 
 ;; ---------------------------------------------------------------------
+;; hippocampus_list tests
+;; ---------------------------------------------------------------------
+
+(ert-deftest dl-satan-hippocampus/list-empty-dir ()
+  (let ((dl-satan-hippocampus-dir (make-temp-file "satan-hippo-" t)))
+    (unwind-protect
+        (let ((res (dl-satan-tool/hippocampus-list nil nil)))
+          (should (eq (car res) 'ok))
+          (should (eq (plist-get (cdr res) :count) 0))
+          (should (null (plist-get (cdr res) :entries))))
+      (delete-directory dl-satan-hippocampus-dir t))))
+
+(ert-deftest dl-satan-hippocampus/list-nonexistent-dir ()
+  (let ((dl-satan-hippocampus-dir "/tmp/satan-hippo-nonexistent-xyz"))
+    (let ((res (dl-satan-tool/hippocampus-list nil nil)))
+      (should (eq (car res) 'ok))
+      (should (eq (plist-get (cdr res) :count) 0)))))
+
+(ert-deftest dl-satan-hippocampus/list-returns-entries ()
+  (let* ((tmp (make-temp-file "satan-hippo-" t))
+         (dl-satan-hippocampus-dir tmp))
+    (unwind-protect
+        (progn
+          (with-temp-file (expand-file-name
+                           "20260524T091500--user-prefers-terse__satan_hippocampus.org" tmp)
+            (insert "#+title: user prefers terse\n\nbody"))
+          (let* ((res (dl-satan-tool/hippocampus-list nil nil))
+                 (entries (plist-get (cdr res) :entries)))
+            (should (eq (car res) 'ok))
+            (should (= 1 (plist-get (cdr res) :count)))
+            (should (equal (plist-get (car entries) :title)
+                           "user prefers terse"))))
+      (delete-directory tmp t))))
+
+;; ---------------------------------------------------------------------
+;; hippocampus_read tests
+;; ---------------------------------------------------------------------
+
+(ert-deftest dl-satan-hippocampus/read-existing-file ()
+  (let* ((tmp (make-temp-file "satan-hippo-" t))
+         (dl-satan-hippocampus-dir tmp)
+         (fname "20260524T091500--test-entry__satan_hippocampus.org"))
+    (unwind-protect
+        (progn
+          (with-temp-file (expand-file-name fname tmp)
+            (insert "#+title: test entry\n\nbody content"))
+          (let ((res (dl-satan-tool/hippocampus-read
+                      (list :filename fname) nil)))
+            (should (eq (car res) 'ok))
+            (should (string-match-p "body content"
+                                    (plist-get (cdr res) :body)))))
+      (delete-directory tmp t))))
+
+(ert-deftest dl-satan-hippocampus/read-rejects-traversal ()
+  (let ((res (dl-satan-tool/hippocampus-read
+              '(:filename "../etc/passwd") nil)))
+    (should (eq (car res) 'error))
+    (should (string-match-p "plain basename" (cdr res)))))
+
+(ert-deftest dl-satan-hippocampus/read-rejects-path-separator ()
+  (let ((res (dl-satan-tool/hippocampus-read
+              '(:filename "foo/bar.org") nil)))
+    (should (eq (car res) 'error))
+    (should (string-match-p "plain basename" (cdr res)))))
+
+(ert-deftest dl-satan-hippocampus/read-missing-file ()
+  (let ((dl-satan-hippocampus-dir (make-temp-file "satan-hippo-" t)))
+    (unwind-protect
+        (let ((res (dl-satan-tool/hippocampus-read
+                    '(:filename "nonexistent.org") nil)))
+          (should (eq (car res) 'error))
+          (should (string-match-p "not found" (cdr res))))
+      (delete-directory dl-satan-hippocampus-dir t))))
+
+;; ---------------------------------------------------------------------
+;; hippocampus_overwrite tests
+;; ---------------------------------------------------------------------
+
+(defun dl-satan-tools-hippocampus-test--write-entry (dir filename body)
+  "Write a minimal org hippocampus entry for testing."
+  (with-temp-file (expand-file-name filename dir)
+    (insert "#+title:      test\n")
+    (insert "#+date:       [2026-05-24 Sat 09:15]\n")
+    (insert "#+filetags:   :satan:hippocampus:\n")
+    (insert "#+identifier: 20260524T091500\n\n")
+    (insert ":PROPERTIES:\n:RUN_ID: r1\n:MODE: morning\n:END:\n\n")
+    (insert body "\n")))
+
+(ert-deftest dl-satan-hippocampus/overwrite-replaces-body ()
+  (let* ((tmp (make-temp-file "satan-hippo-" t))
+         (dl-satan-hippocampus-dir tmp)
+         (fname "20260524T091500--test__satan_hippocampus.org"))
+    (unwind-protect
+        (progn
+          (dl-satan-tools-hippocampus-test--write-entry tmp fname "old body")
+          (let ((res (dl-satan-tool/hippocampus-overwrite
+                      (list :filename fname :body "new body")
+                      '(:capabilities (hippocampus-write)))))
+            (should (eq (car res) 'ok))
+            (let ((text (with-temp-buffer
+                          (insert-file-contents
+                           (expand-file-name fname tmp))
+                          (buffer-string))))
+              (should (string-match-p "new body" text))
+              (should-not (string-match-p "old body" text))
+              (should (string-search "#+title:      test" text)))))
+      (delete-directory tmp t))))
+
+(ert-deftest dl-satan-hippocampus/overwrite-capability-required ()
+  (let ((res (dl-satan-tool/hippocampus-overwrite
+              '(:filename "x.org" :body "b")
+              '(:capabilities (write-daily)))))
+    (should (eq (car res) 'error))
+    (should (string-match-p "hippocampus-write" (cdr res)))))
+
+(ert-deftest dl-satan-hippocampus/overwrite-missing-file ()
+  (let ((dl-satan-hippocampus-dir (make-temp-file "satan-hippo-" t)))
+    (unwind-protect
+        (let ((res (dl-satan-tool/hippocampus-overwrite
+                    '(:filename "nope.org" :body "b")
+                    '(:capabilities (hippocampus-write)))))
+          (should (eq (car res) 'error))
+          (should (string-match-p "not found" (cdr res))))
+      (delete-directory dl-satan-hippocampus-dir t))))
+
+;; ---------------------------------------------------------------------
+;; hippocampus_delete tests
+;; ---------------------------------------------------------------------
+
+(ert-deftest dl-satan-hippocampus/delete-removes-file ()
+  (let* ((tmp (make-temp-file "satan-hippo-" t))
+         (dl-satan-hippocampus-dir tmp)
+         (fname "20260524T091500--delete-me__satan_hippocampus.org"))
+    (unwind-protect
+        (progn
+          (dl-satan-tools-hippocampus-test--write-entry tmp fname "body")
+          (should (file-exists-p (expand-file-name fname tmp)))
+          (let ((res (dl-satan-tool/hippocampus-delete
+                      (list :filename fname)
+                      '(:capabilities (hippocampus-write)))))
+            (should (eq (car res) 'ok))
+            (should-not (file-exists-p (expand-file-name fname tmp)))))
+      (delete-directory tmp t))))
+
+(ert-deftest dl-satan-hippocampus/delete-capability-required ()
+  (let ((res (dl-satan-tool/hippocampus-delete
+              '(:filename "x.org")
+              '(:capabilities (write-daily)))))
+    (should (eq (car res) 'error))
+    (should (string-match-p "hippocampus-write" (cdr res)))))
+
+(ert-deftest dl-satan-hippocampus/delete-rejects-traversal ()
+  (let ((res (dl-satan-tool/hippocampus-delete
+              '(:filename "../etc/shadow")
+              '(:capabilities (hippocampus-write)))))
+    (should (eq (car res) 'error))
+    (should (string-match-p "plain basename" (cdr res)))))
+
+;; ---------------------------------------------------------------------
+;; hippocampus_grep tests
+;; ---------------------------------------------------------------------
+
+(ert-deftest dl-satan-hippocampus/grep-finds-match ()
+  (let* ((tmp (make-temp-file "satan-hippo-" t))
+         (dl-satan-hippocampus-dir tmp)
+         (fname "20260524T091500--grep-test__satan_hippocampus.org"))
+    (unwind-protect
+        (progn
+          (dl-satan-tools-hippocampus-test--write-entry
+           tmp fname "unique-needle-xyz")
+          (let* ((res (dl-satan-tool/hippocampus-grep
+                       '(:query "unique-needle-xyz") nil))
+                 (matches (plist-get (cdr res) :matches)))
+            (should (eq (car res) 'ok))
+            (should (> (plist-get (cdr res) :count) 0))
+            (should (string-match-p "unique-needle-xyz"
+                                    (plist-get (car matches) :text)))))
+      (delete-directory tmp t))))
+
+(ert-deftest dl-satan-hippocampus/grep-no-match ()
+  (let* ((tmp (make-temp-file "satan-hippo-" t))
+         (dl-satan-hippocampus-dir tmp)
+         (fname "20260524T091500--grep-test__satan_hippocampus.org"))
+    (unwind-protect
+        (progn
+          (dl-satan-tools-hippocampus-test--write-entry tmp fname "body")
+          (let ((res (dl-satan-tool/hippocampus-grep
+                      '(:query "zzz-no-match-zzz") nil)))
+            (should (eq (car res) 'ok))
+            (should (= 0 (plist-get (cdr res) :count)))))
+      (delete-directory tmp t))))
+
+(ert-deftest dl-satan-hippocampus/grep-empty-query ()
+  (let ((res (dl-satan-tool/hippocampus-grep '(:query "") nil)))
+    (should (eq (car res) 'error))
+    (should (string-match-p "non-empty" (cdr res)))))
+
+;; ---------------------------------------------------------------------
+;; hippocampus_rename tests
+;; ---------------------------------------------------------------------
+
+(ert-deftest dl-satan-hippocampus/rename-updates-filename-and-title ()
+  (let* ((tmp (make-temp-file "satan-hippo-" t))
+         (dl-satan-hippocampus-dir tmp)
+         (fname "20260524T091500--old-name__satan_hippocampus.org"))
+    (unwind-protect
+        (progn
+          (dl-satan-tools-hippocampus-test--write-entry tmp fname "body")
+          (let* ((res (dl-satan-tool/hippocampus-rename
+                       (list :filename fname :title "Better Name")
+                       '(:capabilities (hippocampus-write))))
+                 (new-fname (plist-get (cdr res) :new_filename)))
+            (should (eq (car res) 'ok))
+            (should (string-match-p "better-name" new-fname))
+            (should (string-prefix-p "20260524T091500--" new-fname))
+            (should-not (file-exists-p (expand-file-name fname tmp)))
+            (should (file-exists-p (expand-file-name new-fname tmp)))
+            (let ((text (with-temp-buffer
+                          (insert-file-contents
+                           (expand-file-name new-fname tmp))
+                          (buffer-string))))
+              (should (string-search "#+title:      Better Name" text)))))
+      (delete-directory tmp t))))
+
+(ert-deftest dl-satan-hippocampus/rename-capability-required ()
+  (let ((res (dl-satan-tool/hippocampus-rename
+              '(:filename "x.org" :title "t")
+              '(:capabilities (write-daily)))))
+    (should (eq (car res) 'error))
+    (should (string-match-p "hippocampus-write" (cdr res)))))
+
+(ert-deftest dl-satan-hippocampus/rename-missing-file ()
+  (let ((dl-satan-hippocampus-dir (make-temp-file "satan-hippo-" t)))
+    (unwind-protect
+        (let ((res (dl-satan-tool/hippocampus-rename
+                    '(:filename "nope.org" :title "t")
+                    '(:capabilities (hippocampus-write)))))
+          (should (eq (car res) 'error))
+          (should (string-match-p "not found" (cdr res))))
+      (delete-directory dl-satan-hippocampus-dir t))))
+
+;; ---------------------------------------------------------------------
 ;; File-side tests (relocated from dl-satan-test.el monolith)
 ;; ---------------------------------------------------------------------
 

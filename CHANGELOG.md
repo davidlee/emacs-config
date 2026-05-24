@@ -2,6 +2,15 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-24 — SATAN: hippocampus v1 — full tool suite + ruminate mode
+
+- `satan/dl-satan-tools-hippocampus.el` — expanded from write-only to 7 tools: `hippocampus_list` (read, newest-first entries), `hippocampus_read` (body by filename, path-sandboxed), `hippocampus_write` (existing, denote org + cross-ref), `hippocampus_overwrite` (replace body, keep metadata), `hippocampus_delete` (remove file), `hippocampus_grep` (rg-backed search), `hippocampus_rename` (update slug + #+title).  All mutating tools require `hippocampus-write` capability; read tools are tool-allowlist-only.
+- `satan/dl-satan-mode.el` — all hippocampus tools wired into all 5 modes (morning, motd, self-edit-mech, self-edit-mind, ruminate).  `hippocampus-write` capability added to modes that lacked it (motd, self-edit-mech, self-edit-mind).  New `ruminate` mode: inward-facing memory upkeep — hippocampus + memory + motive_read + bough_read + notes_recent + docs.  No org, no notify, no proposals, no sway.  Output handler stages everything, auto-applies nothing.
+- `satan/dl-satan-output.el` — `dl-satan-output/ruminate` added (all actions staged for review).
+- `~/notes/satan/prompts/ruminate.txt` (new) — prompt guiding memory review, consolidation, staleness detection, and attribute-driven prioritisation (high Shame → review past mistakes; high Curiosity → scan for gaps; high Brooding → trace chains).
+- `~/notes/satan/tools/` — all 7 hippocampus tool descriptions rewritten with when/why/when-not guidance, hippocampus-vs-memory_mark distinction, and encouragement toward active use.  Key framing: hippocampus is the *knowledge* surface (editable prose, recalled by list/grep); memory_mark is the *moment* surface (evidence-grounded, recalled by resonance).
+- Tests: 25 ert in `dl-satan-tools-hippocampus-test.el` (18 new for list/read/overwrite/delete/grep/rename + 7 existing write/cross-ref).  All 25 green.  Broker test description alists updated for new tool names.
+
 ## 2026-05-24 — SATAN: T-attr-1d — capsule attribute bar render (broker-only)
 
 - `satan/dl-satan-attribute-render.el` (new) — snapshot query (`SELECT name, value FROM satan_attributes WHERE scope='global'`) via existing `dl-satan-attribute--query` psql plumbing + bar block renderer.  Render shape: `█/░` 10-wide bars with 2-decimal numeric right of bar, fixed vocabulary order from design-contract §2 (curiosity → metamorphosis), `:friction` mapped to public label "Cruelty".  When `dl-satan-attribute-updates-enabled` is nil, renders single `"Attributes: disabled"` marker per §9.  Block self-suppresses (returns nil) on query failure or missing framing key.

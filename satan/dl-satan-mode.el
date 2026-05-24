@@ -88,7 +88,10 @@ Dotfiles must not be the source of truth for prompt content.")
        :prompt-file (expand-file-name "morning.txt" dl-satan-prompts-dir)
        :context-fn 'dl-satan-context-morning
        :tools '("org_read_context" "org_update_owned_block"
-                "proposal_stage" "notify_send" "hippocampus_write"
+                "proposal_stage" "notify_send"
+                "hippocampus_list" "hippocampus_read" "hippocampus_write"
+                "hippocampus_overwrite" "hippocampus_delete"
+                "hippocampus_grep" "hippocampus_rename"
                 "inbox_append" "agenda_read" "activity_read"
                 "notes_recent" "notes_at_satan_scan"
                 "sway_border_set" "sway_border_reset"
@@ -112,12 +115,16 @@ Dotfiles must not be the source of truth for prompt content.")
        :prompt-file (expand-file-name "motd.txt" dl-satan-prompts-dir)
        :context-fn 'dl-satan-context-motd
        :tools '("org_read_context" "notify_send" "inbox_append"
+                "hippocampus_list" "hippocampus_read" "hippocampus_write"
+                "hippocampus_overwrite" "hippocampus_delete"
+                "hippocampus_grep" "hippocampus_rename"
                 "agenda_read" "activity_read" "notes_recent"
                 "sway_border_set" "sway_border_reset"
                 "bough_read" "memory_mark" "memory_resonate"
                 "memory_show_trace"
                 "motive_read" "motive_replace")
-       :capabilities '(notify inbox-write memory-write motive-write)
+       :capabilities '(notify inbox-write memory-write motive-write
+                       hippocampus-write)
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
        :jail-profile 'specDev
        :profile 'claude-haiku
@@ -133,10 +140,13 @@ Dotfiles must not be the source of truth for prompt content.")
        :context-fn 'dl-satan-context-self-edit
        :source-roots-var 'dl-satan-self-edit-mech-roots
        :tools '("proposal_stage" "sway_border_set" "sway_border_reset"
+                "hippocampus_list" "hippocampus_read" "hippocampus_write"
+                "hippocampus_overwrite" "hippocampus_delete"
+                "hippocampus_grep" "hippocampus_rename"
                 "bough_read" "memory_resonate" "memory_show_trace"
                 "patch_job_create" "patch_job_status"
                 "docs_list" "docs_search" "docs_read")
-       :capabilities '(stage-proposal)
+       :capabilities '(stage-proposal hippocampus-write)
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
        :jail-profile 'specDev
        :profile 'claude-haiku
@@ -152,10 +162,13 @@ Dotfiles must not be the source of truth for prompt content.")
        :context-fn 'dl-satan-context-self-edit
        :source-roots-var 'dl-satan-self-edit-mind-roots
        :tools '("proposal_stage" "sway_border_set" "sway_border_reset"
+                "hippocampus_list" "hippocampus_read" "hippocampus_write"
+                "hippocampus_overwrite" "hippocampus_delete"
+                "hippocampus_grep" "hippocampus_rename"
                 "bough_read" "memory_resonate" "memory_show_trace"
                 "patch_job_create" "patch_job_status"
                 "docs_list" "docs_search" "docs_read")
-       :capabilities '(stage-proposal)
+       :capabilities '(stage-proposal hippocampus-write)
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
        :jail-profile 'specDev
        :profile 'claude-haiku
@@ -163,6 +176,27 @@ Dotfiles must not be the source of truth for prompt content.")
        :output-handler 'dl-satan-output/self-edit
        :auto-apply 'none
        :timeout-seconds 180
+       :budget-tool-calls 20))
+
+(dl-satan-mode-register
+ (list :name "ruminate"
+       :prompt-file (expand-file-name "ruminate.txt" dl-satan-prompts-dir)
+       :context-fn 'dl-satan-context-motd
+       :tools '("hippocampus_list" "hippocampus_read" "hippocampus_write"
+                "hippocampus_overwrite" "hippocampus_delete"
+                "hippocampus_grep" "hippocampus_rename"
+                "memory_mark" "memory_resonate" "memory_show_trace"
+                "motive_read" "bough_read"
+                "notes_recent"
+                "docs_list" "docs_search" "docs_read")
+       :capabilities '(hippocampus-write memory-write)
+       :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
+       :jail-profile 'specDev
+       :profile 'claude-haiku
+       :budget-tokens 120000
+       :output-handler 'dl-satan-output/ruminate
+       :auto-apply 'none
+       :timeout-seconds 120
        :budget-tool-calls 20))
 
 (provide 'dl-satan-mode)
