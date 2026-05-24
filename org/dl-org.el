@@ -70,11 +70,21 @@
 ;;   :custom
 ;;   (org-bullets-bullet-list '(" ")))
 
+(defun my/org-hl-line-strip-bg ()
+  "Strip :background from hl-line overlays, keeping :underline."
+  (dolist (ov (overlays-at (point)))
+    (when (eq (overlay-get ov 'face) 'hl-line)
+      (overlay-put ov 'face '(:underline t)))))
+
 (defun my/org-setup-margins ()
   "Buffer-local margin + hl-line tweaks for org buffers."
   (setq left-margin-width 2
     right-margin-width 2)
-  (hl-line-mode -1)
+  ;; hl-line overlay clobbers org-modern pill backgrounds (text properties
+  ;; lose to overlays). Intercept overlay after each highlight to strip bg.
+  (add-hook 'post-command-hook #'my/org-hl-line-strip-bg 90 t)
+  ;; Option B: disable hl-line entirely in org if remap isn't enough
+  ;; (hl-line-mode -1)
   (set-window-buffer nil (current-buffer)))
 
 (add-hook 'org-mode-hook #'my/org-setup-margins)

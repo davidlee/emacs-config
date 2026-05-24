@@ -139,22 +139,22 @@ with `text-scale-adjust' (C-mousewheel).  Edit and call
       (apply #'my/set-face-font face role attrs)))
   (setq org-todo-keyword-faces
     '(("TODO"     . (:foreground "#f38ba8" :weight bold))
-      ("NEXT"     . (:foreground "#fab387" :weight bold))
-      ("STARTED"  . (:foreground "#a6e3a1" :weight bold))
-      ("WAITING"  . (:foreground "#f9e2af"))
-      ("MAYBE"    . (:foreground "#cba6f7"))
-      ("DONE"     . (:foreground "#6c7086"))
-      ("CANCELED" . (:foreground "#585b70"))
-      ("MOVED"    . (:foreground "#89b4fa"))))
+       ("NEXT"     . (:foreground "#fab387" :weight bold))
+       ("STARTED"  . (:foreground "#a6e3a1" :weight bold))
+       ("WAITING"  . (:foreground "#f9e2af"))
+       ("MAYBE"    . (:foreground "#cba6f7"))
+       ("DONE"     . (:foreground "#6c7086"))
+       ("CANCELED" . (:foreground "#585b70"))
+       ("MOVED"    . (:foreground "#89b4fa"))))
   (setq org-modern-todo-faces
     '(("TODO"     :background "#f38ba8" :foreground "#1e1e2e")
-      ("NEXT"     :background "#fab387" :foreground "#1e1e2e")
-      ("STARTED"  :background "#a6e3a1" :foreground "#1e1e2e")
-      ("WAITING"  :background "#f9e2af" :foreground "#1e1e2e")
-      ("MAYBE"    :background "#cba6f7" :foreground "#1e1e2e")
-      ("DONE"     :background "#45475a" :foreground "#6c7086")
-      ("CANCELED" :background "#313244" :foreground "#585b70")
-      ("MOVED"    :background "#89b4fa" :foreground "#1e1e2e"))))
+       ("NEXT"     :background "#fab387" :foreground "#1e1e2e")
+       ("STARTED"  :background "#a6e3a1" :foreground "#1e1e2e")
+       ("WAITING"  :background "#f9e2af" :foreground "#1e1e2e")
+       ("MAYBE"    :background "#cba6f7" :foreground "#1e1e2e")
+       ("DONE"     :background "#45475a" :foreground "#6c7086")
+       ("CANCELED" :background "#313244" :foreground "#585b70")
+       ("MOVED"    :background "#89b4fa" :foreground "#1e1e2e"))))
 
 (defun my/apply-ui-faces ()
   "Apply font roles to core UI faces."
@@ -266,4 +266,3 @@ Re-applied after theme load so rotating themes can't clobber them."
 
 (provide 'dl-faces)
 ;;; dl-faces.el ends here
-
