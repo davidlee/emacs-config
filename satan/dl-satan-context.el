@@ -13,6 +13,7 @@
 (require 'dl-satan-resonance)
 (require 'dl-satan-motive)
 (require 'dl-satan-sensor-alerts)
+(require 'dl-satan-attribute-render)
 
 (defvar dl-satan-runs-dir)              ; defined in dl-satan-broker.el
 
@@ -300,10 +301,11 @@ Keys: :when, :mode, :status (\"ok\" / \"FAILED\"), :summary (or nil),
   "Return the fully-rendered system prompt for the harness.
 ASSEMBLED is the scaffold + mode-prompt string (no framing yet).
 BUNDLE is the context plist providing `:now', `:today_text', `:sources',
-`:recent_runs', `:percept', `:resonance', `:motive', `:sensor_status'.
+`:recent_runs', `:percept', `:resonance', `:motive', `:sensor_status',
+`:attributes'.
 Missing framing.txt signals — there is no canonical fallback.  Block
-order: `# Now' → percept → resonance → motive → sensors → mode-
-specific (today / sources / recent runs).  Each block self-suppresses
+order: `# Now' → attributes → percept → resonance → motive → sensors →
+mode-specific (today / sources / recent runs).  Each block self-suppresses
 when its source is empty/absent (A4, A6, A8, A15)."
   (let* ((framing (dl-satan-context--framing))
          (parts (list (string-trim-right assembled)))
@@ -311,6 +313,8 @@ when its source is empty/absent (A4, A6, A8, A15)."
                        (list
                         (dl-satan-context--render-now
                          framing (plist-get bundle :now))
+                        (dl-satan-attribute-render-block
+                         framing (plist-get bundle :attributes))
                         (dl-satan-percept-render-block
                          framing (plist-get bundle :percept))
                         (dl-satan-resonance-render-block
@@ -349,8 +353,13 @@ framing regardless of mode.  Keys: :iso_date, :weekday, :iso_week,
 (defun dl-satan-context--finalize-prompt (bundle assembled)
   "Replace BUNDLE's `:prompt' with the fully-rendered prompt.
 ASSEMBLED is the scaffold + mode-prompt string the caller built.
+Fetches the attribute snapshot and attaches it to BUNDLE before
+rendering so every mode gets the `# Attributes' block.
 The harness consumes `:prompt' verbatim; other bundle keys remain
 for audit but are no longer read by the harness."
+  (unless (plist-member bundle :attributes)
+    (setq bundle (plist-put bundle :attributes
+                             (dl-satan-attribute-snapshot))))
   (plist-put bundle :prompt (dl-satan-context--render-prompt assembled bundle)))
 
 (defun dl-satan-context--with-prepare (bundle prepare)
