@@ -4,13 +4,13 @@ description: Design sketch — hippocampus tool calls emitting attribute deltas
 metadata:
   type: design
   topic: satan-attributes
-  status: draft
+  status: contracted
   updated_at: 2026-05-24
 ---
 
 # Hippocampus tool calls → attribute signals
 
-> **Status.** Draft sketch for handover. Not yet contracted.
+> **Status.** Contracted and implemented (T-attr-1d-hc). Design contract §6H.
 
 ## Motivation
 
@@ -166,37 +166,35 @@ Daemon (Rust):
 - No confidence weighting (base = final).
 - Caps apply (range_clamp at 0/1 boundaries).
 
-## Open questions
+## Resolved questions
 
-1. **Should `hippocampus_grep` with matches also emit?**
-   Current proposal: no. Finding what you expected is not
-   metabolically interesting. Counter-argument: finding a
-   contradicting entry is interesting, but the grep tool
-   doesn't know whether the match contradicts — that
-   requires reading and interpreting.
+1. **`hippocampus_grep` with matches does not emit.**
+   Grep has no semantic layer to distinguish contradiction
+   from confirmation. Emitting on all greps adds noise.
 
-2. **Should the source be `hippocampus` or more general
-   (`tool_action`)?** Starting narrow is safer; can fold
-   into a general source later if other tools want signals.
-   But if motive_replace, org_update_owned_block, etc. will
-   want signals too, a general source avoids N source
-   registrations.
+2. **Source is `hippocampus`, not general `tool_action`.**
+   Only tool family with a clear metabolic story. Folding
+   into a general source later is a rename + union, not a
+   rewrite.
 
-3. **Should overwrite/delete require reading the entry
-   first to emit?** Currently: no, emit on any successful
-   call. Possible concern: deleting an entry you wrote 30
-   seconds ago in the same run shouldn't reduce Shame
-   (it's not correcting an error, it's undoing a mistake
-   within the same session). Mitigation: magnitudes are tiny
-   enough that this doesn't matter in practice.
+3. **No prior-read gate on overwrite/delete.**
+   At 0.025 magnitude, intra-run write-then-delete is
+   effectively zero-cost. Gating would couple emission to
+   run-level state tracking — not worth it.
 
-4. **Revision semantics.** Intervention outcomes can be
-   revised (§6.2) — a `contradicted` can later be re-classified
-   to `worked`. Hippocampus actions are final (you either
-   wrote or you didn't). No revision path needed, but the
-   daemon dispatcher assumes revision capability per source.
-   Simplest: `is_revision=false` always, dispatcher skips
-   revision logic for hippocampus source.
+4. **`is_revision=false` always.** Add a source-level
+   `source_supports_revision` flag in dispatcher. Skip
+   `gather_prior_actuals` and revision event paths entirely
+   for non-revisable sources.
+
+## Future directions
+
+- **Curiosity signals from hippocampus.** A successful
+  grep finding unexpected content, or a write consolidating
+  scattered traces, could be Curiosity-relevant. Same
+  fundamental problem as Q1: grep can't distinguish
+  interesting from routine without semantic interpretation.
+  Revisit when a higher-level tool exists for that.
 
 ## Relationship to ruminate mode
 

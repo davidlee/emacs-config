@@ -387,8 +387,8 @@ Warns when KEY already has a binding in MAP that differs from CMD."
     '("j" . meow-next)
     '("k" . meow-prev)
     '("<escape>" . ignore)
-;;    '("s-[" . my/previous-user-buffer)
-;;    '("s-]" . my/next-user-buffer)
+    ;;    '("s-[" . my/previous-user-buffer)
+    ;;    '("s-]" . my/next-user-buffer)
     '("s-{" . tab-bar-switch-to-prev-tab)
     '("s-}" . tab-bar-switch-to-next-tab))
 

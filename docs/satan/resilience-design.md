@@ -135,52 +135,48 @@ attributes: shame=0.50 doubt=0.50
 
 ---
 
-## 2. Progressive rate-limit degradation
+## 2. Progressive token exhaustion
 
 ### 2.1 Current state
 
-Rate limits cause `emit_error` → harness exit 1 → broker marks
-`.FAILED` → run is dead. No retry, no backoff, no degradation. The
-run's partial work (tool calls already completed, memory writes
-already persisted) is abandoned — the model never gets to call
-`satan_final` to summarise what it learned.
+Token budget enforcement is binary: soft-warn at threshold, then
+force-final on next turn. No intermediate behaviour. The run's partial
+work (tool calls already completed, memory writes already persisted)
+is abandoned — the model never gets to call `satan_final` to summarise
+what it learned.
 
-Token budget enforcement is similarly binary: soft-warn at threshold,
-then force-final on next turn. No intermediate behaviour.
+### 2.2 Three-tier tool degradation
 
-### 2.2 Proposed: three-tier tool degradation
-
-When the harness detects a rate limit (or approaches token budget),
-progressively restrict tool availability rather than terminating. Each
-tier reduces the available tool set; the model receives a system
-message explaining the restriction and is expected to wind down
-gracefully.
+As the harness approaches the token budget, progressively restrict
+tool availability rather than terminating. Each tier reduces the
+available tool set; the model receives a system message explaining the
+restriction and is expected to wind down gracefully.
 
 **Tier 0 — normal.** Full tool set per mode spec. No restrictions.
 
-**Tier 1 — conserve.** Triggered by: rate limit retry succeeded after
-backoff, OR token usage crosses 70% of budget.
+**Tier 1 — conserve.** Triggered by: token usage crosses 70% of budget.
 
-- Drop high-context tools: `docs_search`, `docs_read`, `docs_list`,
-  `activity_read`, `notes_recent`, `hippocampus_grep`.
+- Drop high-context survey tools: `docs_search`, `docs_read`,
+  `docs_list`, `activity_read`, `notes_recent`, `hippocampus_grep`.
 - Keep: all read/write tools for notes, memory, bough. All action
   tools (notify, inbox, motive, patch).
 - System message: "Context budget pressure. Survey tools withdrawn.
   Focused reads and writes remain. Begin winding down."
 
-**Tier 2 — wind-down.** Triggered by: second rate limit hit, OR token
-usage crosses 85% of budget.
+**Tier 2 — wind-down.** Triggered by: token usage crosses 85% of budget.
 
 - Drop external reads: `org_read_context`, `bough_read`,
-  `agenda_read`, `hippocampus_list`, `hippocampus_read`.
+  `agenda_read`, `hippocampus_list`, `hippocampus_read`,
+  `notes_at_satan_scan`, `memory_resonate`, `memory_show_trace`,
+  `patch_job_create`, `patch_job_status`, `proposal_stage`.
 - Keep: memory writes (`memory_mark`, `hippocampus_write`,
   `hippocampus_overwrite`), `inbox_append`, `notify_send`,
   `satan_final`.
 - System message: "Context nearly exhausted. External reads withdrawn.
   Save findings to memory, then call satan_final."
 
-**Tier 3 — final-only.** Triggered by: third rate limit hit, OR token
-usage crosses 95% of budget, OR 85% of timeout elapsed.
+**Tier 3 — final-only.** Triggered by: token usage crosses 95% of
+budget, OR 85% of timeout elapsed.
 
 - Only tool: `satan_final`.
 - System message: "Context exhausted. Call satan_final now with your
@@ -188,32 +184,7 @@ usage crosses 95% of budget, OR 85% of timeout elapsed.
 - If model still doesn't finalise on next turn: force synthetic final
   (current behaviour, but now only as last resort after 3 chances).
 
-### 2.3 Rate limit retry with backoff
-
-Before degrading, the harness should retry on rate limit errors:
-
-```python
-RETRY_DELAYS = [2, 5, 15]  # seconds
-
-for attempt, delay in enumerate(RETRY_DELAYS):
-    try:
-        comp = provider.complete(state.messages, tools, model)
-        break
-    except RateLimitError:
-        if attempt == len(RETRY_DELAYS) - 1:
-            degrade_tier(state)
-            # retry once more at reduced tier
-            comp = provider.complete(state.messages, reduced_tools, model)
-            break
-        emit_log({"kind": "rate_limit_retry", "attempt": attempt + 1,
-                  "delay": delay})
-        time.sleep(delay)
-```
-
-Each exhausted retry cycle bumps the tier. The model always gets
-another chance at the reduced tool set before the next tier kicks in.
-
-### 2.4 Implementation shape
+### 2.3 Implementation shape
 
 **Harness side (runloop.py).**
 
@@ -222,7 +193,6 @@ another chance at the reduced tool set before the next tier kicks in.
 - `degrade_tier()` function: bumps tier, rebuilds tool list by
   filtering the manifest's tools against tier allowlists, emits
   `tier_changed` log event.
-- Provider call wrapped in retry-with-backoff.
 - Token-budget thresholds checked after each turn (replace current
   single-threshold `warned` boolean with tier progression).
 
@@ -242,35 +212,31 @@ another chance at the reduced tool set before the next tier kicks in.
   (e.g. tick-agent's full set is already narrow — tier 1 might be
   identical to tier 0).
 
-### 2.5 Backstop termination
+### 2.4 Backstop termination
 
 Hard termination only on:
 
-- **30 minutes elapsed** (configurable, mode-level `:max-timeout-seconds`).
-  Current per-mode `:timeout-seconds` (60-120s) becomes the "expected
-  duration" for budgeting, not the kill threshold.
+- **30 minutes elapsed** (`:timeout-seconds 1800`, now uniform across
+  modes). This is the hard backstop — progressive degradation should
+  cause most runs to finalise well before this.
 - **1M tokens cumulative** (configurable, mode-level
   `:max-budget-tokens`). Well past any normal run; catches infinite
   loops.
-- **5 consecutive rate limit cycles without progress** (no successful
-  tool call between retries). Prevents burning wall-clock time
-  against a hard quota.
 
 These backstops exist only to prevent infinite runs. Normal
 termination is always via `satan_final` — either model-initiated or
 forced at tier 3.
 
-### 2.6 Notification integration
+### 2.5 Notification integration
 
 - **Tier 1 entry**: no notification (routine pressure, self-corrects).
-- **Tier 2 entry**: `tracing::info!` log event. Tank shows yellow
-  indicator.
+- **Tier 2 entry**: log event. Tank shows yellow indicator.
 - **Tier 3 entry**: desktop notification via `notify_send` (from
   broker, not model). "SATAN run degraded to final-only."
 - **Backstop kill**: existing `announce-failure` path (syslog +
   streak-gated notification).
 
-### 2.7 Audit trail
+### 2.6 Audit trail
 
 Every tier transition emits a transcript event:
 
@@ -283,8 +249,9 @@ Every tier transition emits a transcript event:
     "kind": "tier_changed",
     "from_tier": 0,
     "to_tier": 1,
-    "trigger": "rate_limit|budget_70|budget_85|budget_95|timeout_85",
+    "trigger": "budget_70|budget_85|budget_95|timeout_85",
     "tokens_total": 72000,
+    "tokens_budget": 300000,
     "elapsed_seconds": 45.2,
     "tools_removed": ["docs_search", "docs_read", "activity_read"],
     "tools_remaining": 12
@@ -297,8 +264,9 @@ Every tier transition emits a transcript event:
 ## 3. Tool tier classification
 
 Reference classification for the default tier toolsets. Modes with
-narrow tool lists (tick-pulse, tick-agent) may skip tiers where
-their full set is already within the tier's allowlist.
+narrow tool lists apply the same tier logic; if a tier removes no
+tools from a given mode, the system message still signals the
+transition.
 
 | Tool | Tier 0 | Tier 1 | Tier 2 | Tier 3 |
 |---|---|---|---|---|
@@ -314,25 +282,25 @@ their full set is already within the tier's allowlist.
 | `hippocampus_list` | yes | yes | - | - |
 | `hippocampus_read` | yes | yes | - | - |
 | `notes_at_satan_scan` | yes | yes | - | - |
+| `memory_resonate` | yes | yes | - | - |
+| `memory_show_trace` | yes | yes | - | - |
+| `patch_job_create` | yes | yes | - | - |
+| `patch_job_status` | yes | yes | - | - |
+| `proposal_stage` | yes | yes | - | - |
 | `hippocampus_write` | yes | yes | yes | - |
 | `hippocampus_overwrite` | yes | yes | yes | - |
 | `hippocampus_delete` | yes | yes | yes | - |
 | `hippocampus_rename` | yes | yes | yes | - |
 | `memory_mark` | yes | yes | yes | - |
-| `memory_resonate` | yes | yes | - | - |
-| `memory_show_trace` | yes | yes | - | - |
 | `motive_read` | yes | yes | yes | - |
 | `motive_replace` | yes | yes | yes | - |
 | `inbox_append` | yes | yes | yes | - |
 | `notify_send` | yes | yes | yes | - |
-| `patch_job_create` | yes | yes | - | - |
-| `patch_job_status` | yes | yes | - | - |
 | `notes_at_satan_done` | yes | yes | yes | - |
 | `notes_at_satan_intervention_done` | yes | yes | yes | - |
 | `sway_border_set` | yes | yes | yes | - |
 | `sway_border_reset` | yes | yes | yes | - |
 | `org_update_owned_block` | yes | yes | yes | - |
-| `proposal_stage` | yes | yes | - | - |
 | `satan_final` | yes | yes | yes | yes |
 
 **Design principle.** Tier drops go: survey → focused reads →
@@ -343,7 +311,26 @@ partial findings to memory before terminating.
 
 ---
 
-## 4. Implementation sequence
+## 4. Budget changes (2026-05-24)
+
+Mode budgets raised to give progressive degradation room to work.
+With tier 1 at 70%, most runs will start winding down well before
+the new ceiling. Better to get partial results after 220K than
+nothing after crashing at 100K.
+
+| Mode | Timeout | Token budget | Tool calls | Change |
+|---|---|---|---|---|
+| morning | 1800s | 300K | 100 | was 90s/100K/8 |
+| motd | 1800s | 100K | 100 | was 45s/80K/4 |
+| self-edit-mech | 1800s | 300K | 100 | was 180s/100K/20 |
+| self-edit-mind | 1800s | 300K | 100 | was 180s/100K/20 |
+| ruminate | 1800s | 400K | 100 | was 180s/400K/30 |
+
+Daily ceiling: 2.5M (unchanged).
+
+---
+
+## 5. Implementation sequence
 
 Suggested order (each is a standalone PR):
 
@@ -352,38 +339,41 @@ Suggested order (each is a standalone PR):
    changes.
 2. **Crash context event** (broker-side). Emit `crash-context` on
    non-done finalize paths. Tank shows diagnostic block. Tests.
-3. **Rate limit retry with backoff** (harness-side). Retry loop in
-   runloop.py. `rate_limit_retry` log events. No tier system yet —
-   just retry then fail.
-4. **Tier degradation** (harness-side). `TierState`, tier toolset
+3. **Tier degradation** (harness-side). `TierState`, tier toolset
    filtering, system message injection, `tier_changed` log events.
    Broker audit validator accepts new event kind.
-5. **Backstop thresholds** (both sides). New mode-spec keys
-   `:max-timeout-seconds`, `:max-budget-tokens`. Harness checks;
-   broker wires defaults.
-6. **Notification + tank** (broker-side). Tier-aware notification.
+4. **Backstop thresholds** (both sides). New mode-spec keys
+   `:max-budget-tokens`. Harness checks; broker wires defaults.
+5. **Notification + tank** (broker-side). Tier-aware notification.
    Tank shows tier transitions in LAST RUN + RECENT EVENTS.
 
 ---
 
-## 5. Open questions
+## 6. Resolved decisions
 
-1. **Tier thresholds.** 70/85/95% of budget is a guess. Should these
-   be mode-configurable or global? Recommendation: global defaults,
+1. **Tier thresholds.** 70/85/95% of token budget. Global defaults,
    mode-level override via `:tier-thresholds '(0.70 0.85 0.95)`.
-2. **Rate limit vs budget-triggered tiers.** Should they share the
-   same tier counter? A run at 60% budget that hits a rate limit
-   jumps to tier 1 — is that right, or should rate-limit tiers be
-   separate? Recommendation: shared counter. A rate limit is a signal
-   the run is consuming too much.
-3. **Tick modes.** Tick-pulse has 4 tool calls budget and 60s timeout.
-   3-tier degradation is overkill. Auto-collapse to tier 0 → tier 3
-   when the mode's full tool count ≤ 6? Recommendation: yes.
-4. **`memory_resonate` tier placement.** It's a read that can return
-   large context, but it's also how the model connects current
-   evidence to stored traces. Currently tier 1 (kept). Should it
-   drop at tier 2? Depends on typical response size.
-5. **Provider-specific rate limit detection.** The string-matching
-   heuristic in §1.3 is fragile. Should providers expose a typed
-   `RateLimitError`? The `providers.py` abstraction layer could
-   catch provider-specific exceptions and re-raise a unified type.
+2. **Token-only triggers.** Rate-limit degradation deferred — 0/91
+   recent failures were 429s. All failures were config errors or
+   budget ceiling. Rate-limit retry is a follow-up if it becomes
+   a real problem.
+3. **No tick-mode collapse.** All modes use same tier logic. If a
+   tier removes zero tools from a narrow mode, the system message
+   still signals wind-down intent.
+4. **`memory_resonate` → tier 2 drop.** Reactive not exploratory, but
+   can return significant context. Dropped at wind-down alongside
+   other reads.
+5. **Provider error typing.** Deferred. String heuristic in
+   crash-context is diagnostic-only, not a control signal.
+   Provider-agnosticism goal means any typed exception layer must
+   support N providers — not worth it until rate limits are real.
+6. **Tool-call budgets.** Set to 100 across the board (effectively
+   uncapped). Progressive token degradation replaces tool-call limits
+   as the wind-down mechanism. Machinery stays wired for future use.
+7. **Timeout as tier trigger.** 85% of timeout (25.5min at 1800s)
+   triggers tier 3. Insurance against runs that consume tokens slowly
+   but burn wall-clock time.
+
+## 7. Open questions
+
+(No open questions remain — all resolved in §6.)

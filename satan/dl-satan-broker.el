@@ -386,6 +386,22 @@ audit every denied dispatch in a structure consumers can grep."
        (dl-satan-run-stdout-log-path run-ctx) chunk)
       (funcall inner proc chunk))))
 
+(defun dl-satan-broker--crash-context (run-ctx)
+  "Build a crash-context snapshot plist for a non-done terminal path.
+Pure data assembly from run-ctx and mode spec — no I/O."
+  (let* ((mode (dl-satan-run-mode run-ctx))
+         (prepare (dl-satan-run-prepare run-ctx))
+         (start (dl-satan-run-start-time run-ctx))
+         (elapsed (and start (float-time (time-subtract nil start)))))
+    (list :status (symbol-name (dl-satan-run-status run-ctx))
+          :tool_calls_done (or (dl-satan-run-tool-calls-done run-ctx) 0)
+          :tool_calls_budget (or (plist-get mode :budget-tool-calls) 0)
+          :budget_tokens (or (plist-get mode :budget-tokens) 0)
+          :max_budget_tokens (or (plist-get mode :max-budget-tokens) 1000000)
+          :elapsed_seconds (and elapsed (round elapsed))
+          :timeout_seconds (or (plist-get mode :timeout-seconds) 0)
+          :pre_spawn_completed (not (null prepare)))))
+
 (defun dl-satan-broker--finalize (run-ctx)
   "Output handler + audit close.  Idempotent."
   (when (eq (dl-satan-run-status run-ctx) 'running)
@@ -404,6 +420,10 @@ audit every denied dispatch in a structure consumers can grep."
                 (dl-satan-run-audit run-ctx) 'broker 'action-failed
                 (list :error (error-message-string err)))
                nil)))))
+    (unless (eq status 'done)
+      (dl-satan-audit-record
+       (dl-satan-run-audit run-ctx) 'broker 'crash-context
+       (dl-satan-broker--crash-context run-ctx)))
     (when partition
       (dolist (a (plist-get partition :applied))
         (dl-satan-audit-record (dl-satan-run-audit run-ctx) 'broker 'action-applied a))
@@ -748,6 +768,7 @@ Returns the run-id."
              (provider (plist-get mode :provider))
              (model (plist-get mode :model))
              (budget-tokens (plist-get mode :budget-tokens))
+             (max-budget-tokens (or (plist-get mode :max-budget-tokens) 1000000))
              (key-var (and provider
                            (cdr (assq provider
                                       dl-satan-broker-provider-key-vars))))
@@ -763,6 +784,8 @@ Returns the run-id."
                                     (format "SATAN_MODEL=%s" model))
                                   (when budget-tokens
                                     (format "SATAN_BUDGET_TOKENS=%d" budget-tokens))
+                                  (when max-budget-tokens
+                                    (format "SATAN_MAX_BUDGET_TOKENS=%d" max-budget-tokens))
                                   (when (and key-var key-val)
                                     (format "%s=%s" key-var key-val)))))
              (direnv-env (dl-satan-broker--direnv-env process-environment))

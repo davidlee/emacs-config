@@ -17,6 +17,7 @@
 (require 'dl-satan-memory-canon)
 (require 'dl-satan-memory-evidence)
 (require 'dl-satan-memory-store)
+(require 'dl-satan-attribute)
 
 (defcustom dl-satan-hippocampus-dir
   (expand-file-name "satan/hippocampus" dl-notes-root)
@@ -94,6 +95,27 @@ substrate error is logged and does not affect the caller."
            nil)))
     (error
      (message "hippocampus cross-ref error: %s"
+              (error-message-string err))
+     nil)))
+
+(defun dl-satan-tools-hippocampus--emit-attribute-signal
+    (reason tool-name filename ctx)
+  "Emit a hippocampus attribute signal (design-contract §6H).
+Soft-fail: log on error, do not affect tool return value."
+  (condition-case err
+      (when dl-satan-attribute-updates-enabled
+        (let* ((run-id (plist-get ctx :id))
+               (ts (or (plist-get ctx :time-now)
+                       (format-time-string "%Y-%m-%dT%T%:z")))
+               (payload (dl-satan-attribute-build-hippocampus-payload
+                         :run-id run-id
+                         :ts ts
+                         :reason reason
+                         :tool-name tool-name
+                         :filename filename)))
+          (dl-satan-attribute-enqueue payload)))
+    (error
+     (message "hippocampus attribute signal error: %s"
               (error-message-string err))
      nil)))
 
@@ -193,6 +215,8 @@ trace cross-referencing PATH (§10.7); cross-ref errors are soft."
           (unless (string-suffix-p "\n" body) (insert "\n")))
         (when (memq 'memory-write caps)
           (dl-satan-tools-hippocampus--cross-ref title path ctx))
+        (dl-satan-tools-hippocampus--emit-attribute-signal
+         "written" "hippocampus_write" filename ctx)
         (cons 'ok (list :path path)))))))
 
 ;; ---------- hippocampus_overwrite ----------
@@ -232,7 +256,10 @@ trace cross-referencing PATH (§10.7); cross-ref errors are soft."
           (cons 'error (format "not found: %s" filename)))
          ((not (dl-satan-tools-hippocampus--replace-body path body))
           (cons 'error "could not locate :END: block in file"))
-         (t (cons 'ok (list :filename filename)))))))))
+         (t
+          (dl-satan-tools-hippocampus--emit-attribute-signal
+           "overwritten" "hippocampus_overwrite" filename ctx)
+          (cons 'ok (list :filename filename)))))))))
 
 ;; ---------- hippocampus_delete ----------
 
@@ -250,6 +277,8 @@ trace cross-referencing PATH (§10.7); cross-ref errors are soft."
         (if (not (file-exists-p path))
             (cons 'error (format "not found: %s" filename))
           (delete-file path)
+          (dl-satan-tools-hippocampus--emit-attribute-signal
+           "deleted" "hippocampus_delete" filename ctx)
           (cons 'ok (list :deleted filename))))))))
 
 ;; ---------- hippocampus_grep ----------
@@ -260,7 +289,7 @@ trace cross-referencing PATH (§10.7); cross-ref errors are soft."
 (defconst dl-satan-tools-hippocampus--grep-max 50
   "Maximum matches returned by hippocampus_grep.")
 
-(defun dl-satan-tool/hippocampus-grep (args _ctx)
+(defun dl-satan-tool/hippocampus-grep (args ctx)
   "Search hippocampus entries with rg.  Returns matching lines."
   (let ((query (plist-get args :query)))
     (cond
@@ -305,6 +334,9 @@ trace cross-referencing PATH (§10.7); cross-ref errors are soft."
                                :text (match-string 3 line))
                        (list :text line)))
                    capped)))
+            (when (null matches)
+              (dl-satan-tools-hippocampus--emit-attribute-signal
+               "searched" "hippocampus_grep" query ctx))
             (cons 'ok (list :query query
                             :matches matches
                             :count (length matches))))))))))
@@ -352,6 +384,8 @@ trace cross-referencing PATH (§10.7); cross-ref errors are soft."
              old-path new-title)
             (unless (equal old-path new-path)
               (rename-file old-path new-path))
+            (dl-satan-tools-hippocampus--emit-attribute-signal
+             "renamed" "hippocampus_rename" new-filename ctx)
             (cons 'ok (list :old_filename filename
                             :new_filename new-filename)))))))))
 

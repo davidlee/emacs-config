@@ -421,11 +421,11 @@ Returns nil on success or `(:idx N :reason STR)' on the first failure."
   "Closed set of attribute scopes (design-contract §3 — only global in v1).")
 
 (defconst dl-satan-audit-attribute-sources-reserved
-  '("outcome" "percept" "resonance" "sensor" "tool_error" "manual")
+  '("outcome" "hippocampus" "percept" "resonance" "sensor" "tool_error" "manual")
   "Reserved attribute event sources (design-contract §5).")
 
 (defconst dl-satan-audit-attribute-sources-implemented
-  '("outcome")
+  '("outcome" "hippocampus")
   "Sources whose `reason' enum is defined in the contract and accepted
 by the validator today.  Reserved-but-unimplemented sources are
 REJECTED (contract §5.1) — reservation alone does not unlock the
@@ -434,6 +434,10 @@ validator.  Widens with each T-attr-1e PR.")
 (defconst dl-satan-audit-attribute-outcome-reasons
   '("worked" "neutral" "ignored" "contradicted" "harmful")
   "Closed set of reasons for source=outcome (design-contract §6).")
+
+(defconst dl-satan-audit-attribute-hippocampus-reasons
+  '("written" "overwritten" "deleted" "renamed" "searched")
+  "Closed set of reasons for source=hippocampus (design-contract §6H.1).")
 
 (defconst dl-satan-audit-attribute-caps
   '("friction_cap" "range_clamp")
@@ -466,6 +470,7 @@ validator.  Widens with each T-attr-1e PR.")
   "Return the closed reason enum for an IMPLEMENTED SOURCE, else nil."
   (cond
    ((equal source "outcome") dl-satan-audit-attribute-outcome-reasons)
+   ((equal source "hippocampus") dl-satan-audit-attribute-hippocampus-reasons)
    (t nil)))
 
 (defun dl-satan-audit--validate-attribute-source-and-reason (payload)
@@ -516,6 +521,13 @@ cue-dimension fields (design-contract §5.1)."
         (dl-satan-audit--iv-require-enum ev :confidence
                                          dl-satan-audit-intervention-confidences))))
 
+(defun dl-satan-audit--validate-attribute-hippocampus-evidence (payload)
+  "For `source=hippocampus', enforce that `:evidence' carries the required
+fields (design-contract §6H.5)."
+  (let ((ev (plist-get payload :evidence)))
+    (or (dl-satan-audit--iv-require-string ev :tool_name)
+        (dl-satan-audit--iv-require-string ev :filename))))
+
 (defun dl-satan-audit--validate-attribute-delta-applied (payload)
   "Validate an `attribute.delta_applied' payload.  Return error string or nil."
   (or (dl-satan-audit--iv-require-string payload :id)
@@ -536,8 +548,11 @@ cue-dimension fields (design-contract §5.1)."
       (dl-satan-audit--validate-attribute-source-and-reason payload)
       (dl-satan-audit--iv-require-object payload :evidence)
       (let ((src (plist-get payload :source)))
-        (when (equal src "outcome")
-          (dl-satan-audit--validate-attribute-outcome-evidence payload)))
+        (cond
+         ((equal src "outcome")
+          (dl-satan-audit--validate-attribute-outcome-evidence payload))
+         ((equal src "hippocampus")
+          (dl-satan-audit--validate-attribute-hippocampus-evidence payload))))
       (dl-satan-audit--validate-attribute-caps payload)
       (dl-satan-audit--iv-require-bool payload :disabled)))
 

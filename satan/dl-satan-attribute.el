@@ -125,6 +125,7 @@ pointer string when `is-revision' is t.  The current
 the daemon honours it per §17.5 (disabled events still write event rows
 but skip the projection UPSERT)."
   (list :schema_version  dl-satan-attribute-payload-schema-version
+        :source          "outcome"
         :run_id          run-id
         :ts              ts
         :intervention_id intervention-id
@@ -138,15 +139,31 @@ but skip the projection UPSERT)."
         :revises         (or revises :null)
         :enabled         (if dl-satan-attribute-updates-enabled t :false)))
 
+(cl-defun dl-satan-attribute-build-hippocampus-payload
+    (&key run-id ts reason tool-name filename)
+  "Construct the broker → daemon hippocampus payload (design-contract §6H.6).
+
+No confidence, intervention-id, or revision fields.  The current
+`dl-satan-attribute-updates-enabled' value is stamped on the payload."
+  (list :schema_version dl-satan-attribute-payload-schema-version
+        :source         "hippocampus"
+        :run_id         run-id
+        :ts             ts
+        :reason         reason
+        :tool_name      tool-name
+        :filename       filename
+        :is_revision    :false
+        :enabled        (if dl-satan-attribute-updates-enabled t :false)))
+
 ;; ---------------------------------------------------------------------
 ;; enqueue
 ;; ---------------------------------------------------------------------
 
-(defun dl-satan-attribute-enqueue-outcome (payload &optional db)
+(defun dl-satan-attribute-enqueue (payload &optional db)
   "Insert PAYLOAD into satan_outcome_inbox + NOTIFY satan_outcome_inbox.
 
-PAYLOAD is a plist (typically built via
-`dl-satan-attribute-build-outcome-payload'); serialised to JSONB.
+PAYLOAD is a plist built via `dl-satan-attribute-build-outcome-payload'
+or `dl-satan-attribute-build-hippocampus-payload'; serialised to JSONB.
 Returns (ok . ID) carrying the inserted row id, or (error . MSG)."
   (let* ((database (or db dl-satan-attribute-database))
          (json (dl-satan-attribute--json payload))
@@ -167,6 +184,8 @@ Returns (ok . ID) carrying the inserted row id, or (error . MSG)."
          (cons 'ok (and id-str (not (string-empty-p id-str))
                         (string-to-number id-str)))))
       (err err))))
+
+(defalias 'dl-satan-attribute-enqueue-outcome #'dl-satan-attribute-enqueue)
 
 (provide 'dl-satan-attribute)
 ;;; dl-satan-attribute.el ends here

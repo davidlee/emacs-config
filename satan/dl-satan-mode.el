@@ -104,11 +104,11 @@ Dotfiles must not be the source of truth for prompt content.")
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
        :jail-profile 'specDev
        :profile 'claude-haiku
-       :budget-tokens 100000
+       :budget-tokens 300000
        :output-handler 'dl-satan-output/morning
        :auto-apply 'owned
-       :timeout-seconds 90
-       :budget-tool-calls 8))
+       :timeout-seconds 1800
+       :budget-tool-calls 100))
 
 (dl-satan-mode-register
  (list :name "motd"
@@ -128,11 +128,11 @@ Dotfiles must not be the source of truth for prompt content.")
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
        :jail-profile 'specDev
        :profile 'claude-haiku
-       :budget-tokens 80000
+       :budget-tokens 100000
        :output-handler 'dl-satan-output/motd
        :auto-apply 'owned
-       :timeout-seconds 45
-       :budget-tool-calls 4))
+       :timeout-seconds 1800
+       :budget-tool-calls 100))
 
 (dl-satan-mode-register
  (list :name "self-edit-mech"
@@ -150,11 +150,11 @@ Dotfiles must not be the source of truth for prompt content.")
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
        :jail-profile 'specDev
        :profile 'claude-haiku
-       :budget-tokens 100000
+       :budget-tokens 300000
        :output-handler 'dl-satan-output/self-edit
        :auto-apply 'none
-       :timeout-seconds 180
-       :budget-tool-calls 20))
+       :timeout-seconds 1800
+       :budget-tool-calls 100))
 
 (dl-satan-mode-register
  (list :name "self-edit-mind"
@@ -172,11 +172,11 @@ Dotfiles must not be the source of truth for prompt content.")
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
        :jail-profile 'specDev
        :profile 'claude-haiku
-       :budget-tokens 100000
+       :budget-tokens 300000
        :output-handler 'dl-satan-output/self-edit
        :auto-apply 'none
-       :timeout-seconds 180
-       :budget-tool-calls 20))
+       :timeout-seconds 1800
+       :budget-tool-calls 100))
 
 (dl-satan-mode-register
  (list :name "ruminate"
@@ -196,8 +196,8 @@ Dotfiles must not be the source of truth for prompt content.")
        :budget-tokens 400000
        :output-handler 'dl-satan-output/ruminate
        :auto-apply 'none
-       :timeout-seconds 180
-       :budget-tool-calls 30))
+       :timeout-seconds 1800
+       :budget-tool-calls 100))
 
 (provide 'dl-satan-mode)
 ;;; dl-satan-mode.el ends here

@@ -24,7 +24,7 @@
   (org-fontify-done-headline t)
   (org-fontify-quote-and-verse-blocks t)
   (org-todo-keywords
-    '((sequence "TODO(t)" "NEXT(n)" "STARTED(s)" "WAITING(w@/!)"
+    '((sequence "TODO(t)" "NEXT(n)" "STARTED(s)" "WAITING(w@/!)" "MAYBE(m/!)"
         "|" "DONE(d!)" "CANCELED(c@)" "MOVED(m@)")))
   (org-tag-alist
     '( ("@work" . ?w)
@@ -37,13 +37,38 @@
   (require 'ox-md)) ; markdown export
 
 (use-package org-modern
-  :hook ((org-mode            . org-modern-mode)
-          (org-agenda-finalize . org-modern-agenda)))
-
-(use-package org-bullets
-  :hook (org-mode . org-bullets-mode)
+  :hook ( (org-mode            . org-modern-mode)
+          (org-mode            . my/apply-org-faces)
+          (org-agenda-finalize . org-modern-agenda))
   :custom
-  (org-bullets-bullet-list '(" ")))
+  ;; edit settings
+  (org-auto-align-tags nil)
+  (org-tags-column 0)
+  (org-catch-invisible-edits 'show-and-error)
+  (org-special-ctrl-a/e t)
+  ;; styling
+  (org-hide-emphasis-markers t)
+  (org-pretty-entities t)
+  (org-agenda-tags-column 0)
+  (org-ellipsis "…")
+  :config
+  (global-org-modern-mode))
+
+;; Add frame borders and window dividers
+(modify-all-frames-parameters
+  '((right-divider-width . 40)
+     (internal-border-width . 40)))
+(dolist (face '(window-divider
+                 window-divider-first-pixel
+                 window-divider-last-pixel))
+  (face-spec-reset-face face)
+  (set-face-foreground face (face-attribute 'default :background)))
+(set-face-background 'fringe (face-attribute 'default :background))
+
+;; (use-package org-bullets
+;;   :hook (org-mode . org-bullets-mode)
+;;   :custom
+;;   (org-bullets-bullet-list '(" ")))
 
 (defun my/org-setup-margins ()
   "Buffer-local margin + hl-line tweaks for org buffers."

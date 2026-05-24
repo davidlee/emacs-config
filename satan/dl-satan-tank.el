@@ -123,7 +123,16 @@ outside an active SATAN run.  Default is 30 minutes."
                  (if (eq ok :false) "error" "ok"))))
       ("log"
        (let ((kind (and (listp payload) (plist-get payload :kind))))
-         (or kind "log")))
+         (pcase kind
+           ("tier_changed"
+            (format "tier %s→%s (%s)"
+                    (plist-get payload :from_tier)
+                    (plist-get payload :to_tier)
+                    (or (plist-get payload :trigger) "?")))
+           (_ (or kind "log")))))
+      ("crash-context"
+       (let ((status (and (listp payload) (plist-get payload :status))))
+         (format "crash: %s" (or status "?"))))
       ("timeout"
        (format "after %ss" (and (listp payload)
                                 (plist-get payload :after-seconds))))
@@ -266,7 +275,10 @@ nil means no completed runs are available yet."
             (tcalls (plist-get state :tool_calls))
             (summary (plist-get state :final_summary))
             (actions (plist-get state :final_actions))
-            (err (plist-get state :error_msg)))
+            (err (plist-get state :error_msg))
+            (max-tier (plist-get state :max_tier))
+            (tiers (plist-get state :tier_transitions))
+            (crash (plist-get state :crash_context)))
        (concat
         (format "%s\n" (or run-id "-"))
         (format "mode: %s  ·  status: %s  ·  dur: %s\n"
@@ -275,6 +287,16 @@ nil means no completed runs are available yet."
                 (if (numberp dur) (format "%.1fs" dur) "?"))
         (format "tokens: %s cumulative  ·  tcalls: %d\n"
                 (or ttot "?") (length tcalls))
+        (if (and (integerp max-tier) (> max-tier 0))
+            (format "tier: %d  ·  transitions: %s\n"
+                    max-tier
+                    (mapconcat
+                     (lambda (tr) (format "%s→%s(%s)"
+                                          (plist-get tr :from)
+                                          (plist-get tr :to)
+                                          (or (plist-get tr :trigger) "?")))
+                     tiers " "))
+          "")
         (cond
          ((null tcalls) "")
          (t
@@ -291,6 +313,19 @@ nil means no completed runs are available yet."
                         args-str)))
             tcalls "\n")
            "\n")))
+        (if crash
+            (let ((cs (plist-get crash :status))
+                  (tc-done (plist-get crash :tool_calls_done))
+                  (tc-budget (plist-get crash :tool_calls_budget))
+                  (budget (plist-get crash :budget_tokens))
+                  (elapsed (plist-get crash :elapsed_seconds))
+                  (timeout (plist-get crash :timeout_seconds)))
+              (format "\ncrash context:\n  status: %s  ·  tcalls: %s/%s\n  budget: %s tokens  ·  elapsed: %ss/%ss\n"
+                      (or cs "?")
+                      (or tc-done "?") (or tc-budget "?")
+                      (or budget "?")
+                      (or elapsed "?") (or timeout "?")))
+          "")
         (cond
          (err (format "\nerror: %s\n" err))
          (summary
@@ -433,7 +468,10 @@ Returns one of: `final', `timeout', `error', `in-progress'."
          (tool-calls nil)
          (tool-results (make-hash-table :test 'equal))
          (final nil)
-         (err nil))
+         (err nil)
+         (max-tier 0)
+         (tier-transitions nil)
+         (crash-ctx nil))
     (dolist (e events)
       (let ((ts (plist-get e :ts))
             (event (plist-get e :event))
@@ -444,8 +482,17 @@ Returns one of: `final', `timeout', `error', `in-progress'."
           (setq end-ts ts))
         (pcase event
           ("log"
-           (when (and (listp payload) (equal (plist-get payload :kind) "usage"))
-             (setq last-usage payload)))
+           (when (listp payload)
+             (pcase (plist-get payload :kind)
+               ("usage" (setq last-usage payload))
+               ("tier_changed"
+                (let ((to (plist-get payload :to_tier)))
+                  (when (and (integerp to) (> to max-tier))
+                    (setq max-tier to))
+                  (push (list :from (plist-get payload :from_tier)
+                              :to to
+                              :trigger (plist-get payload :trigger))
+                        tier-transitions))))))
           ("tool-call"
            (let ((id (and (listp payload) (plist-get payload :id)))
                  (name (and (listp payload) (plist-get payload :name)))
@@ -457,6 +504,8 @@ Returns one of: `final', `timeout', `error', `in-progress'."
              (when id (puthash id (not (eq ok :false)) tool-results))))
           ("final"
            (setq final payload))
+          ("crash-context"
+           (setq crash-ctx payload))
           ("protocol-error"
            (setq err (and (listp payload) (plist-get payload :error)))))))
     (setq tool-calls (nreverse tool-calls))
@@ -477,7 +526,10 @@ Returns one of: `final', `timeout', `error', `in-progress'."
           :final_summary (and (listp final) (plist-get final :summary))
           :final_actions (and (listp final)
                               (length (plist-get final :actions)))
-          :error_msg err)))
+          :error_msg err
+          :max_tier max-tier
+          :tier_transitions (nreverse tier-transitions)
+          :crash_context crash-ctx)))
 
 (defun dl-satan-tank--iso-duration (start end)
   "Seconds between two ISO8601 timestamps START and END, or nil."

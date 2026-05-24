@@ -2,6 +2,27 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-24 — SATAN: progressive token exhaustion + resilience
+
+- **Progressive tier degradation** (harness `runloop.py`): 3-tier tool withdrawal system driven by token budget consumption. Tier 0 (full tools) → Tier 1 at 70% (drop survey tools: docs, activity, hippocampus_grep) → Tier 2 at 85% (drop reads: org, bough, memory_resonate, patch, proposal) → Tier 3 at 95% or 85% timeout (satan_final only). System messages injected on each transition. Replaces binary `warned` boolean.
+- **Error classification** (harness `runloop.py`): `classify_error()` heuristic categorises provider exceptions (rate_limit/auth/server/timeout/unknown). `emit_error` now emits structured JSON payload with class, detail, token totals, turn count.
+- **Crash context event** (broker `dl-satan-broker.el`): `dl-satan-broker--crash-context` emits a `crash-context` audit record on every non-done terminal path (failed/timed-out/invalid-protocol). Payload: status, tool_calls_done/budget, budget_tokens, max_budget_tokens, elapsed/timeout, pre_spawn_completed.
+- **Hard backstop** (broker + harness): `SATAN_MAX_BUDGET_TOKENS` env var (default 1M) provides absolute token ceiling independent of tier system. Fires before any tier check.
+- **Tank integration** (`dl-satan-tank.el`): LAST RUN section shows tier transitions and crash-context diagnostic block on non-done runs. Event summaries render `tier_changed` and `crash-context` events.
+- **Budget/timeout revision** (`dl-satan-mode.el`): morning 300K/1800s (was 100K/90s), motd 100K/1800s (was 80K/45s), self-edit-* 300K/1800s (was 100K/180s), ruminate 400K/1800s (was 180s). Tool-call budgets set to 100 across the board (effectively uncapped, machinery retained).
+- **Design doc** (`docs/satan/resilience-design.md`): §2 rewritten for token-only triggers (rate-limit deferred — 0/91 recent failures were 429s). All open questions resolved.
+- Tests: harness 52 (was 39), broker 20, tank 27, audit 13 — all green.
+
+## 2026-05-24 — SATAN: T-attr-1d-hc — hippocampus → attribute signals
+
+- `docs/satan/attributes/design-contract.md` — new §6H: hippocampus source added to §5 reserved + implemented sources.  Reason enum (written/overwritten/deleted/renamed/searched), delta table (tiny=0.025: Brooding down on mutating ops, Shame down on overwrite/delete, Suspicion up on empty grep), no confidence weighting (§6H.3), no revision semantics (§6H.4), evidence shape (tool_name + filename, §6H.5), payload shape with explicit `source` field (§6H.6), self-manipulation analysis (§6H.7).
+- `satan/dl-satan-audit.el` — `"hippocampus"` added to both reserved + implemented source lists.  New `dl-satan-audit-attribute-hippocampus-reasons` constant (5 reasons).  `dl-satan-audit--attribute-reasons-for-source` gains hippocampus branch.  New `dl-satan-audit--validate-attribute-hippocampus-evidence` (requires `evidence.tool_name` + `evidence.filename`).  `dl-satan-audit--validate-attribute-delta-applied` dispatches evidence validation by source (was outcome-only).
+- `satan/dl-satan-attribute.el` — existing `dl-satan-attribute-build-outcome-payload` now stamps `source: "outcome"` explicitly.  New `dl-satan-attribute-build-hippocampus-payload` (§6H.6 shape).  `dl-satan-attribute-enqueue-outcome` renamed to `dl-satan-attribute-enqueue` (old name kept as defalias).
+- `satan/dl-satan-tools-hippocampus.el` — new `dl-satan-tools-hippocampus--emit-attribute-signal` helper (mirrors `--cross-ref` soft-fail pattern).  Wired into all 5 emit points: write→written, overwrite→overwritten, delete→deleted, rename→renamed, grep(0 matches)→searched.  Gates on `dl-satan-attribute-updates-enabled`.
+- Sibling daemon (`~/dev/satan-attrd`): `types.rs` adds `Source::Hippocampus` (implemented), `Source::supports_revision()` method, `HippocampusReason` enum (5 variants).  `dispatcher.rs` adds `hippocampus_base_deltas` (§6H.2 table), `HippocampusInput` struct, `dispatch_hippocampus` (no confidence weighting, caps still apply) + 8 unit tests.  `run_loop.rs` adds source-routing (`parse_inbox_payload` checks `source` field, backwards compat: absent → outcome), `HippocampusPayload` struct + parser, `process_outcome_row` routes by `InboxPayload` variant.  `lib.rs` re-exports new types.  No migration needed.  Daemon unit tests 42→50 (all green); integration tests require DATABASE_URL.
+- Tests: broker ert 32/32 (was 26), daemon unit 50/50.
+- `docs/satan/attributes/hippocampus-attribute-signals.md` — status draft → contracted; open questions resolved.
+
 ## 2026-05-24 — SATAN: hippocampus v1 — full tool suite + ruminate mode
 
 - `satan/dl-satan-tools-hippocampus.el` — expanded from write-only to 7 tools: `hippocampus_list` (read, newest-first entries), `hippocampus_read` (body by filename, path-sandboxed), `hippocampus_write` (existing, denote org + cross-ref), `hippocampus_overwrite` (replace body, keep metadata), `hippocampus_delete` (remove file), `hippocampus_grep` (rg-backed search), `hippocampus_rename` (update slug + #+title).  All mutating tools require `hippocampus-write` capability; read tools are tool-allowlist-only.

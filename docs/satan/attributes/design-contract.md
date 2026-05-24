@@ -187,7 +187,8 @@ Required payload keys: `id`, `scope`, `name`, `old`, `new`, `delta`, `source`, `
 `source` reserves the following closed enum (the source-name space is fixed by this contract so future PRs cannot collide):
 
 ```text
-outcome       ; intervention verdict (T1.5b feed — only IMPLEMENTED source in T-attr-1c)
+outcome       ; intervention verdict (T1.5b feed — IMPLEMENTED in T-attr-1c)
+hippocampus   ; hippocampus tool-call signal (IMPLEMENTED in T-attr-1d-hc)
 percept       ; percept block produces evidence (reserved; deferred to T-attr-1e)
 resonance     ; memory_resonate hit (reserved; deferred to T-attr-1e)
 sensor        ; sensor freshness / stale (reserved; deferred to T-attr-1e)
@@ -316,6 +317,82 @@ Implications:
 ### 6.4 Neutral
 
 `neutral` produces zero delta in v1. Brief §3.3 hints at "tiny + if repeated many times" — deferred to a future revision (open Q §15 Q5). V1 takes the conservative "no signal, no Shame" path per Shame invariant §1.6.
+
+---
+
+## 6H. Hippocampus → attribute delta map (T-attr-1d-hc)
+
+Source `hippocampus`. Hippocampus tool calls carry metabolic signal about SATAN's internal state: writing a memory means acted-on-pressure; deleting a wrong memory means acknowledged-error; searching without result means knowledge-gap. See [`hippocampus-attribute-signals.md`](hippocampus-attribute-signals.md) for design rationale.
+
+### 6H.1 Reason enum
+
+| Reason        | Trigger                                |
+|---            |---                                     |
+| `written`     | `hippocampus_write` succeeds           |
+| `overwritten` | `hippocampus_overwrite` succeeds       |
+| `deleted`     | `hippocampus_delete` succeeds          |
+| `renamed`     | `hippocampus_rename` succeeds          |
+| `searched`    | `hippocampus_grep` returns 0 matches   |
+
+Read-only tools (`hippocampus_list`, `hippocampus_read`, grep with matches) do not emit — reading is not a metabolic event.
+
+### 6H.2 Delta table
+
+Magnitudes: tiny = 0.025. Consistent with the `worked shame` exception (−0.025) precedent in §6 footnote 1.
+
+| Reason        | Δ friction | Δ shame  | Δ doubt | Δ hunger | Δ suspicion | Δ brooding | Δ metamorphosis |
+|---            |---:        |---:      |---:     |---:      |---:         |---:        |---:             |
+| `written`     | 0          | 0        | 0       | 0        | 0           | −0.025     | 0               |
+| `overwritten` | 0          | −0.025   | 0       | 0        | 0           | −0.025     | 0               |
+| `deleted`     | 0          | −0.025   | 0       | 0        | 0           | −0.025     | 0               |
+| `renamed`     | 0          | 0        | 0       | 0        | 0           | −0.025     | 0               |
+| `searched`    | 0          | 0        | 0       | 0        | +0.025      | 0          | 0               |
+
+Design notes:
+
+1. **Brooding drops on write/overwrite/delete/rename** — the pressure that motivated rumination was acted on. A ruminate run with 5–10 writes produces cumulative Brooding reduction of −0.125 to −0.25 — noticeable but not dominant.
+2. **Shame drops on overwrite/delete** — correcting or removing wrong knowledge is acknowledging error (same magnitude as `worked` shame at −0.025, §6 footnote 1).
+3. **Suspicion rises on empty grep** — searched for knowledge, found a gap. Small signal that there's something worth investigating.
+4. **No friction/hunger/doubt/metamorphosis movement.** Hippocampus tools are inward-facing; they don't affect intervention policy, demand for contact, or self-edit pressure.
+
+### 6H.3 No confidence weighting
+
+Hippocampus actions are binary (succeeded or failed). The §6.1 confidence multiplier does not apply. All deltas are at base magnitude (0.025).
+
+### 6H.4 No revision semantics
+
+Hippocampus actions are final — a write either happened or it didn't. `is_revision` is always `false` for this source. The dispatcher skips `gather_prior_actuals` and revision event paths entirely. A `source_supports_revision` flag on the source enum controls this.
+
+### 6H.5 Evidence shape
+
+For `source=hippocampus`, the `evidence` object carries:
+
+```text
+evidence.tool_name    ; string — the tool that triggered the signal (e.g. "hippocampus_write")
+evidence.filename     ; string — the hippocampus entry filename acted upon (or query string for grep)
+```
+
+No `intervention_id`, `confidence`, or `classification` fields. The validator rejects `source=hippocampus` events carrying outcome-shaped evidence, and vice versa.
+
+### 6H.6 Payload shape
+
+The broker stamps `source: "hippocampus"` in the inbox payload JSON. The daemon routes by this field (absent field → `"outcome"` for backwards compatibility). Payload keys for hippocampus:
+
+```text
+schema_version    ; same as outcome payloads
+source            ; "hippocampus"
+run_id            ; SATAN run id
+ts                ; ISO 8601 timestamp
+reason            ; one of the §6H.1 reasons
+tool_name         ; string
+filename          ; string
+is_revision       ; always false
+enabled           ; broker's attribute-updates-enabled switch
+```
+
+### 6H.7 Self-manipulation concern
+
+SATAN can choose to call hippocampus tools, so it can indirectly influence its own attributes. At 0.025 per call, maximum Brooding reduction per ruminate run (budget-tool-calls=30) = 0.75 if every call is a write — but that would consume the entire tool budget on writes with no gathering. Hippocampus_write already emits observation traces (§10.7); attribute deltas add audit visibility via `attribute.delta_applied` in the transcript. See [`hippocampus-attribute-signals.md`](hippocampus-attribute-signals.md) §Self-manipulation concern for full analysis.
 
 ---
 

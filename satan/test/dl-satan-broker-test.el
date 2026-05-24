@@ -584,5 +584,126 @@ entirely so untouched runs keep the original four-partition shape."
             (should-not (plist-member parsed :pre_spawn))))
       (delete-directory dir t))))
 
+;; ---------- crash-context event (resilience PR 2) ----------
+
+(ert-deftest dl-satan-broker/crash-context-emitted-on-failed ()
+  "Finalize emits a `crash-context' audit record on non-done terminal paths."
+  (let ((dir (make-temp-file "satan-broker-crash-ctx-" t)))
+    (unwind-protect
+        (let* ((prepare (list :run_id "rid" :time_now "2026-05-24T10:00:00+1000"
+                              :start_time (current-time)
+                              :evidence nil :percept nil
+                              :sensor_status nil :motive nil :pre_spawn nil))
+               (audit (dl-satan-audit-open
+                       dir '(:run_id "rid" :mode (:name "test"))
+                       '(:bundle t) prepare))
+               (mode '(:name "test" :auto-apply none :timeout-seconds 1800
+                       :budget-tool-calls 100 :budget-tokens 300000
+                       :capabilities ()))
+               (run-ctx (make-dl-satan-run
+                         :id "rid"
+                         :mode mode
+                         :start-time (plist-get prepare :start_time)
+                         :dir dir
+                         :status 'failed
+                         :tool-calls-done 3
+                         :audit audit
+                         :prepare prepare)))
+          (cl-letf (((symbol-function 'dl-satan-broker--mark-failed-on-disk)
+                     (lambda (&rest _) nil)))
+            (dl-satan-broker--finalize run-ctx))
+          (let* ((records (dl-satan-audit--read-jsonl
+                           (expand-file-name "transcript.jsonl" dir)))
+                 (crash-ctx (cl-find-if
+                             (lambda (r)
+                               (and (equal (plist-get r :dir) "broker")
+                                    (equal (plist-get r :event) "crash-context")))
+                             records)))
+            (should crash-ctx)
+            (let ((p (plist-get crash-ctx :payload)))
+              (should (equal (plist-get p :status) "failed"))
+              (should (equal (plist-get p :tool_calls_done) 3))
+              (should (equal (plist-get p :tool_calls_budget) 100))
+              (should (equal (plist-get p :budget_tokens) 300000))
+              (should (equal (plist-get p :timeout_seconds) 1800))
+              (should (integerp (plist-get p :elapsed_seconds)))
+              (should (equal (plist-get p :pre_spawn_completed) t)))))
+      (delete-directory dir t))))
+
+(ert-deftest dl-satan-broker/crash-context-not-emitted-on-done ()
+  "Successful runs must NOT emit a crash-context record."
+  (let ((dir (make-temp-file "satan-broker-crash-ctx-done-" t)))
+    (unwind-protect
+        (let* ((prepare (list :run_id "rid" :time_now "2026-05-24T10:00:00+1000"
+                              :start_time (current-time)
+                              :evidence nil :percept nil
+                              :sensor_status nil :motive nil :pre_spawn nil))
+               (audit (dl-satan-audit-open
+                       dir '(:run_id "rid" :mode (:name "test"))
+                       '(:bundle t) prepare))
+               (mode '(:name "test" :auto-apply none :timeout-seconds 1800
+                       :budget-tool-calls 100 :budget-tokens 300000
+                       :capabilities ()))
+               (run-ctx (make-dl-satan-run
+                         :id "rid"
+                         :mode mode
+                         :start-time (plist-get prepare :start_time)
+                         :dir dir
+                         :status 'running
+                         :final '(:summary "ok" :actions ())
+                         :audit audit
+                         :prepare prepare)))
+          (cl-letf (((symbol-function 'dl-satan-broker--mark-failed-on-disk)
+                     (lambda (&rest _) nil)))
+            (dl-satan-broker--finalize run-ctx))
+          (let* ((records (dl-satan-audit--read-jsonl
+                           (expand-file-name "transcript.jsonl" dir)))
+                 (crash-ctx (cl-find-if
+                             (lambda (r)
+                               (and (equal (plist-get r :dir) "broker")
+                                    (equal (plist-get r :event) "crash-context")))
+                             records)))
+            (should-not crash-ctx)))
+      (delete-directory dir t))))
+
+(ert-deftest dl-satan-broker/crash-context-emitted-on-timed-out ()
+  "Timeout paths also emit crash-context."
+  (let ((dir (make-temp-file "satan-broker-crash-ctx-timeout-" t)))
+    (unwind-protect
+        (let* ((prepare (list :run_id "rid" :time_now "2026-05-24T10:00:00+1000"
+                              :start_time (current-time)
+                              :evidence nil :percept nil
+                              :sensor_status nil :motive nil :pre_spawn nil))
+               (audit (dl-satan-audit-open
+                       dir '(:run_id "rid" :mode (:name "test"))
+                       '(:bundle t) prepare))
+               (mode '(:name "test" :auto-apply none :timeout-seconds 1800
+                       :budget-tool-calls 100 :budget-tokens 300000
+                       :capabilities ()))
+               (run-ctx (make-dl-satan-run
+                         :id "rid"
+                         :mode mode
+                         :start-time (plist-get prepare :start_time)
+                         :dir dir
+                         :status 'timed-out
+                         :tool-calls-done 7
+                         :audit audit
+                         :prepare prepare)))
+          (cl-letf (((symbol-function 'dl-satan-broker--mark-failed-on-disk)
+                     (lambda (&rest _) nil)))
+            (dl-satan-broker--finalize run-ctx))
+          (let* ((records (dl-satan-audit--read-jsonl
+                           (expand-file-name "transcript.jsonl" dir)))
+                 (crash-ctx (cl-find-if
+                             (lambda (r)
+                               (and (equal (plist-get r :dir) "broker")
+                                    (equal (plist-get r :event) "crash-context")))
+                             records)))
+            (should crash-ctx)
+            (let ((p (plist-get crash-ctx :payload)))
+              (should (equal (plist-get p :status) "timed-out"))
+              (should (equal (plist-get p :tool_calls_done) 7)))))
+      (delete-directory dir t))))
+
 (provide 'dl-satan-broker-test)
 ;;; dl-satan-broker-test.el ends here

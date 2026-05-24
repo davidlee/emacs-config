@@ -45,7 +45,7 @@ DEFAULT_MANIFEST_TOOLS = [
 ]
 
 
-def make_bundle(tmp: str, *, tools=None, **overrides) -> str:
+def make_bundle(tmp: str, *, tools=None, timeout_seconds=0, **overrides) -> str:
     bundle_dict = {
         "prompt": "test prompt",
         "mode": "morning",
@@ -65,6 +65,7 @@ def make_bundle(tmp: str, *, tools=None, **overrides) -> str:
         json.dump(bundle_dict, f)
     manifest = {
         "run_id": "test-run",
+        "mode": {"name": "morning", "timeout_seconds": timeout_seconds},
         "tools": list(tools) if tools is not None else DEFAULT_MANIFEST_TOOLS,
     }
     with open(os.path.join(tmp, "manifest.json"), "w", encoding="utf-8") as f:
@@ -168,15 +169,14 @@ class HarnessTests(unittest.TestCase):
         self.assertEqual(final["summary"], "just text")
         self.assertEqual(final["reason"], "no_tool_calls")
 
-    def test_budget_warning_then_model_finals(self):
-        # Soft budget UX: harness warns once, model winds down with its
-        # own satan_final on the next turn. No synthetic final.
+    def test_tier3_budget_then_model_finals(self):
+        # Budget >= 95%: tier jumps to 3, model gets one turn to finalise.
         provider = StubProvider([
             CompletionResult(
                 content="",
                 tool_calls=[{"id": "c1", "name": "org_read_context",
                              "args": {"scope": "today"}}],
-                input_tokens=900, output_tokens=200,  # over budget=1000
+                input_tokens=900, output_tokens=200,  # 1100/1000 > 95%
             ),
             CompletionResult(
                 content="",
@@ -189,24 +189,23 @@ class HarnessTests(unittest.TestCase):
                                    "ok": True, "result": {"content": ""}}) + "\n"
         rc, lines = self._run_with(provider, stdin_lines=[tool_result], budget=1000)
         self.assertEqual(rc, 0)
-        warnings = [m for m in lines
-                    if m.get("type") == "log" and m.get("kind") == "budget_warning"]
-        self.assertEqual(len(warnings), 1)
-        self.assertEqual(warnings[0]["budget_tokens"], 1000)
+        tier_changes = [m for m in lines
+                        if m.get("type") == "log" and m.get("kind") == "tier_changed"]
+        self.assertTrue(len(tier_changes) >= 1)
+        last_tier = tier_changes[-1]
+        self.assertEqual(last_tier["to_tier"], 3)
         final = lines[-1]
         self.assertEqual(final["type"], "final")
         self.assertEqual(final["summary"], "winding down")
-        self.assertNotIn("reason", final)
-        # Model saw the system warning on its second turn.
+        # Model saw the system message about exhaustion.
         self.assertEqual(len(provider.calls), 2)
         second_turn_systems = [m for m in provider.calls[1]["messages"]
                                if m["role"] == "system"]
-        self.assertTrue(any("budget" in (m["content"] or "").lower()
+        self.assertTrue(any("exhausted" in (m["content"] or "").lower()
                             for m in second_turn_systems))
 
-    def test_budget_warning_then_model_persists_forces_final(self):
-        # If the model ignores the warning and keeps emitting tool calls
-        # (or text without satan_final), the harness force-terminates.
+    def test_tier3_model_ignores_forces_final(self):
+        # Model ignores tier 3 warning → harness force-terminates.
         provider = StubProvider([
             CompletionResult(
                 content="",
@@ -262,6 +261,385 @@ class HarnessTests(unittest.TestCase):
         # `bundle["prompt"]` is now a hard contract from the broker.
         with self.assertRaises(KeyError):
             bundle.build_system_prompt({})
+
+
+class ErrorClassificationTests(unittest.TestCase):
+    """Tests for classify_error() and structured error payloads."""
+
+    def test_classify_rate_limit_429(self):
+        e = Exception("Error code: 429 - Too Many Requests")
+        self.assertEqual(runloop.classify_error(e), "rate_limit")
+
+    def test_classify_rate_limit_word(self):
+        e = Exception("rate limit exceeded for model")
+        self.assertEqual(runloop.classify_error(e), "rate_limit")
+
+    def test_classify_rate_limit_quota(self):
+        e = Exception("quota exceeded")
+        self.assertEqual(runloop.classify_error(e), "rate_limit")
+
+    def test_classify_auth_401(self):
+        e = Exception("Error code: 401 - Unauthorized")
+        self.assertEqual(runloop.classify_error(e), "auth")
+
+    def test_classify_auth_403(self):
+        e = Exception("Error code: 403 - Forbidden")
+        self.assertEqual(runloop.classify_error(e), "auth")
+
+    def test_classify_auth_word(self):
+        e = Exception("authentication failed")
+        self.assertEqual(runloop.classify_error(e), "auth")
+
+    def test_classify_server_500(self):
+        e = Exception("Error code: 500 - Internal Server Error")
+        self.assertEqual(runloop.classify_error(e), "server")
+
+    def test_classify_server_502(self):
+        e = Exception("Error code: 502 - Bad Gateway")
+        self.assertEqual(runloop.classify_error(e), "server")
+
+    def test_classify_server_503(self):
+        e = Exception("Error code: 503 - Service Unavailable")
+        self.assertEqual(runloop.classify_error(e), "server")
+
+    def test_classify_timeout(self):
+        e = Exception("request timed out after 30s")
+        self.assertEqual(runloop.classify_error(e), "timeout")
+
+    def test_classify_unknown(self):
+        e = Exception("something unexpected happened")
+        self.assertEqual(runloop.classify_error(e), "unknown")
+
+
+class StructuredErrorTests(unittest.TestCase):
+    """Verify provider errors emit structured JSON in the error field."""
+
+    def _run_with(self, provider, *, stdin_lines: list[str] = (), budget: int = 0):
+        buf = io.StringIO()
+        env = {
+            "SATAN_RUN_ID": "test-run",
+            "SATAN_BUDGET_TOKENS": str(budget),
+            "SATAN_PROVIDER": "openrouter",
+            "SATAN_MODEL": "test-model",
+            "OPENROUTER_API_KEY": "test-key",
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            make_bundle(tmp)
+            env["SATAN_RUN_DIR"] = tmp
+            with mock.patch.dict(os.environ, env, clear=False), \
+                 mock.patch.object(runloop, "build_provider",
+                                   return_value=(provider, "test-model")), \
+                 mock.patch.object(sys, "stdin", io.StringIO("".join(stdin_lines))), \
+                 redirect_stdout(buf):
+                rc = runloop.run()
+        return rc, emitted_lines(buf)
+
+    def test_provider_error_emits_structured_payload(self):
+        """Provider exception → error msg with JSON payload containing
+        class, detail, token totals, and turn count."""
+        class FailingProvider(Provider):
+            def complete(self, messages, tools, model):
+                raise Exception("Error code: 429 - Too Many Requests")
+
+        rc, lines = self._run_with(FailingProvider())
+        self.assertEqual(rc, 1)
+        error_msg = next(m for m in lines if m["type"] == "error")
+        payload = json.loads(error_msg["error"])
+        self.assertEqual(payload["class"], "rate_limit")
+        self.assertIn("429", payload["detail"])
+        self.assertEqual(payload["tokens_total"], 0)
+        self.assertEqual(payload["turn"], 0)
+
+    def test_provider_error_after_tool_call_includes_state(self):
+        """Provider fails on second turn — payload should reflect
+        tokens accumulated from the first turn."""
+        class SecondCallFails(Provider):
+            def __init__(self):
+                self.call_count = 0
+            def complete(self, messages, tools, model):
+                self.call_count += 1
+                if self.call_count == 1:
+                    return CompletionResult(
+                        content="",
+                        tool_calls=[{"id": "c1", "name": "org_read_context",
+                                     "args": {"scope": "today"}}],
+                        input_tokens=100, output_tokens=50,
+                    )
+                raise Exception("server error 500")
+
+        tool_result = json.dumps({"type": "tool_result", "id": "c1",
+                                   "ok": True, "result": {"content": ""}}) + "\n"
+        rc, lines = self._run_with(SecondCallFails(), stdin_lines=[tool_result])
+        self.assertEqual(rc, 1)
+        error_msg = next(m for m in lines if m["type"] == "error")
+        payload = json.loads(error_msg["error"])
+        self.assertEqual(payload["class"], "server")
+        self.assertEqual(payload["tokens_total"], 150)
+        self.assertEqual(payload["turn"], 1)
+
+
+class TierDegradationTests(unittest.TestCase):
+    """Tests for progressive token exhaustion (tier system)."""
+
+    def test_compute_tier_thresholds(self):
+        # Below 70% → tier 0.
+        self.assertEqual(runloop.compute_tier(6900, 10000, 0, 0, 0), 0)
+        # At 70% → tier 1.
+        self.assertEqual(runloop.compute_tier(7000, 10000, 0, 0, 0), 1)
+        # At 85% → tier 2.
+        self.assertEqual(runloop.compute_tier(8500, 10000, 0, 0, 0), 2)
+        # At 95% → tier 3.
+        self.assertEqual(runloop.compute_tier(9500, 10000, 0, 0, 0), 3)
+
+    def test_compute_tier_never_decreases(self):
+        self.assertEqual(runloop.compute_tier(5000, 10000, 0, 0, 2), 2)
+
+    def test_compute_tier_timeout_triggers_tier3(self):
+        # 85% of timeout → tier 3.
+        self.assertEqual(runloop.compute_tier(0, 0, 85, 100, 0), 3)
+        # Below 85% → no timeout trigger.
+        self.assertEqual(runloop.compute_tier(0, 0, 84, 100, 0), 0)
+
+    def test_compute_tier_no_budget_stays_0(self):
+        self.assertEqual(runloop.compute_tier(50000, 0, 0, 0, 0), 0)
+
+    def test_filter_tools_tier0_keeps_all(self):
+        tools = [_stub_tool_schema("docs_search"),
+                 _stub_tool_schema("hippocampus_write"),
+                 _stub_tool_schema("satan_final")]
+        filtered = runloop.filter_tools_for_tier(tools, 0)
+        names = [t["function"]["name"] for t in filtered]
+        self.assertEqual(names, ["docs_search", "hippocampus_write", "satan_final"])
+
+    def test_filter_tools_tier1_drops_survey(self):
+        tools = [_stub_tool_schema("docs_search"),
+                 _stub_tool_schema("docs_read"),
+                 _stub_tool_schema("activity_read"),
+                 _stub_tool_schema("hippocampus_write"),
+                 _stub_tool_schema("satan_final")]
+        filtered = runloop.filter_tools_for_tier(tools, 1)
+        names = [t["function"]["name"] for t in filtered]
+        self.assertNotIn("docs_search", names)
+        self.assertNotIn("docs_read", names)
+        self.assertNotIn("activity_read", names)
+        self.assertIn("hippocampus_write", names)
+        self.assertIn("satan_final", names)
+
+    def test_filter_tools_tier2_drops_reads(self):
+        tools = [_stub_tool_schema("org_read_context"),
+                 _stub_tool_schema("bough_read"),
+                 _stub_tool_schema("memory_resonate"),
+                 _stub_tool_schema("hippocampus_write"),
+                 _stub_tool_schema("notify_send"),
+                 _stub_tool_schema("satan_final")]
+        filtered = runloop.filter_tools_for_tier(tools, 2)
+        names = [t["function"]["name"] for t in filtered]
+        self.assertNotIn("org_read_context", names)
+        self.assertNotIn("bough_read", names)
+        self.assertNotIn("memory_resonate", names)
+        self.assertIn("hippocampus_write", names)
+        self.assertIn("notify_send", names)
+        self.assertIn("satan_final", names)
+
+    def test_filter_tools_tier3_final_only(self):
+        tools = [_stub_tool_schema("hippocampus_write"),
+                 _stub_tool_schema("notify_send"),
+                 _stub_tool_schema("satan_final")]
+        filtered = runloop.filter_tools_for_tier(tools, 3)
+        names = [t["function"]["name"] for t in filtered]
+        self.assertEqual(names, ["satan_final"])
+
+    def test_tier1_emits_tier_changed_log(self):
+        """Crossing 70% budget emits a tier_changed log event."""
+        provider = StubProvider([
+            CompletionResult(
+                content="",
+                tool_calls=[{"id": "c1", "name": "org_read_context",
+                             "args": {"scope": "today"}}],
+                input_tokens=600, output_tokens=200,  # 800/1000 = 80% > 70%
+            ),
+            CompletionResult(
+                content="",
+                tool_calls=[{"id": "c2", "name": "satan_final",
+                             "args": {"summary": "done", "actions": []}}],
+                input_tokens=50, output_tokens=10,
+            ),
+        ])
+        tool_result = json.dumps({"type": "tool_result", "id": "c1",
+                                   "ok": True, "result": {"content": ""}}) + "\n"
+        buf = io.StringIO()
+        env = {
+            "SATAN_RUN_ID": "test-run",
+            "SATAN_BUDGET_TOKENS": "1000",
+            "SATAN_PROVIDER": "openrouter",
+            "SATAN_MODEL": "test-model",
+            "OPENROUTER_API_KEY": "test-key",
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            make_bundle(tmp)
+            env["SATAN_RUN_DIR"] = tmp
+            with mock.patch.dict(os.environ, env, clear=False), \
+                 mock.patch.object(runloop, "build_provider",
+                                   return_value=(provider, "test-model")), \
+                 mock.patch.object(sys, "stdin", io.StringIO(tool_result)), \
+                 redirect_stdout(buf):
+                rc = runloop.run()
+        lines = emitted_lines(buf)
+        self.assertEqual(rc, 0)
+        tier_changes = [m for m in lines
+                        if m.get("type") == "log" and m.get("kind") == "tier_changed"]
+        self.assertEqual(len(tier_changes), 1)
+        tc = tier_changes[0]
+        self.assertEqual(tc["from_tier"], 0)
+        self.assertEqual(tc["to_tier"], 1)
+        self.assertEqual(tc["trigger"], "budget_70")
+        self.assertEqual(tc["tokens_budget"], 1000)
+        # System message was injected.
+        second_turn_systems = [m for m in provider.calls[1]["messages"]
+                               if m["role"] == "system"]
+        self.assertTrue(any("survey tools withdrawn" in (m["content"] or "").lower()
+                            for m in second_turn_systems))
+
+    def test_progressive_tiers_1_then_3(self):
+        """Two turns: first crosses 70% (tier 1), second crosses 95% (tier 3)."""
+        provider = StubProvider([
+            CompletionResult(
+                content="",
+                tool_calls=[{"id": "c1", "name": "org_read_context",
+                             "args": {"scope": "today"}}],
+                input_tokens=350, output_tokens=50,  # 400/1000 = 40% < 70%
+            ),
+            CompletionResult(
+                content="",
+                tool_calls=[{"id": "c2", "name": "org_read_context",
+                             "args": {"scope": "today"}}],
+                input_tokens=500, output_tokens=100,  # 1000/1000 = 100% > 95%
+            ),
+            CompletionResult(
+                content="",
+                tool_calls=[{"id": "c3", "name": "satan_final",
+                             "args": {"summary": "ok", "actions": []}}],
+                input_tokens=10, output_tokens=5,
+            ),
+        ])
+        tr1 = json.dumps({"type": "tool_result", "id": "c1",
+                           "ok": True, "result": {"content": ""}}) + "\n"
+        tr2 = json.dumps({"type": "tool_result", "id": "c2",
+                           "ok": True, "result": {"content": ""}}) + "\n"
+        buf = io.StringIO()
+        env = {
+            "SATAN_RUN_ID": "test-run",
+            "SATAN_BUDGET_TOKENS": "1000",
+            "SATAN_PROVIDER": "openrouter",
+            "SATAN_MODEL": "test-model",
+            "OPENROUTER_API_KEY": "test-key",
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            make_bundle(tmp)
+            env["SATAN_RUN_DIR"] = tmp
+            with mock.patch.dict(os.environ, env, clear=False), \
+                 mock.patch.object(runloop, "build_provider",
+                                   return_value=(provider, "test-model")), \
+                 mock.patch.object(sys, "stdin", io.StringIO(tr1 + tr2)), \
+                 redirect_stdout(buf):
+                rc = runloop.run()
+        lines = emitted_lines(buf)
+        self.assertEqual(rc, 0)
+        tier_changes = [m for m in lines
+                        if m.get("type") == "log" and m.get("kind") == "tier_changed"]
+        # First turn: 400/1000=40%, no tier change.
+        # Second turn: 1000/1000=100%, jumps through tiers.
+        self.assertTrue(len(tier_changes) >= 1)
+        self.assertEqual(tier_changes[-1]["to_tier"], 3)
+
+
+class BackstopTests(unittest.TestCase):
+    """Tests for hard backstop (max_budget_tokens)."""
+
+    def _run_with(self, provider, *, stdin_lines: list[str] = (),
+                  budget: int = 0, max_budget: int = 0):
+        buf = io.StringIO()
+        env = {
+            "SATAN_RUN_ID": "test-run",
+            "SATAN_BUDGET_TOKENS": str(budget),
+            "SATAN_MAX_BUDGET_TOKENS": str(max_budget),
+            "SATAN_PROVIDER": "openrouter",
+            "SATAN_MODEL": "test-model",
+            "OPENROUTER_API_KEY": "test-key",
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            make_bundle(tmp)
+            env["SATAN_RUN_DIR"] = tmp
+            with mock.patch.dict(os.environ, env, clear=False), \
+                 mock.patch.object(runloop, "build_provider",
+                                   return_value=(provider, "test-model")), \
+                 mock.patch.object(sys, "stdin", io.StringIO("".join(stdin_lines))), \
+                 redirect_stdout(buf):
+                rc = runloop.run()
+        return rc, emitted_lines(buf)
+
+    def test_max_budget_forces_immediate_final(self):
+        """Exceeding max_budget_tokens terminates immediately, no tier
+        system involved."""
+        provider = StubProvider([
+            CompletionResult(
+                content="",
+                tool_calls=[{"id": "c1", "name": "org_read_context",
+                             "args": {"scope": "today"}}],
+                input_tokens=800, output_tokens=300,  # 1100 > max 1000
+            ),
+        ])
+        tool_result = json.dumps({"type": "tool_result", "id": "c1",
+                                   "ok": True, "result": {"content": ""}}) + "\n"
+        rc, lines = self._run_with(provider, stdin_lines=[tool_result],
+                                   budget=5000, max_budget=1000)
+        self.assertEqual(rc, 0)
+        final = lines[-1]
+        self.assertEqual(final["type"], "final")
+        self.assertEqual(final["reason"], "max_budget_tokens")
+        self.assertIn("backstop", final["summary"])
+
+    def test_max_budget_not_triggered_below_limit(self):
+        """Below max_budget_tokens, normal operation continues."""
+        provider = StubProvider([
+            CompletionResult(
+                content="",
+                tool_calls=[{"id": "c1", "name": "satan_final",
+                             "args": {"summary": "ok", "actions": []}}],
+                input_tokens=100, output_tokens=50,
+            ),
+        ])
+        rc, lines = self._run_with(provider, max_budget=1000)
+        self.assertEqual(rc, 0)
+        final = lines[-1]
+        self.assertEqual(final["type"], "final")
+        self.assertEqual(final["summary"], "ok")
+        self.assertNotIn("reason", final)
+
+    def test_max_budget_fires_before_tier_system(self):
+        """max_budget_tokens fires even when budget_tokens would trigger
+        tier degradation — backstop takes priority."""
+        provider = StubProvider([
+            CompletionResult(
+                content="",
+                tool_calls=[{"id": "c1", "name": "org_read_context",
+                             "args": {"scope": "today"}}],
+                input_tokens=900, output_tokens=200,  # 1100 > max 1000
+            ),
+        ])
+        tool_result = json.dumps({"type": "tool_result", "id": "c1",
+                                   "ok": True, "result": {"content": ""}}) + "\n"
+        # budget=500 would trigger tier 3, but max_budget=1000 fires first
+        # (backstop check runs before tier check)
+        rc, lines = self._run_with(provider, stdin_lines=[tool_result],
+                                   budget=500, max_budget=1000)
+        self.assertEqual(rc, 0)
+        final = lines[-1]
+        self.assertEqual(final["reason"], "max_budget_tokens")
+        # No tier_changed events — backstop fired before tier check
+        tier_changes = [m for m in lines
+                        if m.get("type") == "log" and m.get("kind") == "tier_changed"]
+        self.assertEqual(len(tier_changes), 0)
 
 
 class ProtocolFixtureTests(unittest.TestCase):

@@ -277,5 +277,70 @@ case from contract §5 example: shame ramps from 0.10 to 0.25 (delta
     (should (stringp err))
     (should (string-match-p "field caps_applied must be array" err))))
 
+;; ---------- Hippocampus source (§6H) ----------
+
+(defun dl-satan-audit-attr-test--hippocampus-delta (&rest overrides)
+  "Build a baseline `attribute.delta_applied' payload for source=hippocampus.
+Defaults model `reason=written' reducing brooding by 0.025."
+  (let ((base
+         (list :id           dl-satan-audit-attr-test--event-id
+               :scope        "global"
+               :name         "brooding"
+               :old          0.50
+               :new          0.475
+               :delta        -0.025
+               :source       "hippocampus"
+               :reason       "written"
+               :evidence     (list :tool_name "hippocampus_write"
+                                   :filename "20260524T100000--test__satan_hippocampus.org")
+               :caps_applied '()
+               :disabled     :false)))
+    (while overrides
+      (setq base (plist-put base (pop overrides) (pop overrides))))
+    base))
+
+(ert-deftest dl-satan-audit-attribute/accepts-hippocampus-written ()
+  (should-not
+   (dl-satan-audit-validate-attribute-event
+    "attribute.delta_applied"
+    (dl-satan-audit-attr-test--hippocampus-delta))))
+
+(ert-deftest dl-satan-audit-attribute/accepts-each-hippocampus-reason ()
+  (dolist (reason '("written" "overwritten" "deleted" "renamed" "searched"))
+    (should-not
+     (dl-satan-audit-validate-attribute-event
+      "attribute.delta_applied"
+      (dl-satan-audit-attr-test--hippocampus-delta :reason reason)))))
+
+(ert-deftest dl-satan-audit-attribute/rejects-unknown-hippocampus-reason ()
+  (let ((err (dl-satan-audit-validate-attribute-event
+              "attribute.delta_applied"
+              (dl-satan-audit-attr-test--hippocampus-delta :reason "pondered"))))
+    (should (stringp err))
+    (should (string-match-p "not valid for source=" err))))
+
+(ert-deftest dl-satan-audit-attribute/rejects-hippocampus-missing-tool-name ()
+  (let ((err (dl-satan-audit-validate-attribute-event
+              "attribute.delta_applied"
+              (dl-satan-audit-attr-test--hippocampus-delta
+               :evidence (list :filename "test.org")))))
+    (should (stringp err))
+    (should (string-match-p "missing required field: tool_name" err))))
+
+(ert-deftest dl-satan-audit-attribute/rejects-hippocampus-missing-filename ()
+  (let ((err (dl-satan-audit-validate-attribute-event
+              "attribute.delta_applied"
+              (dl-satan-audit-attr-test--hippocampus-delta
+               :evidence (list :tool_name "hippocampus_write")))))
+    (should (stringp err))
+    (should (string-match-p "missing required field: filename" err))))
+
+(ert-deftest dl-satan-audit-attribute/rejects-outcome-reason-for-hippocampus ()
+  (let ((err (dl-satan-audit-validate-attribute-event
+              "attribute.delta_applied"
+              (dl-satan-audit-attr-test--hippocampus-delta :reason "worked"))))
+    (should (stringp err))
+    (should (string-match-p "not valid for source=" err))))
+
 (provide 'dl-satan-audit-attribute-test)
 ;;; dl-satan-audit-attribute-test.el ends here
