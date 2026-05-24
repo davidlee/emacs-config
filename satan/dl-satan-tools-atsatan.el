@@ -653,12 +653,13 @@ authoring run for projection rebuild."
           "notes_at_satan_intervention_done"
           "org_read_context"
           "inbox_append"
+          "notify_send"
           "hippocampus_write"
           "memory_mark" "memory_resonate" "memory_show_trace"
           "bough_read"
           "agenda_read"
           "patch_job_create" "patch_job_status")
- :capabilities '(write-notes inbox-write memory-write)
+ :capabilities '(write-notes inbox-write memory-write notify)
  :budget-tokens 100000
  :budget-tool-calls 15
  :timeout-seconds 120)
