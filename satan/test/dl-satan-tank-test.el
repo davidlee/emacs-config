@@ -224,13 +224,15 @@
                        :tokens_total 9200))
             (:ts "2026-05-20T09:21:37+10:00" :dir "in"
              :event "tool-call"
-             :payload (:id "c1" :name "activity_read"))
+             :payload (:id "c1" :name "activity_read"
+                       :arguments (:window_minutes 30)))
             (:ts "2026-05-20T09:21:37+10:00" :dir "broker"
              :event "tool-result"
              :payload (:id "c1" :ok t))
             (:ts "2026-05-20T09:21:44+10:00" :dir "in"
              :event "tool-call"
-             :payload (:id "c2" :name "memory_resonate"))
+             :payload (:id "c2" :name "memory_resonate"
+                       :arguments (:limit 5)))
             (:ts "2026-05-20T09:21:44+10:00" :dir "broker"
              :event "tool-result"
              :payload (:id "c2" :ok :false))
@@ -250,6 +252,8 @@
     (should (equal (plist-get (nth 0 (plist-get state :tool_calls)) :name)
                    "activity_read"))
     (should (eq (plist-get (nth 0 (plist-get state :tool_calls)) :ok) t))
+    (should (equal (plist-get (nth 0 (plist-get state :tool_calls)) :args)
+                   '(:window_minutes 30)))
     (should (eq (plist-get (nth 1 (plist-get state :tool_calls)) :ok) nil))
     (should (equal (plist-get state :final_summary) "done"))
     (should (equal (plist-get state :final_actions) 1))
@@ -282,8 +286,10 @@
   (let* ((state (list :run_id "20260520T092127-tick-pulse-1e8e70"
                       :mode "tick-pulse" :status 'final
                       :duration_s 20.0 :tokens_total 29040
-                      :tool_calls '((:name "activity_read" :ok t)
-                                    (:name "memory_resonate" :ok nil))
+                      :tool_calls '((:name "activity_read" :ok t
+                                     :args (:window_minutes 30))
+                                    (:name "memory_resonate" :ok nil
+                                     :args (:limit 5)))
                       :final_summary "Tick at 09:21."
                       :final_actions 0))
          (out (dl-satan-tank--render-last-run state)))
@@ -293,8 +299,8 @@
     (should (string-match-p "20.0s" out))
     (should (string-match-p "29040 cumulative" out))
     (should (string-match-p "tcalls: 2" out))
-    (should (string-match-p "activity_read +ok" out))
-    (should (string-match-p "memory_resonate +error" out))
+    (should (string-match-p "activity_read +ok +window_minutes=30" out))
+    (should (string-match-p "memory_resonate +error +limit=5" out))
     (should (string-match-p "Tick at 09:21" out))))
 
 (provide 'dl-satan-tank-test)

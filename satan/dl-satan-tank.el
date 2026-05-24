@@ -282,10 +282,13 @@ nil means no completed runs are available yet."
            "\ntools:\n"
            (mapconcat
             (lambda (tc)
-              (format "  · %-26s %s"
-                      (dl-satan-tank--truncate
-                       (or (plist-get tc :name) "?") 26)
-                      (if (plist-get tc :ok) "ok" "error")))
+              (let ((args-str (dl-satan-tank--summarize-args
+                               (plist-get tc :args))))
+                (format "  · %-26s %-5s %s"
+                        (dl-satan-tank--truncate
+                         (or (plist-get tc :name) "?") 26)
+                        (if (plist-get tc :ok) "ok" "error")
+                        args-str)))
             tcalls "\n")
            "\n")))
         (cond
@@ -445,8 +448,9 @@ Returns one of: `final', `timeout', `error', `in-progress'."
              (setq last-usage payload)))
           ("tool-call"
            (let ((id (and (listp payload) (plist-get payload :id)))
-                 (name (and (listp payload) (plist-get payload :name))))
-             (push (list :id id :name name) tool-calls)))
+                 (name (and (listp payload) (plist-get payload :name)))
+                 (args (and (listp payload) (plist-get payload :arguments))))
+             (push (list :id id :name name :args args) tool-calls)))
           ("tool-result"
            (let ((id (and (listp payload) (plist-get payload :id)))
                  (ok (and (listp payload) (plist-get payload :ok))))
