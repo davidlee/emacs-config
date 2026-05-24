@@ -193,11 +193,11 @@ Dotfiles must not be the source of truth for prompt content.")
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
        :jail-profile 'specDev
        :profile 'claude-haiku
-       :budget-tokens 120000
+       :budget-tokens 400000
        :output-handler 'dl-satan-output/ruminate
        :auto-apply 'none
-       :timeout-seconds 120
-       :budget-tool-calls 20))
+       :timeout-seconds 180
+       :budget-tool-calls 30))
 
 (provide 'dl-satan-mode)
 ;;; dl-satan-mode.el ends here
