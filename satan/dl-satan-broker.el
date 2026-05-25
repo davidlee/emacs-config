@@ -27,6 +27,10 @@
 (require 'dl-satan-motive)
 (require 'dl-satan-observer)
 (require 'dl-satan-sensor-alerts)
+(require 'dl-satan-sensor-curiosity)
+(require 'dl-satan-sensor-wpm)
+
+(defvar dl-satan-memory-store--current-run-id)
 
 (defcustom dl-satan-runs-dir
   (expand-file-name "satan/runs" (or (bound-and-true-p dl-notes-root)
@@ -444,7 +448,8 @@ Pure data assembly from run-ctx and mode spec — no I/O."
         (setq actions (plist-put actions :observer observer)))
       (dl-satan-audit-close
        (dl-satan-run-audit run-ctx) final actions status))
-    (dl-satan-broker--mark-failed-on-disk run-ctx)))
+    (dl-satan-broker--mark-failed-on-disk run-ctx)
+    (setq dl-satan-memory-store--current-run-id nil)))
 
 (defun dl-satan-broker--mark-failed-on-disk (run-ctx)
   "If RUN-CTX's status is not `done', rename its dir adding `.FAILED'.
@@ -676,6 +681,7 @@ Returns the run-id."
                       (format " *satan-stderr-%s*" run-id))))
     (unless (file-directory-p dir) (make-directory dir t))
     (dl-satan-broker--update-most-recent run-id)
+    (setq dl-satan-memory-store--current-run-id run-id)
     (unless (file-directory-p dl-satan-hippocampus-dir)
       (make-directory dl-satan-hippocampus-dir t))
     ;; Phase 1.1+1.2 — percept builder + persist.  §S1's pre-bundle
@@ -732,6 +738,18 @@ Returns the run-id."
                            :time-now (plist-get prepare :time_now)
                            :run-dir dir)
                         (error nil)))
+           (_curiosity-signal
+            (condition-case _err
+                (dl-satan-sensor-curiosity-probe
+                 :run-id run-id
+                 :ts (plist-get prepare :time_now))
+              (error nil)))
+           (_wpm-signal
+            (condition-case _err
+                (dl-satan-sensor-wpm-probe
+                 :run-id run-id
+                 :ts (plist-get prepare :time_now))
+              (error nil)))
            (prepare (plist-put
                      (plist-put
                       (plist-put

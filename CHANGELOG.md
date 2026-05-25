@@ -2,6 +2,26 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-25 — SATAN: T-attr-1e-sensor — wire Curiosity + Hunger to real signals
+
+- **ATTR_ORDER expanded from 7 to 8**: Curiosity added to the daemon's dispatch loop. All delta tables widened from `[f64; 7]` to `[f64; 8]` (leading 0.0 for Curiosity in existing tables). Existing behaviour unchanged.
+- **New `tuning.rs`**: centralised magnitude constants (TINY/SMALL/MEDIUM/HIGH), confidence multipliers, and all delta tables (outcome, hippocampus, sensor). `dispatcher.rs` delegates to tuning module — knobs discoverable in one file.
+- **Hippocampus `trace_marked` reason**: Curiosity −0.05 + Brooding −0.025 on trace persistence via `dl-satan-memory-store-mark`. All 3 callers (observer, manual mark, memory_mark tool) emit automatically. Soft-fail; only fires during active SATAN runs (broker sets `dl-satan-memory-store--current-run-id`).
+- **Sensor source implemented** (`Source::Sensor` flipped to `is_implemented`): 3 reasons — `segment_backlog` (Curiosity +0.05), `typing_active` (Hunger +0.05), `typing_idle` (Hunger +0.025). No confidence weighting, no revision. Daemon: `SensorReason` enum, `dispatch_sensor`, `SensorPayload` parser + router arm. Broker: `dl-satan-attribute-build-sensor-payload`, audit validator widened.
+- **Curiosity probe** (`dl-satan-sensor-curiosity.el`): counts panopticon focus segments newer than last-inspected timestamp. Emits `segment_backlog` signal. State file at `~/.local/state/satan/sensor-curiosity.json`.
+- **WPM probe** (`dl-satan-sensor-wpm.el`): reads `~/notes/satan/log/wpm/YYYY-MM-DD.tsv`, classifies last 10 minutes as active (>50% active_seconds) or idle (<5%). Emits on state transitions only. State file at `~/.local/state/satan/sensor-wpm.json`.
+- **Broker wiring**: both probes called in prepare phase after sensor-alerts-check, wrapped in `condition-case` for soft-fail.
+- **Design contract** amended: §6S (sensor source), §6H trace_marked row, §5 sensor flipped to implemented, ATTR_ORDER expansion noted.
+- Daemon unit tests: 50→60, all green.
+
+## 2026-05-25 — sleipnir-doctor: SATAN + Patch + Org health checks
+
+- `lisp/dl-sleipnir-doctor.el` expanded from 2 checks (server uptime, LSP) to 16 via a registry pattern. Each check is a named function, individually callable via `M-x sleipnir-doctor-check-one`, wrapped in `condition-case` so a crash produces its own CRIT entry without aborting the report.
+- **SATAN runtime** (6 checks): mode-registry consistency, daily token budget (% used), memory DB connectivity (psql), today's run success rate, consecutive failure streak, last tick age.
+- **Patch pipeline** (4 checks): runner enabled/active, queue depth, proposals awaiting review, active worktree count.
+- **Org / Notes** (4 checks): notes root exists, org-roam DB age (falls back to `dl-notes-root/.org-roam.db` when org-roam not loaded), agenda file count, inbox file exists.
+- No new dependencies — SATAN/org modules accessed only through `fboundp`/`boundp`/`featurep` guards with `declare-function` for clean byte-compilation.
+
 ## 2026-05-24 — SATAN: progressive token exhaustion + resilience
 
 - **Progressive tier degradation** (harness `runloop.py`): 3-tier tool withdrawal system driven by token budget consumption. Tier 0 (full tools) → Tier 1 at 70% (drop survey tools: docs, activity, hippocampus_grep) → Tier 2 at 85% (drop reads: org, bough, memory_resonate, patch, proposal) → Tier 3 at 95% or 85% timeout (satan_final only). System messages injected on each transition. Replaces binary `warned` boolean.

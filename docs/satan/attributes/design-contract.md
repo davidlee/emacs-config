@@ -188,10 +188,10 @@ Required payload keys: `id`, `scope`, `name`, `old`, `new`, `delta`, `source`, `
 
 ```text
 outcome       ; intervention verdict (T1.5b feed — IMPLEMENTED in T-attr-1c)
-hippocampus   ; hippocampus tool-call signal (IMPLEMENTED in T-attr-1d-hc)
+hippocampus   ; hippocampus tool-call + trace persistence signal (IMPLEMENTED in T-attr-1d-hc)
 percept       ; percept block produces evidence (reserved; deferred to T-attr-1e)
 resonance     ; memory_resonate hit (reserved; deferred to T-attr-1e)
-sensor        ; sensor freshness / stale (reserved; deferred to T-attr-1e)
+sensor        ; sensor readings — panopticon + WPM activity (IMPLEMENTED in T-attr-1e-sensor)
 tool_error    ; tool execution failed (reserved; deferred to T-attr-1e)
 manual        ; interactive command / notes directive (reserved; deferred; out of T-attr-1)
 ```
@@ -328,32 +328,35 @@ Source `hippocampus`. Hippocampus tool calls carry metabolic signal about SATAN'
 
 | Reason        | Trigger                                |
 |---            |---                                     |
-| `written`     | `hippocampus_write` succeeds           |
-| `overwritten` | `hippocampus_overwrite` succeeds       |
-| `deleted`     | `hippocampus_delete` succeeds          |
-| `renamed`     | `hippocampus_rename` succeeds          |
-| `searched`    | `hippocampus_grep` returns 0 matches   |
+| `written`      | `hippocampus_write` succeeds                  |
+| `overwritten`  | `hippocampus_overwrite` succeeds              |
+| `deleted`      | `hippocampus_delete` succeeds                 |
+| `renamed`      | `hippocampus_rename` succeeds                 |
+| `searched`     | `hippocampus_grep` returns 0 matches          |
+| `trace_marked` | `dl-satan-memory-store-mark` succeeds (DB trace persistence) |
 
-Read-only tools (`hippocampus_list`, `hippocampus_read`, grep with matches) do not emit — reading is not a metabolic event.
+Read-only tools (`hippocampus_list`, `hippocampus_read`, grep with matches) do not emit — reading is not a metabolic event. `trace_marked` extends hippocampus to cover the DB-backed memory substrate (traces): the organism recorded an observation, satisfying curiosity and relieving rumination pressure.
 
 ### 6H.2 Delta table
 
 Magnitudes: tiny = 0.025. Consistent with the `worked shame` exception (−0.025) precedent in §6 footnote 1.
 
-| Reason        | Δ friction | Δ shame  | Δ doubt | Δ hunger | Δ suspicion | Δ brooding | Δ metamorphosis |
-|---            |---:        |---:      |---:     |---:      |---:         |---:        |---:             |
-| `written`     | 0          | 0        | 0       | 0        | 0           | −0.025     | 0               |
-| `overwritten` | 0          | −0.025   | 0       | 0        | 0           | −0.025     | 0               |
-| `deleted`     | 0          | −0.025   | 0       | 0        | 0           | −0.025     | 0               |
-| `renamed`     | 0          | 0        | 0       | 0        | 0           | −0.025     | 0               |
-| `searched`    | 0          | 0        | 0       | 0        | +0.025      | 0          | 0               |
+| Reason         | Δ curiosity | Δ friction | Δ shame  | Δ doubt | Δ hunger | Δ suspicion | Δ brooding | Δ metamorphosis |
+|---             |---:         |---:        |---:      |---:     |---:      |---:         |---:        |---:             |
+| `written`      | 0           | 0          | 0        | 0       | 0        | 0           | −0.025     | 0               |
+| `overwritten`  | 0           | 0          | −0.025   | 0       | 0        | 0           | −0.025     | 0               |
+| `deleted`      | 0           | 0          | −0.025   | 0       | 0        | 0           | −0.025     | 0               |
+| `renamed`      | 0           | 0          | 0        | 0       | 0        | 0           | −0.025     | 0               |
+| `searched`     | 0           | 0          | 0        | 0       | 0        | +0.025      | 0          | 0               |
+| `trace_marked` | −0.05       | 0          | 0        | 0       | 0        | 0           | −0.025     | 0               |
 
 Design notes:
 
-1. **Brooding drops on write/overwrite/delete/rename** — the pressure that motivated rumination was acted on. A ruminate run with 5–10 writes produces cumulative Brooding reduction of −0.125 to −0.25 — noticeable but not dominant.
+1. **Brooding drops on write/overwrite/delete/rename/trace_marked** — the pressure that motivated rumination was acted on. A ruminate run with 5–10 writes produces cumulative Brooding reduction of −0.125 to −0.25 — noticeable but not dominant.
 2. **Shame drops on overwrite/delete** — correcting or removing wrong knowledge is acknowledging error (same magnitude as `worked` shame at −0.025, §6 footnote 1).
 3. **Suspicion rises on empty grep** — searched for knowledge, found a gap. Small signal that there's something worth investigating.
 4. **No friction/hunger/doubt/metamorphosis movement.** Hippocampus tools are inward-facing; they don't affect intervention policy, demand for contact, or self-edit pressure.
+5. **Curiosity drops on trace_marked** — persisting a trace is the terminal action of the curiosity lifecycle (brief §1: "seek evidence → read context → candidate hypothesis → private mark"). The organism recorded what it found; curiosity is satisfied. Magnitude is `small` (−0.05) rather than `tiny` because trace persistence is a deliberate, effortful act.
 
 ### 6H.3 No confidence weighting
 
@@ -393,6 +396,72 @@ enabled           ; broker's attribute-updates-enabled switch
 ### 6H.7 Self-manipulation concern
 
 SATAN can choose to call hippocampus tools, so it can indirectly influence its own attributes. At 0.025 per call, maximum Brooding reduction per ruminate run (budget-tool-calls=30) = 0.75 if every call is a write — but that would consume the entire tool budget on writes with no gathering. Hippocampus_write already emits observation traces (§10.7); attribute deltas add audit visibility via `attribute.delta_applied` in the transcript. See [`hippocampus-attribute-signals.md`](hippocampus-attribute-signals.md) §Self-manipulation concern for full analysis.
+
+---
+
+## 6S. Sensor → attribute delta map (T-attr-1e-sensor)
+
+Source `sensor`. Sensor readings carry metabolic signal about the external world: uninspected activity segments signal curiosity; typing activity/idle states signal hunger for progress. Sensor data comes from panopticon (sway focus segments) and WPM logs (typing activity).
+
+### 6S.1 Reason enum
+
+| Reason            | Trigger                                              |
+|---                |---                                                   |
+| `segment_backlog` | Panopticon focus segments exist that SATAN hasn't inspected |
+| `typing_active`   | WPM log shows active typing (>50% active in window)  |
+| `typing_idle`     | WPM log shows idle (<5% active in window)            |
+
+### 6S.2 Delta table
+
+Magnitudes: tiny = 0.025, small = 0.05. Sensor signals are state-transition-based (one signal per state change, not per tick) to avoid delta flooding.
+
+| Reason            | Δ curiosity | Δ friction | Δ shame | Δ doubt | Δ hunger | Δ suspicion | Δ brooding | Δ metamorphosis |
+|---                |---:         |---:        |---:     |---:     |---:      |---:         |---:        |---:             |
+| `segment_backlog` | +0.05       | 0          | 0       | 0       | 0        | 0           | 0          | 0               |
+| `typing_active`   | 0           | 0          | 0       | 0       | +0.05    | 0           | 0          | 0               |
+| `typing_idle`     | 0           | 0          | 0       | 0       | +0.025   | 0           | 0          | 0               |
+
+Design notes:
+
+1. **Curiosity rises on segment_backlog** — uninspected panopticon data is the gap between observable and observed. The organism has unprocessed external signal.
+2. **Hunger rises on typing_active** — the user is working but SATAN hasn't produced artifact or contact. Demand for progress accumulates. Falls via `worked` outcome (§6: hunger −0.05).
+3. **Hunger rises on typing_idle** (weaker) — extended idle is a weaker signal for demand. The user might be reading, thinking, or away. Half the active magnitude.
+4. **No shame/doubt/friction/suspicion/brooding/metamorphosis.** Sensor readings are about external state, not about SATAN's own correctness or intervention history.
+
+### 6S.3 No confidence weighting
+
+Sensor signals are binary (threshold crossed or not). The §6.1 confidence multiplier does not apply.
+
+### 6S.4 No revision semantics
+
+Sensor signals are one-shot. `is_revision` is always `false`.
+
+### 6S.5 Evidence shape
+
+For `source=sensor`, the `evidence` object carries:
+
+```text
+evidence.sensor_type    ; string — "panopticon_backlog" | "wpm_activity"
+evidence.metric_value   ; number — the measured value (segment count, active seconds, etc.)
+evidence.metric_unit    ; string — "unprocessed_segments" | "active_seconds" | "idle_seconds"
+```
+
+No `intervention_id`, `confidence`, or `classification` fields. The validator rejects `source=sensor` events carrying outcome-shaped evidence.
+
+### 6S.6 Payload shape
+
+```text
+schema_version    ; same as outcome payloads
+source            ; "sensor"
+run_id            ; SATAN run id
+ts                ; ISO 8601 timestamp
+reason            ; one of the §6S.1 reasons
+sensor_type       ; string
+metric_value      ; number
+metric_unit       ; string
+is_revision       ; always false
+enabled           ; broker's attribute-updates-enabled switch
+```
 
 ---
 
@@ -613,6 +682,7 @@ These do not block T-attr-1b. T-attr-1b may proceed with the §4 storage shapes 
 | 2026-05-23 | Round-2 review patches: §3 scope wording sharpened — explicit "never `pattern:<id>` or `hypothesis:<id>`"; §6 column-order reading note added (reviewer misread `contradicted hunger`); §6 footnotes 4+5 added — `worked doubt` interpreted as ambient inhibition (not pattern confidence); `contradicted hunger` held at 0 with rationale + revisit trigger; §6.2 revision algorithm rewritten — compute against actually-logged prior deltas via `evidence_json->>'intervention_id'` lookup; new §6.2.1 covers prior-delta tracking + the GIN/expression index for the migration; §12 dispatcher test surface adds revision-against-actual-prior-deltas + revision-chain cases. Reviewer finding #3 (`ignored` vs `neutral` classifier tightening) dispositioned as out-of-scope: lives in `outcome-semantics.md` (merged). | External review round 2. |
 | 2026-05-23 | Language-neutralising pass + locus pivot: §4/§4.2/§4.3/§5/§5.1/§9/§10/§11/§12 rewritten to remove elisp-specific implementation references (specific defcustom names, ert file names, `dl-satan-*` function names, `dl-satan-attribute-rebuild` driver name) and replace with broker / daemon role-language. Implementation locus split (daemon owns store + dispatcher + rebuild; broker owns capsule + audit-validator + transcript write + disable-switch UI) is now reflected throughout, not just in the theme doc amendment. New **§17 — Implementation locus + pinned daemon design choices** adopts (a) daemon-writes-table-then-RPCs-back, (b) PG queue + `pg_notify` event bus, (c) daemon-side disable check, all previously recorded only in `T-attr-1-attribute-layer.md` amendment + `extraction-policy.md`. Contract status stays **draft** for one more change-history row; flips to **merged** when T-attr-1b's first code-bearing PR lands. Forward references to broker UX (`my/satan-attribute-zero`, `my/satan-mark-intervention-*`) kept — they describe broker-side surfaces, not daemon implementation. | T-attr-1b scaffold pass (locus pivot landed in `satan-attrd` initial commit `d8a6a10`). |
 | 2026-05-23 | T-attr-1c pre-implementation pin: §17.4 adds **RPC error policy on validator reject** — daemon logs at `ERROR` and drops the event, no retry; rationale is that validator rejects are deterministic and a retry loop wastes cycles on contract violations. Transport errors remain retryable with backoff and live in the wiring PR. New §17.7 **Per-run Counter eviction** pins a bounded LRU at capacity 64 with `tracing::info!` on evict; defers explicit `intervention.run_ended` broker signal until the LRU heuristic is shown wrong. `metadata.status` flips **draft → merged** per the precedent set in T-attr-1a (contract becomes canonical with first code-bearing implementation PR; T-attr-1c is that PR for the daemon dispatcher). | T-attr-1c PR (dispatcher pre-flight; pin open questions before code lands). |
+| 2026-05-25 | T-attr-1e-sensor: §6H amended — `trace_marked` reason added (Curiosity −0.05, Brooding −0.025 on trace persistence); Curiosity column added to §6H delta table. New §6S sensor source — `segment_backlog`, `typing_active`, `typing_idle` reasons with delta tables for Curiosity and Hunger. §5 source list updated: `sensor` flipped to IMPLEMENTED, `hippocampus` description widened to include trace persistence. ATTR_ORDER expanded from 7 to 8 elements (Curiosity added at position 0). | T-attr-1e-sensor PR. |
 | 2026-05-24 | T-attr-1c slice 2 wiring pre-flight pins: §17.3 expanded with the broker→daemon outcome payload v1.0 shape + `schema_version` major-rejection rule + queue table DDL (`satan_outcome_inbox`, `satan_audit_inbox`) + single-thread run-loop concurrency note (no `SELECT FOR UPDATE` in v1 because dispatch is serialized; flagged as a future multi-worker concern). §17.4 expanded with the **reject reply transport** — new `satan_audit_replies` table + `satan_audit_reply` channel; rejects-only (silence on accept). §17.1 expanded to name the broker-side LISTENer + sentinel-death `notifications-notify` defcustoms (`dl-satan-attribute-listener-enabled`, `dl-satan-attribute-listener-notify-app`). | T-attr-1c slice 2 (wiring PR — broker enqueue + daemon run loop + broker LISTENer). |
 
 ---

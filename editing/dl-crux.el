@@ -1,7 +1,7 @@
 ;;; dl-crux.el --- crux -*- lexical-binding: t; -*-
 
 (use-package crux
-  :defer t
+  ;;:defer t
   :config
   ;;  (global-set-key [remap smart-kill] #'crux-smart-kill-line)
   (global-set-key [remap move-beginning-of-line] #'crux-move-beginning-of-line)

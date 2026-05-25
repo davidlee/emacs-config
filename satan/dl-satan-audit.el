@@ -425,7 +425,7 @@ Returns nil on success or `(:idx N :reason STR)' on the first failure."
   "Reserved attribute event sources (design-contract §5).")
 
 (defconst dl-satan-audit-attribute-sources-implemented
-  '("outcome" "hippocampus")
+  '("outcome" "hippocampus" "sensor")
   "Sources whose `reason' enum is defined in the contract and accepted
 by the validator today.  Reserved-but-unimplemented sources are
 REJECTED (contract §5.1) — reservation alone does not unlock the
@@ -436,8 +436,12 @@ validator.  Widens with each T-attr-1e PR.")
   "Closed set of reasons for source=outcome (design-contract §6).")
 
 (defconst dl-satan-audit-attribute-hippocampus-reasons
-  '("written" "overwritten" "deleted" "renamed" "searched")
+  '("written" "overwritten" "deleted" "renamed" "searched" "trace_marked")
   "Closed set of reasons for source=hippocampus (design-contract §6H.1).")
+
+(defconst dl-satan-audit-attribute-sensor-reasons
+  '("segment_backlog" "typing_active" "typing_idle")
+  "Closed set of reasons for source=sensor (design-contract §6S.1).")
 
 (defconst dl-satan-audit-attribute-caps
   '("friction_cap" "range_clamp")
@@ -471,6 +475,7 @@ validator.  Widens with each T-attr-1e PR.")
   (cond
    ((equal source "outcome") dl-satan-audit-attribute-outcome-reasons)
    ((equal source "hippocampus") dl-satan-audit-attribute-hippocampus-reasons)
+   ((equal source "sensor") dl-satan-audit-attribute-sensor-reasons)
    (t nil)))
 
 (defun dl-satan-audit--validate-attribute-source-and-reason (payload)
@@ -528,6 +533,15 @@ fields (design-contract §6H.5)."
     (or (dl-satan-audit--iv-require-string ev :tool_name)
         (dl-satan-audit--iv-require-string ev :filename))))
 
+(defun dl-satan-audit--validate-attribute-sensor-evidence (payload)
+  "For `source=sensor', enforce that `:evidence' carries the required
+fields (design-contract §6S.5)."
+  (let ((ev (plist-get payload :evidence)))
+    (or (dl-satan-audit--iv-require-string ev :sensor_type)
+        (unless (numberp (plist-get ev :metric_value))
+          "evidence.metric_value must be a number")
+        (dl-satan-audit--iv-require-string ev :metric_unit))))
+
 (defun dl-satan-audit--validate-attribute-delta-applied (payload)
   "Validate an `attribute.delta_applied' payload.  Return error string or nil."
   (or (dl-satan-audit--iv-require-string payload :id)
@@ -552,7 +566,9 @@ fields (design-contract §6H.5)."
          ((equal src "outcome")
           (dl-satan-audit--validate-attribute-outcome-evidence payload))
          ((equal src "hippocampus")
-          (dl-satan-audit--validate-attribute-hippocampus-evidence payload))))
+          (dl-satan-audit--validate-attribute-hippocampus-evidence payload))
+         ((equal src "sensor")
+          (dl-satan-audit--validate-attribute-sensor-evidence payload))))
       (dl-satan-audit--validate-attribute-caps payload)
       (dl-satan-audit--iv-require-bool payload :disabled)))
 

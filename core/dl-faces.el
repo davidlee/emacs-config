@@ -97,6 +97,7 @@
 
 (add-hook 'prog-mode-hook #'my/gutter-padding-mode)
 (add-hook 'text-mode-hook #'my/gutter-padding-mode)
+(add-hook 'display-line-numbers-mode-hook #'my/apply-fonts) ;; hopefully fix spacing issue with ruler
 
 (defun my/apply-line-number-faces ()
   "Apply stable line-number faces."

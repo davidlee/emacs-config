@@ -22,6 +22,7 @@ metadata:
 - [attributes/outcome-semantics](attributes/outcome-semantics.md) — design contract — outcome classification vocabulary, lifecycle, evidence, revision (T1.5a, merged)
 - [attributes/design-contract](attributes/design-contract.md) — design contract — attribute layer vocabulary, storage, event schema, update rules, caps, rebuild (T-attr-1a)
 - [attributes/patterns_attributes.design_note](attributes/patterns_attributes.design_note.md) — design note — global attributes vs pattern-local scars; rules out pattern-specific attribute vectors
+- [attributes/wiring-status](attributes/wiring-status.md) — living reference — which attributes are wired, dormant, or structurally locked; activation roadmap
 
 ## Memory substrate
 - [memory/design](memory/design.md) — grammar, canonicalizer, evidence window, schema

@@ -155,6 +155,23 @@ No confidence, intervention-id, or revision fields.  The current
         :is_revision    :false
         :enabled        (if dl-satan-attribute-updates-enabled t :false)))
 
+(cl-defun dl-satan-attribute-build-sensor-payload
+    (&key run-id ts reason sensor-type metric-value metric-unit)
+  "Construct the broker → daemon sensor payload (design-contract §6S.6).
+
+No confidence, intervention-id, or revision fields.  The current
+`dl-satan-attribute-updates-enabled' value is stamped on the payload."
+  (list :schema_version dl-satan-attribute-payload-schema-version
+        :source         "sensor"
+        :run_id         run-id
+        :ts             ts
+        :reason         reason
+        :sensor_type    sensor-type
+        :metric_value   metric-value
+        :metric_unit    metric-unit
+        :is_revision    :false
+        :enabled        (if dl-satan-attribute-updates-enabled t :false)))
+
 ;; ---------------------------------------------------------------------
 ;; enqueue
 ;; ---------------------------------------------------------------------
@@ -162,8 +179,9 @@ No confidence, intervention-id, or revision fields.  The current
 (defun dl-satan-attribute-enqueue (payload &optional db)
   "Insert PAYLOAD into satan_outcome_inbox + NOTIFY satan_outcome_inbox.
 
-PAYLOAD is a plist built via `dl-satan-attribute-build-outcome-payload'
-or `dl-satan-attribute-build-hippocampus-payload'; serialised to JSONB.
+PAYLOAD is a plist built via `dl-satan-attribute-build-outcome-payload',
+`dl-satan-attribute-build-hippocampus-payload', or
+`dl-satan-attribute-build-sensor-payload'; serialised to JSONB.
 Returns (ok . ID) carrying the inserted row id, or (error . MSG)."
   (let* ((database (or db dl-satan-attribute-database))
          (json (dl-satan-attribute--json payload))

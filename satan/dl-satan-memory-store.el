@@ -19,6 +19,14 @@
 (require 'subr-x)
 (require 'dl-satan-memory-grammar)
 
+(declare-function dl-satan-attribute-build-hippocampus-payload "dl-satan-attribute")
+(declare-function dl-satan-attribute-enqueue "dl-satan-attribute")
+
+(defvar dl-satan-memory-store--current-run-id nil
+  "Run-id for the currently active SATAN run, if any.
+Set by the broker during tick processing.  Used by the trace_marked
+attribute signal emitter.  Nil outside of a run.")
+
 ;; ---------------------------------------------------------------------
 ;; Configuration
 ;; ---------------------------------------------------------------------
@@ -166,8 +174,31 @@ If OUTCOME is non-nil the caller must include a matching
                   db "SELECT memory_mark_trace(:'payload'::jsonb)"
                   `(("payload" . ,blob)))))
     (pcase result
-      (`(ok . ,out) (cons 'ok (if (string-empty-p out) tid out)))
+      (`(ok . ,out)
+       (let ((result-tid (if (string-empty-p out) tid out)))
+         (dl-satan-memory-store--emit-trace-marked result-tid)
+         (cons 'ok result-tid)))
       (err err))))
+
+(defun dl-satan-memory-store--emit-trace-marked (trace-id)
+  "Emit a hippocampus trace_marked attribute signal for TRACE-ID.
+Soft-fail: errors are logged but do not affect the mark result.
+Only emits when `dl-satan-memory-store--current-run-id' is set
+\(i.e., during an active SATAN run)."
+  (condition-case err
+      (when (and dl-satan-memory-store--current-run-id
+                 (bound-and-true-p dl-satan-attribute-updates-enabled))
+        (require 'dl-satan-attribute)
+        (let* ((ts (format-time-string "%Y-%m-%dT%T%:z"))
+               (payload (dl-satan-attribute-build-hippocampus-payload
+                         :run-id dl-satan-memory-store--current-run-id
+                         :ts ts
+                         :reason "trace_marked"
+                         :tool-name "memory_mark"
+                         :filename (or trace-id ""))))
+          (dl-satan-attribute-enqueue payload)))
+    (error
+     (message "[satan-attribute] trace_marked signal soft-failed: %S" err))))
 
 (defun dl-satan-memory-store--null-if-nil (v)
   (if (null v) :null v))
