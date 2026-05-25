@@ -23,6 +23,7 @@
   (org-fontify-whole-heading-line t)
   (org-fontify-done-headline t)
   (org-fontify-quote-and-verse-blocks t)
+  (org-id-link-to-org-use-id 'create-if-interactive)
   (org-todo-keywords
     '((sequence "TODO(t)" "NEXT(n)" "STARTED(s)" "WAITING(w@/!)" "MAYBE(m/!)"
         "|" "DONE(d!)" "CANCELED(c@)" "MOVED(m@)")))
