@@ -16,26 +16,12 @@
        "6dcf1ca4c7432773084b9d52649ee5eb2c663131c4c06859f648dea98d9acb3e"
        default))
  '(dl-shpool-known-sessions '(".emacs.d" "hris" "team" "claude"))
- '(package-selected-packages
-    '(ace-window agent-shell aggressive-indent apheleia beacon cape
-       claude-code-ide combobulate consult-eglot consult-yasnippet
-       corfu denote diff-hl diminish dired-preview dired-subtree
-       diredfl dirvish dockerfile-mode doom-modeline dumb-jump eaf
-       eaf-markdown-previewer eat editorconfig elisp-demos
-       elixir-ts-mode embark-consult eros expreg ghostel git-modes
-       go-mode goto-chg gptel-openrouter grip-mode helpful jinx
-       json-mode kind-icon lambda-line lua-mode magit marginalia
-       markdown-toc meow-vterm modus-themes multiple-cursors nano
-       nano-emacs nerd-icons-completion nerd-icons-dired nix-mode
-       olivetti orderless org-pomodoro org-roam otpp
-       package-lint-flymake project-x puni rainbow-mode ready-player
-       shut-up slack spacious-padding suggest tempel terraform-mode
-       treesit-auto undo-fu undo-fu-session use-package
-       use-package-ensure-system-package vertico-prescient
-       visual-fill-column vundo which-key ws-butler yaml-mode zig-mode))
+ '(package-selected-packages nil)
  '(package-vc-selected-packages
-    '((gptel-openrouter :url
-        "https://github.com/darcamo/gptel-openrouter.git")
+    '((repeat-fu :url
+        "https://codeberg.org/ideasman42/emacs-repeat-fu.git")
+       (gptel-openrouter :url
+         "https://github.com/darcamo/gptel-openrouter.git")
        (otpp :url
          "https://github.com/abougouffa/one-tab-per-project.git")
        (project-x :url "https://github.com/vmargb/project-x.git")

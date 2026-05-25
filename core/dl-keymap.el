@@ -445,6 +445,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
     '("." . meow-bounds-of-thing)
     '("[" . meow-beginning-of-thing)
     '("]" . meow-end-of-thing)
+    '("%" . my/forward-or-backward-sexp)
     '("a" . meow-append)
     '("A" . meow-open-below)
     '("b" . meow-back-word)
@@ -491,6 +492,11 @@ Warns when KEY already has a binding in MAP that differs from CMD."
     '("z" . meow-pop-selection)
     '("'" . repeat)
     '("<escape>" . ignore)))
+
+;; Other
+;; C-. goto last change
+;; C-; avy-goto-char-timer
+
 
 (provide 'dl-keymap)
 ;;; dl-keymap.el ends here

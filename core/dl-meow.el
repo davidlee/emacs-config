@@ -17,11 +17,11 @@ being drawn; lambda-line caches the truly active one in
 `lambda-line--selected-window'. Mismatch ⇒ inactive."
   (let ((s (meow-indicator)))
     (if (and (stringp s)
-             (not (string-empty-p s))
-             (boundp 'lambda-line--selected-window)
-             (not (eq (selected-window) lambda-line--selected-window)))
-        (propertize (substring-no-properties s)
-                    'face 'dl-meow-indicator-inactive)
+          (not (string-empty-p s))
+          (boundp 'lambda-line--selected-window)
+          (not (eq (selected-window) lambda-line--selected-window)))
+      (propertize (substring-no-properties s)
+        'face 'dl-meow-indicator-inactive)
       s)))
 
 (use-package meow
@@ -35,6 +35,22 @@ being drawn; lambda-line caches the truly active one in
   (add-to-list 'meow-char-thing-table '(?a . angle))
   (meow-setup)
   (meow-global-mode 1))
+
+(use-package repeat-fu
+  :ensure nil
+  :vc (:url "https://codeberg.org/ideasman42/emacs-repeat-fu.git")
+  :commands (repeat-fu-mode repeat-fu-execute)
+  :config
+  (setq repeat-fu-preset 'meow)
+  :hook
+  ((meow-mode)
+    .
+    (lambda ()
+      (when (and (not (minibufferp)) (not (derived-mode-p 'special-mode)))
+        (repeat-fu-mode)
+        (define-key meow-normal-state-keymap (kbd "C-\\") 'repeat-fu-execute)
+        (define-key meow-insert-state-keymap (kbd "C-\\") 'repeat-fu-execute)))))
+
 
 ;; Terminals: disable meow entirely (cleaner than `insert' state — also
 ;; removes the indicator / cursor face).  `derived-mode-p' catches any

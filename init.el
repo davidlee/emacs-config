@@ -19,6 +19,8 @@
 (require 'dl-meow)
 (require 'dl-help)
 
+(require 'dl-sleipnir-doctor)
+
 ;; DEV
 (require 'dl-eglot)
 (require 'dl-treesit)

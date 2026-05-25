@@ -427,69 +427,29 @@ confidence; `:predicates' is empty (no positive fired)."
 
 (defun dl-satan-observer-classify (intervention motive &optional now)
   "Return a verdict plist for INTERVENTION against MOTIVE (§S5).
-Pure: no state writes.  Reads INTERVENTION's `:run_dir'/bundle.json
-for the baseline; assembles the after-state via `--after-state'.
+Pure: no state writes.  Reads ':run_dir'/bundle.json for baseline;
+assembles after-state via '--after-state'.
 
-T1.5b PR 2 refines the §S5 vocabulary into outcome-semantics §2:
+Returns (:classification :worked|:ignored|:neutral|:unknown
+         :confidence :low|:medium|:high  :predicates (KW ...)
+         :reason KW-or-nil  :evidence PLIST  :maturity :pending|:mature).
 
-  (:classification :worked | :ignored | :neutral | :unknown
-   :confidence     :low | :medium | :high
-   :predicates     (KEYWORD ...)   ; which P fired; nil when none
-   :reason         KEYWORD or nil  ; why `:unknown', when applicable
-   :evidence       PLIST            ; PR 2: present on `:ignored' /
-                                    ; `:neutral'; absent on `:worked' /
-                                    ; `:unknown' (writer builds it).
-   :maturity       :pending | :mature)  ; PR 3 — see below.
+Optional NOW (broker's ':time_now' ISO string) enables maturity
+guard: nil→:mature (test convenience), :pending→early :unknown,
+:stale→nil (caller skips persist), :mature→full flow.
 
-Confidence derivation (§4): 1 predicate fires → `:medium'; ≥2 →
-`:high'; none → `:low' (always paired with `:unknown' / `:ignored'
-/ `:neutral').
+Guard order (:mature / NOW-nil):
+  1. A14 dormant motive → :unknown :motive_dormant
+  2. Window crosses midnight → :crosses_midnight
+  3. No baseline → :no_baseline
+  4. P1–P4; ≥1 fires → :worked
+  5. None → classify-negative → :ignored/:neutral/:unknown
 
-T1.5b PR 3 wires the lifecycle (outcome-semantics §3, §6.1/§6.2).
-Optional NOW (broker's frozen `:time_now' ISO string) toggles the
-maturity guard:
+Single-motive only; multi-motive correlation lands in 5.7.
+Verdict asserted via '--assert-auto-classification' (no :harmful/:contradicted).
 
-  NOW nil          → maturity check skipped; verdict carries
-                     `:maturity :mature' (test-fixture convenience —
-                     direct classify callers in ert don't need to
-                     thread NOW).
+Full semantics: docs/satan/observer-classify.md"
 
-  NOW + :pending   → returns `(:classification :unknown :confidence
-                     :low :predicates nil :reason :pending
-                     :maturity :pending)' without consulting
-                     predicates (§2 invariant 3).
-
-  NOW + :stale     → returns nil; the caller (observer-process)
-                     skips persist (§3 + §6.3 — auto re-pass forbidden
-                     past stale cutoff).  Production never lands here
-                     because `dl-satan-intervention-pending' excludes
-                     stale rows in SQL; the branch is defence-in-depth.
-
-  NOW + :mature    → existing flow below.
-
-Guard order (for `:mature' / NOW-nil):
-  1. A14 — MOTIVE marked `:dormant' → `:unknown :motive_dormant'.
-  2. Window crosses calendar-day boundary → `:crosses_midnight'.
-     (v0 punts cross-day per §S5 watch-out —
-     assemble-with-bounds would read tomorrow's panopticon
-     segment file.)
-  3. Baseline absent (budget-denied / pre_spawn-denied runs lack
-     `bundle.json') → `:no_baseline'.
-  4. Run all P1–P4; ≥1 fires → `:worked' + firers list.
-  5. None fire → `dl-satan-observer-classify-negative' →
-     `:ignored' (user-facing kind) or `:neutral'
-     (non-user-facing); `:unknown :low :reason nil' when the
-     intervention's `:kind' is user-facing AND ≥1 focus segment
-     starts after the emit ts (per outcome-semantics §1).
-
-Single-motive only (§S5 multi-motive correlation by overlap-count
-+ file-order tiebreak lands in 5.7); callers iterate motives and
-combine themselves until then.
-
-The final verdict passes through
-`dl-satan-observer--assert-auto-classification' so auto callers
-can never construct `:harmful' / `:contradicted' (manual-only per
-§2 invariants 1+2)."
   (let ((maturity (and now (dl-satan-observer--maturity-state intervention now))))
     (pcase maturity
       (:stale nil)

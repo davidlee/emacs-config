@@ -14,7 +14,8 @@
 (use-package avy
   :commands (avy-goto-char avy-goto-char-2 avy-goto-char-timer
               avy-goto-line avy-goto-word-1)
-  :bind (("C-:" . avy-goto-char)
+  :bind ( ("C-:" . avy-goto-char)
+          ("C-'" . avy-goto-char-2)  ;; <-- usually this one is what you want
           ("C-;" . avy-goto-char-timer)))
 
 (use-package ace-window
@@ -29,7 +30,8 @@
 ;; `embark-act'.  Reverse direction still at `C-.'; rebind forward
 ;; here if you miss it.
 (use-package goto-chg
-  :bind (("C-." . goto-last-change-reverse)))
+  :bind ( ("C-."   . goto-last-change)
+          ("C-S-." . goto-last-change-reverse)))
 
 
 (use-package git-link) ; https://github.com/sshaw/git-link
@@ -43,8 +45,8 @@
   "Jump to the matching parenthesis when point is adjacent to one."
   (interactive "^p")
   (cond ((looking-at "\\s(")     (forward-sexp arg))
-        ((looking-back "\\s)" 1) (backward-sexp arg))
-        ((looking-at "\\s)")     (forward-char) (backward-sexp arg))
-        ((looking-back "\\s(" 1) (backward-char) (forward-sexp arg))))
+    ((looking-back "\\s)" 1) (backward-sexp arg))
+    ((looking-at "\\s)")     (forward-char) (backward-sexp arg))
+    ((looking-back "\\s(" 1) (backward-char) (forward-sexp arg))))
 
 (provide 'dl-motion)
