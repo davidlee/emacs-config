@@ -23,9 +23,9 @@
 ;;   C-c m / SPC M   term   (capital in Meow: SPC m is keypad M- prefix)
 ;;   C-c z / SPC z   fold   (kirigami; routes to active backend)
 ;;
-;; Meow normal-state `h' is also bound to `mode-specific-map' (the C-c
-;; keymap), giving a third path: h f f, h j s, etc.  `meow-left' is
-;; dropped — home-row arrows live on a layer.
+;; Meow normal-state `o' is bound to `mode-specific-map' (the C-c
+;; keymap), giving a third path: o f f, o j s, etc.  Arrow-native
+;; movement via NAV layer; h/e = word motion on Gallium home row.
 ;;
 ;; Add new bindings with `my/bind' so each carries a which-key label and
 ;; a collision warning.
@@ -367,6 +367,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-toggle-map "a" #'auto-revert-mode                 "auto-revert")
 (my/bind my-toggle-map "n" #'my/narrow-or-widen-dwim          "narrow/widen")
 (my/bind my-toggle-map "m" #'flymake-mode                     "flymake")
+(my/bind my-toggle-map "o" #'olivetti-mode                    "olivetti")
 (my/bind my-toggle-map "d" #'toggle-debug-on-error            "debug-on-error")
 (my/bind my-toggle-map "D" #'toggle-debug-on-quit             "debug-on-quit")
 (my/bind my-toggle-map "T" #'consult-theme                    "theme")
@@ -380,15 +381,28 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-toggle-map "=" #'aggressive-indent-mode           "aggressive-indent")
 (my/bind my-toggle-map "E" #'my/eglot-toggle                  "eglot")
 
+
+
+
+;; Gallium alpha positions → meow-normal bindings
+;; b:block l:line  d:del  c:chg  v:visit    j:join y:save  o:C-c  u:undo ,:thing
+;; n:srch  r:repl  t:till s:kill g:cancel   p:yank h:←word a:appd e:word→ i:ins
+;; x:—     q:quit  m:—    w:mark z:pop      k:—    f:find  ':rpt  ;:rev  .:thing
+
+
 (defun meow-setup ()
   (setq meow-cheatsheet-layout meow-cheatsheet-layout-qwerty)
 
   (meow-motion-define-key
-    '("j" . meow-next)
-    '("k" . meow-prev)
+    '("<left>"    . meow-left)
+    '("<right>"   . meow-right)
+    '("<up>"      . meow-prev)
+    '("<down>"    . meow-next)
+    '("S-<left>"  . meow-left-expand)
+    '("S-<right>" . meow-right-expand)
+    '("S-<up>"    . meow-prev-expand)
+    '("S-<down>"  . meow-next-expand)
     '("<escape>" . ignore)
-    ;;    '("s-[" . my/previous-user-buffer)
-    ;;    '("s-]" . my/next-user-buffer)
     '("s-{" . tab-bar-switch-to-prev-tab)
     '("s-}" . tab-bar-switch-to-next-tab))
 
@@ -405,7 +419,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
     '("9" . meow-digit-argument)
     '("0" . meow-digit-argument)
     '("/" . meow-keypad-describe-key)
-    '("?" . meow-cheatsheet)
+    ;; SPC ? → my/meow-gallium-cheatsheet (bound in dl-meow-cheatsheet.el)
     ;; Flick-style user-buffer cycling.
     '("[" . my/previous-user-buffer)
     '("]" . my/next-user-buffer)
@@ -429,68 +443,92 @@ Warns when KEY already has a binding in MAP that differs from CMD."
     (cons "z" my-fold-map))
 
   (meow-normal-define-key
+    ;; Numeric expansion.
     '("0" . meow-expand-0)
-    '("9" . meow-expand-9)
-    '("8" . meow-expand-8)
-    '("7" . meow-expand-7)
-    '("6" . meow-expand-6)
-    '("5" . meow-expand-5)
-    '("4" . meow-expand-4)
-    '("3" . meow-expand-3)
-    '("2" . meow-expand-2)
     '("1" . meow-expand-1)
+    '("2" . meow-expand-2)
+    '("3" . meow-expand-3)
+    '("4" . meow-expand-4)
+    '("5" . meow-expand-5)
+    '("6" . meow-expand-6)
+    '("7" . meow-expand-7)
+    '("8" . meow-expand-8)
+    '("9" . meow-expand-9)
     '("-" . negative-argument)
-    '(";" . meow-reverse)
+
+    ;; Arrow-native movement (NAV layer / joystick).
+    '("<left>"    . meow-left)
+    '("<right>"   . meow-right)
+    '("<up>"      . meow-prev)
+    '("<down>"    . meow-next)
+    '("S-<left>"  . meow-left-expand)
+    '("S-<right>" . meow-right-expand)
+    '("S-<up>"    . meow-prev-expand)
+    '("S-<down>"  . meow-next-expand)
+    '("C-<left>"  . meow-back-word)
+    '("C-<right>" . meow-next-word)
+    '("M-<left>"  . meow-back-symbol)
+    '("M-<right>" . meow-next-symbol)
+
+    ;; Word/symbol motion — spatial pair (h left of e on Gallium home row).
+    '("h" . meow-back-word)
+    '("H" . meow-back-symbol)
+    '("e" . meow-next-word)
+    '("E" . meow-next-symbol)
+
+    ;; Insert/append.
+    '("i" . meow-insert)
+    '("I" . meow-open-above)
+    '("a" . meow-append)
+    '("A" . meow-open-below)
+
+    ;; Edit actions.
+    '("c" . meow-change)
+    '("d" . meow-delete)
+    '("D" . meow-backward-delete)
+    '("s" . meow-kill)
+    '("r" . meow-replace)
+    '("R" . meow-swap-grab)
+    '("u" . meow-undo)
+    '("U" . meow-undo-in-selection)
+    '("p" . meow-yank)
+    '("y" . meow-save)
+    '("Y" . meow-sync-grab)
+
+    ;; Targeted jumps.
+    '("f" . meow-find)
+    '("F" . meow-find-expand)
+    '("t" . meow-till)
+    '("n" . meow-search)
+
+    ;; Selection / text objects.
+    '("w" . meow-mark-word)
+    '("W" . meow-mark-symbol)
+    '("l" . meow-line)
+    '("L" . meow-goto-line)
+    '("b" . meow-block)
+    '("B" . meow-to-block)
     '("," . meow-inner-of-thing)
     '("." . meow-bounds-of-thing)
     '("[" . meow-beginning-of-thing)
     '("]" . meow-end-of-thing)
-    '("%" . my/forward-or-backward-sexp)
-    '("a" . meow-append)
-    '("A" . meow-open-below)
-    '("b" . meow-back-word)
-    '("B" . meow-back-symbol)
-    '("c" . meow-change)
-    '("d" . meow-delete)
-    '("D" . meow-backward-delete)
-    '("e" . meow-next-word)
-    '("E" . meow-next-symbol)
-    '("f" . meow-find)
-    '("F" . meow-find-expand)
+
+    ;; Selection manipulation.
     '("g" . meow-cancel-selection)
     '("G" . meow-grab)
-    `("h" . ,mode-specific-map)
-    '("H" . meow-left-expand)
-    '("i" . meow-insert)
-    '("I" . meow-open-above)
-    '("j" . meow-next)
-    '("J" . meow-next-expand)
-    '("k" . meow-prev)
-    '("K" . meow-prev-expand)
-    '("l" . meow-right)
-    '("L" . meow-right-expand)
-    '("m" . meow-join)
-    '("n" . meow-search)
-    '("o" . meow-block)
-    '("O" . meow-to-block)
-    '("p" . meow-yank)
-    '("q" . meow-quit)
-    '("Q" . meow-goto-line)
-    '("r" . meow-replace)
-    '("R" . meow-swap-grab)
-    '("s" . meow-kill)
-    '("t" . meow-till)
-    '("u" . meow-undo)
-    '("U" . meow-undo-in-selection)
-    '("v" . meow-visit)
-    '("w" . meow-mark-word)
-    '("W" . meow-mark-symbol)
-    '("x" . meow-line)
-    '("X" . meow-goto-line)
-    '("y" . meow-save)
-    '("Y" . meow-sync-grab)
+    '("j" . meow-join)
     '("z" . meow-pop-selection)
+    '(";" . meow-reverse)
+
+    ;; Prefix / mode-specific (C-c dispatch).
+    `("o" . ,mode-specific-map)
+
+    ;; Misc.
+    '("%" . my/forward-or-backward-sexp)
+    '("v" . meow-visit)
+    '("q" . meow-quit)
     '("'" . repeat)
+    '("!" . consult-buffer)
     '("<escape>" . ignore)))
 
 ;; Other

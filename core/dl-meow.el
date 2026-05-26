@@ -34,7 +34,8 @@ being drawn; lambda-line caches the truly active one in
   (meow-thing-register 'angle '(regexp "<" ">") '(regexp "<" ">"))
   (add-to-list 'meow-char-thing-table '(?a . angle))
   (meow-setup)
-  (meow-global-mode 1))
+  (meow-global-mode 1)
+  (require 'dl-meow-cheatsheet))
 
 (use-package repeat-fu
   :ensure nil
