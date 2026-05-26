@@ -2,6 +2,19 @@
 
 (require 'meow)
 
+(defface my/meow-cheatsheet-key
+  '((t (:inherit default :weight bold)))
+  "Face for key names in the Gallium cheatsheet. Inherits default size.")
+
+(defface my/meow-cheatsheet-cmd
+  '((((background dark)) (:inherit default :foreground "#89b4fa"))
+    (t (:inherit default :foreground "#1e66f5")))
+  "Face for command labels. Inherits default size.")
+
+(defface my/meow-cheatsheet-dim
+  '((t (:inherit shadow)))
+  "Face for shifted/secondary labels.")
+
 (defvar my/meow-cheatsheet-labels
   '((meow-insert . "insert")
     (meow-append . "append")
@@ -77,12 +90,13 @@ Returns nil for unbound keys or commands mapped to nil in the label alist."
        (t nil)))))
 
 (defun my/meow--pad (str &optional face)
-  "Pad or truncate STR to cell width, optionally applying FACE."
+  "Pad or truncate STR to cell width (display columns), optionally applying FACE."
   (let* ((s (or str ""))
          (w my/meow--cell-width)
-         (padded (if (> (length s) w)
-                     (substring s 0 w)
-                   (concat s (make-string (- w (length s)) ?\s)))))
+         (sw (string-width s))
+         (padded (if (> sw w)
+                     (truncate-string-to-width s w)
+                   (concat s (make-string (- w sw) ?\s)))))
     (if face (propertize padded 'face face) padded)))
 
 (defun my/meow--cell (key shift-key)
@@ -91,11 +105,11 @@ Line 1: key (highlighted).  Line 2: command label.  Line 3: shifted label (dim).
   (let ((label (my/meow-command-label key))
         (s-label (when shift-key (my/meow-command-label shift-key))))
     (list
-     (my/meow--pad key 'meow-cheatsheet-highlight)
+     (my/meow--pad key 'my/meow-cheatsheet-key)
      (my/meow--pad (or label "·")
-                   (if label 'meow-cheatsheet-command 'shadow))
+                   (if label 'my/meow-cheatsheet-cmd 'my/meow-cheatsheet-dim))
      (my/meow--pad (or s-label "")
-                   'shadow))))
+                   'my/meow-cheatsheet-dim))))
 
 (defun my/meow--render-row (keys)
   "Render KEYS (list of (key . shift) pairs) as 3 lines with │ separators."
@@ -111,6 +125,23 @@ Line 1: key (highlighted).  Line 2: command label.  Line 3: shifted label (dim).
     (concat (string l)
             (string-join (make-list 5 seg) (string m))
             (string r))))
+
+(defun my/meow--place-labels (width labels centers)
+  "Place LABELS centered at CENTERS in a string of WIDTH spaces."
+  (let ((parts '())
+        (pos 0)
+        (pairs (cl-mapcar #'cons centers labels)))
+    (setq pairs (sort pairs (lambda (a b) (< (car a) (car b)))))
+    (dolist (p pairs)
+      (let* ((label (cdr p))
+             (start (max 0 (- (car p) (/ (string-width label) 2)))))
+        (when (> start pos)
+          (push (make-string (- start pos) ?\s) parts))
+        (push label parts)
+        (setq pos (+ start (string-width label)))))
+    (when (< pos width)
+      (push (make-string (- width pos) ?\s) parts))
+    (apply #'concat (nreverse parts))))
 
 (defun my/meow-gallium-cheatsheet ()
   "Show a Meow cheatsheet arranged for the Gallium-Corne layout."
@@ -141,25 +172,28 @@ Line 1: key (highlighted).  Line 2: command label.  Line 3: shifted label (dim).
              (dotimes (j 3)
                (insert (nth j l) gap (nth j r) "\n"))))
           (insert bot gap bot "\n")
-          (insert (make-string 17 ?\s)
-                  "Fn     SPC     Ctl"
-                  (make-string 12 ?\s)
-                  "NAV     BS      ·\n"))
+          ;; Thumb row: left under cols 3-5, right under cols 1-3
+          ;; Col center = 5 + n*10 (0-indexed)
+          (let ((grid-w (length top)))
+            (insert (my/meow--place-labels grid-w '("Fn" "SPC" "Ctl") '(25 35 45))
+                    gap
+                    (my/meow--place-labels grid-w '("NAV" "BS" "·") '(5 15 25))
+                    "\n")))
         (insert "\n")
         (insert (propertize "Motion" 'face '(:weight bold))
                 " (NAV → arrows)\n")
-        (insert "  ←→↑↓  char/line    S-‹arrow›  expand\n")
-        (insert "  C-←/→  word         M-←/→      symbol\n")
-        (insert "  h/e    ←word/word→  H/E        ←sym/sym→\n")
+        (insert "  ←→↑↓   char/line     S-‹arrow›  expand\n")
+        (insert "  C-←/→  word           M-←/→      symbol\n")
+        (insert "  h / e  ←word / word→  H / E      ←sym / sym→\n")
         (insert "\n")
         (insert (propertize "Leader" 'face '(:weight bold))
                 " (SPC)\n")
-        (insert "  f:file  b:buf  w:win  s:srch  p:proj  j:jump  G:git\n")
-        (insert "  n:notes  o:org  t:tog  e:eval  M:term  z:fold\n")
+        (insert "  f file   b buf    w win    s srch   p proj   j jump   G git\n")
+        (insert "  n notes  o org    t tog    e eval   M term   z fold\n")
         (insert "\n")
         (insert (propertize "Extras" 'face '(:weight bold)) "\n")
-        (insert "  !:buf-switch  %:sexp  ':repeat  ;:reverse\n")
-        (insert "  ,:inner  .:bounds  [:beg  ]:end  -:neg-arg\n")
+        (insert "  !  buf-switch    %  sexp      '  repeat    ;  reverse\n")
+        (insert "  ,  inner         .  bounds    [  beg       ]  end      -  neg\n")
         (goto-char (point-min))
         (special-mode)))
     (pop-to-buffer buf)))
