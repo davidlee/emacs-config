@@ -42,6 +42,7 @@
 
         projectPkgs = with pkgs; [
           zigPackage
+          nodejs
         ];
 
         jailEnvOptions = with jailLib.combinators; [
@@ -241,13 +242,18 @@
           commands = [
             {
               name = "jpi";
-              help = "op run -- jailed-pi";
-              command = "op run -- jailed-pi";
+              help = "op run -- jailed-pi $@";
+              command = "op run -- jailed-pi $@";
             }
             {
               name = "jcl";
-              help = "jailed-claude --dangerously-skip-permissions";
-              command = "jailed-claude --dangerously-skip-permissions $@";
+              help = "jailed-claude (--dangerously-skip-permissions for interactive)";
+              command = ''
+                case "''${1:-}" in
+                  marketplace|update|config|mcp) jailed-claude "$@" ;;
+                  *) jailed-claude --dangerously-skip-permissions "$@" ;;
+                esac
+              '';
             }
           ];
         };

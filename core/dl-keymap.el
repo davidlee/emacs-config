@@ -402,9 +402,14 @@ Warns when KEY already has a binding in MAP that differs from CMD."
     '("S-<right>" . meow-right-expand)
     '("S-<up>"    . meow-prev-expand)
     '("S-<down>"  . meow-next-expand)
-    '("<escape>" . ignore)
+
+    '("!" . consult-buffer)
+    '("/" . avy-goto-char-2)
+    `("o" . ,mode-specific-map)
+
     '("s-{" . tab-bar-switch-to-prev-tab)
-    '("s-}" . tab-bar-switch-to-next-tab))
+    '("s-}" . tab-bar-switch-to-next-tab)
+    '("<escape>" . ignore))
 
   (meow-leader-define-key
     ;; Digit arguments.
@@ -529,6 +534,9 @@ Warns when KEY already has a binding in MAP that differs from CMD."
     '("q" . meow-quit)
     '("'" . repeat)
     '("!" . consult-buffer)
+    '("/" . avy-goto-char-2)
+    '("s-{" . tab-bar-switch-to-prev-tab)
+    '("s-}" . tab-bar-switch-to-next-tab)
     '("<escape>" . ignore)))
 
 ;; Other

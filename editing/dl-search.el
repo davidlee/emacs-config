@@ -13,7 +13,10 @@
   :commands (vr/replace vr/query-replace)
   :bind
   (("C-r" . vr/isearch-backward)
-    ("C-s" . vr/isearch-forward)))
+    ("C-s" . vr/isearch-forward)
+    ("C-S-s" . isearch-forward)
+    ;;("C-S-r" . ) ;; isearch-backward?
+    ))
 
 (use-package deadgrep)
 (global-set-key (kbd "<f3>") #'deadgrep)
