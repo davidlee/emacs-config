@@ -20,6 +20,7 @@
      (monaspace-argon . "Monaspace Argon NF")
      (hack . "Hack")
      (dejavu-mono . "DejaVu Sans Mono")
+     (geist . "Geist Mono")
 
 
 
@@ -29,6 +30,7 @@
      (roboto . "Roboto")
      (source-sans . "Source Sans 3")
      (noto-sans . "Noto Sans")
+     (geist-sans . "Geist Medium")
 
      ;; Serif
 
@@ -45,13 +47,13 @@
      (sans . roboto)
      (serif . inter)
      (ui . inter)
-     (modeline . hack)
+     (modeline . geist)
      (header . monaspace-neon)
      (tab . monaspace-argon)
      (line-number . zedmono)
      (org-body . sans)
      (org-code . mono)
-     (org-heading . monolisa)))
+     (org-heading . geist-sans)))
 
 (defun my/set-font-role (role font)
   "Set font ROLE to FONT and reapply fonts."
@@ -113,8 +115,8 @@
       :weight 'regular)))
 
 (defvar my/org-face-styles
-  '((org-document-title :role org-heading :height 1.6  :weight bold)
-     (org-level-1        :role org-heading :height 1.4  :weight bold)
+  '((org-document-title  :role org-heading :height 1.6  :weight semibold)
+     (org-level-1        :role org-heading :height 1.4  :weight semibold)
      (org-level-2        :role org-heading :height 1.25 :weight semibold)
      (org-level-3        :role org-heading :height 1.15 :weight regular)
      (org-level-4        :role org-heading :height 1.1  :weight regular)
@@ -139,7 +141,7 @@ with `text-scale-adjust' (C-mousewheel).  Edit and call
       (cl-remf attrs :role)
       (apply #'my/set-face-font face role attrs)))
   (setq org-todo-keyword-faces
-    '(("TODO"     . (:foreground "#f38ba8" :weight bold))
+    '( ("TODO"     . (:foreground "#f38ba8" :weight bold))
        ("NEXT"     . (:foreground "#fab387" :weight bold))
        ("STARTED"  . (:foreground "#a6e3a1" :weight bold))
        ("WAITING"  . (:foreground "#f9e2af"))
@@ -148,7 +150,7 @@ with `text-scale-adjust' (C-mousewheel).  Edit and call
        ("CANCELED" . (:foreground "#585b70"))
        ("MOVED"    . (:foreground "#89b4fa"))))
   (setq org-modern-todo-faces
-    '(("TODO"     :background "#f38ba8" :foreground "#1e1e2e")
+    '( ("TODO"     :background "#f38ba8" :foreground "#1e1e2e")
        ("NEXT"     :background "#fab387" :foreground "#1e1e2e")
        ("STARTED"  :background "#a6e3a1" :foreground "#1e1e2e")
        ("WAITING"  :background "#f9e2af" :foreground "#1e1e2e")
