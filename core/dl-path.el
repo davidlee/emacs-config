@@ -4,7 +4,7 @@
   "My own Lisp directories, relative to `user-emacs-directory'.")
 
 (defvar my/checkout-lisp-dirs
-  '("checkout")
+  '("checkout" "elpa/org-timeblock")
   "External checkout Lisp directories, relative to `user-emacs-directory'.")
 
 (defun my/expand-emacs-dir (dir)

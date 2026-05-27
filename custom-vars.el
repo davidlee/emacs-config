@@ -16,6 +16,8 @@
        "6dcf1ca4c7432773084b9d52649ee5eb2c663131c4c06859f648dea98d9acb3e"
        default))
  '(dl-shpool-known-sessions '(".emacs.d" "hris" "team" "claude"))
+ '(org-timeblock-current-time-indicator t)
+ '(org-timeblock-span 1)
  '(package-selected-packages nil)
  '(package-vc-selected-packages
     '((repeat-fu :url
@@ -47,5 +49,5 @@
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- )
+ '(org-timeblock-hours-line ((t nil))))
 ;; (put 'scroll-left 'disabled nil)

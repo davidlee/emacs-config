@@ -7,6 +7,7 @@ oauth2.*
 *.plstore
 .org-generic-*
 .claude/settings.local.json
+.org-id-locations
 .mc-lists.el
 
 .emacs.desktop

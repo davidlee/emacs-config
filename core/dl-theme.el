@@ -51,7 +51,7 @@
 (defun my/sync-frame-colors-to-theme (&rest _)
   "Copy current `default' face bg/fg into `default-frame-alist'."
   (let ((bg (face-background 'default nil t))
-        (fg (face-foreground 'default nil t)))
+         (fg (face-foreground 'default nil t)))
     (when bg (setf (alist-get 'background-color default-frame-alist) bg))
     (when fg (setf (alist-get 'foreground-color default-frame-alist) fg))))
 
@@ -74,7 +74,7 @@
 ;; Olivetti centres prose at `olivetti-body-width'. visual-fill-column does
 ;; the same thing — partition mode hooks so they don't trample each other.
 (use-package olivetti
-  :hook ((text-mode org-mode markdown-mode) . olivetti-mode)
+  ;; :hook ((text-mode org-mode markdown-mode) . olivetti-mode)
   :custom
   (olivetti-body-width 80)
   ;; Default on-hook is `(visual-line-mode)`, which TOGGLES (not enables)

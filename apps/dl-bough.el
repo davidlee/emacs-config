@@ -133,7 +133,7 @@ Returns nil if FILE has no denote identifier."
        :scheme "denote"
        :external_id id
        :title title
-       :kind_hint "ref"
+       :kind_hint "note"
        :tags (when keywords (vconcat keywords))
        :locators (vector (list :kind "file" :value (dl-bough--file-uri file)))
        :metadata (dl-bough--plist-compact
@@ -172,7 +172,10 @@ Returns nil if FILE has no denote identifier."
 ;;; Interactive commands
 
 (defun my/bough-export-org ()
-  "Export org headings to a Bough snapshot file."
+  "Walk `dl-bough-org-files' and write one Bough snapshot JSON.
+Selects headings matching `dl-bough-org-predicate' (default: active
+TODO items) via org-ql.  Creates org-ids for headings that lack one.
+Output: `dl-bough-org-snapshot-path' (~/.cache/bough/org-snapshot.json)."
   (interactive)
   (let* ((files (dl-bough--org-files))
          (items (org-ql-select files
@@ -186,7 +189,10 @@ Returns nil if FILE has no denote identifier."
     (message "Bough: exported %d org items → %s" (length items) dl-bough-org-snapshot-path)))
 
 (defun my/bough-export-denote ()
-  "Export denote notes to a Bough snapshot file."
+  "Walk `denote-directory-files' and write one Bough snapshot JSON.
+Extracts denote identifiers, titles, and keywords from filenames.
+All items get kind_hint \"note\".
+Output: `dl-bough-denote-snapshot-path' (~/.cache/bough/denote-snapshot.json)."
   (interactive)
   (let* ((files (denote-directory-files))
          (items (delq nil (mapcar #'dl-bough--denote-file-to-item files)))
