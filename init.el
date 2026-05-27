@@ -85,6 +85,7 @@
 (require 'dl-secret)
 (require 'dl-gptel)
 (require 'dl-minuet)
+(require 'dl-bough)
 
 (require 'dl-keybind)
 (require 'dl-dired)

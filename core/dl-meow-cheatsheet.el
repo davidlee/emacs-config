@@ -64,6 +64,18 @@
 
 (defconst my/meow--cell-width 7)
 
+;; Nix elisp tokenizer rejects ?─ char syntax for multi-byte codepoints.
+(defconst my/meow--box-h  9472)  ; ─
+(defconst my/meow--box-tl 9484)  ; ┌
+(defconst my/meow--box-tr 9488)  ; ┐
+(defconst my/meow--box-bl 9492)  ; └
+(defconst my/meow--box-br 9496)  ; ┘
+(defconst my/meow--box-vr 9500)  ; ├
+(defconst my/meow--box-vl 9508)  ; ┤
+(defconst my/meow--box-hd 9516)  ; ┬
+(defconst my/meow--box-hu 9524)  ; ┴
+(defconst my/meow--box-vh 9532)  ; ┼
+
 (defconst my/meow--gallium-left
   '((("b" . "B") ("l" . "L") ("d" . "D") ("c" . "C") ("v" . "V"))
     (("n" . "N") ("r" . "R") ("t" . "T") ("s" . "S") ("g" . "G"))
@@ -121,7 +133,7 @@ Line 1: key (highlighted).  Line 2: command label.  Line 3: shifted label (dim).
 
 (defun my/meow--hline (l m r)
   "Horizontal separator with box chars L (left), M (mid), R (right)."
-  (let ((seg (make-string (+ my/meow--cell-width 2) ?─)))
+  (let ((seg (make-string (+ my/meow--cell-width 2) my/meow--box-h)))
     (concat (string l)
             (string-join (make-list 5 seg) (string m))
             (string r))))
@@ -153,9 +165,9 @@ Line 1: key (highlighted).  Line 2: command label.  Line 3: shifted label (dim).
         (insert (propertize "Meow · Gallium on Corne\n"
                             'face '(:weight bold :height 1.2)))
         (insert "\n")
-        (let ((top (my/meow--hline ?┌ ?┬ ?┐))
-              (mid (my/meow--hline ?├ ?┼ ?┤))
-              (bot (my/meow--hline ?└ ?┴ ?┘))
+        (let ((top (my/meow--hline my/meow--box-tl my/meow--box-hd my/meow--box-tr))
+              (mid (my/meow--hline my/meow--box-vr my/meow--box-vh my/meow--box-vl))
+              (bot (my/meow--hline my/meow--box-bl my/meow--box-hu my/meow--box-br))
               (gap "  "))
           (insert "LEFT HAND"
                   (make-string (- (length top) 9) ?\s)

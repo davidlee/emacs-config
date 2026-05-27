@@ -275,6 +275,8 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-notes-new-map "j" #'my/journal-note          "journal today")
 (my/bind my-notes-new-map "w" #'my/weekly-note           "weekly")
 
+(my/bind my-notes-manage-map "b" #'my/bough-export-org                    "bough export org")
+(my/bind my-notes-manage-map "B" #'my/bough-export-denote                 "bough export denote")
 (my/bind my-notes-manage-map "r" #'denote-rename-file                     "rename")
 (my/bind my-notes-manage-map "R" #'denote-rename-file-using-front-matter  "rename (front-matter)")
 (my/bind my-notes-manage-map "k" #'denote-rename-file-keywords            "edit keywords")

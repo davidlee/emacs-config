@@ -2,6 +2,16 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-27 — Bough snapshot adapter
+
+- `apps/dl-bough.el`: elisp adapter exporting org-mode headings and denote notes as Bough snapshot JSON (version 1 contract).
+- **Org export** (`my/bough-export-org`): uses org-ql with configurable predicate (default `(todo)`), extracts org-id (auto-creates if absent), title, status, tags, scheduled/deadline, file locator, outline path. Defaults to `my/org-agenda-combined-files`.
+- **Denote export** (`my/bough-export-denote`): enumerates `denote-directory-files`, extracts identifier, title, keywords, file locator. All items get `kind_hint: "ref"`.
+- **Sync commands** (`my/bough-sync-org`, `my/bough-sync-denote`): export + async `bough sync import`.
+- **After-save hook**: opt-in via `dl-bough-auto-export` — re-exports org snapshot when saving in-scope files.
+- **Keybindings**: `C-c n m b` (bough export org), `C-c n m B` (bough export denote).
+- Self-contained — no SATAN dependency. Uses `json-serialize` with plist construction.
+
 ## 2026-05-25 — SATAN: T-attr-1e-sensor — wire Curiosity + Hunger to real signals
 
 - **ATTR_ORDER expanded from 7 to 8**: Curiosity added to the daemon's dispatch loop. All delta tables widened from `[f64; 7]` to `[f64; 8]` (leading 0.0 for Curiosity in existing tables). Existing behaviour unchanged.
