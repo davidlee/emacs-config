@@ -28,7 +28,7 @@ metadata:
 | Source        | Status        | Ticket    | Notes |
 |---            |---            |---        |---    |
 | `outcome`     | implemented   | T-attr-1c | 5 classifications × 3 confidence levels |
-| `hippocampus` | implemented   | T-attr-1d-hc | 5 reasons, binary (no confidence weighting) |
+| `hippocampus` | implemented   | T-attr-1e-hc | 6 reasons (incl. `trace_marked`), binary (no confidence weighting) |
 | `percept`     | reserved      | T-attr-1e | novel/weak/contradictory percept signals |
 | `resonance`   | reserved      | T-attr-1e | memory_resonate hit signals |
 | `sensor`      | implemented   | T-attr-1e-sensor | segment_backlog, typing_active, typing_idle |

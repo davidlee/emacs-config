@@ -64,6 +64,66 @@ no urgent owner.  Tick off and remove when shipped.
   audit verifier should cross-check it against each run's
   `transcript.jsonl`.  Add once observer fixtures exist.
 
+## Attribute layer observability (post-T-attr-1e snapshot, 2026-05-29)
+
+Surfaced during a snapshot review showing all 8 attributes mostly
+static — `curiosity=0`, `hunger=0.08`, `doubt=0.50`, `shame=0.50`,
+`metamorphosis=0.27`, rest at 0.00 — for ~3 days.
+
+- **Curiosity cancels itself daily.** Sensor `segment_backlog`
+  (+0.05) and hippocampus `trace_marked` (−0.05) fire once per
+  ruminate cycle each, equal magnitude.  Net daily delta = 0.
+  Three plausible contract amendments (pick one in §16 before
+  more sources land): (a) `segment_backlog` should fire
+  per-segment with a cap, not once per tick; (b) reduce
+  `trace_marked` to −0.025 to match Brooding decay; (c) raise
+  the per-source asymmetry so the rise outpaces ruminate decay
+  by a `TINY` margin.
+
+- **Outcome pipeline cold — zero real classifications.**
+  `satan_intervention_outcomes` is empty.  Only 2 production
+  interventions ever (both `inbox`-kind, severity=medium,
+  2026-05-24 and 2026-05-27); neither classified.  The 27
+  `source=outcome` rows in `satan_attribute_events` all belong
+  to one synthetic `morning-aaaaaa` fixture run, not real
+  classifications.  Doubt + Shame are stuck at 0.50 because the
+  fixture's one `harmful` outcome bumped them and nothing has
+  moved them since.  T1.5b shipped a classifier but the observer
+  is not producing positives in production.  Diagnosis pre-1d:
+  is `dl-satan-observer-classify` wired into a hook that
+  actually fires; does the classifier ever return non-null on
+  real intervention shapes; should the manual `@satan-intervention-*`
+  notes-directive be exercised as the smoke fallback while the
+  observer warms up.
+
+- **T-attr-1d capsule render is premature without signal.**
+  Rendering a bar chart of 4 hard-zeros and 3 stuck-static values
+  surfaces nothing to the model.  Pin the above two findings
+  before 1d, otherwise 1d's first deliverable is a thermometer
+  for ambient zero.
+
+## Daemon contract pins (post-supervisor + WIP commit, 2026-05-29)
+
+Surfaced in `~/dev/satan-attrd/handover.local.md` §"Pre-existing
+minor bugs"; capture into `design-contract.md` §17 before more
+sources land.
+
+- **JSON null + empty-array render as `{}` in audit payload.**
+  Visible in `transcript.jsonl` as `"related_motive_id":{}`,
+  `"related_trace_ids":{}`, `"caps_applied":{}` instead of `null`
+  / `[]`.  Functional pass-through but breaks downstream tools
+  that distinguish.  Likely `serde_json::Value` default-handling
+  quirk in `run_loop::build_audit_payload` or `rpc::enqueue_audit_event`.
+
+- **`satan-attrd rebuild` non-idempotent.**  Replays events onto
+  the existing projection without resetting to zero first.  After
+  an event-log purge, projection keeps cached values; operator
+  workaround is `UPDATE satan_attributes SET value=0.0 WHERE
+  scope='global'; satan-attrd rebuild`.  Violates contract §17's
+  "rebuild reproduces projection from event log alone."  Tighten:
+  does `rebuild` guarantee from-zero replay, or is it explicitly
+  replay-on-top?  Pick one and document.
+
 ## Mind-side items
 
 (Live in `~/notes`, edited via the mind cadence.  Listed here only

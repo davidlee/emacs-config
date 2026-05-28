@@ -2,6 +2,13 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-29 — SATAN: daemon T-attr-1e catch-up commit + observability follow-ups
+
+- **`satan-attrd e66ce17`**: feat(daemon) — T-attr-1e (hippocampus + sensor sources + `tuning.rs` extraction). Catches up the daemon-side code for work shipped broker-side in `T-attr-1d-hc` (2026-05-24) and `T-attr-1e-sensor` (2026-05-25). Both sources were already operational in production via path-flake builds of the dirty working tree; this just lands the source. 84 daemon tests green (60 unit + 8 dispatcher + 5 run_loop + 11 store). `clippy 1.95.0` newly flagged pre-existing `unwrap_err` in `rpc.rs` test mod; silenced via `#[allow(clippy::unwrap_used)]` on the test module.
+- `docs/satan/refactor/T-attr-1-attribute-layer.md`: PR log's `T-attr-1e` row split into per-source sub-rows (hc + sensor ticked, percept/resonance/tool_error pending).
+- `docs/satan/attributes/wiring-status.md`: typo `T-attr-1d-hc` → `T-attr-1e-hc` in source-status table; hippocampus reason count corrected from 5 to 6 (`trace_marked` was added with sensor work for Curiosity decay).
+- `docs/satan/follow-ups.md`: new sections capturing two observability findings (curiosity-cancellation tuning, outcome-pipeline cold) and two daemon contract pins (audit-payload `{}` rendering, non-idempotent rebuild) that should be resolved before T-attr-1d ships.
+
 ## 2026-05-28 — keys: lift `crux-open-with` into `my-file-map`
 
 - `core/dl-keymap.el`: bind `crux-open-with` at `C-c f o` (mnemonic: file → open external).
