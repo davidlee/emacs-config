@@ -38,6 +38,8 @@ __pycache__/
 /undo-fu-session
 /projects
 /dirvish
+/persist
+/request
 project-window-list
 
 .\#*
@@ -46,6 +48,7 @@ project-window-list
 .authinfo.gpg
 authinfo
 authinfo.gpg
+oauth2-auto.plist
 
 *.secret.el
 *.so
