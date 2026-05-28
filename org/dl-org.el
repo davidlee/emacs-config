@@ -17,7 +17,8 @@
   (org-return-follows-link t)
   (org-use-speed-commands t)
   (org-log-done 'time)
-  (org-ellipsis "  ")
+  ;; (org-ellipsis "  ")
+  (org-ellipsis "…")
   (org-pretty-entities t)
   (org-agenda-block-separator "")
   (org-fontify-whole-heading-line t)
@@ -41,17 +42,17 @@
   :hook ( (org-mode            . org-modern-mode)
           (org-mode            . my/apply-org-faces)
           (org-agenda-finalize . org-modern-agenda))
+
   :custom
-  ;; edit settings
   (org-auto-align-tags nil)
   (org-tags-column 0)
   (org-catch-invisible-edits 'show-and-error)
   (org-special-ctrl-a/e t)
   ;; styling
-  (org-hide-emphasis-markers t)
-  (org-pretty-entities t)
   (org-agenda-tags-column 0)
-  (org-ellipsis "…")
+  (org-modern-star 'replace)
+  (org-modern-block-fringe nil)
+  (org-modern-table nil)
   :config
   (global-org-modern-mode))
 
@@ -66,10 +67,9 @@
   (set-face-foreground face (face-attribute 'default :background)))
 (set-face-background 'fringe (face-attribute 'default :background))
 
-;; (use-package org-bullets
-;;   :hook (org-mode . org-bullets-mode)
-;;   :custom
-;;   (org-bullets-bullet-list '(" ")))
+(use-package org-bullets
+  :hook (org-mode . (org-mode . (lambda ()org-bullets-mode)))
+  :after org-modern)
 
 (defun my/org-hl-line-strip-bg ()
   "Strip :background from hl-line overlays, keeping :underline."
@@ -89,6 +89,11 @@
   (set-window-buffer nil (current-buffer)))
 
 (add-hook 'org-mode-hook #'my/org-setup-margins)
+
+;;(add-hook 'org-mode-hook (lambda () (org-bullets-mode 1)))
+;;(add-hook 'org-mode-hook (lambda () (org-pretty-table-mode)))
+
+;; (use-package org-pretty-table)
 
 ;; this is a checkout of my fork since the original was busted and so is the nix upstream
 ;; davidlee/org-timeblock

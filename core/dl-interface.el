@@ -19,7 +19,7 @@
   ;; so panopticon's sway segments get a path-scoped signal for the
   ;; SATAN observer's positive predicate (perceptual-design §S5 P1).
   (frame-title-format
-   '((:eval (or (buffer-file-name) "%b")) " - GNU Emacs at " system-name))
+    '((:eval (or (buffer-file-name) "%b")) " - GNU Emacs at " system-name))
 
   (tooltip-use-echo-area t)
 
@@ -57,6 +57,7 @@
   (show-trailing-whitespace nil)
   (indicate-buffer-boundaries 'left)  ; Show buffer top and bottom in the margin
 
+  (pop-up-windows t)
   (frame-resize-pixelwise t)
   (show-paren-mode 1)
 
@@ -135,10 +136,24 @@
   :config
   (beacon-mode 1))
 
+(use-package zoom-window
+  :config (zoom-window-setup))
+(custom-set-variables
+  '(zoom-window-mode-line-color "#005500"))
+
+(use-package persp-mode)
+
 (setopt scroll-conservatively 100)
 
 (use-package breadcrumb
   :defer t)
+
+(use-package frame-mode
+  :demand t
+  :config
+  (progn
+    (frame-mode +1)
+    (frame-keys-mode +1)))
 
 (provide 'dl-interface)
 ;;; dl-interface.el ends here

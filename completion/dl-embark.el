@@ -15,7 +15,7 @@
   ;; embark's two primary verbs have working keys.  `C-c a' is
   ;; reserved for `org-agenda' per Policy.
   :bind (("C-,"   . embark-act)
-          ("C-'"  . embark-dwim)
+          ;;("C-'"  . embark-dwim)
           ("C-h B" . embark-bindings))
   :init
   ;; Add the option to run embark when using avy

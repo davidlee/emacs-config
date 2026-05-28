@@ -51,9 +51,9 @@
      (header . monaspace-neon)
      (tab . monaspace-argon)
      (line-number . zedmono)
-     (org-body . sans)
+     (org-body . et-book)
      (org-code . mono)
-     (org-heading . geist-sans)))
+     (org-heading . et-book)))
 
 (defun my/set-font-role (role font)
   "Set font ROLE to FONT and reapply fonts."

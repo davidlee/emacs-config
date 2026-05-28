@@ -23,6 +23,7 @@
 (global-set-key (kbd "M-z") 'zap-up-to-char)
 (global-set-key (kbd "C-x K") 'kill-current-buffer)
 (global-set-key (kbd "C-x C-b") 'ibuffer)
+(global-set-key (kbd "C-x C-z") 'zoom-window-zoom)
 
 (define-key comint-mode-map (kbd "C-p") #'comint-previous-input)
 (define-key comint-mode-map (kbd "C-n") #'comint-next-input)
