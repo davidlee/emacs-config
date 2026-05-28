@@ -140,6 +140,54 @@ Order is firm for 1a → 1b → 1c (substrate before consumer). 1d may land befo
 
 Write [`docs/satan/attributes/design-contract.md`](../attributes/design-contract.md) (delivered in T-attr-1a). The contract feeds T-attr-1b's migration shape + store API surface + audit validator widening.
 
+## Next actions (2026-05-29)
+
+Updated after the post-T-attr-1e snapshot review. Order is **not** the original
+plan order; production observation pulled two items ahead of T-attr-1d.
+
+1. **Diagnose outcome-pipeline freeze** (blocks meaningful T-attr-1d).
+   Production has 2 interventions ever (both `inbox`-kind, severity=medium),
+   zero classified.  `satan_intervention_outcomes` empty.  Doubt+Shame pinned
+   at 0.50 from one synthetic `morning-aaaaaa` fixture event.  Investigate:
+   is `dl-satan-observer-classify` hooked into a path that fires on tick-agent
+   runs; does the classifier ever return non-null on real intervention shapes;
+   should the manual `@satan-intervention-*` notes-directive be exercised as
+   warm-up.  Captured in [`../follow-ups.md`](../follow-ups.md) §"Attribute
+   layer observability" → "Outcome pipeline cold."
+2. **Pin daemon §17 cosmetic bugs in contract.**  Two items in
+   [`../follow-ups.md`](../follow-ups.md) §"Daemon contract pins":
+   audit-payload `{}` rendering (null/empty-array serialize wrong) and
+   `satan-attrd rebuild` non-idempotent.  Both are contract-surface decisions
+   (does §17 require from-zero replay; is `{}` an acceptable wire shape).
+   Resolve in §16 before more sources land.
+3. **T-attr-1d — capsule render** (broker-only).  Per HANDOVER §"Open shape
+   choices":
+   - Read order: design-contract §9 + §17.1, brief §6, `dl-satan-context.el` +
+     `dl-satan-output.el` (capsule assembly site).
+   - Recommend broker queries `satan_attributes` directly via
+     `dl-satan-attribute--query` (RPC only if projection moves to a
+     daemon-private DB).
+   - Disabled marker shape: §9 mandates `"Attributes: disabled"` single line,
+     NOT frozen values.
+   - Open shape choices to pin in pre-impl contract pass: bar glyph + width +
+     label format; per-row `caps_applied` whisper vs silent; mid-prompt vs
+     system-prepend placement.
+4. **T-attr-1e remaining sources**, in priority order from
+   [`../attributes/wiring-status.md`](../attributes/wiring-status.md)
+   §"Activation roadmap":
+   - **percept** (canonical Suspicion trigger via repeated percept shape;
+     strengthens Curiosity novel/weak signals; also the home for per-segment
+     backlog scaling — option (a) deferred from the 2026-05-29 curiosity
+     tuning amend).
+   - **resonance** (canonical Suspicion trigger via handle-match).
+   - **tool_error** (strengthens Metamorphosis + Doubt; lower priority — both
+     already active via other sources).
+5. **Sequencing question — T-attr-2 (decay) vs T-attr-1d.**  See
+   [`plan.md`](plan.md) §"Cross-cutting" — surfaced 2026-05-29.  Without
+   decay, every positive-net source ratchets attributes toward their ceiling;
+   1d will render a slow drift to saturation rather than meaningful
+   homeostasis.  Decision pending user.
+
 ## Open questions
 
 Carried into the contract's §15 for visibility:

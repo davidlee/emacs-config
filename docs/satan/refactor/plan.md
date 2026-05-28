@@ -38,7 +38,7 @@ T1.5b landed before the attributes tranche (the negative classifier was self-con
 |---|---|---|---|---|
 | [T1](T1-observer-split.md)         | Observer file-split                 | merged      | —              | done — classifier extracted to `dl-satan-observer-classify.el` |
 | [T1.5](T1.5-outcome-semantics.md)  | Outcome-semantics + neg classifier  | merged      | T1             | done — 1.5a doc + 1.5b PRs 1–4 merged 2026-05-23 |
-| [T-attr-1](T-attr-1-attribute-layer.md) | Attribute layer (state + Shame dispatcher) | in-progress | T1.5       | 1a contract + theme doc; 1b state substrate next |
+| [T-attr-1](T-attr-1-attribute-layer.md) | Attribute layer (state + Shame dispatcher) | in-progress | T1.5       | 1a/1b/1c merged; 1e-hc + 1e-sensor merged (2026-05-29 daemon catch-up); **next: diagnose outcome-pipeline freeze, then 1d capsule render** — see theme doc §"Next actions" |
 | [T2](T2-pre-spawn.md)              | Pre-spawn pipeline extraction       | not-started | —              | `dl-satan-pre-spawn.el` + cutover |
 | [T3](T3-capsule-registry.md)       | Capsule render registry             | not-started | —              | (Path A gated; awaits rendering pain) |
 | [T4](T4-modes-field.md)            | Drop tool-spec `:modes` field       | merged      | —              | done — `:modes' stripped from all tool specs; `dl-satan-mode-check-tool-references' enforces |
@@ -54,6 +54,7 @@ Status enum: `not-started | in-progress | merged | abandoned`.
 - **CHANGELOG.md.** One line per merged PR per project convention. Refactor PR template:
   `refactor(satan): T<N> — <subtitle>`
 - **Rollback switches.** T7 + attributes tranche introduce `dl-satan-intervention-recording-enabled` + `dl-satan-attribute-updates-enabled` defcustoms (CODE_REVIEW.md §6 Q9). Wire in T7 PR sequence.
+- **T-attr-2 (decay) sequencing question** (surfaced 2026-05-29). Without idle-decay, every positive-net attribute source ratchets toward its ceiling indefinitely (the 2026-05-29 trace_marked tune produces a +0.025/day positive net for Curiosity, on top of Doubt/Shame already pinned at 0.50 from one fixture outcome). T-attr-1d's capsule will render a slow drift to saturation rather than meaningful homeostasis. Two paths: (a) ship 1d on the unstable substrate, accept "thermometer for ambient saturation" as the v1 surface, ship T-attr-2 immediately after; (b) jump T-attr-2 ahead of 1d so the rendered values mean something. Decision pending user; see [`T-attr-1-attribute-layer.md`](T-attr-1-attribute-layer.md) §"Next actions" item 5.
 
 ## Open questions (parked from review)
 
