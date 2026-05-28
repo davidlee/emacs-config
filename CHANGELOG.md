@@ -2,6 +2,11 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-28 — keys: lift `crux-open-with` into `my-file-map`
+
+- `core/dl-keymap.el`: bind `crux-open-with` at `C-c f o` (mnemonic: file → open external).
+- `editing/dl-crux.el`: drop the foreign `C-c O` global-set-key flagged by `my-policy-lint` (`foreign-command`). Pointer comment left behind.
+
 ## 2026-05-28 — org-gcal: working end-to-end
 
 - `org/dl-org-gcal.el`: rewrite. Stray outer paren removed (made the whole file one unevaluable list). `org-gcal-fetch-file-alist` switched from quote to backquote so `my/op-read` actually fires. Added `(org-gcal-reload-client-id-secret)` in `:config`. `:commands` defer so the three `op read` calls don't block startup with a biometric prompt.

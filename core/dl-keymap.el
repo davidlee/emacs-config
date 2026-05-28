@@ -131,6 +131,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-file-map   "d" #'dired-jump             "dired-jump")
 (my/bind my-file-map   "D" #'dirvish                "dirvish")
 (my/bind my-file-map   "t" #'dirvish-side           "dirvish-side (tree)")
+(my/bind my-file-map   "o" #'crux-open-with         "open external")
 (my/bind my-file-map   "y" #'my/yazi-here           "yazi")
 (my/bind my-file-map   "b" #'my/broot-here          "broot")
 (my/bind my-file-map   "K" #'my/delete-current-buffer-file "delete file + buffer")
