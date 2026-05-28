@@ -25,15 +25,15 @@
   (org-fontify-quote-and-verse-blocks t)
   (org-id-link-to-org-use-id 'create-if-interactive)
   (org-todo-keywords
-   '((sequence "TODO(t)" "NEXT(n)" "STARTED(s)" "WAITING(w@/!)" "MAYBE(m/!)"
-               "|" "DONE(d!)" "CANCELED(c@)" "MOVED(m@)")))
+    '((sequence "TODO(t)" "NEXT(n)" "STARTED(s)" "WAITING(w@/!)" "MAYBE(m/!)"
+        "|" "DONE(d!)" "CANCELED(c@)" "MOVED(m@)")))
   (org-tag-alist
-   '( ("@work" . ?w)
-      ("@home" . ?h)
-      ("reading" . ?r)
-      ("writing" . ?W)
-      ("idea" . ?i)
-      ("pkm" . ?p)))
+    '( ("@work" . ?w)
+       ("@home" . ?h)
+       ("reading" . ?r)
+       ("writing" . ?W)
+       ("idea" . ?i)
+       ("pkm" . ?p)))
   :config
   (require 'ox-md)) ; markdown export
 
@@ -57,11 +57,11 @@
 
 ;; Add frame borders and window dividers
 (modify-all-frames-parameters
- '((right-divider-width . 40)
-   (internal-border-width . 40)))
+  '((right-divider-width . 40)
+     (internal-border-width . 40)))
 (dolist (face '(window-divider
-                window-divider-first-pixel
-                window-divider-last-pixel))
+                 window-divider-first-pixel
+                 window-divider-last-pixel))
   (face-spec-reset-face face)
   (set-face-foreground face (face-attribute 'default :background)))
 (set-face-background 'fringe (face-attribute 'default :background))
@@ -80,7 +80,7 @@
 (defun my/org-setup-margins ()
   "Buffer-local margin + hl-line tweaks for org buffers."
   (setq left-margin-width 2
-        right-margin-width 2)
+    right-margin-width 2)
   ;; hl-line overlay clobbers org-modern pill backgrounds (text properties
   ;; lose to overlays). Intercept overlay after each highlight to strip bg.
   (add-hook 'post-command-hook #'my/org-hl-line-strip-bg 90 t)
@@ -90,6 +90,8 @@
 
 (add-hook 'org-mode-hook #'my/org-setup-margins)
 
+;; this is a checkout of my fork since the original was busted and so is the nix upstream
+;; davidlee/org-timeblock
 (use-package org-timeblock
   :ensure nil
   :demand t

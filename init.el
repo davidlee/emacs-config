@@ -52,6 +52,7 @@
 (require 'dl-indent)
 (require 'dl-fold)
 (require 'dl-crux)
+(require 'dl-move-text)
 
 ;; Org
 (require 'dl-org)
