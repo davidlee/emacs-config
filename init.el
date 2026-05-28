@@ -65,7 +65,7 @@
 (require 'dl-org-ql)
 (require 'dl-review)
 (require 'dl-org-roam)
-;; (require 'dl-org-gcal) -- not yet working
+(require 'dl-org-gcal)
 
 ;; Language support
 (require 'dl-elisp)

@@ -2,6 +2,19 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-28 — org-gcal: working end-to-end
+
+- `org/dl-org-gcal.el`: rewrite. Stray outer paren removed (made the whole file one unevaluable list). `org-gcal-fetch-file-alist` switched from quote to backquote so `my/op-read` actually fires. Added `(org-gcal-reload-client-id-secret)` in `:config`. `:commands` defer so the three `op read` calls don't block startup with a biometric prompt.
+- Pin `oauth2-auto-plstore` to a fully expanded absolute path. Default uses unexpanded `user-emacs-directory` (literal `~`), tripping oauth2-auto's `insert-break-on-secret-entries` guard on some call paths.
+- Workaround for oauth2-auto's first-save crash: pre-create an empty parseable plstore (`(plstore-open … plstore-save)`). The guard calls `file-equal-p`, which returns nil when either path doesn't exist, so the very first `plstore-save` always misfires and leaves a half-written file (envelope written, secrets unencrypted).
+- `epg-pinentry-mode 'loopback` + `plstore-cache-passphrase-for-symmetric-encryption t` — no pinentry binary or GPG key on this host; passphrase is entered in the minibuffer and cached for the Emacs session.
+- `init.el`: uncomment `(require 'dl-org-gcal)`.
+- Outside-repo: `~/.gnupg/gpg-agent.conf` set to `allow-loopback-pinentry` (gpg 2.4 requires the agent opt-in even when the client requests loopback).
+
+## 2026-05-28 — lambda-line: org-clock modeline arity bug
+
+- `core/dl-modeline.el`: `:override` advice on `lambda-line-org-clock-mode`. Upstream calls `lambda-line-compose` with 4 args instead of 5 (missing `secondary`, stray `nil` inside the tertiary `concat`), so every redisplay errors and floods `*Messages*` whenever `org-mode-line-string` is non-nil (e.g. an active `org-clock-in`). Override matches the `lambda-line-prog-mode` shape: tertiary `nil`, clock string + position rolled into secondary. Upstream lambda-line @ `ba749fb`.
+
 ## 2026-05-27 — Bough snapshot adapter
 
 - `apps/dl-bough.el`: elisp adapter exporting org-mode headings and denote notes as Bough snapshot JSON (version 1 contract).

@@ -47,6 +47,35 @@ the user-mode renderer (e.g. `meow-indicator')."
             (setq pos (1+ pos)))))
       result)))
 
+;; lambda-line.el:1121 -- `lambda-line-org-clock-mode' calls
+;; `lambda-line-compose' with 4 args (missing SECONDARY); the tertiary
+;; `concat' also contains a stray nil. Fires whenever
+;; `org-mode-line-string' is non-nil (e.g. org-clock running), spamming
+;; *Messages* with "Error during redisplay: wrong-number-of-arguments".
+;; Restructure to match `lambda-line-prog-mode' shape: tertiary = nil,
+;; clock + position rolled into secondary.
+(with-eval-after-load 'lambda-line
+  (define-advice lambda-line-org-clock-mode
+    (:override () fix-arity)
+    (let ((buffer-name (format-mode-line "%b"))
+          (mode-name   (lambda-line-mode-name))
+          (branch      (lambda-line-vc-project-branch))
+          (position    (format-mode-line "%l:%c:%o")))
+      (lambda-line-compose
+        (lambda-line-status)
+        buffer-name
+        (concat lambda-line-display-group-start
+          mode-name
+          (when branch branch)
+          lambda-line-display-group-end)
+        nil
+        (concat
+          (when (buffer-narrowed-p)
+            (propertize "⇥ " 'face `(:inherit lambda-line-inactive-secondary)))
+          org-mode-line-string " "
+          position
+          lambda-line-hspace)))))
+
 ;; lambda-line.el:520 -- the VC segment runs project/icon/branch together with
 ;; no spacing. Override with explicit padding around the VC symbol.
 (with-eval-after-load 'lambda-line
