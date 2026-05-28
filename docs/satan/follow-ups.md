@@ -70,15 +70,14 @@ Surfaced during a snapshot review showing all 8 attributes mostly
 static — `curiosity=0`, `hunger=0.08`, `doubt=0.50`, `shame=0.50`,
 `metamorphosis=0.27`, rest at 0.00 — for ~3 days.
 
-- **Curiosity cancels itself daily.** Sensor `segment_backlog`
-  (+0.05) and hippocampus `trace_marked` (−0.05) fire once per
-  ruminate cycle each, equal magnitude.  Net daily delta = 0.
-  Three plausible contract amendments (pick one in §16 before
-  more sources land): (a) `segment_backlog` should fire
-  per-segment with a cap, not once per tick; (b) reduce
-  `trace_marked` to −0.025 to match Brooding decay; (c) raise
-  the per-source asymmetry so the rise outpaces ruminate decay
-  by a `TINY` margin.
+- ~~**Curiosity cancels itself daily.**~~ Resolved 2026-05-29 via
+  option (b) — `trace_marked` Curiosity delta reduced from −0.05
+  to −0.025 (symmetric with Brooding).  Net daily delta now
+  +0.025; Curiosity can accumulate from real signal.  See
+  design-contract §6H footnote 6.  Per-segment backlog scaling
+  (option (a)) deferred to `T-attr-1e-percept` as companion
+  cross-source magnitude-scaling work.  Long-term ceiling
+  problem remains — only T-attr-2 decay closes it.
 
 - **Outcome pipeline cold — zero real classifications.**
   `satan_intervention_outcomes` is empty.  Only 2 production

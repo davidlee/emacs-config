@@ -49,8 +49,8 @@ Sensor deltas:
 - `segment_backlog` → +0.05 (uninspected panopticon segments raise curiosity)
 
 Hippocampus deltas:
-- `trace_marked` → −0.05 (trace persistence satisfies curiosity)
-- `trace_marked` also reduces Brooding (−0.025) as a cross-attribute side-effect
+- `trace_marked` → −0.025 (trace persistence *partially* satisfies curiosity; amended 2026-05-29 from −0.05 to break daily cancellation against sensor `segment_backlog` — see design-contract §6H footnote 6)
+- `trace_marked` also reduces Brooding (−0.025) as a cross-attribute side-effect (symmetric magnitude)
 
 The brief lists five triggers (novel percept, weak percept, contradictory
 resonance, active motive lacks evidence, new project/context). Sensor now
@@ -300,3 +300,4 @@ and architectural readiness:
 |---|---|---|
 | 2026-05-25 | Initial wiring status — mapped all 8 attributes against implemented sources, documented structural locks and activation roadmap. | Attribute audit session. |
 | 2026-05-25 | Curiosity and Hunger wired to active. Sensor source implemented (segment_backlog, typing_active, typing_idle). Curiosity also wired to hippocampus trace_marked. Roadmap updated — sensor done, percept + resonance remain for Suspicion. | T-attr-1e-sensor. |
+| 2026-05-29 | `trace_marked` Curiosity delta reduced from −0.05 to −0.025 — production observation showed perfect daily cancellation against sensor `segment_backlog` (+0.05). See design-contract §6H footnote 6. Per-segment backlog scaling deferred to `T-attr-1e-percept` companion work. | Post-T-attr-1e snapshot review. |

@@ -2,6 +2,13 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-29 — SATAN: trace_marked curiosity −0.05 → −0.025 (daily-cancellation fix)
+
+- **`satan-attrd 2d7c2b7`**: tune(dispatcher) — option (b) from the snapshot-review follow-up. `HippocampusReason::TraceMarked` Curiosity delta reduced from −0.05 to −0.025 (TINY). Sensor `segment_backlog` (+0.05) was cancelling `trace_marked` (−0.05) at identical daily cadence, pinning global Curiosity at 0 for 3 days. New daily net is +0.025 — Curiosity can now accumulate from real signal. Symmetric with Brooding (also −0.025 on trace_marked).
+- `docs/satan/attributes/design-contract.md`: new §6H footnote 6 + new §16 row dated 2026-05-29 documenting the production-observation amend.
+- `docs/satan/attributes/wiring-status.md`: Curiosity row updated to −0.025; new change-history row.
+- `docs/satan/follow-ups.md`: snapshot-review finding crossed out as resolved; per-segment backlog scaling (option (a)) deferred to T-attr-1e-percept; long-term ceiling problem flagged as requiring T-attr-2 decay.
+
 ## 2026-05-29 — SATAN: daemon T-attr-1e catch-up commit + observability follow-ups
 
 - **`satan-attrd e66ce17`**: feat(daemon) — T-attr-1e (hippocampus + sensor sources + `tuning.rs` extraction). Catches up the daemon-side code for work shipped broker-side in `T-attr-1d-hc` (2026-05-24) and `T-attr-1e-sensor` (2026-05-25). Both sources were already operational in production via path-flake builds of the dirty working tree; this just lands the source. 84 daemon tests green (60 unit + 8 dispatcher + 5 run_loop + 11 store). `clippy 1.95.0` newly flagged pre-existing `unwrap_err` in `rpc.rs` test mod; silenced via `#[allow(clippy::unwrap_used)]` on the test module.
