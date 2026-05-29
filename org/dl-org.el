@@ -68,7 +68,7 @@
 (set-face-background 'fringe (face-attribute 'default :background))
 
 (use-package org-bullets
-  :hook (org-mode . (org-mode . (lambda ()org-bullets-mode)))
+  :hook (org-mode .(lambda  ()org-bullets-mode))
   :after org-modern)
 
 (defun my/org-hl-line-strip-bg ()
