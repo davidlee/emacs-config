@@ -51,6 +51,7 @@ from `init.el`.
 | Add new `.el` file | `git add` it, then `home-manager switch` |
 | Edit `emacs.nix` | `home-manager switch` |
 | Set `:ensure nil` + want package available | Add to `extraEmacsPackages` in `emacs.nix` |
+| Adding stuff that has nothing to do with a text editor | [read](./docs/satan/refactor/extraction-policy.md)| 
 
 ## The four traps (summary)
 
