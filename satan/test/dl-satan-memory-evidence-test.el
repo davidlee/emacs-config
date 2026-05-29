@@ -358,6 +358,86 @@ populate them.  Keeps current_window and bough_active."
          (should (= 1 (length (plist-get git :commits)))))))))
 
 ;; ---------------------------------------------------------------------
+;; Git-activity feed (bursty — NEVER stale)
+;; ---------------------------------------------------------------------
+
+(ert-deftest dl-satan-memory-evidence/git-feed-paths-same-day ()
+  (let ((paths (dl-satan-memory-evidence--git-feed-paths
+                "/beh/" "2026-05-19T09:50:00+10:00"
+                "2026-05-19T10:00:00+10:00")))
+    (should (= 1 (length paths)))
+    (should (string-suffix-p "segments/git-2026-05-19.jsonl" (car paths)))))
+
+(ert-deftest dl-satan-memory-evidence/git-feed-paths-cross-midnight ()
+  (let ((paths (dl-satan-memory-evidence--git-feed-paths
+                "/beh/" "2026-05-19T23:55:00+10:00"
+                "2026-05-20T00:05:00+10:00")))
+    (should (= 2 (length paths)))
+    (should (string-suffix-p "segments/git-2026-05-19.jsonl" (nth 0 paths)))
+    (should (string-suffix-p "segments/git-2026-05-20.jsonl" (nth 1 paths)))))
+
+(ert-deftest dl-satan-memory-evidence/git-commits-in-window ()
+  (dl-satan-memory-evidence-test--in-tmp tmp
+   (let ((path (expand-file-name "git-2026-05-19.jsonl" tmp)))
+     (with-temp-file path
+       (insert "{\"repo\":\"/r/satan\",\"slug\":\"satan\",\"start_ts\":\"2026-05-19T09:55:00+10:00\",\"end_ts\":\"2026-05-19T09:55:00+10:00\"}\n"))
+     (let ((probe (dl-satan-memory-evidence--git-commits-status
+                   (list path) "2026-05-19T09:50:00+10:00"
+                   "2026-05-19T10:00:00+10:00" 10)))
+       (should (equal "ok" (car probe)))
+       (should (= 1 (length (cdr probe))))
+       (should (equal "satan" (plist-get (car (cdr probe)) :slug)))))))
+
+(ert-deftest dl-satan-memory-evidence/git-commits-bursty-old-still-ok ()
+  "A days-old newest commit is NORMAL: status stays \"ok\" (never
+\"stale-Nm\", unlike focus/browser) and only the in-window slice is
+returned (here empty).  This is the divergent-freshness contract."
+  (dl-satan-memory-evidence-test--in-tmp tmp
+   (let ((path (expand-file-name "git-2026-05-19.jsonl" tmp)))
+     (with-temp-file path
+       (insert "{\"repo\":\"/r\",\"slug\":\"r\",\"start_ts\":\"2026-05-16T09:00:00+10:00\",\"end_ts\":\"2026-05-16T09:00:00+10:00\"}\n"))
+     (let ((probe (dl-satan-memory-evidence--git-commits-status
+                   (list path) "2026-05-19T09:50:00+10:00"
+                   "2026-05-19T10:00:00+10:00" 10)))
+       (should (equal "ok" (car probe)))
+       (should (equal '() (cdr probe)))))))
+
+(ert-deftest dl-satan-memory-evidence/git-commits-missing ()
+  (dl-satan-memory-evidence-test--in-tmp tmp
+   (let ((probe (dl-satan-memory-evidence--git-commits-status
+                 (list (expand-file-name "git-nope.jsonl" tmp))
+                 "2026-05-19T09:50:00+10:00"
+                 "2026-05-19T10:00:00+10:00" 10)))
+     (should (equal "missing" (car probe)))
+     (should (equal '() (cdr probe))))))
+
+(ert-deftest dl-satan-memory-evidence/git-commits-malformed ()
+  (dl-satan-memory-evidence-test--in-tmp tmp
+   (let ((path (expand-file-name "git-2026-05-19.jsonl" tmp)))
+     (with-temp-file path (insert "{not json}\n"))
+     (let ((probe (dl-satan-memory-evidence--git-commits-status
+                   (list path) "2026-05-19T09:50:00+10:00"
+                   "2026-05-19T10:00:00+10:00" 10)))
+       (should (equal "malformed" (car probe)))))))
+
+(ert-deftest dl-satan-memory-evidence/assemble-reads-git-feed ()
+  "End-to-end: the feed surfaces as `:git_commits' + `:git' sensor_status."
+  (dl-satan-memory-evidence-test--in-tmp tmp
+   (let* ((segments-dir (expand-file-name "segments" tmp))
+          (ctx (list :time_now "2026-05-19T10:00:00+10:00" :mode_name "motd")))
+     (make-directory segments-dir t)
+     (with-temp-file (expand-file-name "git-2026-05-19.jsonl" segments-dir)
+       (insert "{\"repo\":\"/r/satan\",\"slug\":\"satan\",\"start_ts\":\"2026-05-19T09:55:00+10:00\",\"end_ts\":\"2026-05-19T09:55:00+10:00\"}\n"))
+     (let* ((out (dl-satan-memory-evidence-assemble
+                  ctx (list :behaviour_dir (file-name-as-directory tmp)
+                            :cwd tmp)))
+            (ss (plist-get out :sensor_status)))
+       (should (equal "ok" (plist-get ss :git)))
+       (should (= 1 (length (plist-get out :git_commits))))
+       (should (equal "satan"
+                      (plist-get (car (plist-get out :git_commits)) :slug)))))))
+
+;; ---------------------------------------------------------------------
 ;; Freshness check (§S6 / Phase 4.1)
 ;; ---------------------------------------------------------------------
 

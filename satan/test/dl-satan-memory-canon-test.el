@@ -191,6 +191,25 @@
     (should (equal "project:myproj" (plist-get (car emits) :handle)))
     (should (eq 'derived (plist-get (car emits) :origin)))))
 
+(ert-deftest dl-satan-memory-canon/rule-vcs-recent-commit ()
+  "Each repo in :git_commits emits project:<slug>, deduped, origin observed.
+Slug resolves from :slug, else :remote tail, else :repo basename."
+  (let* ((emits (dl-satan-memory-canon-test--rule
+                 'vcs.recent_commit
+                 (list :git_commits
+                       (list (list :slug "satan" :repo "/home/david/dev/satan")
+                             (list :slug "satan" :repo "/home/david/dev/satan")
+                             (list :remote "git@github.com:david/bough.git")))
+                 nil nil))
+         (handles (mapcar (lambda (e) (plist-get e :handle)) emits)))
+    ;; "satan" deduped to one despite two rows; bough derived from remote.
+    (should (equal '("project:satan" "project:bough") handles))
+    (should (eq 'observed (plist-get (car emits) :origin)))))
+
+(ert-deftest dl-satan-memory-canon/rule-vcs-recent-commit-empty ()
+  (should (null (dl-satan-memory-canon-test--rule
+                 'vcs.recent_commit (list :git_commits nil) nil nil))))
+
 (ert-deftest dl-satan-memory-canon/rule-cwd-file-kind ()
   (let ((emits (dl-satan-memory-canon-test--rule
                 'cwd.file_kind

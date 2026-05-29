@@ -37,19 +37,19 @@
 (ert-deftest dl-satan-sensor/render-block-all-ok ()
   (let* ((framing '(("sensor_block_header" . "# Sensors")))
          (ss (list :current_window "ok" :focus "ok"
-                   :browser "ok" :bough "ok"))
+                   :browser "ok" :bough "ok" :git "ok"))
          (lines (dl-satan-sensor-render-block framing ss)))
     (should (equal (car lines) "# Sensors"))
     (should (equal (cadr lines)
-                   "sensors: current=ok focus=ok browser=ok bough=ok"))))
+                   "sensors: current=ok focus=ok browser=ok bough=ok git=ok"))))
 
 (ert-deftest dl-satan-sensor/render-block-mixed-degradation ()
   (let* ((framing '(("sensor_block_header" . "# Sensors")))
          (ss (list :current_window "stale-28m" :focus "ok"
-                   :browser "missing" :bough "unreachable"))
+                   :browser "missing" :bough "unreachable" :git "malformed"))
          (lines (dl-satan-sensor-render-block framing ss)))
     (should (equal (cadr lines)
-                   "sensors: current=STALE(28m) focus=ok browser=MISSING bough=UNREACHABLE"))))
+                   "sensors: current=STALE(28m) focus=ok browser=MISSING bough=UNREACHABLE git=MALFORMED"))))
 
 (ert-deftest dl-satan-sensor/render-block-nil-when-no-header ()
   "Self-suppress when framing.txt is missing the seed key."
@@ -121,6 +121,22 @@ T7 intervention path does not require a live audit handle / DB."
      (lambda (_)
        (let ((entries (dl-satan-sensor-alerts-check
                        (dl-satan-sensor-alerts-test--ok-sensor)
+                       (dl-satan-sensor-alerts-test--mode '(notify))
+                       :time-now "2026-05-22T10:00:00+10:00"
+                       :state-file path
+                       :quiet-p-fn (lambda (&rest _) nil))))
+         (should-not entries))))))
+
+(ert-deftest dl-satan-sensor-alerts/git-degraded-never-alerts ()
+  "The git feed renders its status but carries NO alert cause: a
+\"malformed\" git status must not dispatch (commits are bursty; a quiet
+or broken feed is not page-worthy — see `--causes')."
+  (dl-satan-sensor-alerts-test--with-tmp-state path
+    (dl-satan-sensor-alerts-test--silence-notify
+     (lambda (_)
+       (let ((entries (dl-satan-sensor-alerts-check
+                       (list :current_window "ok" :focus "ok"
+                             :browser "ok" :bough "ok" :git "malformed")
                        (dl-satan-sensor-alerts-test--mode '(notify))
                        :time-now "2026-05-22T10:00:00+10:00"
                        :state-file path

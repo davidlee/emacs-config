@@ -98,6 +98,7 @@ Dotfiles must not be the source of truth for prompt content.")
                 "bough_read" "memory_mark" "memory_resonate"
                 "memory_show_trace"
                 "motive_read" "motive_replace"
+                "vcs_log"
                 "docs_list" "docs_search" "docs_read")
        :capabilities '(write-daily stage-proposal notify hippocampus-write
                        inbox-write memory-write motive-write)
@@ -122,7 +123,8 @@ Dotfiles must not be the source of truth for prompt content.")
                 "sway_border_set" "sway_border_reset"
                 "bough_read" "memory_mark" "memory_resonate"
                 "memory_show_trace"
-                "motive_read" "motive_replace")
+                "motive_read" "motive_replace"
+                "vcs_log")
        :capabilities '(notify inbox-write memory-write motive-write
                        hippocampus-write)
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
@@ -145,6 +147,7 @@ Dotfiles must not be the source of truth for prompt content.")
                 "hippocampus_grep" "hippocampus_rename"
                 "bough_read" "memory_resonate" "memory_show_trace"
                 "patch_job_create" "patch_job_status"
+                "vcs_log"
                 "docs_list" "docs_search" "docs_read")
        :capabilities '(stage-proposal hippocampus-write)
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
@@ -167,6 +170,7 @@ Dotfiles must not be the source of truth for prompt content.")
                 "hippocampus_grep" "hippocampus_rename"
                 "bough_read" "memory_resonate" "memory_show_trace"
                 "patch_job_create" "patch_job_status"
+                "vcs_log"
                 "docs_list" "docs_search" "docs_read")
        :capabilities '(stage-proposal hippocampus-write)
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
@@ -188,6 +192,7 @@ Dotfiles must not be the source of truth for prompt content.")
                 "memory_mark" "memory_resonate" "memory_show_trace"
                 "motive_read" "bough_read"
                 "notes_recent"
+                "vcs_log"
                 "docs_list" "docs_search" "docs_read")
        :capabilities '(hippocampus-write memory-write)
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)

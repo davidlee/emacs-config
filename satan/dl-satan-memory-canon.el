@@ -418,6 +418,35 @@ node carries `project_nanoid') `bough_project:<nanoid>'."
              (if remote 'observed 'derived)
              (if remote "/git_state/remote" "/fs_state/cwd"))))))
 
+(dl-satan-memory-canon-defrule vcs.recent_commit (ev _hints _ctx)
+  "Emit `project:<slug>' for each repo with a commit in `:git_commits'.
+The git-activity feed (sourced by the global post-commit hook) is
+pwd-independent, so emissions are `observed'; `--merge' dedupes against
+`cwd.project', keeping the higher-priority origin.  Slug derives from a
+row's `:slug', else its `:remote' tail (`.git' stripped), else its
+`:repo' basename.  Open-world `project' namespace — no grammar bump.
+Deduped within the rule so a busy repo yields one handle."
+  (let ((idx -1) seen acc)
+    (dolist (row (plist-get ev :git_commits) (nreverse acc))
+      (setq idx (1+ idx))
+      (let* ((remote (plist-get row :remote))
+             (repo (plist-get row :repo))
+             (raw (cond
+                   ((let ((s (plist-get row :slug)))
+                      (and (stringp s) (not (string-empty-p s)) s)))
+                   ((and (stringp remote) (not (string-empty-p remote)))
+                    (replace-regexp-in-string
+                     "\\.git\\'" "" (car (last (split-string remote "/")))))
+                   ((stringp repo)
+                    (car (last (split-string (directory-file-name repo) "/"))))))
+             (slug (and raw (dl-satan-memory-canon--slugify raw))))
+        (when (and slug (not (member slug seen)))
+          (push slug seen)
+          (push (dl-satan-memory-canon--emit
+                 (concat "project:" slug) 'observed
+                 (format "/git_commits/%d/slug" idx))
+                acc))))))
+
 (dl-satan-memory-canon-defrule cwd.file_kind (ev _hints _ctx)
   "Map the first recently-edited file's extension to a closed-world
 file_kind.  Falls back to the cwd's apparent extension (rare)."

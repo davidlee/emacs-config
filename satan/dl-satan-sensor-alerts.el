@@ -49,10 +49,11 @@ is absent the block self-suppresses so a missing seed doesn't
 block a run.")
 
 (defconst dl-satan-sensor--source-order
-  '(:current_window :focus :browser :bough)
-  "Canonical render order for the four sensors.
+  '(:current_window :focus :browser :bough :git)
+  "Canonical render order for the sensors.
 Stable order keeps capsule diffs readable across runs even when
-one source flips status.")
+one source flips status.  `:git' (the git-activity feed) renders
+last; it carries NO alert cause — see `dl-satan-sensor-alerts--causes'.")
 
 (defun dl-satan-sensor--source-label (key)
   "Return the short capsule label for source KEY."
@@ -61,6 +62,7 @@ one source flips status.")
     (:focus          "focus")
     (:browser        "browser")
     (:bough          "bough")
+    (:git            "git")
     (_ (substring (symbol-name key) 1))))
 
 (defun dl-satan-sensor--render-status (status)

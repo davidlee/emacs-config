@@ -171,6 +171,42 @@ Newest entry is taken by max :end_ts so files written out of order
                 (cons "ok" (or tail '()))))))
         (error (cons "malformed" '()))))))
 
+(defun dl-satan-memory-evidence--git-commits-status (paths start end limit)
+  "Return (STATUS . COMMITS) for the git-activity feed across PATHS.
+PATHS is a list of `segments/git-%F.jsonl' files (today, plus yesterday
+when the window crosses midnight).  Commits are BURSTY: a feed whose
+newest entry is days old is NORMAL, not a fault — so unlike
+`--segments-status' this NEVER reports `stale-Nm' and never drops the
+slice for age.  STATUS is the JSON-friendly string `\"ok\"' (≥1 path
+readable with rows), `\"missing\"' (no readable path / no rows), or
+`\"malformed\"' (a JSON parse error).  COMMITS is the in-window tail
+\(newest LIMIT) when STATUS is `\"ok\"', `()' otherwise.  Reuses
+`--filter-segments' (rows carry `:start_ts'/`:end_ts' = commit instant)."
+  (condition-case _err
+      (let* ((readable (cl-remove-if-not #'file-readable-p paths))
+             (all (apply #'append
+                         (mapcar #'dl-satan-tools-activity--read-jsonl
+                                 readable))))
+        (cond
+         ((null all) (cons "missing" '()))
+         (t (let* ((filt (dl-satan-memory-evidence--filter-segments
+                          all start end))
+                   (tail (and filt (last filt limit))))
+              (cons "ok" (or tail '()))))))
+    (error (cons "malformed" '()))))
+
+(defun dl-satan-memory-evidence--git-feed-paths (root start end)
+  "Return the `segments/git-%F.jsonl' paths covering the [START, END] window.
+END's date always; START's date too when the window crosses midnight."
+  (let* ((end-day (substring end 0 10))
+         (start-day (substring start 0 10))
+         (days (if (equal start-day end-day)
+                   (list end-day)
+                 (list start-day end-day))))
+    (mapcar (lambda (d)
+              (expand-file-name (format "segments/git-%s.jsonl" d) root))
+            days)))
+
 (defvar dl-satan-memory-evidence--bough-tracking nil
   "When non-nil, `--bough-call' records reachability in the vars below.
 Dynamically bound by `assemble' to derive the `:bough' sensor_status
@@ -534,6 +570,11 @@ about substrate slices."
                            (expand-file-name
                             (format "segments/browser-%s.jsonl" today) root)
                            start end seg-limit now-t)))
+         (git-probe (if cue-only
+                        (cons "ok" '())
+                      (dl-satan-memory-evidence--git-commits-status
+                       (dl-satan-memory-evidence--git-feed-paths root start end)
+                       start end seg-limit)))
          (dl-satan-memory-evidence--bough-tracking t)
          (dl-satan-memory-evidence--bough-attempts 0)
          (dl-satan-memory-evidence--bough-ok 0)
@@ -547,11 +588,13 @@ about substrate slices."
          (sensor-status (list :current_window (car current-probe)
                               :focus (car focus-probe)
                               :browser (car browser-probe)
-                              :bough bough-status))
+                              :bough bough-status
+                              :git (car git-probe)))
          (raw (list
                :current_window (cdr current-probe)
                :focus_segments (cdr focus-probe)
                :browser_segments (cdr browser-probe)
+               :git_commits (cdr git-probe)
                :bough_recent bough-recent
                :bough_active bough-active
                :bough_day bough-day
