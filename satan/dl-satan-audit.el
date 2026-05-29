@@ -15,6 +15,7 @@
 
 (require 'cl-lib)
 (require 'json)
+(require 'seq)
 (require 'subr-x)
 (require 'dl-satan-jsonl)
 
@@ -265,11 +266,15 @@ and knows about `final.json'."
     (format "field %s must be non-negative" (dl-satan-audit--iv-key-name key)))))
 
 (defun dl-satan-audit--iv-require-array (payload key)
-  "Require KEY in PAYLOAD to be a JSON array (nil counts as the empty array)."
+  "Require KEY in PAYLOAD to be a JSON array.
+Accepts lists (`nil' counts as empty array) and vectors (the round-trip
+representation produced by `dl-satan-attribute-listener--claim-row'
+parsing with `:array-type 'vector')."
   (cond
    ((not (plist-member payload key))
     (format "missing required field: %s" (dl-satan-audit--iv-key-name key)))
-   ((not (listp (plist-get payload key)))
+   ((let ((v (plist-get payload key)))
+      (not (or (listp v) (vectorp v))))
     (format "field %s must be array" (dl-satan-audit--iv-key-name key)))))
 
 (defun dl-satan-audit--iv-require-object (payload key)
@@ -504,7 +509,7 @@ closed set.  Returns nil or error string."
             (idx 0)
             (err nil))
         (catch 'done
-          (dolist (c caps)
+          (seq-doseq (c caps)
             (cond
              ((not (stringp c))
               (setq err (format "caps_applied[%d] must be string" idx))

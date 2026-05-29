@@ -122,7 +122,10 @@ case from contract §5 example: shame ramps from 0.10 to 0.25 (delta
     (should (string-match-p "unknown source" err))))
 
 (ert-deftest dl-satan-audit-attribute/rejects-reserved-unimplemented-source ()
-  (dolist (src '("percept" "resonance" "sensor" "tool_error" "manual"))
+  ;; `hippocampus' + `sensor' moved to the implemented set in T-attr-1e
+  ;; (commits in `~/dev/satan-attrd`); only the remaining four are still
+  ;; reserved-but-unimplemented at the broker validator.
+  (dolist (src '("percept" "resonance" "tool_error" "manual"))
     (let ((err (dl-satan-audit-validate-attribute-event
                 "attribute.delta_applied"
                 (dl-satan-audit-attr-test--delta-applied :source src))))

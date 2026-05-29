@@ -234,5 +234,97 @@ dir holding an empty transcript.jsonl, bound as `tmp' inside BODY."
   (should (null (dl-satan-attribute-listener--run-id-from-payload
                  '()))))
 
+;; ---------------------------------------------------------------------
+;; JSON roundtrip — daemon payload null + [] must NOT become `{}'
+;; ---------------------------------------------------------------------
+;;
+;; Pre-fix: `--claim-row' parsed with `:array-type 'list :null-object nil',
+;; collapsing JSON `null' and `[]' to elisp `nil'.  `json-serialize' then
+;; re-emitted `nil' as `{}', visible in transcript.jsonl as
+;; `"related_motive_id":{}, "related_trace_ids":{}, "caps_applied":{}'.
+;; Fix uses `:array-type 'vector :null-object :null' so both round-trip
+;; losslessly through the listener → transcript-append path.
+
+(defun dl-satan-attribute-listener-test--daemon-json ()
+  "Return a JSON string in the wire shape the daemon writes to
+`satan_audit_inbox.payload_json' — `null' for absent optional cue
+dimensions and `[]' for empty arrays."
+  (concat
+   "{\"schema_version\":\"1.0\","
+   "\"id\":\"" dl-satan-attribute-listener-test--event-id "\","
+   "\"ts\":\"2026-05-24T12:00:00Z\","
+   "\"scope\":\"global\","
+   "\"name\":\"shame\","
+   "\"old\":0.10,\"new\":0.25,\"delta\":0.15,"
+   "\"source\":\"outcome\",\"reason\":\"contradicted\","
+   "\"evidence\":{"
+   "\"intervention_id\":\"" dl-satan-attribute-listener-test--run-id ".iv001\","
+   "\"classification\":\"contradicted\","
+   "\"confidence\":\"medium\","
+   "\"intervention_kind\":null,"
+   "\"related_motive_id\":null,"
+   "\"cue_handles\":[],"
+   "\"related_trace_ids\":[]},"
+   "\"caps_applied\":[],"
+   "\"disabled\":false}"))
+
+(defun dl-satan-attribute-listener-test--parse (json-str)
+  "Parse JSON-STR exactly as `--claim-row' parses inbox payloads.
+Indirection so the test catches drift in the parser's keyword args."
+  (json-parse-string json-str
+                     :object-type 'plist
+                     :array-type 'array
+                     :null-object :null
+                     :false-object :false))
+
+(defun dl-satan-attribute-listener-test--transcript-raw (dir)
+  "Return the raw text of DIR's transcript.jsonl (single line, no decode)."
+  (let ((path (expand-file-name "transcript.jsonl" dir)))
+    (when (file-exists-p path)
+      (with-temp-buffer
+        (insert-file-contents path)
+        (string-trim-right (buffer-string))))))
+
+(ert-deftest dl-satan-attribute-listener/json-roundtrip-preserves-null-and-empty-array ()
+  "Daemon-shaped payload with `null' + `[]' fields must survive parse +
+transcript-write without being rewritten as `{}'."
+  (let ((payload (dl-satan-attribute-listener-test--parse
+                  (dl-satan-attribute-listener-test--daemon-json))))
+    ;; Sanity: parse produced the right elisp shape.
+    (let ((ev (plist-get payload :evidence)))
+      (should (eq :null (plist-get ev :intervention_kind)))
+      (should (eq :null (plist-get ev :related_motive_id)))
+      (should (equal [] (plist-get ev :cue_handles)))
+      (should (equal [] (plist-get ev :related_trace_ids))))
+    (should (equal [] (plist-get payload :caps_applied)))
+    ;; Roundtrip: validator accepts + transcript-write preserves shape.
+    (dl-satan-attribute-listener-test--with-mocks
+        payload calls
+     (dl-satan-attribute-listener--handle 42)
+     (should (member 'delete (mapcar #'car calls)))
+     (should-not (member 'reject (mapcar #'car calls)))
+     (let ((raw (dl-satan-attribute-listener-test--transcript-raw tmp)))
+       (should raw)
+       (should (string-match-p "\"intervention_kind\":null" raw))
+       (should (string-match-p "\"related_motive_id\":null" raw))
+       (should (string-match-p "\"cue_handles\":\\[\\]" raw))
+       (should (string-match-p "\"related_trace_ids\":\\[\\]" raw))
+       (should (string-match-p "\"caps_applied\":\\[\\]" raw))
+       ;; The bug's signature — must not appear anywhere.
+       (should-not (string-match-p "\"related_motive_id\":{}" raw))
+       (should-not (string-match-p "\"cue_handles\":{}" raw))
+       (should-not (string-match-p "\"caps_applied\":{}" raw))))))
+
+(ert-deftest dl-satan-attribute-listener/validator-accepts-vector-caps_applied ()
+  "After the parse switch to `:array-type 'vector', `:caps_applied' arrives
+as a vector; validator must accept it."
+  (let ((payload (dl-satan-attribute-listener-test--baseline-payload
+                  :caps_applied (vector "range_clamp"))))
+    (dl-satan-attribute-listener-test--with-mocks
+        payload calls
+     (dl-satan-attribute-listener--handle 1)
+     (should (member 'delete (mapcar #'car calls)))
+     (should-not (member 'reject (mapcar #'car calls))))))
+
 (provide 'dl-satan-attribute-listener-test)
 ;;; dl-satan-attribute-listener-test.el ends here

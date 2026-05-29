@@ -92,10 +92,17 @@ success, nil on race (already claimed), or signal an error on DB failure."
        (cond
         ((string-empty-p out) nil)
         (t (condition-case err
+               ;; `:null-object :null' + `:array-type 'array' for
+               ;; lossless round-trip: JSON `null' and `[]' both decode
+               ;; as elisp `nil' otherwise (default `:null-object nil',
+               ;; default `:array-type list'), and `json-serialize'
+               ;; re-emits `nil' as `{}'.  Vectors round-trip as JSON
+               ;; arrays; `:null' as JSON null.  Validators downstream
+               ;; (`dl-satan-audit--iv-require-array') accept both.
                (json-parse-string out
                                   :object-type 'plist
-                                  :array-type 'list
-                                  :null-object nil
+                                  :array-type 'array
+                                  :null-object :null
                                   :false-object :false)
              (error
               (error "dl-satan-attribute-listener: bad JSON in row %s: %s"
