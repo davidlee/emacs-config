@@ -2,6 +2,13 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-29 — SATAN: T-attr-2c daemon scheduler skeleton (Clock + decay.rs, no firing yet)
+
+- **`satan-attrd d7f8b89`**: feat(decay) — T-attr-2c. New `src/clock.rs` (`Clock` trait, `SystemClock`, `FakeClock` with `set`/`advance`) and new `src/decay.rs` (`DecayScheduler<C: Clock>` over `DECAY_TARGETS = [Shame, Doubt, Brooding, Metamorphosis]`, hourly `tokio::time::interval` with `MissedTickBehavior::Delay` per §8 single-tick rule). `check_due()` returns rows where `(now - last_decay_at) ≥ 24h OR last_decay_at IS NULL`. `tick()` logs the due set + returns count — **no firing yet** per §17.8 skeleton/firing split; T-attr-2d will extend `tick` to dispatch synthetic `(maintenance, idle_decay)` events + bump `last_decay_at`. `main.rs` `run` subcommand spawns scheduler alongside `RunLoop` via `tokio::select!`. New `tests/decay.rs` (6 tests including `tick_does_not_mutate_state` skeleton-boundary guard). 93/93 daemon tests pass.
+- `docs/satan/attributes/design-contract.md`: §16 row for T-attr-2c code landing.
+- `docs/satan/refactor/T-attr-2-decay.md`: PR log entry for T-attr-2c; next-step footer flipped 2c → 2d.
+- `docs/satan/refactor/plan.md`: row 44 next-step pointer updated.
+
 ## 2026-05-29 — SATAN: T-attr-2b daemon schema migration + `last_decay_at`
 
 - **`satan-attrd 58e7bba`**: feat(store) — T-attr-2b. `migrations/0011_attribute_decay.sql` adds `last_decay_at TIMESTAMPTZ NULL` to `satan_attributes` with backfill `SET last_decay_at = NOW()` on existing rows (prevents the first T-attr-2c hourly scheduler tick from synthesising a multi-day catch-up against pre-migration values, per design-contract §17.8). `AttributeRow` gains `last_decay_at: Option<DateTime<Utc>>`; `lookup_attribute` SELECT extended; `rebuild_projection` §10.5 zero-step now resets `last_decay_at = NULL` (resolves the deferral from `fb2b33d`). Migration slot renamed from contract-pinned `0008_` to `0011_` because slot 8 was already taken by `0008_outcome_inbox.sql` between 2a and 2b. 85/85 daemon tests pass.

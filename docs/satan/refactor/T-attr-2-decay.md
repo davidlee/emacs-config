@@ -199,6 +199,40 @@ When this theme is done:
   `last_decay_at` column reset deferred to T-attr-2b when the migration
   adds the column.
 
+- **T-attr-2c — scheduler skeleton (2026-05-29, daemon commit `d7f8b89`
+  in `~/dev/satan-attrd`).**
+  1. `src/clock.rs` — `Clock` trait (`fn now(&self) -> DateTime<Utc>`),
+     `SystemClock` production impl, `FakeClock` test impl with
+     `set` / `advance` and interior-`Arc<Mutex>` shared state.
+     Unconditional (not `cfg(test)`-gated) because integration tests
+     link against the lib as a separate crate.  Reads contract-pinned
+     `TIMESTAMPTZ` wallclock; `tokio::time::pause` would only affect
+     tokio's `Instant`.
+  2. `src/decay.rs` — `DecayScheduler<C: Clock>`.  `DECAY_TARGETS =
+     [Shame, Doubt, Brooding, Metamorphosis]` per §8.  Hourly
+     `tokio::time::interval` with `MissedTickBehavior::Delay` so a
+     runtime stall does NOT burst-catch-up (single-tick rule §8).
+     `check_due()` is a pure read returning rows where `(now -
+     last_decay_at) ≥ 24h OR last_decay_at IS NULL`, filtered to
+     `DECAY_TARGETS` in a configurable scope (production: `"global"`,
+     tests: unique scope for isolation).  `tick()` calls `check_due`,
+     logs the set, returns the count — **no firing yet**.  T-attr-2d
+     will extend `tick` to dispatch synthetic `(maintenance,
+     idle_decay)` events + bump `last_decay_at`.
+  3. `src/main.rs` `run` subcommand spawns `DecayScheduler` alongside
+     `RunLoop` via `tokio::select!` — either future returning
+     terminates the daemon.  Scheduler errors are logged and the loop
+     continues.
+  4. `tests/decay.rs` — 6 integration tests covering NULL =
+     due, 25h stale = due (`days_since_last = Some(1)`), 23h stale =
+     not due, non-target attributes (Curiosity at NULL) excluded,
+     mixed freshness (2 stale + 2 fresh → 2 reported), and the
+     skeleton-boundary guard: `tick_does_not_mutate_state` asserts
+     no row value change, no `last_decay_at` bump, and zero
+     `satan_attribute_events` writes — to be inverted by 2d.
+  5. 93/93 daemon tests pass (62 unit + 8 dispatcher + 5 run_loop +
+     12 store + 6 decay).
+
 - **T-attr-2b — schema migration + projection field (2026-05-29, daemon
   commit `58e7bba` in `~/dev/satan-attrd`).**
   1. `migrations/0011_attribute_decay.sql` — `ALTER TABLE
@@ -230,5 +264,10 @@ When this theme is done:
   6. 85/85 daemon tests pass (60 unit + 8 dispatcher + 5 run_loop +
      12 store).
 
-T-attr-2c is the next concrete step — `Clock` trait + `decay.rs`
-skeleton + `tokio::time::interval` task, no firing yet.
+T-attr-2d is the next concrete step — extend `DecayScheduler::tick`
+to dispatch synthetic `(source=maintenance, reason=idle_decay)` events
+through the existing dispatcher pipeline (caps, range_clamp, event
+INSERT, projection UPSERT, audit RPC), then bump `last_decay_at` on
+success.  Honours §17.5 disable-switch (disabled → event with
+`disabled=true`, skip UPSERT, do NOT bump `last_decay_at`).  Synthetic
+run_id `maintenance:<utc-day>` per §17.8.
