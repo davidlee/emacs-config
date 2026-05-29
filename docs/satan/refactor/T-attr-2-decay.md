@@ -4,7 +4,7 @@ description: Daily idle-decay rule for shame/doubt/brooding/metamorphosis — da
 metadata:
   type: refactor-theme
   topic: satan-refactor
-  status: in-progress
+  status: done
   blocked_by: [T-attr-1b]
   updated_at: 2026-05-29
 ---
@@ -177,7 +177,7 @@ T-attr-2a contract amend PR. One commit on `~/dev/satan-attrd` companion + broke
 - T-attr-2c: one PR — scheduler infra (Clock trait + `decay.rs` skeleton + interval task, no firing yet).
 - T-attr-2d: one PR — decay application + audit emit + `last_decay_at` bump + integration with disable switch.
 - T-attr-2e: one PR — catch-up + disable + restart + replay-determinism tests (golden + floor shipped in 2d). **Landed 2026-05-29**; surfaced the restart-while-disabled seq collision (loud guard shipped, structural fix → 2f).
-- T-attr-2f (deferred, opened by 2e): resume the per-UTC-day `seq` Counter from `MAX(seq)+1` for today's `run_id` on `DecayScheduler` construction, so a mid-day restart while disabled no longer collides on `(run_id, seq)`. Until then the collision is loud and projection-safe (`Error::DecaySeqCollision`) and self-clears at the next UTC-day boundary. Scope: `src/decay.rs` (+ a `store` `max_seq_for_run` helper) + a test flipping the 2e probe from "collides loudly" to "resumes cleanly". See design-contract §17.8.
+- T-attr-2f (opened by 2e): resume the per-UTC-day `seq` Counter from `MAX(seq)+1` for today's `run_id`, so a mid-day restart while disabled no longer collides on `(run_id, seq)`. **Landed 2026-05-29** (daemon `b4ceee1`). Shipped as `src/decay.rs` (`acquire_day_counter` resumes on rotation, lazily on first due tick rather than in `new()`) + `store::max_seq_for_run` + `Counter::resuming_from`; the 2e probe flips to `tick_restart_while_disabled_same_day_resumes_cleanly`. Loud `Error::DecaySeqCollision` retained as defence-in-depth. See design-contract §17.8.
 
 Order is firm 2a → 2b → 2c → 2d → 2e. Each PR independently reviewable; only 2d flips behaviour observable in the broker.
 
@@ -315,14 +315,29 @@ When this theme is done:
   6. 85/85 daemon tests pass (60 unit + 8 dispatcher + 5 run_loop +
      12 store).
 
-T-attr-2c, 2d, and 2e all landed 2026-05-29 (see CHANGELOG.md for the
+T-attr-2c, 2d, 2e, and 2f all landed 2026-05-29 (see CHANGELOG.md for the
 per-commit record). 2d extended `DecayScheduler::tick` to dispatch
 synthetic `(source=maintenance, reason=idle_decay)` events through the
 dispatcher pipeline + bump `last_decay_at`; 2e added the integration
-matrix and the restart-while-disabled seq-collision guard.
+matrix and the restart-while-disabled seq-collision guard; 2f closed that
+gap structurally.
 
-**Next concrete step: T-attr-2f** — resume the per-UTC-day `seq` Counter
-from `MAX(seq)+1` on `DecayScheduler` construction so a mid-day restart
-while disabled stops colliding on `(run_id, seq)` (deferred from 2e; the
-collision is currently loud + projection-safe via `Error::DecaySeqCollision`).
-See §"Migration sketch" and design-contract §17.8.
+**T-attr-2f landed (2026-05-29, daemon `b4ceee1`).** The per-UTC-day `seq`
+Counter now resumes from the persisted `MAX(seq)+1` for that day's `run_id`
+on each UTC-day rotation (`store::max_seq_for_run` + `Counter::resuming_from`),
+so a mid-day restart while disabled allocates a fresh seq range instead of
+colliding on `(run_id, seq)`. **Scope refinement:** resume runs lazily on the
+first due tick rather than literally in `DecayScheduler::new` — equivalent for
+the collision guarantee (nothing emits between construction and first tick),
+keeps `new()` sync and IO-free, and covers genuine day-rolls uniformly via
+`acquire_day_counter`. The loud `Error::DecaySeqCollision` guard is kept as
+defence-in-depth. The 2e probe flips from "collides loudly" to "resumes
+cleanly" (`tick_restart_while_disabled_same_day_resumes_cleanly`); + 2
+`Counter::resuming_from` unit tests. 107 daemon tests green (69 unit + 38
+integration); lint + fmt clean. See design-contract §17.8.
+
+The theme is feature-complete; remaining open thread is the baseline `just lint`
+env note (4 pre-existing `expect_used` denials in mutex locks) — **also cleared
+2026-05-29** (daemon `b99d8b3`): the `FakeClock` + `day_counter_state` mutex
+guards now recover from poisoning via `unwrap_or_else(into_inner)` instead of
+`expect`, so `just lint` is green at baseline.

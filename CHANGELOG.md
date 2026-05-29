@@ -2,6 +2,16 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-29 — SATAN: T-attr-2f shipped (per-UTC-day seq Counter resumes from MAX(seq)+1) + lint baseline cleared
+
+Closes the restart-while-disabled `(run_id, seq)` collision T-attr-2e surfaced, and clears the long-standing baseline `just lint` failure. Daemon-only changes (`~/dev/satan-attrd`) plus this doc pass; no broker code touched. **T-attr-2 is now feature-complete.**
+
+Daemon (`~/dev/satan-attrd`):
+
+- **`satan-attrd b4ceee1`** — T-attr-2f structural fix. `src/decay.rs` `acquire_day_counter` now resumes the per-UTC-day `Counter` from the persisted `MAX(seq)+1` for that day's `run_id` on each UTC-day rotation (which includes the first tick of a fresh process), so a mid-day restart while disabled allocates a fresh seq range instead of re-emitting `1..=N`. New `store::max_seq_for_run(pool, run_id) -> Option<i32>` + `Counter::resuming_from(prior_max)`. **Scope refinement vs the card:** resume runs lazily on the first due tick rather than literally in `DecayScheduler::new` — equivalent for the guarantee (nothing emits between construction and first tick), keeps `new()` sync/IO-free, and covers genuine day-rolls uniformly. The loud `Error::DecaySeqCollision` guard is retained as defence-in-depth. The 2e probe flips from "collides loudly" to "resumes cleanly" (`tick_restart_while_disabled_same_day_resumes_cleanly`: 2 ticks → 2N distinct rows); + 2 `Counter::resuming_from` unit tests. design-contract §17.8 "Restart-while-disabled seq collision" flipped known-gap → resolved.
+- **`satan-attrd b99d8b3`** — baseline lint debt cleared. The 4 pre-existing `clippy::expect_used` denials on `clock.rs`/`decay.rs` mutex locks now recover from poisoning via `unwrap_or_else(PoisonError::into_inner)` instead of `expect` — sounder for mutexes guarding plain data (a timestamp, a `{date, Arc<Counter>}` pair) with no invariant a panicking holder could corrupt. `FakeClock`'s three sites collapse behind a private `guard()` helper. `just lint` is now green at baseline.
+- 107 daemon tests green (69 unit + 38 integration). `just lint` + `cargo fmt` clean.
+
 ## 2026-05-29 — SATAN: T-attr-2e shipped (decay integration test matrix + restart-while-disabled collision guard)
 
 Closes the four integration concerns T-attr-2d deferred (catch-up, disable-switch, restart, replay-determinism) and surfaces one design finding. Daemon-only changes (`~/dev/satan-attrd`) plus this doc pass; no broker code touched.
