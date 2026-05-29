@@ -161,8 +161,8 @@ When this theme is done:
 
 ## PR log
 
-- **T-attr-2a — contract amend (2026-05-29, this commit).**  Bundles three
-  decisions into the design contract in one pass:
+- **T-attr-2a — contract amend (2026-05-29, broker commit `9c5ee77`).**
+  Bundles three decisions into the design contract in one pass:
   1. §8 rewritten as normative — daily `−0.01` decay on the 4 negative-pole
      attributes, daemon-side per new §17.8, single-tick catch-up, synthetic
      `maintenance:<utc-day>` run-ids. §15 Q2 resolved. §13 "Automatic decay"
@@ -170,8 +170,33 @@ When this theme is done:
   2. §10.5 — `satan-attrd rebuild` is from-zero, not replay-on-top.
      Resolves the daemon-pin question.
   3. §17.4 — JSON wire-shape requirements: `null`/`[]`/`{}` distinct, no
-     `{}` substitution for the first two.  Resolves the daemon-side
-     `build_audit_payload` / `enqueue_audit_event` bug.
-  §16 row added covering all three.  No code; companion bug-fix commit on
-  `~/dev/satan-attrd` for the JSON wire-shape issue is the first code-bearing
-  follow-up before T-attr-2b lands.
+     `{}` substitution for the first two.
+  §16 row added covering all three.
+
+- **T-attr-2a-fix-broker-json-roundtrip — broker commit `c263444`.**
+  Resolves §17.4 wire-shape requirement in code.  Investigation found the
+  daemon-side constructors (`build_audit_payload`, `enqueue_audit_event`,
+  `outcome_evidence`) were already correct; the offender was the broker's
+  `dl-satan-attribute-listener--claim-row` parse using
+  `:array-type 'list :null-object nil`, collapsing JSON `null` + `[]` to
+  elisp `nil` which `json-serialize` re-emitted as `{}`.  Fixed by
+  switching to `:array-type 'array :null-object :null`.  Validator
+  widened: `dl-satan-audit--iv-require-array` accepts vectors;
+  `dl-satan-audit--validate-attribute-caps` uses `seq-doseq`.  New
+  roundtrip ert proves daemon-shaped JSON survives.  Contract §17.4
+  "Locus" subsection + §16 row added 2026-05-29 to record the diagnostic
+  correction.
+
+- **T-attr-2a-fix-daemon-rebuild-from-zero — daemon commit `fb2b33d`
+  (`~/dev/satan-attrd`).**  Resolves §10.5 in code.  `rebuild_projection`
+  now wraps in a single transaction: `UPDATE satan_attributes SET
+  value=0.0, evidence_json='{}'::jsonb` first, then replay events
+  ordered by `(ts, run_id, seq)`.  Both default-replay and
+  `--include-disabled` modes zero first.  New
+  `rebuild_is_from_zero_when_event_log_is_empty_for_scope` test proves
+  the smoke-purge scenario yields zero projection without operator UPDATE.
+  `REBUILD_LOCK` mutex serializes rebuild tests within the binary.
+  `last_decay_at` column reset deferred to T-attr-2b when the migration
+  adds the column.
+
+T-attr-2b is the next concrete step (schema migration + backfill).

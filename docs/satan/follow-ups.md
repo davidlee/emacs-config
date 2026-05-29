@@ -101,21 +101,26 @@ static — `curiosity=0`, `hunger=0.08`, `doubt=0.50`, `shame=0.50`,
   before 1d, otherwise 1d's first deliverable is a thermometer
   for ambient zero.
 
-## Daemon contract pins (post-supervisor + WIP commit, 2026-05-29) — resolved
+## Daemon contract pins (post-supervisor + WIP commit, 2026-05-29) — code-resolved
 
-Captured into `design-contract.md` under T-attr-2a contract amend (2026-05-29).
-Remaining work is daemon-side code, tracked on `~/dev/satan-attrd`.
+Both items contract-amended under T-attr-2a (`design-contract.md` §10.5
++ §17.4) and fixed in code 2026-05-29.
 
 - ~~**JSON null + empty-array render as `{}` in audit payload.**~~
-  Contract pinned in §17.4 "Wire-shape requirements" — `null`/`[]`/`{}`
-  semantically distinct, no `{}` substitution for the first two.  Daemon
-  fix lands as a companion commit on `~/dev/satan-attrd`
-  (`run_loop::build_audit_payload` + `rpc::enqueue_audit_event`).
+  Contract: §17.4 "Wire-shape requirements" + "Locus".
+  Diagnostic correction during fix: daemon-side constructors were
+  already correct (`null` / `[]` as expected); the offender was the
+  **broker** parse in `dl-satan-attribute-listener--claim-row`.
+  Fix in broker commit `c263444` — listener parse switched to
+  `:array-type 'array :null-object :null`; validator widened.
 
-- ~~**`satan-attrd rebuild` non-idempotent.**~~  Resolved by §10.5
-  "Idempotence — from-zero replay": rebuild MUST zero the projection
-  before replaying events.  Daemon fix lands alongside the JSON wire-shape
-  cleanup on `~/dev/satan-attrd`.
+- ~~**`satan-attrd rebuild` non-idempotent.**~~  Contract: §10.5
+  "Idempotence — from-zero replay".  Fix in daemon commit `fb2b33d`
+  (`~/dev/satan-attrd`) — `rebuild_projection` wraps in a transaction
+  that zeros every `satan_attributes` row before replaying events.
+  Tests: `rebuild_is_from_zero_when_event_log_is_empty_for_scope`
+  proves the smoke-purge scenario yields zero projection without
+  manual operator UPDATE.
 
 ## Mind-side items
 
