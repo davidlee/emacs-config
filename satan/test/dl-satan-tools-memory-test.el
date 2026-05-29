@@ -30,7 +30,7 @@
 (defconst dl-satan-tools-memory-test--tool-ctx
   '(:id "20260519T100000-motd-deadbe"
     :mode-name motd
-    :capabilities ("memory-write")
+    :capabilities (memory-write)
     :run-dir "/tmp/satan-run"
     :hippocampus-dir "/tmp/hipp"))
 
@@ -335,11 +335,26 @@ evidence assembler so the window can't reach behind the run."
                     :args (:payload "p"))
                   '("memory_mark")
                   '(:id "r1" :mode-name motd
+                    :capabilities (memory-write)
                     :time-now "2026-05-19T10:00:00+10:00"
                     :run-started-at "2026-05-19T09:55:00+10:00"))))
         (should (eq (plist-get res :ok) t))
         (should (equal (plist-get opts :run_started_at)
                        "2026-05-19T09:55:00+10:00"))))))
+
+(ert-deftest dl-satan-tools-memory/mark-capability-required ()
+  "`memory_mark' is refused by the dispatcher when the run-ctx lacks
+the `memory-write' capability (spec `:capability').  Guards the gap
+this enforcement closed — the capability was declared on modes but
+enforced nowhere before."
+  (let ((res (dl-satan-tool-dispatch
+              '(:type "tool_call" :id "c1" :name "memory_mark"
+                :args (:payload "p"))
+              '("memory_mark")
+              '(:id "r1" :mode-name motd
+                :capabilities (write-daily)))))
+    (should (eq (plist-get res :ok) :false))
+    (should (string-match-p "memory-write" (plist-get res :error)))))
 
 (ert-deftest dl-satan-tools-memory/mark-result-shape ()
   (dl-satan-tools-memory-test--stub-evidence

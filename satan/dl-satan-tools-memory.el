@@ -279,6 +279,7 @@ skipped — cue derivation only needs the current-moment context."
   (dl-satan-tool-register
    (list :name "memory_mark"
          :risk 'low
+         :capability 'memory-write
          :args-schema
          (list 'payload (list :type 'string :required t)
                'hints   (list :type 'object :shape hints-shape)

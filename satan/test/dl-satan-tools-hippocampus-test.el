@@ -245,11 +245,13 @@ succeeds and the handler returns ok."
       (delete-directory tmp t))))
 
 (ert-deftest dl-satan-hippocampus/overwrite-capability-required ()
-  (let ((res (dl-satan-tool/hippocampus-overwrite
-              '(:filename "x.org" :body "b")
+  (let ((res (dl-satan-tool-dispatch
+              '(:type "tool_call" :id "c1" :name "hippocampus_overwrite"
+                :args (:filename "x.org" :body "b"))
+              '("hippocampus_overwrite")
               '(:capabilities (write-daily)))))
-    (should (eq (car res) 'error))
-    (should (string-match-p "hippocampus-write" (cdr res)))))
+    (should (eq (plist-get res :ok) :false))
+    (should (string-match-p "hippocampus-write" (plist-get res :error)))))
 
 (ert-deftest dl-satan-hippocampus/overwrite-missing-file ()
   (let ((dl-satan-hippocampus-dir (make-temp-file "satan-hippo-" t)))
@@ -281,11 +283,13 @@ succeeds and the handler returns ok."
       (delete-directory tmp t))))
 
 (ert-deftest dl-satan-hippocampus/delete-capability-required ()
-  (let ((res (dl-satan-tool/hippocampus-delete
-              '(:filename "x.org")
+  (let ((res (dl-satan-tool-dispatch
+              '(:type "tool_call" :id "c1" :name "hippocampus_delete"
+                :args (:filename "x.org"))
+              '("hippocampus_delete")
               '(:capabilities (write-daily)))))
-    (should (eq (car res) 'error))
-    (should (string-match-p "hippocampus-write" (cdr res)))))
+    (should (eq (plist-get res :ok) :false))
+    (should (string-match-p "hippocampus-write" (plist-get res :error)))))
 
 (ert-deftest dl-satan-hippocampus/delete-rejects-traversal ()
   (let ((res (dl-satan-tool/hippocampus-delete
@@ -361,11 +365,13 @@ succeeds and the handler returns ok."
       (delete-directory tmp t))))
 
 (ert-deftest dl-satan-hippocampus/rename-capability-required ()
-  (let ((res (dl-satan-tool/hippocampus-rename
-              '(:filename "x.org" :title "t")
+  (let ((res (dl-satan-tool-dispatch
+              '(:type "tool_call" :id "c1" :name "hippocampus_rename"
+                :args (:filename "x.org" :title "t"))
+              '("hippocampus_rename")
               '(:capabilities (write-daily)))))
-    (should (eq (car res) 'error))
-    (should (string-match-p "hippocampus-write" (cdr res)))))
+    (should (eq (plist-get res :ok) :false))
+    (should (string-match-p "hippocampus-write" (plist-get res :error)))))
 
 (ert-deftest dl-satan-hippocampus/rename-missing-file ()
   (let ((dl-satan-hippocampus-dir (make-temp-file "satan-hippo-" t)))
@@ -402,11 +408,13 @@ succeeds and the handler returns ok."
       (delete-directory tmp t))))
 
 (ert-deftest dl-satan-hippocampus/capability-required ()
-  (let ((res (dl-satan-tool/hippocampus-write
-              '(:title "t" :body "b")
+  (let ((res (dl-satan-tool-dispatch
+              '(:type "tool_call" :id "c1" :name "hippocampus_write"
+                :args (:title "t" :body "b"))
+              '("hippocampus_write")
               '(:capabilities (write-daily)))))
-    (should (eq (car res) 'error))
-    (should (string-match-p "hippocampus-write" (cdr res)))))
+    (should (eq (plist-get res :ok) :false))
+    (should (string-match-p "hippocampus-write" (plist-get res :error)))))
 
 (ert-deftest dl-satan-hippocampus/schema-required ()
   (let ((res (dl-satan-tool-dispatch

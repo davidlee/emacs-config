@@ -16,12 +16,25 @@ no urgent owner.  Tick off and remove when shipped.
 
 ## Code cleanup
 
-- **Capability migration for inbox / hippocampus / memory tool-specs.**
-  Phase 0.2 laid the dispatcher rail (a mode declares `:capabilities`
-  and the dispatcher enforces it).  Phase 3 (`motive-write`) and
-  Phase 4 (`notify`) added users, but inbox / hippocampus / memory
-  tool-specs still guard handler-side.  Mechanical migration: replace
-  handler-side gates with `:capability` declarations on the tool spec.
+- ~~**Capability migration for inbox / hippocampus / memory tool-specs.**~~
+  Done 2026-05-30.  `:capability` added to 6 specs (`inbox_append`,
+  `hippocampus_{write,overwrite,delete,rename}`, `memory_mark`); the 5
+  handler-side `(memq … caps)` gates removed (the `hippocampus-write`
+  handler keeps its `caps` binding for the *separate* `memory-write`
+  cross-ref check, §10.7).  **`memory_mark` had no gate at all** —
+  `memory-write` was declared on modes but enforced nowhere; the spec
+  `:capability` closes that latent hole.  Enforcement now single-point
+  in the dispatcher (`dl-satan-tool--capability-denied-p`); error text
+  shifts `"mode lacks capability X"` → `"capability denied: tool T
+  requires X"`.  Cap checks now run *before* arg-schema validation
+  (dispatcher order) — coarser gate first.  All 5 modes verified to
+  declare the needed capability wherever the tool is allowed (no
+  access regression).  Capability-required tests rerouted handler→
+  dispatch; new `memory/mark-capability-required` locks the closed
+  hole.  Also fixed a string-vs-symbol bug in the memory test ctx
+  (`:capabilities ("memory-write")` → `(memory-write)`) that only
+  surfaced once the gate existed.  Suites green (inbox+hippo+memory+
+  dispatcher 86/86); `dl-satan-mode-check-tool-references` passes.
 
 - ~~**Collapse `dl-satan-tools-activity--read-jsonl` onto
   `dl-satan-jsonl-read-file`.**~~  Done 2026-05-30 — private helper
@@ -34,6 +47,19 @@ no urgent owner.  Tick off and remove when shipped.
   `dl-satan-motive-validate-for-write`.**~~  Done 2026-05-30 —
   unreachable `dormant`/`dormant_reason` lockstep branch removed.
   `dl-satan-motive.el` now byte-compiles clean.
+
+- **Broker manifest tests red on `vcs_log` description.**  Surfaced
+  2026-05-30 (pre-existing, from the git-activity sensor commit).
+  `dl-satan-broker/manifest-tools-shape` and
+  `…/refuses-spawn-when-budget-exceeded` fail with `SATAN: tool
+  description missing: …/vcs_log.md`.  `dl-satan-tool-json-schema`
+  resolves each tool's model-facing `.md` via
+  `dl-satan-tool--description`, but `vcs_log`'s description lives at
+  `~/notes/satan/tools/vcs_log.md` — outside the repo — so the test
+  fixture's temp descriptions dir lacks it.  Fix: either stage a
+  `vcs_log.md` stub into the broker test fixture, or make
+  `dl-satan-tool--description` tolerate a missing file in test mode.
+  Not capability-migration scope.
 
 ## Functional extensions
 

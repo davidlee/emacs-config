@@ -76,8 +76,9 @@ merged after the default :RUN_ID/:MODE pair.  Returns (ok :path P) or
 
 (defun dl-satan-tool/inbox-append (args ctx)
   "Implements inbox_append.
-ARGS: (:title STR :body STR :urgency low|normal|urgent).  Refused unless
-TOOL-CTX `:capabilities' includes `inbox-write'.  Always appends; never
+ARGS: (:title STR :body STR :urgency low|normal|urgent).  The
+`inbox-write' capability is enforced by the dispatcher (spec
+`:capability'), not here.  Always appends; never
 mutates existing headlines.  On success the handler also emits a T7
 `intervention.created' (kind=inbox, target_surface=path) via
 `dl-satan-intervention-create' and surfaces the minted id on the result.
@@ -86,37 +87,33 @@ Returns (ok :path P :intervention_id IV-ID) | (error MSG)."
          (body    (plist-get args :body))
          (urgency (plist-get args :urgency))
          (run-id    (plist-get ctx :id))
-         (mode-str  (plist-get ctx :mode-name))
-         (caps      (plist-get ctx :capabilities)))
-    (cond
-     ((not (memq 'inbox-write caps))
-      (cons 'error "mode lacks capability inbox-write"))
-     (t
-      (pcase (dl-satan-tools-inbox-write
-              :title title
-              :body body
-              :urgency urgency
-              :properties (list :run_id (or run-id "")
-                                :mode   (or mode-str "")))
-        (`(ok . ,info)
-         (condition-case err
-             (let ((iv-id (dl-satan-intervention-create
-                           :ctx ctx
-                           :kind "inbox"
-                           :target-surface (plist-get info :path)
-                           :message (format "%s — %s" title body)
-                           :expected-outcome
-                           dl-satan-inbox-intervention-expected-outcome
-                           :outcome-window-minutes
-                           dl-satan-inbox-intervention-window-minutes
-                           :severity "medium")))
-               (cons 'ok (append info (list :intervention_id iv-id))))
-           (error (cons 'error (error-message-string err)))))
-        (err err))))))
+         (mode-str  (plist-get ctx :mode-name)))
+    (pcase (dl-satan-tools-inbox-write
+            :title title
+            :body body
+            :urgency urgency
+            :properties (list :run_id (or run-id "")
+                              :mode   (or mode-str "")))
+      (`(ok . ,info)
+       (condition-case err
+           (let ((iv-id (dl-satan-intervention-create
+                         :ctx ctx
+                         :kind "inbox"
+                         :target-surface (plist-get info :path)
+                         :message (format "%s — %s" title body)
+                         :expected-outcome
+                         dl-satan-inbox-intervention-expected-outcome
+                         :outcome-window-minutes
+                         dl-satan-inbox-intervention-window-minutes
+                         :severity "medium")))
+             (cons 'ok (append info (list :intervention_id iv-id))))
+         (error (cons 'error (error-message-string err)))))
+      (err err))))
 
 (dl-satan-tool-register
  (list :name "inbox_append"
        :risk 'low
+       :capability 'inbox-write
        :args-schema '(title   (:type string :required t)
                       body    (:type string :required t)
                       urgency (:type string :required nil

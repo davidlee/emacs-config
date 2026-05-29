@@ -178,8 +178,9 @@ Soft-fail: log on error, do not affect tool return value."
 
 (defun dl-satan-tool/hippocampus-write (args ctx)
   "Implements hippocampus_write.
-ARGS: (:title STR :body STR).  Refused unless TOOL-CTX `:capabilities'
-includes `hippocampus-write'.  Returns (ok :path P) | (error MSG).
+ARGS: (:title STR :body STR).  The `hippocampus-write' capability is
+enforced by the dispatcher (spec `:capability').  Returns
+(ok :path P) | (error MSG).
 When `memory-write' is also present, emits an `auto_rule' observation
 trace cross-referencing PATH (§10.7); cross-ref errors are soft."
   (let* ((title (plist-get args :title))
@@ -188,8 +189,6 @@ trace cross-referencing PATH (§10.7); cross-ref errors are soft."
          (mode-str  (plist-get ctx :mode-name))
          (caps      (plist-get ctx :capabilities)))
     (cond
-     ((not (memq 'hippocampus-write caps))
-      (cons 'error "mode lacks capability hippocampus-write"))
      ((not (and (stringp title) (stringp body)))
       (cons 'error "title and body must be strings"))
      (t
@@ -240,11 +239,8 @@ trace cross-referencing PATH (§10.7); cross-ref errors are soft."
 (defun dl-satan-tool/hippocampus-overwrite (args ctx)
   "Replace body of an existing hippocampus entry."
   (let ((filename (plist-get args :filename))
-        (body (plist-get args :body))
-        (caps (plist-get ctx :capabilities)))
+        (body (plist-get args :body)))
     (cond
-     ((not (memq 'hippocampus-write caps))
-      (cons 'error "mode lacks capability hippocampus-write"))
      ((not (dl-satan-tools-hippocampus--safe-path-p filename))
       (cons 'error "filename must be a plain basename"))
      ((not (stringp body))
@@ -265,11 +261,8 @@ trace cross-referencing PATH (§10.7); cross-ref errors are soft."
 
 (defun dl-satan-tool/hippocampus-delete (args ctx)
   "Delete a hippocampus entry by filename."
-  (let ((filename (plist-get args :filename))
-        (caps (plist-get ctx :capabilities)))
+  (let ((filename (plist-get args :filename)))
     (cond
-     ((not (memq 'hippocampus-write caps))
-      (cons 'error "mode lacks capability hippocampus-write"))
      ((not (dl-satan-tools-hippocampus--safe-path-p filename))
       (cons 'error "filename must be a plain basename"))
      (t
@@ -359,11 +352,8 @@ trace cross-referencing PATH (§10.7); cross-ref errors are soft."
 (defun dl-satan-tool/hippocampus-rename (args ctx)
   "Rename a hippocampus entry: update filename slug and #+title."
   (let ((filename (plist-get args :filename))
-        (new-title (plist-get args :title))
-        (caps (plist-get ctx :capabilities)))
+        (new-title (plist-get args :title)))
     (cond
-     ((not (memq 'hippocampus-write caps))
-      (cons 'error "mode lacks capability hippocampus-write"))
      ((not (dl-satan-tools-hippocampus--safe-path-p filename))
       (cons 'error "filename must be a plain basename"))
      ((not (stringp new-title))
@@ -406,6 +396,7 @@ trace cross-referencing PATH (§10.7); cross-ref errors are soft."
 (dl-satan-tool-register
  (list :name "hippocampus_write"
        :risk 'low
+       :capability 'hippocampus-write
        :args-schema '(title (:type string :required t)
                       body  (:type string :required t))
        :handler 'dl-satan-tool/hippocampus-write))
@@ -413,6 +404,7 @@ trace cross-referencing PATH (§10.7); cross-ref errors are soft."
 (dl-satan-tool-register
  (list :name "hippocampus_overwrite"
        :risk 'low
+       :capability 'hippocampus-write
        :args-schema (list 'filename (list :type 'string :required t)
                           'body     (list :type 'string :required t))
        :handler 'dl-satan-tool/hippocampus-overwrite))
@@ -420,6 +412,7 @@ trace cross-referencing PATH (§10.7); cross-ref errors are soft."
 (dl-satan-tool-register
  (list :name "hippocampus_delete"
        :risk 'low
+       :capability 'hippocampus-write
        :args-schema (list 'filename (list :type 'string :required t))
        :handler 'dl-satan-tool/hippocampus-delete))
 
@@ -432,6 +425,7 @@ trace cross-referencing PATH (§10.7); cross-ref errors are soft."
 (dl-satan-tool-register
  (list :name "hippocampus_rename"
        :risk 'low
+       :capability 'hippocampus-write
        :args-schema (list 'filename (list :type 'string :required t)
                           'title    (list :type 'string :required t))
        :handler 'dl-satan-tool/hippocampus-rename))

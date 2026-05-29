@@ -2,6 +2,17 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-30 — SATAN: capability enforcement moved to dispatcher (inbox/hippocampus/memory)
+
+Follow-up off `docs/satan/follow-ups.md` — finish the Phase 0.2 capability rail. `inbox`, `hippocampus`, and `memory` tools guarded capability handler-side (or, for `memory_mark`, not at all); enforcement now lives single-point in the dispatcher via spec `:capability`, matching the `notify`/`motive-write` pattern.
+
+- **Specs** — `:capability` added to `inbox_append` (`inbox-write`), `hippocampus_{write,overwrite,delete,rename}` (`hippocampus-write`), `memory_mark` (`memory-write`).
+- **Handlers** — removed the 5 `(memq '…-write caps)` gates + their now-unused `caps` bindings. The `hippocampus_write` handler keeps `caps` for its *separate* `memory-write` auto-rule cross-ref (§10.7) — that check is unrelated to the write gate and stays handler-side.
+- **Gap closed** — `memory_mark` had no gate at all: `memory-write` was declared on modes but enforced nowhere. The spec `:capability` is the first actual enforcement. New `memory/mark-capability-required` test locks it.
+- **Behaviour deltas (intended)** — capability error text shifts `"mode lacks capability X"` → `"capability denied: tool T requires X"`; capability check now precedes arg-schema validation (dispatcher order). All 5 modes verified to declare the needed capability wherever the tool is allowed — no access regression.
+- **Tests** — the 5 capability-required tests rerouted handler→`dl-satan-tool-dispatch` (the only place enforcement now lives); assertions unchanged (the dispatcher error still contains the capability name). Fixed a latent string-vs-symbol bug in the memory test ctx (`:capabilities ("memory-write")` → `(memory-write)`) that `memq` only cared about once a gate existed. inbox+hippo+memory+dispatcher suites 86/86 green; `dl-satan-mode-check-tool-references` passes; changed files byte-compile clean.
+- **Pre-existing, out of scope** — surfaced two red broker manifest tests (`vcs_log.md` description missing from the test fixture, from the earlier git-activity commit). Logged in `follow-ups.md`, not fixed here.
+
 ## 2026-05-30 — SATAN: follow-up cleanups (jsonl reader collapse + dead branch)
 
 Two mechanical items off `docs/satan/follow-ups.md`. No behaviour change.

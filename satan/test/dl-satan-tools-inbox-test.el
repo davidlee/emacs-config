@@ -51,11 +51,15 @@
       (when (file-exists-p tmp) (delete-file tmp)))))
 
 (ert-deftest dl-satan-inbox/capability-required ()
-  (let ((res (dl-satan-tool/inbox-append
-              '(:title "t" :body "b")
+  ;; Capability is enforced by the dispatcher (spec `:capability'),
+  ;; not the handler — drive through dispatch with the cap absent.
+  (let ((res (dl-satan-tool-dispatch
+              '(:type "tool_call" :id "c1" :name "inbox_append"
+                :args (:title "t" :body "b"))
+              '("inbox_append")
               '(:capabilities (write-daily)))))
-    (should (eq (car res) 'error))
-    (should (string-match-p "inbox-write" (cdr res)))))
+    (should (eq (plist-get res :ok) :false))
+    (should (string-match-p "inbox-write" (plist-get res :error)))))
 
 (ert-deftest dl-satan-inbox/append-preserves-existing ()
   (let* ((tmp (make-temp-file "satan-inbox-"))
