@@ -7,7 +7,7 @@ metadata:
   status: merged
   feeds: [T-attr-1b, T-attr-1c, T-attr-1d, T-attr-1e]
   authority: blocking
-  updated_at: 2026-05-24
+  updated_at: 2026-05-29
 ---
 
 # Attribute layer — design contract (T-attr-1a)
@@ -513,14 +513,25 @@ Repeat steps 1–7 for every attribute the source event writes; reuse the step-0
 
 ## 8. Decay
 
-Open question §15 Q2 — **the decay schedule is deferred to T-attr-2**. V1 ships without automatic decay; values only move on explicit source events. This is deliberately conservative: a daily decay rule that lowers Shame on a cron-like schedule is a behaviour change worth a contract amendment of its own, not a baked-in default.
+Normative as of T-attr-2 (2026-05-29 contract amend, resolving §15 Q2).
 
-Implications:
+**Rule.** Daily idle decay of `−0.01` on the four negative-pole attributes (`shame`, `doubt`, `brooding`, `metamorphosis`). Applied daemon-side per §17.8. Range clamp at `0` per §7.2 (a value of `0.005` becomes `0` on the next tick).
 
-- Shame accumulates monotonically until a `worked` outcome counters it. Per brief, a `worked` outcome on the same `cue_handles` line counts; this is achieved by the existing `worked` delta in §6.
-- Operators may manually re-zero attributes via a future `my/satan-attribute-zero` command (out of T-attr-1 scope).
+The other four attributes (`friction` is derived not stored; `curiosity` / `suspicion` / `hunger` have their own decay-shaped reasons inside source-event tables) are **not** decayed by this rule. Adding decay to them risks zeroing out signal that is supposed to persist.
 
-T-attr-2 should add a daily idle-decay rule (`-0.01/day` per brief recommendation, on `shame`/`doubt`/`brooding`/`metamorphosis`) once the dispatcher has been observed in production long enough to see whether automatic decay over-corrects.
+**Catch-up.** Single tick per check, not N. Daemon down 5 days → restart → next hourly tick applies one `−0.01` and bumps `last_decay_at` to `now`. The event's `evidence_json.days_since_last` preserves observability of the gap. Rationale: an N-tick catch-up compresses days of decay into one moment and is misleading at every point we'd want to read it; single-tick errs conservatively toward keeping signal.
+
+**Disable interaction.** Honours `attribute-updates-enabled` exactly as other sources do — disabled ticks emit an event row with `disabled=true`, skip UPSERT, and do **not** bump `last_decay_at` (so the next tick after re-enable still fires).
+
+**run_id.** Synthetic `maintenance:<utc-day>` (e.g. `maintenance:2026-05-29`). Preserves the `run_id NOT NULL` invariant without schema relaxation; replay determinism via `(ts, run_id, seq)` is unaffected.
+
+**Trigger cadence vs decay cadence.** The scheduler checks **hourly**; the decay **fires** at most once per UTC day per attribute. The hourly cadence bounds restart-jitter to <1h. Daemon-side per `extraction-policy.md` §"Active beachhead" — decay is store + dispatcher + audit-emit work and belongs in the daemon. Broker-timer placement was considered and rejected (would grow elisp surface for non-editor work and miss ticks while emacs is down).
+
+**Production trigger for v1.** Decay ships once production observation confirms the predicted ratcheting failure mode. 2026-05-29 observation (Doubt + Shame pinned at 0.50 from one fixture outcome for three days; Curiosity's `trace_marked`/`segment_backlog` cancellation now tuned to a +0.025/day positive net) is that trigger.
+
+**Implications no longer applicable as of this amend.** Shame no longer accumulates monotonically until a `worked` outcome counters it — idle decay floors the accumulation over time. Operators may still manually re-zero via a future `my/satan-attribute-zero` command (out of T-attr-2 scope; still useful for fast-path resets).
+
+See [`../refactor/T-attr-2-decay.md`](../refactor/T-attr-2-decay.md) for the theme. T-attr-3 may revisit per-attribute magnitudes if production shows uniform `−0.01/day` over- or under-corrects on a specific target.
 
 ---
 
@@ -603,6 +614,28 @@ T-attr-1b ships projection-from-events rebuild. Transcript-from-files rebuild is
 
 For any totally-ordered sequence of events (by `(ts, run_id, seq)`), replay produces the same final state. Caps in §7 are deterministic functions of `(old, delta, doubt_snapshot, shame_snapshot)` where the snapshot is the projection state at the start of each source event (§6.3); confidence weighting in §6.1 is a deterministic function of the source event's `evidence.confidence` field. No clock dependency in the dispatcher.
 
+### 10.5 Idempotence — from-zero replay
+
+`satan-attrd rebuild` is **from-zero**, not replay-on-top. Concretely:
+
+```text
+BEGIN;
+  UPDATE satan_attributes SET value = 0.0, last_decay_at = NULL;
+  -- (optional reset of any future projection-derived columns)
+  -- then replay per §10.1 or §10.2
+  FOR event IN <ordered event set>:
+    apply event to projection (UPSERT)
+COMMIT;
+```
+
+Rationale: §10's promise is "projection is derivable from the event log alone." Replay-on-top contaminates the result with whatever projection state pre-existed (including pre-rebuild drift, stale `last_decay_at`, or values left over from a since-purged event). After an event-log purge, replay-on-top leaves cached projection values that are not in the event log — direct violation of the derivability promise.
+
+From-zero costs one UPDATE before replay. Cheaper than every workaround we'd otherwise need (operator manually zeroing rows pre-rebuild, post-purge audits, etc.).
+
+`--include-disabled` (§10.2) follows the same idempotence rule — same UPDATE-to-zero step, then replay including `disabled=true` rows.
+
+Per-row reset applies to every `satan_attributes` row, including the decay-target rows whose `last_decay_at` would otherwise carry pre-rebuild timing. After rebuild, decay's hourly check sees `last_decay_at = NULL` on the 4 decay-target rows; treat NULL as "decay never run, fire on next hourly tick" — same path as the post-migration backfill case (§17.8).
+
 ---
 
 ## 11. A3 determinism boundary
@@ -639,7 +672,7 @@ Per the same "what is NOT in v1" discipline `outcome-semantics.md` §10 establis
 - **Pattern-specific attribute vectors.** The design note ([`patterns_attributes.design_note.md`](patterns_attributes.design_note.md)) explicitly rules out giving every pattern its own attribute vector or `pattern × attribute` matrix. Pattern-local state (success/ignored/contradicted/harmful counters, scars, cooldowns, intrusion ceilings, preferred interventions) lives in pattern records — a separate, parallel structure governed by its own theme. Attributes stay global by **architecture**, not by v1 narrowing. The `scope` column on `satan_attributes` is forward-compat for the design note's "possibly with episode-local deltas later"; the dispatcher writes `"global"` for every v1 event.
 - **Pattern records themselves.** Out of T-attr-1 scope entirely. Pattern records are a separate theme; T-attr-1's `attribute.delta_applied` events carry the cue-dimension fields (`intervention_kind`, `cue_handles`, `related_motive_id`, `related_trace_ids` in `evidence_json`) so the pattern-records theme can consume the same outcome stream without duplicating intervention-lookup logic.
 - **Episode/motive scopes for attributes.** Reserved by `scope` column for the design note's optional motive-local bias terms (small additive scalars, not full vectors); not implemented in v1. The "should I implement scope X" question is bounded — there will never be `hypothesis:<id>` attributes.
-- **Automatic decay.** Values move only on source events. Reason: §8 — behaviour change worth a separate contract pass.
+- ~~**Automatic decay.**~~ Resolved as of T-attr-2 (2026-05-29). Daily `−0.01` idle decay on `shame`/`doubt`/`brooding`/`metamorphosis` is normative per §8; daemon-side per §17.8. The other 4 attributes remain non-decayed.
 - **Cross-attribute cascade rules.** Brief §3.3 `contradicted` says `Suspicion - medium for related cue/hypothesis` — the "related cue/hypothesis" half belongs to the pattern-record's `contradicted_count`/scar fields, not the attribute layer. The global Suspicion delta is reduced to `-0.05` accordingly (§6 footnote 2).
 - **Repeated-neutral micro-Shame.** Brief §3.3 hints at "tiny + if repeated many times" for `neutral`. V1 = no signal. Pattern records' `ignored_count` carries the "repeated" signal if the pattern-records theme wants to expose it.
 - **`harmful → suspicion` penalty.** A harmful outcome alone does not distinguish "right suspicion, wrong timing" from "wrong suspicion". V1's global Suspicion delta is 0 (§6 footnote 3); the pattern-records theme stores the per-pattern harmful_count + scar.
@@ -648,7 +681,7 @@ Per the same "what is NOT in v1" discipline `outcome-semantics.md` §10 establis
 - **Sources beyond outcome.** T-attr-1c only IMPLEMENTS `:source :outcome` even though the source enum reserves five others (§5). Percept / resonance / sensor / tool_error / manual are deferred to T-attr-1e + future themes; the validator rejects events for reserved-but-unimplemented sources (§5.1).
 - **Manual override path.** Out of T-attr-1 scope entirely (§14).
 - **Model-side attribute reads via tool.** The capsule renders attributes to the model (T-attr-1d). There is no `attribute_get` tool. The model never sees `attribute.delta_applied` events directly; it sees only the rendered capsule.
-- **Maintenance / decay / manual events with no run.** All events require `run_id NOT NULL`. T-attr-2 may relax to nullable + synthetic `maintenance:<ts>` run-ids once a non-run-bound source exists.
+- **Maintenance / decay events with no run.** Decay events (T-attr-2) use synthetic `maintenance:<utc-day>` run-ids (§17.8); the `run_id NOT NULL` invariant is preserved without schema relaxation. Manual override events (§14, deferred) will follow the same synthetic pattern when implemented.
 
 ---
 
@@ -663,7 +696,7 @@ Out of T-attr-1 scope. The contract reserves `:source :manual` for a future inte
 Decisions intentionally left for the implementation tranche, not the contract:
 
 1. **Confidence weighting (§6.1).** Multiplicative `0.5 / 1.0 / 1.5`, or only-magnitude-direction with no confidence scaling? Recommendation: ship the multiplier as broker-side operator config (`attribute-confidence-weights`) so operators can disable by setting all three to `1.0` without amending the contract. Daemon receives weights via source-event payload or startup config.
-2. **Decay schedule (§8).** Daily idle decay or stay manual? Recommendation: defer to T-attr-2; gather production data first.
+2. ~~**Decay schedule (§8).**~~ Resolved 2026-05-29: daily `−0.01` idle decay on the 4 negative-pole attributes, daemon-side, single-tick catch-up, synthetic `maintenance:<utc-day>` run-ids. Normative in §8 + §17.8. T-attr-2 ships it.
 3. **Episode-local additive bias (§3).** Per the design note, `episode` and `motive:<id>` scopes are reserved as *additive bias terms* (small scalars layered onto global values while a motive is active), not full per-scope attribute vectors. Open: do v1 sources need any episode bias, or defer entirely? Recommendation: defer. No v1 consumer needs it; the column stays unused until a concrete bias requirement surfaces.
 4. **Event-source vs upsert authority (§10).** Is the projection authoritative or always recomputed from events? Recommendation: projection is authoritative for live reads; events are authoritative for rebuild. Same shape as `satan_intervention_outcomes` (T7).
 5. **Repeated-neutral micro-Shame (§6.4).** Threshold + magnitude? Recommendation: defer; brief hint is too vague to pin down in v1.
@@ -686,6 +719,7 @@ These do not block T-attr-1b. T-attr-1b may proceed with the §4 storage shapes 
 | 2026-05-25 | T-attr-1e-sensor: §6H amended — `trace_marked` reason added (Curiosity −0.05, Brooding −0.025 on trace persistence); Curiosity column added to §6H delta table. New §6S sensor source — `segment_backlog`, `typing_active`, `typing_idle` reasons with delta tables for Curiosity and Hunger. §5 source list updated: `sensor` flipped to IMPLEMENTED, `hippocampus` description widened to include trace persistence. ATTR_ORDER expanded from 7 to 8 elements (Curiosity added at position 0). | T-attr-1e-sensor PR. |
 | 2026-05-24 | T-attr-1c slice 2 wiring pre-flight pins: §17.3 expanded with the broker→daemon outcome payload v1.0 shape + `schema_version` major-rejection rule + queue table DDL (`satan_outcome_inbox`, `satan_audit_inbox`) + single-thread run-loop concurrency note (no `SELECT FOR UPDATE` in v1 because dispatch is serialized; flagged as a future multi-worker concern). §17.4 expanded with the **reject reply transport** — new `satan_audit_replies` table + `satan_audit_reply` channel; rejects-only (silence on accept). §17.1 expanded to name the broker-side LISTENer + sentinel-death `notifications-notify` defcustoms (`dl-satan-attribute-listener-enabled`, `dl-satan-attribute-listener-notify-app`). | T-attr-1c slice 2 (wiring PR — broker enqueue + daemon run loop + broker LISTENer). |
 | 2026-05-29 | §6H delta-table amend: `trace_marked` Curiosity reduced from −0.05 to −0.025 (option (b) in the post-T-attr-1e snapshot review). Reason: production observation showed sensor `segment_backlog` (+0.05) and hippocampus `trace_marked` (−0.05) firing at identical daily cadence and equal magnitude, producing a perfect daily cancellation that pinned global Curiosity at 0 for three days. Reducing `trace_marked` to `tiny` honours the partial-satisfaction reading (organism recorded *one* trace; broader knowledge gap remains) and restores a positive daily net (+0.025) so Curiosity can accumulate from real signal. Symmetric with Brooding's existing −0.025 on the same reason. Does not address the long-term ceiling problem (only T-attr-2 decay does); ships measurable signal in the meantime. Option (a) — per-segment backlog with cap — deferred as `T-attr-1e-percept` companion work since it requires sensor probe rework + cross-source magnitude-scaling pass. New footnote 6 in §6H.2. | Post-T-attr-1e snapshot review (`follow-ups.md` §"Attribute layer observability"). |
+| 2026-05-29 | T-attr-2a contract amend — three decisions bundled: (1) **§8 normative decay rule** — daily `−0.01` on `shame`/`doubt`/`brooding`/`metamorphosis`, daemon-side per new §17.8, single-tick catch-up, synthetic `maintenance:<utc-day>` run-ids, hourly scheduler check / daily fire. Resolves §15 Q2 (deferred → resolved). §13 "Automatic decay" non-inferable flipped to resolved; §13 "Maintenance / decay events" updated to point at the synthetic-run_id pattern. Broker-timer placement explicitly rejected per `extraction-policy.md`. N-tick catch-up explicitly rejected (operator-misleading; single-tick is conservative). (2) **§10.5 rebuild idempotence pin** — `satan-attrd rebuild` is from-zero, not replay-on-top. Resolves the daemon-pin question ("does rebuild guarantee from-zero replay, or is it explicitly replay-on-top?"). Rationale: §10's "projection derivable from event log alone" promise requires from-zero, otherwise pre-rebuild drift contaminates the result. (3) **§17.4 audit-payload wire-shape requirements** — JSON `null` MUST NOT be substituted as `{}`; empty arrays MUST NOT be substituted as `{}`. Resolves the `~/dev/satan-attrd/handover.local.md` 2026-05-29 bug report on `run_loop::build_audit_payload` + `rpc::enqueue_audit_event` rendering `"related_motive_id":{}`, `"related_trace_ids":{}`, `"caps_applied":{}`. Daemon-side enforcement (avoid `Value::Object(Map::new())` as a `Value::Null` / `Value::Array(vec![])` stand-in); broker-side §5.1 validator MAY reject (deferred — broker rejecting daemon-produced payloads adds noise for a daemon-side bug). T-attr-2 ships under §17.5 disable-switch semantics (disabled ticks record event with `disabled=true`, do NOT bump `last_decay_at`). | T-attr-2a contract amend PR (this commit). |
 
 ---
 
@@ -800,6 +834,14 @@ Flow:
 
 Rejects-only-reply chosen because §17.4 only requires the daemon to log on reject; success acknowledgements would add noise without observability value.
 
+**Wire-shape requirements.** Both inbox payloads (`satan_outcome_inbox.payload_json` broker→daemon, `satan_audit_inbox.payload_json` daemon→broker) are normative on null + empty-collection serialization:
+
+- A semantically-null field MUST serialize as JSON `null`, not `{}`.
+- An empty array field MUST serialize as JSON `[]`, not `{}` and not `null`.
+- An empty object field (rare; reserved for future evidence shapes) MUST serialize as `{}`.
+
+The three are semantically distinct downstream (broker §5.1 validator, audit-transcript readers, future cross-daemon consumers); a `{}` substitution for either of the first two breaks any tool that distinguishes them. Daemon-side enforcement: a `serde_json::Value::Object(Map::new())` is not an acceptable stand-in for `Value::Null` or `Value::Array(vec![])` in the audit payload constructors (`run_loop::build_audit_payload` + `rpc::enqueue_audit_event` are the known offenders; the bug was logged in `~/dev/satan-attrd/handover.local.md` 2026-05-29 and fixed under this contract amend). Broker-side enforcement: §5.1 validator MAY reject (but does not currently — adding the reject is a T-attr-2-aligned daemon-side cleanup, since broker rejecting daemon-produced events generates `satan_audit_replies` rows for what is fundamentally a daemon-side bug).
+
 ### 17.5 Disable-switch placement — daemon-side check
 
 The broker forwards the current `attribute-updates-enabled` state in every source-event payload it puts on the queue (§17.3). The daemon checks the flag at dispatch time:
@@ -827,3 +869,47 @@ V1 eviction: **bounded LRU**, capacity 64. When a new run-id arrives and the map
 Alternative considered + deferred: explicit `intervention.run_ended` broker signal. Cleaner (no LRU heuristic) but requires a new broker-emitted audit event + matching consumer in the daemon. Defer until the LRU heuristic shows wrong (e.g. an evicted run resurfaces with a stale Counter). Eviction is observable: the daemon logs `tracing::info!` on every evict so operators can see when the cap is being hit.
 
 Eviction does NOT touch the event log — only the in-memory Counter. If an evicted run-id resurfaces, the daemon allocates a fresh Counter starting at 1. The `UNIQUE (run_id, seq)` constraint protects against duplicate-seq writes in that case (insert fails on collision; the daemon surfaces the error). In practice, resurfacing only happens if the broker re-emits stale outcomes from a long-gone run, which is itself a bug.
+
+### 17.8 Decay scheduler — daemon-side, hourly check, daily fire
+
+T-attr-2 lands the idle-decay rule (§8) inside the daemon as a `tokio::time::interval` task. Broker is not involved: decay events originate inside the daemon, not as queue-arriving source events, so §17.3's broker→daemon queue does not apply for this path. The daemon→broker audit-RPC path (§17.4) IS used for transcript writing — decay events flow through the same `satan_audit_inbox` channel as outcome-dispatched events.
+
+**Scheduler.** `tokio::time::interval(Duration::from_secs(3600))`. Each tick:
+
+1. Read `(name, value, last_decay_at)` for the 4 decay-target attributes from `satan_attributes`.
+2. For each row where `(now - last_decay_at) ≥ 24h` OR `last_decay_at IS NULL`: synthesise a source event with `source=maintenance`, `reason=idle_decay`, dispatch through the existing pipeline (caps, range_clamp, event INSERT, projection UPSERT), enqueue audit RPC.
+3. On successful event-insert + projection-UPSERT transaction: `UPDATE satan_attributes SET last_decay_at = NOW() WHERE name = $1`.
+
+Hourly cadence bounds restart-jitter to <1h. Per-row `last_decay_at` guard prevents double-fires across hourly checks. Crash mid-tick → next hour's check re-runs the same attribute.
+
+**Synthetic event shape.**
+
+```json
+{
+  "source":      "maintenance",
+  "reason":      "idle_decay",
+  "run_id":      "maintenance:2026-05-29",
+  "seq":         <per-run counter, scoped to maintenance:<utc-day>>,
+  "ts":          "<ISO8601>",
+  "evidence":    {
+    "days_since_last":  <integer>,
+    "tick_utc_day":     "2026-05-29"
+  }
+}
+```
+
+`days_since_last` preserves observability of catch-up gaps without compressing the values into a single multi-day jump (see §8 single-tick rule). `evidence_json` carries no `intervention_id`, `cue_handles`, or `related_*` fields — decay is uncue'd.
+
+**Validator widening.** §5.1 broker validator accepts `(source=maintenance, reason=idle_decay)` from T-attr-2's contract amend onward. Required `evidence_json` keys: `days_since_last` (integer ≥ 0), `tick_utc_day` (date string). No `evidence.confidence` required (decay has no evidence base — it is the absence of evidence).
+
+**Disable interaction.** Honours §17.5 daemon-side check: disabled → event row with `disabled=true`, skip UPSERT, **do not bump `last_decay_at`**. The non-bump is essential — bumping would silently skip the next tick after re-enable. On re-enable, the next hourly check sees the un-bumped `last_decay_at` and fires.
+
+**Catch-up across daemon downtime.** Single-tick, not N. `(now - last_decay_at) ≥ 24h` triggers exactly one `−0.01` regardless of how many full days have elapsed; `evidence_json.days_since_last` preserves the gap for observability. See §8 catch-up rationale.
+
+**Catch-up across migration / rebuild.** Both the `0008_attribute_decay.sql` backfill (`SET last_decay_at = NOW()` on existing rows) and `satan-attrd rebuild`'s §10.5 from-zero step (sets `last_decay_at = NULL`) interact with the scheduler's "decay if ≥24h elapsed OR NULL" rule. Migration backfill ensures the first post-deploy tick does NOT fire a synthetic "first time ever" decay against pre-migration values; rebuild post-zero ensures decay does fire on next tick (NULL is treated as "decay never ran"). The asymmetry is intentional: migration is a deployment step that shouldn't perturb projections; rebuild is an operator-triggered reset where the operator wants the projection to reflect events alone.
+
+**Test seam.** Clock injection via a `Clock` trait — real impl `Utc::now()`, test impl injectable. Establish the pattern here; subsequent time-dependent daemon logic should reuse the trait. Avoids the test brittleness of `tokio::time::pause` for cross-cutting time queries.
+
+**Broker-timer placement (considered + rejected).** A broker-side `run-with-idle-timer` firing a decay RPC was considered. Rejected per [`../refactor/extraction-policy.md`](../refactor/extraction-policy.md) §"Active beachhead" — decay is store + dispatcher + audit-emit work, all daemon-owned. Broker-timer would grow elisp surface for non-editor work, miss ticks while emacs is down (a use case the daemon supports), and fork the dispatcher pipeline into a broker-RPC variant + a daemon-internal variant. Daemon-side keeps one dispatcher, one event bus, one rebuild story.
+
+**N-tick catch-up (considered + rejected).** See §8 catch-up rule. Compressing days of decay into one moment is operator-misleading; single-tick is conservative (under-decays across genuine downtime, which is the safer failure mode given decay's purpose is to drift accumulated wrongness back to zero).

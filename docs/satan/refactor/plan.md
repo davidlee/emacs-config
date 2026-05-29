@@ -5,7 +5,7 @@ metadata:
   type: plan
   topic: satan-refactor
   status: living
-  updated_at: 2026-05-23
+  updated_at: 2026-05-29
 ---
 
 # SATAN refactor — themes index
@@ -25,8 +25,10 @@ T4 / T8 / T6   (quick wins + test split; parallel to all)
 → T2            pre-spawn extraction
 → T7            intervention records (BLOCKER for attributes)  ✓ merged
 → T1.5b         negative classifier implementation             ✓ merged
-→ T-attr-1      attribute layer (Shame dispatcher)             ← in-progress
-→ T-attr-2+     attribute layer (decay, additional sources)
+→ T-attr-1      attribute layer (Shame dispatcher)             ← in-progress (1a/1b/1c/1e-hc/1e-sensor merged)
+→ T-attr-2      attribute layer (idle decay)                   ← next (decided 2026-05-29: ahead of T-attr-1d)
+→ T-attr-1d     capsule render (deferred behind T-attr-2)
+→ T-attr-1e     remaining sources (percept/resonance/tool_error)
 → T3 Path A     capsule registry (only if rendering pain real)
 ```
 
@@ -38,7 +40,8 @@ T1.5b landed before the attributes tranche (the negative classifier was self-con
 |---|---|---|---|---|
 | [T1](T1-observer-split.md)         | Observer file-split                 | merged      | —              | done — classifier extracted to `dl-satan-observer-classify.el` |
 | [T1.5](T1.5-outcome-semantics.md)  | Outcome-semantics + neg classifier  | merged      | T1             | done — 1.5a doc + 1.5b PRs 1–4 merged 2026-05-23 |
-| [T-attr-1](T-attr-1-attribute-layer.md) | Attribute layer (state + Shame dispatcher) | in-progress | T1.5       | 1a/1b/1c merged; 1e-hc + 1e-sensor merged (2026-05-29 daemon catch-up); **next: diagnose outcome-pipeline freeze, then 1d capsule render** — see theme doc §"Next actions" |
+| [T-attr-1](T-attr-1-attribute-layer.md) | Attribute layer (state + Shame dispatcher) | in-progress | T1.5       | 1a/1b/1c merged; 1e-hc + 1e-sensor merged (2026-05-29 daemon catch-up); **1d deferred behind T-attr-2 per 2026-05-29 sequencing decision** — see theme doc §"Next actions" + [`T-attr-2-decay.md`](T-attr-2-decay.md) |
+| [T-attr-2](T-attr-2-decay.md) | Attribute layer — idle decay (daemon-side scheduler) | in-progress | T-attr-1b | 2a contract amend merged 2026-05-29 (bundled §8 decay + §10.5 rebuild idempotence + §17.4 wire-shape); **next: T-attr-2b** `0008_attribute_decay.sql` migration + daemon-side JSON wire-shape + rebuild from-zero fix |
 | [T2](T2-pre-spawn.md)              | Pre-spawn pipeline extraction       | not-started | —              | `dl-satan-pre-spawn.el` + cutover |
 | [T3](T3-capsule-registry.md)       | Capsule render registry             | not-started | —              | (Path A gated; awaits rendering pain) |
 | [T4](T4-modes-field.md)            | Drop tool-spec `:modes` field       | merged      | —              | done — `:modes' stripped from all tool specs; `dl-satan-mode-check-tool-references' enforces |
@@ -54,7 +57,7 @@ Status enum: `not-started | in-progress | merged | abandoned`.
 - **CHANGELOG.md.** One line per merged PR per project convention. Refactor PR template:
   `refactor(satan): T<N> — <subtitle>`
 - **Rollback switches.** T7 + attributes tranche introduce `dl-satan-intervention-recording-enabled` + `dl-satan-attribute-updates-enabled` defcustoms (CODE_REVIEW.md §6 Q9). Wire in T7 PR sequence.
-- **T-attr-2 (decay) sequencing question** (surfaced 2026-05-29). Without idle-decay, every positive-net attribute source ratchets toward its ceiling indefinitely (the 2026-05-29 trace_marked tune produces a +0.025/day positive net for Curiosity, on top of Doubt/Shame already pinned at 0.50 from one fixture outcome). T-attr-1d's capsule will render a slow drift to saturation rather than meaningful homeostasis. Two paths: (a) ship 1d on the unstable substrate, accept "thermometer for ambient saturation" as the v1 surface, ship T-attr-2 immediately after; (b) jump T-attr-2 ahead of 1d so the rendered values mean something. Decision pending user; see [`T-attr-1-attribute-layer.md`](T-attr-1-attribute-layer.md) §"Next actions" item 5.
+- **T-attr-2 (decay) sequencing — resolved 2026-05-29: T-attr-2 lands before T-attr-1d.** Original framing weighed (a) ship 1d on unstable substrate + ship 2 immediately after vs (b) jump 2 ahead of 1d. Decision (b), with the broker-timer variant of 2 explicitly rejected per [`extraction-policy.md`](extraction-policy.md): decay is store + dispatcher + audit-emit work, all daemon-owned. Daemon-side scheduler keeps one dispatcher, one event bus, one rebuild story; under that framing T-attr-2's cost in Rust is comparable to T-attr-1d's cost in elisp, so "ship visible surface sooner" is outweighed by the rework cost of tuning 1d twice (against a saturating substrate, then again post-decay). See [`T-attr-2-decay.md`](T-attr-2-decay.md) for the theme; [`T-attr-1-attribute-layer.md`](T-attr-1-attribute-layer.md) §"Next actions" item 5 carries the cross-link.
 
 ## Open questions (parked from review)
 

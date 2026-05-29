@@ -101,27 +101,21 @@ static — `curiosity=0`, `hunger=0.08`, `doubt=0.50`, `shame=0.50`,
   before 1d, otherwise 1d's first deliverable is a thermometer
   for ambient zero.
 
-## Daemon contract pins (post-supervisor + WIP commit, 2026-05-29)
+## Daemon contract pins (post-supervisor + WIP commit, 2026-05-29) — resolved
 
-Surfaced in `~/dev/satan-attrd/handover.local.md` §"Pre-existing
-minor bugs"; capture into `design-contract.md` §17 before more
-sources land.
+Captured into `design-contract.md` under T-attr-2a contract amend (2026-05-29).
+Remaining work is daemon-side code, tracked on `~/dev/satan-attrd`.
 
-- **JSON null + empty-array render as `{}` in audit payload.**
-  Visible in `transcript.jsonl` as `"related_motive_id":{}`,
-  `"related_trace_ids":{}`, `"caps_applied":{}` instead of `null`
-  / `[]`.  Functional pass-through but breaks downstream tools
-  that distinguish.  Likely `serde_json::Value` default-handling
-  quirk in `run_loop::build_audit_payload` or `rpc::enqueue_audit_event`.
+- ~~**JSON null + empty-array render as `{}` in audit payload.**~~
+  Contract pinned in §17.4 "Wire-shape requirements" — `null`/`[]`/`{}`
+  semantically distinct, no `{}` substitution for the first two.  Daemon
+  fix lands as a companion commit on `~/dev/satan-attrd`
+  (`run_loop::build_audit_payload` + `rpc::enqueue_audit_event`).
 
-- **`satan-attrd rebuild` non-idempotent.**  Replays events onto
-  the existing projection without resetting to zero first.  After
-  an event-log purge, projection keeps cached values; operator
-  workaround is `UPDATE satan_attributes SET value=0.0 WHERE
-  scope='global'; satan-attrd rebuild`.  Violates contract §17's
-  "rebuild reproduces projection from event log alone."  Tighten:
-  does `rebuild` guarantee from-zero replay, or is it explicitly
-  replay-on-top?  Pick one and document.
+- ~~**`satan-attrd rebuild` non-idempotent.**~~  Resolved by §10.5
+  "Idempotence — from-zero replay": rebuild MUST zero the projection
+  before replaying events.  Daemon fix lands alongside the JSON wire-shape
+  cleanup on `~/dev/satan-attrd`.
 
 ## Mind-side items
 

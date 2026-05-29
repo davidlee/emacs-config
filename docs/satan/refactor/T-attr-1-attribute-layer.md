@@ -6,7 +6,7 @@ metadata:
   topic: satan-refactor
   status: in-progress
   blocked_by: [T1.5]
-  updated_at: 2026-05-23
+  updated_at: 2026-05-29
 ---
 
 # Theme T-attr-1 — Attribute layer (state + event log + Shame dispatcher)
@@ -182,18 +182,24 @@ plan order; production observation pulled two items ahead of T-attr-1d.
    - **resonance** (canonical Suspicion trigger via handle-match).
    - **tool_error** (strengthens Metamorphosis + Doubt; lower priority — both
      already active via other sources).
-5. **Sequencing question — T-attr-2 (decay) vs T-attr-1d.**  See
-   [`plan.md`](plan.md) §"Cross-cutting" — surfaced 2026-05-29.  Without
-   decay, every positive-net source ratchets attributes toward their ceiling;
-   1d will render a slow drift to saturation rather than meaningful
-   homeostasis.  Decision pending user.
+5. **Sequencing — T-attr-2 (decay) lands before T-attr-1d (resolved
+   2026-05-29).**  Original framing in [`plan.md`](plan.md) §"Cross-cutting"
+   weighed (a) ship 1d on unstable substrate vs (b) jump T-attr-2 ahead;
+   decision (b), with broker-timer rejected per
+   [`extraction-policy.md`](extraction-policy.md) (decay = store + dispatcher +
+   audit-emit, daemon-owned).  See [`T-attr-2-decay.md`](T-attr-2-decay.md)
+   for the theme.  Practical effect on this theme: item 3 (T-attr-1d capsule
+   render) above is **deferred** until T-attr-2 ships; item 4 (T-attr-1e
+   remaining sources) is **unblocked** and may proceed in parallel with
+   T-attr-2 since 1e sources land into the same daemon and their magnitudes
+   are arguably better tuned against a decaying substrate.
 
 ## Open questions
 
 Carried into the contract's §15 for visibility:
 
 - Confidence weighting magnitudes (Q1).
-- Decay schedule (Q2 — deferred to T-attr-2).
+- Decay schedule (Q2 — resolved 2026-05-29: −0.01/day on `shame`/`doubt`/`brooding`/`metamorphosis`, daemon-side, single-tick catch-up; see [`T-attr-2-decay.md`](T-attr-2-decay.md)).
 - Per-scope storage scope (Q3).
 - Event-source vs upsert authority (Q4).
 - Repeated-neutral micro-Shame (Q5).
