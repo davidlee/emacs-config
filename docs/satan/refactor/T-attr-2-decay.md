@@ -75,13 +75,55 @@ New `crates/satan-attrd/src/decay.rs` (or extend an existing scheduler module if
 
 ## Decay application (T-attr-2d)
 
-`decay::apply(attribute, days_since_last)`:
+Extends `decay::DecayScheduler::tick` from the T-attr-2c skeleton. Pre-research notes — first concrete code shape for the cold-start session.
 
-1. Compute `delta = -0.01 * min(days_since_last, 1)` — single-tick catch-up (see "Catch-up policy").
-2. Pass through the existing `Store::dispatch_source_event` path — same caps, range_clamp, audit-emit, UPSERT.
-3. On success: `UPDATE satan_attributes SET last_decay_at = NOW() WHERE name = $1`.
+### Required code touchpoints
 
-No new code in the dispatcher — decay is a source event like any other.
+| File | Change |
+| --- | --- |
+| `~/dev/satan-attrd/src/types.rs` (or new variant) | Add a `Source::Maintenance` variant if not already there; `Reason::IdleDecay` on whichever reason enum carries non-outcome reasons (likely a new `MaintenanceReason` enum, mirroring `HippocampusReason` / `SensorReason`). |
+| `~/dev/satan-attrd/src/dispatcher.rs` | Add a `dispatch_maintenance(input: &MaintenanceInput, counter: &Counter) -> Vec<EventInsert>` following the `dispatch_sensor` shape (binary, no confidence weighting, evidence is `{days_since_last, tick_utc_day}`). `MaintenanceInput` mirrors `SensorInput`: `run_id`, `ts`, `reason`, `enabled`, `snapshot`, `projection`, plus `days_since_last: i64`. |
+| `~/dev/satan-attrd/src/decay.rs` | Replace `tick`'s "log + return count" body with a full apply loop. Per due row: build `Snapshot` from current projection (read `(doubt, shame)` for §6.3); build `MaintenanceInput` with `days_since_last = row.days_since_last.unwrap_or(1)` clamped to 1 per §8 single-tick rule; call `dispatch_maintenance` → `Vec<EventInsert>`; for each event, `store::insert_event` + (conditional on `!ev.disabled`) `store::upsert_attribute` + `rpc::enqueue_audit_event` (use `run_loop::build_audit_payload` — move it to `run_loop`-pub or to a shared module). On UPSERT success, `UPDATE satan_attributes SET last_decay_at = NOW() WHERE scope = $1 AND name = $2`. |
+| `~/dev/satan-attrd/src/decay.rs` | Add a per-UTC-day `Counter` strategy. Two options: (1) own `Mutex<(NaiveDate, Counter)>` and swap on rollover; (2) reuse the run-loop's `LruCounterMap` keyed by `maintenance:YYYY-MM-DD` (would require sharing the map between RunLoop + DecayScheduler via `Arc<Mutex<_>>` — current design has each owning its own resources). Recommend (1) for isolation. |
+| `~/dev/satan-attrd/src/store.rs` | Add a small helper `bump_last_decay_at(pool, scope, name, now) -> Result<()>` to keep the bump SQL out of `decay.rs`. |
+| `~/dev/satan-attrd/tests/decay.rs` | Replace `tick_does_not_mutate_state` with `tick_applies_decay_and_bumps_last_decay_at` + the full §"Tests (T-attr-2e)" matrix split between this PR and 2e — practically 2d's PR covers golden + bump + range_clamp floor; 2e covers catch-up, disable, restart, replay-determinism. |
+| `~/dev/satan-attrd/src/types.rs` test mod | Round-trip test for `Source::Maintenance` + `MaintenanceReason::IdleDecay` parses. |
+
+### Reference: how source-event apply works today
+
+`run_loop.rs:586-601` is the canonical pattern (loop over events from a dispatcher, insert event, conditional UPSERT, audit RPC). Decay re-uses **the same shape**, just driven from `decay.rs` rather than the LISTEN payload:
+
+```rust
+for ev in &events {
+    store::insert_event(&self.pool, ev).await?;
+    if !ev.disabled {
+        store::upsert_attribute(&self.pool, ev.scope, ev.name,
+                                ev.new_value, &ev.evidence_json, ev.ts).await?;
+    }
+    let audit_payload = build_audit_payload(ev);
+    rpc::enqueue_audit_event(&self.pool, &audit_payload).await?;
+}
+```
+
+The §17.5 contract paragraph "skip UPSERT when disabled" maps to the `if !ev.disabled` guard. The non-bump of `last_decay_at` when disabled is an additional decay-specific rule (not in the source-event loop) — implemented by gating the `bump_last_decay_at` call on the same `!ev.disabled` flag.
+
+### Open decision before 2d: how does decay see `attribute-updates-enabled`?
+
+§17.5 says "daemon-side check" but the existing pattern is "broker stamps `:enabled` per source-event payload" (`dl-satan-attribute.el:140/156/173`). Decay is daemon-originated — no incoming payload to consult. Three options:
+
+- **(A) Persistent settings table.** New `satan_attribute_settings(name TEXT PK, value JSONB)` migration. Broker writes `('attribute_updates_enabled', true|false)` on every `dl-satan-attribute-updates-enabled` toggle (via `add-variable-watcher` or `customize-set-variable` advice). Daemon scheduler reads per tick. Initial state seeded from defcustom default (`t`). One row, one cheap SELECT per hourly tick. **Recommended.**
+- **(B) Broker → daemon notify channel.** Reuse the `pg_notify` pattern: new channel `satan_attribute_settings_changed`; broker emits on toggle; daemon caches in memory. Cleaner real-time but requires startup-state query anyway + extra LISTEN. Over-engineering for a single boolean.
+- **(C) Skip disable for decay in v1.** Decay always runs while the daemon is up. Operator stops decay by stopping the daemon. Document as deliberate v1 trade-off. Cheapest, but `attribute-updates-enabled=nil` capsule render would show "disabled" while values silently drift downward — observability mismatch.
+
+Decision needed before 2d-PR opens. If (A): one migration in this PR (`0012_attribute_settings.sql`) + one broker hook + daemon scheduler read. If (C): contract amend §17.5 carving out decay + theme doc note + ship 2d without the gate (and skip the §"Tests (T-attr-2e)" disable-switch case).
+
+### Catch-up across daemon downtime
+
+Per §8 + §17.8: single-tick. Even if `days_since_last = 5`, emit ONE event with `delta = -0.01` and `evidence_json.days_since_last = 5`. The `MaintenanceInput.days_since_last` field carries the gap for `evidence` rendering; the delta computation clamps to 1 (use `decay_threshold()` quanta, not literal `days_since_last`).
+
+### Per-day Counter strategy
+
+Daily run_id `maintenance:YYYY-MM-DD` (UTC). Recommended: `decay.rs` owns `Mutex<(NaiveDate, Counter)>`. On each event-emit: lock, compare current UTC day, replace with `(today, Counter::new())` if day rolled, allocate `next()`. Avoids cross-cutting the run-loop's LRU.
 
 ## Tests (T-attr-2e)
 

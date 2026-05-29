@@ -2,6 +2,13 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-29 — SATAN: T-attr-2d pre-flight — open §15 Q7 + handover
+
+- `docs/satan/attributes/design-contract.md`: new §15 Q7 (**Daemon-side decay-disable mechanism**) — surfaces the gap that §17.5's "broker stamps `:enabled` per source-event payload" model breaks for decay (daemon-originated events have no incoming payload). Three options with recommendation: (A) persistent `satan_attribute_settings` table broker-writes-daemon-reads (recommended); (B) `pg_notify` push channel + daemon cache; (C) skip decay-disable in v1. §17.5 amended with "Open: decay path" paragraph cross-linking to §15 Q7. §16 row added.
+- `docs/satan/refactor/T-attr-2-decay.md` §"Decay application (T-attr-2d)" rewritten with the post-T-attr-2c cold-start brief: required code touchpoints (`src/types.rs`, `src/dispatcher.rs`, `src/decay.rs`, `src/store.rs`, `src/run_loop.rs`, `tests/decay.rs`), reference to the source-event apply pattern at `run_loop.rs:586-601`, the §15 Q7 decision-shape, the single-tick catch-up rule, and the per-UTC-day Counter strategy recommendation (own `Mutex<(NaiveDate, Counter)>` in `decay.rs` rather than thread the RunLoop's LRU).
+- `~/dev/satan-attrd/handover.local.md` (gitignored): replaced with current 2d cold-start brief — repos at session end, blocking decision (§15 Q7), reference apply pattern, synthetic event shape (§17.8 + §5.1 widening), catch-up rule, local truisms.
+- No code change. T-attr-2d is blocked on the §15 Q7 decision.
+
 ## 2026-05-29 — SATAN: T-attr-2c daemon scheduler skeleton (Clock + decay.rs, no firing yet)
 
 - **`satan-attrd d7f8b89`**: feat(decay) — T-attr-2c. New `src/clock.rs` (`Clock` trait, `SystemClock`, `FakeClock` with `set`/`advance`) and new `src/decay.rs` (`DecayScheduler<C: Clock>` over `DECAY_TARGETS = [Shame, Doubt, Brooding, Metamorphosis]`, hourly `tokio::time::interval` with `MissedTickBehavior::Delay` per §8 single-tick rule). `check_due()` returns rows where `(now - last_decay_at) ≥ 24h OR last_decay_at IS NULL`. `tick()` logs the due set + returns count — **no firing yet** per §17.8 skeleton/firing split; T-attr-2d will extend `tick` to dispatch synthetic `(maintenance, idle_decay)` events + bump `last_decay_at`. `main.rs` `run` subcommand spawns scheduler alongside `RunLoop` via `tokio::select!`. New `tests/decay.rs` (6 tests including `tick_does_not_mutate_state` skeleton-boundary guard). 93/93 daemon tests pass.
