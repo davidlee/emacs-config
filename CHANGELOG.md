@@ -2,6 +2,14 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-29 — sleipnir-doctor: sensor-freshness check
+
+Regression guard for the focus-sensor staleness incident below: a tick reported `STALE (1011m)` and nothing surfaced it until a manual dig. Added a `satan-sensors` check to `lisp/dl-sleipnir-doctor.el`.
+
+- **`sleipnir-doctor--satan-sensors`** — probes the three panopticon feeds the observer gates classification on (§S6): `current/sway.json` and today's `focus-`/`browser-` segment JSONLs. Reuses the evidence module's own `--current-window-status` / `--segments-status` (single source of truth — the doctor sees exactly what the classifier would), so both staleness (`stale-Nm`) and silence (`missing`/`malformed`) trip. Worst feed sets overall status; detail string carries per-feed status (`current=ok, focus=stale-1011m, …`).
+- **`sleipnir-doctor--sensor-status->doctor`** — maps the §S6 status vocabulary to OK/WARN/CRIT. New `sleipnir-doctor-sensor-stale-crit-minutes` (default 120) escalates stale WARN→CRIT: transient capture lag stays WARN, a feed frozen for hours (the 1011m shape) reads CRIT.
+- **Tests** — `lisp/test/dl-sleipnir-doctor-test.el` (first ert for the doctor): pure mapping cases incl. the reliably-red `stale-1011m → CRIT`, plus fixture-backed end-to-end (fresh→OK, missing→WARN, deep-stale focus→CRIT, mild-stale→WARN) driving the real probe code against a tmp behaviour tree with controlled mtimes / `end_ts` ages. 10/10 green; byte-compile clean (warnings-as-errors). Verified live against `~/.local/state/behaviour/` → `current=ok, focus=ok, browser=ok` (new 10-min segmentizer cadence confirmed running).
+
 ## 2026-05-29 — SATAN: fix focus-sensor false-stale + panopticon intraday cadence
 
 Follow-on from the cold-pipeline work: a tick reported the focus sensor `STALE (1011m)`. Two distinct causes, both closed.

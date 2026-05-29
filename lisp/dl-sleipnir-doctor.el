@@ -13,6 +13,8 @@
 (declare-function dl-satan-broker--run-id-from-leaf "dl-satan-broker" (name))
 (declare-function dl-satan-patch-runner-active-p "dl-satan-patch-runner" ())
 (declare-function dl-satan-patch-store-list "dl-satan-patch-store" (&rest args))
+(declare-function dl-satan-memory-evidence--current-window-status "dl-satan-memory-evidence" (path now))
+(declare-function dl-satan-memory-evidence--segments-status "dl-satan-memory-evidence" (path start end limit now))
 (declare-function eglot--managed-servers "eglot" ())
 (declare-function jsonrpc-running-p "jsonrpc" (conn))
 
@@ -20,6 +22,7 @@
 (defvar dl-satan-budget-daily-tokens)
 (defvar dl-satan-patch-runner-enabled)
 (defvar dl-satan-patch-worktree-root)
+(defvar dl-satan-tools-activity-dir)
 (defvar dl-notes-root)
 (defvar dl-notes-inbox-file)
 (defvar org-roam-db-location)
@@ -35,6 +38,15 @@
 
 (defcustom sleipnir-doctor-last-tick-warn-hours 2
   "Hours since last SATAN run before reporting WARN."
+  :type 'number
+  :group 'sleipnir-doctor)
+
+(defcustom sleipnir-doctor-sensor-stale-crit-minutes 120
+  "Minutes a panopticon sensor may be stale before CRIT (else WARN).
+Below this a `stale-Nm' sensor reads WARN (transient capture lag); at
+or beyond it the feed is treated as silent/broken — the failure mode
+behind the 1011m focus-sensor incident, where nightly segmentizing
+left the observer unable to confirm any intraday intervention."
   :type 'number
   :group 'sleipnir-doctor)
 
@@ -73,6 +85,10 @@
 
 (defun sleipnir-doctor--satan-patch-available-p ()
   (and (featurep 'dl-satan-patch-store) (featurep 'dl-satan-patch-runner)))
+
+(defun sleipnir-doctor--sensors-available-p ()
+  (and (featurep 'dl-satan-memory-evidence)
+       (boundp 'dl-satan-tools-activity-dir)))
 
 ;; ---------------------------------------------------------------------------
 ;; Emacs core
@@ -209,6 +225,66 @@
          (if (> age-secs threshold) "WARN" "OK")
          (sleipnir-doctor--human-duration age-secs)))))))
 
+(defun sleipnir-doctor--sensor-status->doctor (status)
+  "Map an evidence sensor STATUS string to a doctor status string.
+STATUS is the §S6 vocabulary: `\"ok\"' / `\"stale-Nm\"' / `\"missing\"'
+/ `\"malformed\"'.  Staleness past
+`sleipnir-doctor-sensor-stale-crit-minutes' escalates WARN→CRIT so a
+silently-frozen feed (not mere capture lag) trips the louder signal."
+  (cond
+   ((equal status "ok") "OK")
+   ((equal status "malformed") "CRIT")
+   ((equal status "missing") "WARN")
+   ((and (stringp status)
+         (string-match "\\`stale-\\([0-9]+\\)m\\'" status))
+    (if (>= (string-to-number (match-string 1 status))
+            sleipnir-doctor-sensor-stale-crit-minutes)
+        "CRIT" "WARN"))
+   (t "WARN")))
+
+(defun sleipnir-doctor--satan-sensors ()
+  "Probe panopticon sensor freshness via the evidence status functions.
+Catches both staleness (`stale-Nm') and silence (`missing'/`malformed')
+of the current-window file and today's focus/browser segment feeds —
+the inputs the observer gates classification on (§S6).  Reuses the same
+status code the assembler runs, so the doctor sees exactly what the
+classifier would.  Worst sensor sets the overall status."
+  (if (not (sleipnir-doctor--sensors-available-p))
+      (sleipnir-doctor--check "SATAN" "sensors" "OK" "not loaded")
+    (let* ((now (current-time))
+           (root dl-satan-tools-activity-dir)
+           (today (format-time-string "%Y-%m-%d" now))
+           ;; Wide window: segment freshness is decided on the newest
+           ;; entry's age, independent of these bounds; they only shape
+           ;; the (discarded) filtered tail on an `ok' probe.
+           (start "1970-01-01T00:00:00Z")
+           (end (format-time-string "%Y-%m-%dT%H:%M:%S%z" now))
+           (probes
+            (list
+             (cons "current"
+                   (car (dl-satan-memory-evidence--current-window-status
+                         (expand-file-name "current/sway.json" root) now)))
+             (cons "focus"
+                   (car (dl-satan-memory-evidence--segments-status
+                         (expand-file-name
+                          (format "segments/focus-%s.jsonl" today) root)
+                         start end 1 now)))
+             (cons "browser"
+                   (car (dl-satan-memory-evidence--segments-status
+                         (expand-file-name
+                          (format "segments/browser-%s.jsonl" today) root)
+                         start end 1 now)))))
+           (statuses (mapcar (lambda (p)
+                               (sleipnir-doctor--sensor-status->doctor (cdr p)))
+                             probes))
+           (overall (cond ((member "CRIT" statuses) "CRIT")
+                          ((member "WARN" statuses) "WARN")
+                          (t "OK"))))
+      (sleipnir-doctor--check
+       "SATAN" "sensors" overall
+       (mapconcat (lambda (p) (format "%s=%s" (car p) (cdr p)))
+                  probes ", ")))))
+
 ;; ---------------------------------------------------------------------------
 ;; SATAN patch pipeline
 ;; ---------------------------------------------------------------------------
@@ -339,6 +415,7 @@
 (sleipnir-doctor--register 'satan-runs      #'sleipnir-doctor--satan-today-runs)
 (sleipnir-doctor--register 'satan-streak    #'sleipnir-doctor--satan-failure-streak)
 (sleipnir-doctor--register 'satan-tick      #'sleipnir-doctor--satan-last-tick)
+(sleipnir-doctor--register 'satan-sensors   #'sleipnir-doctor--satan-sensors)
 (sleipnir-doctor--register 'patch-runner    #'sleipnir-doctor--patch-runner)
 (sleipnir-doctor--register 'patch-queue     #'sleipnir-doctor--patch-queue)
 (sleipnir-doctor--register 'patch-review    #'sleipnir-doctor--patch-pending-review)
