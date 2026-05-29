@@ -205,5 +205,54 @@ Returns (ok . ID) carrying the inserted row id, or (error . MSG)."
 
 (defalias 'dl-satan-attribute-enqueue-outcome #'dl-satan-attribute-enqueue)
 
+;; ---------------------------------------------------------------------
+;; Daemon-side decay-disable: satan_attribute_settings write surface
+;; ---------------------------------------------------------------------
+;;
+;; Decay events are daemon-originated — no source-event payload to stamp
+;; `:enabled' on (the §17.5 model that every other source uses).  Per
+;; §15 Q7 → option A: the broker writes a row keyed
+;; `attribute_updates_enabled' into `satan_attribute_settings' on every
+;; toggle of `dl-satan-attribute-updates-enabled', and the daemon's
+;; `DecayScheduler::tick' SELECTs that row at tick start.  See
+;; design-contract §17.5 "Decay path".
+
+(defun dl-satan-attribute--write-enabled-setting (value &optional db)
+  "Upsert `attribute_updates_enabled' = VALUE into `satan_attribute_settings'.
+VALUE is a Lisp boolean (`t' or `nil').  Returns (ok . _) or (error . MSG)."
+  (let* ((database (or db dl-satan-attribute-database))
+         (json-value (if value "true" "false"))
+         (sql (concat
+               "INSERT INTO satan_attribute_settings (name, value) "
+               "VALUES ('attribute_updates_enabled', :'value'::jsonb) "
+               "ON CONFLICT (name) DO UPDATE "
+               "  SET value = EXCLUDED.value, updated_at = NOW()")))
+    (dl-satan-attribute--query database sql `(("value" . ,json-value)))))
+
+(defun dl-satan-attribute--on-enabled-change (_sym newval op _where)
+  "Variable-watcher hook for `dl-satan-attribute-updates-enabled'.
+Mirrors the new value into `satan_attribute_settings' on every `set'.
+Errors are logged to `*Messages*' and swallowed — a DB write failure
+must not block the customize-set operation."
+  (when (eq op 'set)
+    (condition-case err
+        (let ((result (dl-satan-attribute--write-enabled-setting newval)))
+          (pcase result
+            (`(error . ,msg)
+             (message "dl-satan-attribute: settings write failed: %s" msg))
+            (_ nil)))
+      (error
+       (message "dl-satan-attribute: settings write raised: %S" err)))))
+
+(add-variable-watcher 'dl-satan-attribute-updates-enabled
+                      #'dl-satan-attribute--on-enabled-change)
+
+;; No explicit first-load seed: the 0012 migration seeds the row at the
+;; defcustom default (`true').  Operator-customised values reach the row
+;; via the variable-watcher above — `custom-set-variables' (run after
+;; this file loads) triggers `set' operations the watcher observes.  An
+;; operator changing the defcustom AND never starting emacs is the
+;; degenerate case; one start propagates the value.
+
 (provide 'dl-satan-attribute)
 ;;; dl-satan-attribute.el ends here

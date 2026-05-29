@@ -124,5 +124,49 @@
   ;; Symbol → string.
   (should (equal "foo" (dl-satan-attribute--prep-value 'foo))))
 
+;; ---------------------------------------------------------------------
+;; satan_attribute_settings write surface (T-attr-2d Q7=A)
+;; ---------------------------------------------------------------------
+
+(ert-deftest dl-satan-attribute/write-enabled-setting-binds-true ()
+  ;; `--write-enabled-setting' should bind JSON `true' on a t input,
+  ;; `false' on nil — verified by intercepting `--query'.
+  (let (captured-sql captured-vars)
+    (cl-letf (((symbol-function 'dl-satan-attribute--query)
+               (lambda (_db sql vars)
+                 (setq captured-sql sql captured-vars vars)
+                 '(ok . ""))))
+      (dl-satan-attribute--write-enabled-setting t)
+      (should (string-match-p "satan_attribute_settings" captured-sql))
+      (should (string-match-p "ON CONFLICT (name) DO UPDATE" captured-sql))
+      (should (equal "true" (cdr (assoc "value" captured-vars))))
+      (dl-satan-attribute--write-enabled-setting nil)
+      (should (equal "false" (cdr (assoc "value" captured-vars)))))))
+
+(ert-deftest dl-satan-attribute/on-enabled-change-only-fires-on-set ()
+  ;; The watcher must ignore non-`set' operations (e.g. `let' bindings).
+  (let (called)
+    (cl-letf (((symbol-function 'dl-satan-attribute--write-enabled-setting)
+               (lambda (val &optional _db) (setq called val) '(ok . ""))))
+      (dl-satan-attribute--on-enabled-change
+       'dl-satan-attribute-updates-enabled nil 'let nil)
+      (should (eq called nil))     ; sentinel untouched
+      (dl-satan-attribute--on-enabled-change
+       'dl-satan-attribute-updates-enabled t 'set nil)
+      (should (eq called t))
+      (dl-satan-attribute--on-enabled-change
+       'dl-satan-attribute-updates-enabled nil 'set nil)
+      (should (eq called nil)))))
+
+(ert-deftest dl-satan-attribute/on-enabled-change-swallows-errors ()
+  ;; A DB write failure must not propagate out of the watcher — that
+  ;; would block `customize-set-value'.
+  (cl-letf (((symbol-function 'dl-satan-attribute--write-enabled-setting)
+             (lambda (_val &optional _db) (error "psql exit 1"))))
+    ;; should NOT signal
+    (dl-satan-attribute--on-enabled-change
+     'dl-satan-attribute-updates-enabled t 'set nil)
+    (should t)))
+
 (provide 'dl-satan-attribute-test)
 ;;; dl-satan-attribute-test.el ends here
