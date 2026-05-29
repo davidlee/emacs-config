@@ -365,19 +365,20 @@ justification):
 | `dl-satan-memory.el` | Substrate aggregator + `my/satan-memory-{resonate,show,status}` interactive surface. |
 | `dl-satan-memory-grammar.el` | Closed-world enums, alias seed, default weights for grammar v1 (mirrored in `memory/migrations/0002_grammar_v1.sql`). |
 | `dl-satan-memory-canon.el` | Pure canonicalizer + rule registry; emits handles + per-handle source. Purity grep-lint enforced. |
-| `dl-satan-memory-evidence.el` | Impure evidence-window assembly (panopticon + `bough_read` + git/fs) per [[satan-memory-design]] §4; deterministic truncation. |
+| `dl-satan-memory-evidence.el` | Impure evidence-window assembly (panopticon + `bough_read` + git/fs) per [[satan-memory-design]] §4; deterministic truncation. Also the §S6 git-activity probe (`--git-commits-status`): reads `segments/git-<day>.jsonl`, bursty-freshness (never stale), adds `:git_commits` + `:git` sensor_status. |
 | `dl-satan-memory-store.el` | `mark` / `resonate` / `show` against `satan_memory` via `psql` subprocess. |
 | `dl-satan-memory-migrate.el` | Forward-only migration runner; `dl-satan-memory-renormalize` (§7 grammar-bump replay) + `-status`. |
 | `dl-satan-percept.el` | Perceptual-loop §S1: percept builder, persist (`percept.json`), capsule render. Phase 1. |
 | `dl-satan-resonance.el` | Perceptual-loop §S2: cue derivation + sensor-observed-handle gate + capsule resonance block. Phase 2. |
 | `dl-satan-motive.el` | Perceptual-loop §S3 + §S4 + Phase 6: motives.org parser, atomic writer, footer rewriter (`dl-satan-motive-touch-footer`), capsule render with cooldown annotation (`[cooling-down (Nm remaining)]`). |
 | `dl-satan-observer.el` | Perceptual-loop §S5: 24h transcript scan, window-mature gate, baseline-vs-after diff, positive predicate classifier, multi-motive resolver, verdict persistence; broker entry `dl-satan-observer-process RUN-CTX`. Phase 5. |
-| `dl-satan-sensor-alerts.el` | Perceptual-loop §S6: freshness check dispatcher, per-cause cooldown, quiet-hours suppression, dispatch through `notify_send` tool path, records into `actions.json.pre_spawn`. Phase 4. |
+| `dl-satan-sensor-alerts.el` | Perceptual-loop §S6: freshness check dispatcher, per-cause cooldown, quiet-hours suppression, dispatch through `notify_send` tool path, records into `actions.json.pre_spawn`. Phase 4. Renders the `git` sensor (no alert cause — commits are bursty, a quiet feed must not page). |
 | `dl-satan-tank.el` | Shared mutable run-context "tank" plist accessors (run_id, time_now, evidence, percept, sensor_status, pre_spawn, motive, observer summary). |
 | `dl-satan-tools-motive.el` | `motive_read` / `motive_replace` handlers + bound validators (≤3 active, ≤10 ruminations, `:cue:` syntax + sensor-observed-handle requirement, rejects `:ceiling:`). |
 | `dl-satan-tools-atsatan.el` | `notes_at_satan_scan` (read; `rg --json` over `~/notes/` excluding `satan/`, enriched with headline + context) + `notes_at_satan_done` (claim by replacing `@satan` with `@satan-was-here` + quoted run-id block). Registers `tick-agent` via `dl-satan-tick-register`. |
 | `dl-satan-tools-notes.el` | `notes_recent` (fd-based recently-modified files under `~/notes/`, excludes `satan/`). |
 | `dl-satan-tools-sway.el` | `sway_border_set` / `sway_border_reset` (visual ephemeral effect). |
+| `dl-satan-tools-vcs.el` | `vcs_log` (read; `git -C REPO log` for an abs path or a bare slug resolved against `~/dev`/`~/.emacs.d`/`~/flakes`); pwd-independent. The on-demand drill-in for the git-activity sensor (§S6); the `project:<slug>` handle tells the model *which* repo to ask about. |
 | `dl-satan-patch.el` | Patch-agent aggregator + `my/satan-patch-*` interactive surface. |
 | `dl-satan-patch-store.el` | `satan_patch.patch_jobs` PG store; INSERT fires `pg_notify` for queued rows. |
 | `dl-satan-patch-worktree.el` | Worktree allocator + cleanup: `git worktree add <runs-dir>/<job-id>` against current HEAD, branch `satan/patch/<job-id>`. |

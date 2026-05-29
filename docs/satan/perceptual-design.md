@@ -410,20 +410,35 @@ Thresholds (start values; tune from observed cadence):
 | `current/sway.json` | 5 min mtime | drop from `current_window` |
 | `segments/focus-<day>.jsonl` (latest entry) | 30 min | drop tail |
 | `segments/browser-<day>.jsonl` (latest entry) | 30 min | drop tail |
+| `segments/git-<day>.jsonl` (commit feed) | none — bursty | never stale; in-window slice only |
 | `bough` call | 5 s timeout | mark unreachable; rules emit nothing |
 | `satan_memory` (psql) | error | log + notify; resonance disabled this run |
+
+**Git is the odd sensor out.** focus/browser/current are *continuous*
+streams where silence means the capture is broken (page-worthy). Commits
+are *bursty*: a feed whose newest entry is days old just means no recent
+commits — normal, not a fault. So the git probe inverts the freshness
+contract: status is only `ok` / `missing` / `malformed`, **never
+`stale-Nm`**, the slice is never age-dropped, and it carries **no alert
+cause** (a quiet feed must not page). The feed is written by a global
+`post-commit` hook (`satan/bin/satan-git-post-commit`) — pwd-independent,
+so commits made anywhere (e.g. via Claude in a terminal) are captured,
+not just those made from inside Emacs. Repos with an in-window commit
+surface as `project:<slug>` handles (canon `vcs.recent_commit`, reusing
+the open-world `project` namespace — no grammar bump). The model can then
+drill into any repo's full history on demand via the `vcs_log` tool.
 
 Sensor status returned alongside evidence:
 
 ```text
-:sensor_status (:current_window ok :focus ok :browser ok :bough ok)
-:sensor_status (:current_window stale-28m :focus ok :browser ok :bough unreachable)
+:sensor_status (:current_window ok :focus ok :browser ok :bough ok :git ok)
+:sensor_status (:current_window stale-28m :focus ok :browser ok :bough unreachable :git ok)
 ```
 
 Rendered into the capsule as one line:
 
 ```text
-sensors: current=STALE(28m) focus=4m browser=4m bough=unreachable
+sensors: current=STALE(28m) focus=4m browser=4m bough=unreachable git=ok
 ```
 
 **Loud failure on shouldn't-be-missing.** When a sensor degrades in a

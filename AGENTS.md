@@ -76,3 +76,9 @@ Full detail: [docs/emacs/traps.md](docs/emacs/traps.md).
 - compile-angel byte-compiles `.el` on save and load.
 - Some files are intentionally untracked (`*.secret.el`, `apps/dl-spotify.el`
   historically) — check git status before assuming a "missing" file is a bug.
+- Global git `post-commit` hook (`satan/bin/satan-git-post-commit`, symlinked
+  from `~/.config/git/hooks/` via `core.hooksPath`) feeds the SATAN git-activity
+  sensor — appends a JSONL row per commit to
+  `~/.local/state/behaviour/segments/git-<day>.jsonl`. The global `core.hooksPath`
+  **disables repo-local `.git/hooks/`**; `~/.gitconfig` is not Nix-managed, so
+  this is a manual one-time machine setup.
