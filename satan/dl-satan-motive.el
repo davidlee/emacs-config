@@ -441,11 +441,6 @@ error per turn (A7)."
              :limit dl-satan-motive-max-ruminations
              :got (length ruminations)))
      (cl-some (lambda (m)
-                (when (and (not (plist-get m :dormant))
-                           (plist-get m :dormant_reason))
-                  ;; not reachable — dormant<->dormant_reason are in
-                  ;; lockstep — but defensive.
-                  nil)
                 (when (plist-get m :dormant_reason)
                   ;; Active-on-paper motives with a bad cue are the
                   ;; write-side failure case the author needs to see

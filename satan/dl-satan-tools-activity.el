@@ -28,6 +28,7 @@
 (require 'cl-lib)
 (require 'subr-x)
 (require 'dl-satan-tools)
+(require 'dl-satan-jsonl)
 
 (defcustom dl-satan-tools-activity-dir
   (expand-file-name "~/.local/state/behaviour/")
@@ -57,28 +58,6 @@
                          :null-object nil
                          :false-object :false))))
 
-(defun dl-satan-tools-activity--read-jsonl (path)
-  "Return a list of plists, one per non-empty JSON line at PATH.
-nil if PATH is unreadable."
-  (when (file-readable-p path)
-    (with-temp-buffer
-      (let ((coding-system-for-read 'utf-8))
-        (insert-file-contents path))
-      (let (acc)
-        (goto-char (point-min))
-        (while (not (eobp))
-          (let ((line (buffer-substring-no-properties
-                       (point) (line-end-position))))
-            (unless (string-empty-p (string-trim line))
-              (push (json-parse-string line
-                                       :object-type 'plist
-                                       :array-type 'list
-                                       :null-object nil
-                                       :false-object :false)
-                    acc)))
-          (forward-line 1))
-        (nreverse acc)))))
-
 (defun dl-satan-tools-activity--clamp-limit (raw)
   (cond
    ((null raw) dl-satan-tools-activity-default-limit)
@@ -107,7 +86,7 @@ Returns (ok PLIST) | (error STRING)."
                       (plist-get args :limit)))
               (path (expand-file-name
                      (format "segments/focus-%s.jsonl" today) root))
-              (all  (dl-satan-tools-activity--read-jsonl path))
+              (all  (dl-satan-jsonl-read-file path))
               (tail (last all limit)))
          (cons 'ok (list :scope "recent_focus"
                          :date today
@@ -119,7 +98,7 @@ Returns (ok PLIST) | (error STRING)."
                       (plist-get args :limit)))
               (path (expand-file-name
                      (format "segments/browser-%s.jsonl" today) root))
-              (all  (dl-satan-tools-activity--read-jsonl path))
+              (all  (dl-satan-jsonl-read-file path))
               (tail (last all limit)))
          (cons 'ok (list :scope "recent_browser"
                          :date today

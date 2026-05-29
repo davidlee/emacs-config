@@ -23,16 +23,17 @@ no urgent owner.  Tick off and remove when shipped.
   tool-specs still guard handler-side.  Mechanical migration: replace
   handler-side gates with `:capability` declarations on the tool spec.
 
-- **Collapse `dl-satan-tools-activity--read-jsonl` onto
-  `dl-satan-jsonl-read-file`.**  Phase 5.2 lifted the public
-  `dl-satan-jsonl-read-file` out of the activity helper but did not
-  delete the original.  Both decoders agree on shape — single-line
-  rename + call-site update.
+- ~~**Collapse `dl-satan-tools-activity--read-jsonl` onto
+  `dl-satan-jsonl-read-file`.**~~  Done 2026-05-30 — private helper
+  deleted, four call sites (activity ×2, evidence ×2) redirected to
+  the public `dl-satan-jsonl-read-file`; explicit `(require
+  'dl-satan-jsonl)` added to both consumers.  Bodies were
+  byte-identical; no behaviour change.
 
-- **Drop dead `(when … nil)` defensive branch in
-  `dl-satan-motive-validate-for-write`.**  One-line cleanup; pre-dates
-  Phase 5.  Currently the only byte-compile warning in
-  `dl-satan-motive.el`.
+- ~~**Drop dead `(when … nil)` defensive branch in
+  `dl-satan-motive-validate-for-write`.**~~  Done 2026-05-30 —
+  unreachable `dormant`/`dormant_reason` lockstep branch removed.
+  `dl-satan-motive.el` now byte-compiles clean.
 
 ## Functional extensions
 

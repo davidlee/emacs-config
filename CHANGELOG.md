@@ -2,6 +2,14 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-30 — SATAN: follow-up cleanups (jsonl reader collapse + dead branch)
+
+Two mechanical items off `docs/satan/follow-ups.md`. No behaviour change.
+
+- **`satan/dl-satan-tools-activity.el` / `dl-satan-memory-evidence.el`** — deleted the private `dl-satan-tools-activity--read-jsonl` (a byte-for-byte duplicate of the public `dl-satan-jsonl-read-file` lifted out in Phase 5.2 but never removed). Four call sites (activity ×2, evidence ×2) redirected to the public reader; explicit `(require 'dl-satan-jsonl)` added to both consumers rather than leaning on transitive load.
+- **`satan/dl-satan-motive.el`** — removed the unreachable `(when (and (not :dormant) :dormant_reason) … nil)` branch in `dl-satan-motive-validate-for-write`; `:dormant`/`:dormant_reason` move in lockstep so it never fired. Was the only byte-compile warning in the file.
+- **Tests** — motive + activity + evidence suites green (99/99, incl. the invalid-cue precedence cases that exercise the changed validator). All three files byte-compile clean.
+
 ## 2026-05-30 — SATAN: git-activity sensor (commits perceived across all repos)
 
 SATAN had no commit-history visibility *at the prompt*. Git was read

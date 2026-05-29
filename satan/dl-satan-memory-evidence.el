@@ -34,6 +34,7 @@
 (require 'cl-lib)
 (require 'json)
 (require 'subr-x)
+(require 'dl-satan-jsonl)
 (require 'dl-satan-tools-activity)
 (require 'dl-satan-tools-bough)
 
@@ -153,7 +154,7 @@ Newest entry is taken by max :end_ts so files written out of order
   (cond
    ((not (file-readable-p path)) (cons "missing" '()))
    (t (condition-case _err
-          (let* ((all (dl-satan-tools-activity--read-jsonl path))
+          (let* ((all (dl-satan-jsonl-read-file path))
                  (newest (dl-satan-memory-evidence--newest-segment-end all))
                  (newest-t (and newest (date-to-time newest)))
                  (age (and newest-t
@@ -185,7 +186,7 @@ readable with rows), `\"missing\"' (no readable path / no rows), or
   (condition-case _err
       (let* ((readable (cl-remove-if-not #'file-readable-p paths))
              (all (apply #'append
-                         (mapcar #'dl-satan-tools-activity--read-jsonl
+                         (mapcar #'dl-satan-jsonl-read-file
                                  readable))))
         (cond
          ((null all) (cons "missing" '()))
