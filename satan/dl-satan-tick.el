@@ -74,7 +74,8 @@ The prompt file defaults to `<prompts>/tick/SHORT-NAME.txt'."
                         "sway_border_set" "sway_border_reset"
                         "bough_read" "memory_mark" "memory_resonate"
                         "memory_show_trace"
-                        "motive_read" "motive_replace")
+                        "motive_read" "motive_replace"
+                        "vcs_log")
               :capabilities '(notify inbox-write memory-write motive-write)
               :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
               :jail-profile 'specDev

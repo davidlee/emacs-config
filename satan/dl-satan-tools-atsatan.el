@@ -658,6 +658,7 @@ authoring run for projection rebuild."
           "memory_mark" "memory_resonate" "memory_show_trace"
           "bough_read"
           "agenda_read"
+          "vcs_log"
           "patch_job_create" "patch_job_status")
  :capabilities '(write-notes inbox-write memory-write notify)
  :budget-tokens 100000

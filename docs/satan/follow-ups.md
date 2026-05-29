@@ -48,18 +48,32 @@ no urgent owner.  Tick off and remove when shipped.
   unreachable `dormant`/`dormant_reason` lockstep branch removed.
   `dl-satan-motive.el` now byte-compiles clean.
 
-- **Broker manifest tests red on `vcs_log` description.**  Surfaced
-  2026-05-30 (pre-existing, from the git-activity sensor commit).
+- ~~**`vcs_log` never reached the model — absent from the cadence
+  modes.**~~  Fixed 2026-05-30.  The git-activity sensor commit added
+  `vcs_log` to the five hand-written modes (`morning`, `motd`,
+  `ruminate`, `self-edit-mech`, `self-edit-mind`) but **not** to the
+  two tick modes that actually run on the ~30 min cadence —
+  `tick-pulse` (tick defaults, `dl-satan-tick.el`) and `tick-agent`
+  (override, `dl-satan-tools-atsatan.el`).  Both run
+  `dl-satan-context-tick`, which surfaces the sensor's
+  `project:<slug>` handles — so the model saw "repo X is active" but
+  had no `vcs_log` to drill in: the percept→tool loop the sensor was
+  built for was open.  Added `"vcs_log"` to both tick tool lists
+  (read-risk, no capability).  Verified live: `tick-pulse`,
+  `tick-agent`, `morning` all expose it.
+
+- **Broker manifest tests red on `vcs_log` description (test-only).**
+  Surfaced 2026-05-30; distinct from the runtime gap above.
   `dl-satan-broker/manifest-tools-shape` and
   `…/refuses-spawn-when-budget-exceeded` fail with `SATAN: tool
   description missing: …/vcs_log.md`.  `dl-satan-tool-json-schema`
   resolves each tool's model-facing `.md` via
-  `dl-satan-tool--description`, but `vcs_log`'s description lives at
-  `~/notes/satan/tools/vcs_log.md` — outside the repo — so the test
-  fixture's temp descriptions dir lacks it.  Fix: either stage a
-  `vcs_log.md` stub into the broker test fixture, or make
-  `dl-satan-tool--description` tolerate a missing file in test mode.
-  Not capability-migration scope.
+  `dl-satan-tool--description`, which errors on a missing file (by
+  design — a tool without a description is a misconfiguration).  At
+  runtime the file is present (`~/notes/satan/tools/vcs_log.md`); only
+  the broker test's temp descriptions-dir fixture lacks it.  Fix:
+  stage a `vcs_log.md` stub into the broker test fixture (or whatever
+  builds its descriptions dir).  Not capability-migration scope.
 
 ## Functional extensions
 

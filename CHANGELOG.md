@@ -2,6 +2,13 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-30 — SATAN: expose vcs_log in the tick cadence modes
+
+The git-activity sensor's `vcs_log` tool was registered and added to the five hand-written modes (morning, motd, ruminate, self-edit-mech/mind) but **not** to the two tick modes that actually run on the ~30 min cadence — `tick-pulse` (tick defaults in `dl-satan-tick.el`) and `tick-agent` (override in `dl-satan-tools-atsatan.el`). Both run `dl-satan-context-tick`, which surfaces the sensor's `project:<slug>` handles, so the model saw active-repo handles in its percept but had no `vcs_log` to drill in — the percept→tool loop the sensor was built for never closed at the prompt.
+
+- Added `"vcs_log"` to both tick tool lists (`:risk read`, no capability — no other wiring). Verified live (`emacsclient`): `tick-pulse`, `tick-agent`, `morning` all expose it; `dl-satan-mode-check-tool-references` passes; both files byte-compile clean.
+- Pre-existing, still open: the broker manifest tests are red because their temp descriptions-dir fixture lacks `vcs_log.md` (the file is present at runtime under `~/notes/satan/tools/`). Logged in `follow-ups.md`.
+
 ## 2026-05-30 — SATAN: capability enforcement moved to dispatcher (inbox/hippocampus/memory)
 
 Follow-up off `docs/satan/follow-ups.md` — finish the Phase 0.2 capability rail. `inbox`, `hippocampus`, and `memory` tools guarded capability handler-side (or, for `memory_mark`, not at all); enforcement now lives single-point in the dispatcher via spec `:capability`, matching the `notify`/`motive-write` pattern.
