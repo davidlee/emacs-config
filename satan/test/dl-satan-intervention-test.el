@@ -733,5 +733,53 @@ symbol whose value is a list).  Stub returns `(ok . \"trace_test\")'."
                                      (plist-get kvs :payload)))))
        (delete-directory root t)))))
 
+;; ---------------------------------------------------------------------
+;; pg timestamptz normalization (no DB) — regression for the cold
+;; outcome pipeline.  `psql -A' renders a `timestamptz' as
+;; `YYYY-MM-DD HH:MM:SS+00' (space separator); Emacs `date-to-time'
+;; cannot parse that form (the space confuses `parse-time-string',
+;; which then drops the time-of-day and mis-shifts the date ~1.5 days
+;; into the past).  Every prior fixture used the `T'-separated ISO
+;; form, so the suite was green while production never classified a
+;; single intervention.
+;; ---------------------------------------------------------------------
+
+(ert-deftest dl-satan-intervention/normalize-pg-timestamp-space-form ()
+  "psql space-form becomes a `date-to-time'-parseable instant."
+  (let ((out (dl-satan-intervention--normalize-pg-timestamp
+              "2026-05-28 23:22:32+00")))
+    ;; parses to the same instant as the explicit `T'-separated form
+    (should (equal (date-to-time out)
+                   (date-to-time "2026-05-28T23:22:32+00")))
+    ;; and not to the garbage `date-to-time' yields for the raw space form
+    (should-not (equal (date-to-time out)
+                       (date-to-time "2026-05-28 23:22:32+00")))))
+
+(ert-deftest dl-satan-intervention/normalize-pg-timestamp-idempotent ()
+  "Already-`T' strings pass through unchanged."
+  (dolist (s '("2026-05-28T23:22:32+00"
+               "2026-05-28T23:22:32+10:00"
+               "2026-05-28T23:22:32+1000"))
+    (should (equal s (dl-satan-intervention--normalize-pg-timestamp s)))))
+
+(ert-deftest dl-satan-intervention/normalize-pg-timestamp-empty ()
+  "nil and empty pass through unchanged (absent timestamptz cells)."
+  (should (null (dl-satan-intervention--normalize-pg-timestamp nil)))
+  (should (equal "" (dl-satan-intervention--normalize-pg-timestamp ""))))
+
+(ert-deftest dl-satan-intervention/row-to-intervention-ts-parses ()
+  "A psql-shaped row yields a `:ts' that parses to the right instant.
+Regression: the unparseable space-form made every intervention read
+as `:stale', so no outcome row was ever written."
+  (let* ((cells (list "20260529T092232-tick-pulse-094281.iv001"
+                      "20260529T092232-tick-pulse-094281"
+                      "2026-05-28 23:22:32+00" ; ts, psql space-form
+                      "tick-pulse" "inbox" "editor" "msg"
+                      "" "{}" "expected" "30" "medium"))
+         (iv (dl-satan-intervention--row-to-intervention cells)))
+    (should (equal (date-to-time (plist-get iv :ts))
+                   (date-to-time "2026-05-28T23:22:32+00")))
+    (should (= 30 (plist-get iv :outcome_window_minutes)))))
+
 (provide 'dl-satan-intervention-test)
 ;;; dl-satan-intervention-test.el ends here

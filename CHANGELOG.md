@@ -2,6 +2,15 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-29 — SATAN: fix cold outcome pipeline — psql timestamptz was unparseable by `date-to-time`
+
+Root-caused why `satan_intervention_outcomes` had stayed empty (and Doubt/Shame pinned at 0.50): not an unwired classifier, but a timestamp parse bug. `dl-satan-intervention-pending` dumps the `ts` `timestamptz` via `psql -A` as the space-separated `YYYY-MM-DD HH:MM:SS+00` form. Emacs `date-to-time` cannot parse that — the space defeats `parse-time-string`, which drops the time-of-day and mis-shifts the date ~1.5 days into the past. Every intervention therefore read `:stale` in `dl-satan-observer--maturity-state` → `classify-for-motives` returned nil → `observer-process` skipped it without persisting an outcome. The (correct, Postgres-side) pending SQL kept re-surfacing the row each tick until its own 24 h window closed, then orphaned it. The classifier wiring (every tick via `dl-satan-broker--spawn`, ~30 min cadence) and the `@satan-intervention-*` manual fallback were never at fault — the input was malformed.
+
+- **`satan/dl-satan-intervention.el`** — new `dl-satan-intervention--normalize-pg-timestamp` (replaces the first space with `T`; nil/empty pass through). Applied at the DB-row boundary in `--row-to-intervention` (`:ts`) and `--row-to-outcome` (`:next_revisit_at`, `:classified_at`) so every downstream `date-to-time` (maturity, P1–P4 predicate windows, revisit calc) sees a parseable instant. Audited the other broker-side `date-to-time` sites — all consume broker-produced ISO-`T` strings or JSONL, not `psql -A` timestamptz columns; the intervention pipeline was the only hazard.
+- **Tests** — `dl-satan-intervention/{normalize-pg-timestamp-*,row-to-intervention-ts-parses}` (the reliably-red unit: a psql-shaped cell parses to the right instant) + `dl-satan-observer/process-classifies-hours-after-emit` (end-to-end guard locking the realistic wire shape through pending → classify). The whole bug existed because every prior fixture used the `T`-separated form, so the suite was green while production never classified once. 140/140 intervention+observer ert green; `dl-satan-intervention.el` byte-compiles clean.
+- **Docs** — `follow-ups.md` "Outcome pipeline cold" flipped to resolved with the root cause; `observer-classify.md` corrected (the `:stale` branch was claimed "production never lands here" — it did, for months).
+- Two pre-fix orphan interventions (05-24, 05-27) are SQL-stale and left unrecovered (clean break, per refactor plan.md open-Q6); the two 05-29 rows were still in-window and classify on the next tick.
+
 ## 2026-05-29 — SATAN: T-attr-2f shipped (per-UTC-day seq Counter resumes from MAX(seq)+1) + lint baseline cleared
 
 Closes the restart-while-disabled `(run_id, seq)` collision T-attr-2e surfaced, and clears the long-standing baseline `just lint` failure. Daemon-only changes (`~/dev/satan-attrd`) plus this doc pass; no broker code touched. **T-attr-2 is now feature-complete.**

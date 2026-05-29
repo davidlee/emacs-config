@@ -697,6 +697,17 @@ returns nil for empty `{}'."
                         e))
                     (split-string inner ","))))))))
 
+(defun dl-satan-intervention--normalize-pg-timestamp (cell)
+  "Make a `psql -A' timestamptz CELL parseable by `date-to-time'.
+`psql' renders a `timestamptz' as `YYYY-MM-DD HH:MM:SS+ZZ' (space
+separator); the space defeats `parse-time-string', which then drops
+the time-of-day and mis-shifts the date.  Replacing the first space
+with `T' yields an ISO8601 form Emacs parses correctly, regardless of
+the offset width.  nil / empty pass through unchanged."
+  (if (and (stringp cell) (string-match " " cell))
+      (replace-match "T" t t cell)
+    cell))
+
 (defun dl-satan-intervention--row-to-intervention (cells)
   "Convert a CELLS list (column-order matches `--lookup-columns') to plist."
   (cl-destructuring-bind
@@ -706,7 +717,7 @@ returns nil for empty `{}'."
       cells
     (list :intervention_id        id
           :run_id                 run_id
-          :ts                     ts
+          :ts                     (dl-satan-intervention--normalize-pg-timestamp ts)
           :mode                   mode
           :kind                   kind
           :target_surface         target_surface
@@ -731,9 +742,11 @@ returns nil for empty `{}'."
           :confidence        confidence
           :evidence          (dl-satan-intervention--parse-jsonb evidence_json)
           :maturity          maturity
-          :next_revisit_at   next_revisit_at
+          :next_revisit_at   (dl-satan-intervention--normalize-pg-timestamp
+                              next_revisit_at)
           :source            source
-          :classified_at     classified_at
+          :classified_at     (dl-satan-intervention--normalize-pg-timestamp
+                              classified_at)
           :revises           (if (string-empty-p revises) nil revises)
           :marked_by         (if (string-empty-p marked_by) nil marked_by)
           :notes             (if (string-empty-p notes) nil notes))))

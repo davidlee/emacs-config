@@ -79,27 +79,44 @@ static — `curiosity=0`, `hunger=0.08`, `doubt=0.50`, `shame=0.50`,
   cross-source magnitude-scaling work.  Long-term ceiling
   problem remains — only T-attr-2 decay closes it.
 
-- **Outcome pipeline cold — zero real classifications.**
-  `satan_intervention_outcomes` is empty.  Only 2 production
-  interventions ever (both `inbox`-kind, severity=medium,
-  2026-05-24 and 2026-05-27); neither classified.  The 27
-  `source=outcome` rows in `satan_attribute_events` all belong
-  to one synthetic `morning-aaaaaa` fixture run, not real
-  classifications.  Doubt + Shame are stuck at 0.50 because the
-  fixture's one `harmful` outcome bumped them and nothing has
-  moved them since.  T1.5b shipped a classifier but the observer
-  is not producing positives in production.  Diagnosis pre-1d:
-  is `dl-satan-observer-classify` wired into a hook that
-  actually fires; does the classifier ever return non-null on
-  real intervention shapes; should the manual `@satan-intervention-*`
-  notes-directive be exercised as the smoke fallback while the
-  observer warms up.
+- ~~**Outcome pipeline cold — zero real classifications.**~~
+  **Root-caused + fixed 2026-05-29.**  `satan_intervention_outcomes`
+  was empty not because the classifier was unwired (it runs every
+  tick via `dl-satan-broker--spawn` → `dl-satan-observer-process`,
+  ~30 min cadence) but because of a **timestamp parse bug**:
+  `dl-satan-intervention-pending` dumps the `ts` `timestamptz` via
+  `psql -A` as the space-separated `YYYY-MM-DD HH:MM:SS+00` form,
+  which `date-to-time` cannot parse (the space defeats
+  `parse-time-string`, which drops the time-of-day and mis-shifts
+  the date ~1.5 days earlier).  Every intervention therefore read
+  `:stale` in `dl-satan-observer--maturity-state` → `classify-for-
+  motives` returned nil → `observer-process` recorded
+  `:skipped :stale` and **persisted no outcome row**.  With no
+  outcome row, the (correct, Postgres-side) pending SQL kept
+  re-surfacing the same row every tick until its own 24 h window
+  closed, then orphaned it.  Diagnostic evidence:
+  `~/notes/satan/runs/2026-05-29/…T180333…/actions.json` showed an
+  8.5 h-old intervention skipped as stale while SQL reported it
+  in-window.  **Fix:** normalize the cell at the DB-row boundary
+  (`dl-satan-intervention--normalize-pg-timestamp`, applied in
+  `--row-to-intervention` + `--row-to-outcome`).  The classifier
+  and `@satan-intervention-*` manual fallback were never the
+  problem — the wiring was sound, the input was malformed.
+  Regression tests lock the realistic psql wire shape
+  (`dl-satan-intervention/row-to-intervention-ts-parses`,
+  `dl-satan-observer/process-classifies-hours-after-emit`).
+  The two pre-fix orphans (05-24, 05-27) are SQL-stale and left
+  unrecovered (clean break); the two 05-29 rows were still
+  in-window and classify on the next tick.
 
-- **T-attr-1d capsule render is premature without signal.**
-  Rendering a bar chart of 4 hard-zeros and 3 stuck-static values
-  surfaces nothing to the model.  Pin the above two findings
-  before 1d, otherwise 1d's first deliverable is a thermometer
-  for ambient zero.
+- **T-attr-1d capsule render — unblocked once signal accumulates.**
+  The parse fix above re-opens the classification path, but
+  `satan_intervention_outcomes` still needs to fill from real ticks
+  before 1d renders anything meaningful (and Doubt/Shame begin
+  drifting off the fixture-pinned 0.50 as decay + real outcomes
+  interact — the T-attr-2 acceptance gate).  Watch for ≥1 real
+  outcome row + attribute movement over the following days, then 1d
+  is sensible.
 
 ## Daemon contract pins (post-supervisor + WIP commit, 2026-05-29) — code-resolved
 

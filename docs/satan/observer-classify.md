@@ -28,7 +28,7 @@ Optional NOW is the broker's frozen `:time_now` ISO string.
 |-----------|----------------|-----------|
 | nil | `:mature` | maturity check skipped; test-fixture convenience — direct callers in ert don't need to thread NOW |
 | present → `:pending` | `:pending` | returns `(:classification :unknown :confidence :low :predicates nil :reason :pending :maturity :pending)` without consulting predicates (§2 invariant 3) |
-| present → `:stale` | — | returns nil; caller skips persist (§3, §6.3 — auto re-pass forbidden past stale cutoff). Production never lands here because `dl-satan-intervention-pending` excludes stale rows in SQL; branch is defence-in-depth |
+| present → `:stale` | — | returns nil; caller skips persist (§3, §6.3 — auto re-pass forbidden past stale cutoff). `dl-satan-intervention-pending` excludes stale rows in SQL, so this branch should be reachable only when the SQL window and the elisp `maturity-state` disagree. **It did, for months** — `psql -A` dumps `timestamptz` as the space-separated `YYYY-MM-DD HH:MM:SS+00` form, which `date-to-time` mis-parsed ~1.5 days into the past, so every in-window intervention read `:stale` here and was skipped (the cold outcome pipeline). Closed 2026-05-29 by normalizing the cell at the DB-row boundary (`dl-satan-intervention--normalize-pg-timestamp`); this branch is now genuinely defence-in-depth. |
 | present → `:mature` | `:mature` | existing flow below |
 
 ## Guard order (`:mature` / NOW-nil)

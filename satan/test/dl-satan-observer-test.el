@@ -1263,6 +1263,49 @@ no longer surfaces the same intervention."
                                :runs-dir root))))
              (should (= 0 (plist-get out2 :processed)))))))))))
 
+(ert-deftest dl-satan-observer/process-classifies-hours-after-emit ()
+  "End-to-end guard — a real DB-sourced intervention (whose `:ts'
+arrives in `psql -A' space-form via `dl-satan-intervention-pending')
+classifies hours after emit instead of skipping as `:stale'.
+
+Forward guard for the cold-pipeline bug: the space-form `timestamptz'
+(`YYYY-MM-DD HH:MM:SS+00') is unparseable by `date-to-time' until
+`--row-to-intervention' normalizes it.  The reliably-red unit for that
+mis-parse is `dl-satan-intervention/row-to-intervention-ts-parses'
+(the mis-parse offset is data-dependent, so it does not always cross
+the 24 h staleness boundary at the observer level); this test instead
+locks the full pending → classify path on the realistic wire shape."
+  (dl-satan-observer-test--with-db
+   (dl-satan-observer-test--in-tmp
+    (lambda (root)
+      (let* ((dl-satan-runs-dir root)
+             (old-id "20260523T110000-morning-aaaaaa")
+             (audit-old (dl-satan-observer-test--open-audit root old-id))
+             (ctx-old (dl-satan-observer-test--build-ctx
+                       audit-old old-id "2026-05-23T11:00:00+1000")))
+        (dl-satan-observer-test--mint ctx-old)
+        (dl-satan-observer-test--write-bundle-with-handles
+         (dl-satan-observer-test--make-run-dir root old-id)
+         (list "topic:nothing-matches"))
+        (dl-satan-motive-test--with-tmp-file
+         mpath ""
+         (let* ((now "2026-05-23T17:00:00+1000") ; emit + 6 h, window open until 05-24 11:30
+                (curr-id "20260523T170000-morning-cccccc")
+                (out (dl-satan-observer-process
+                      (list :time_now now
+                            :run_id curr-id
+                            :mode_name "morning"
+                            :audit (dl-satan-observer-test--open-audit
+                                    root curr-id))
+                      (list :motive-path mpath :runs-dir root))))
+           (should (= 1 (plist-get out :processed)))
+           (let ((v (car (plist-get out :verdicts))))
+             ;; classified — NOT skipped stale
+             (should-not (plist-get v :skipped))
+             (should (eq :unknown (plist-get v :classification)))
+             (should (eq :no_correlation (plist-get v :reason)))
+             (should (eq :mature (plist-get v :maturity)))))))))))
+
 (ert-deftest dl-satan-observer/process-positive-bumps-motive-and-projects ()
   "End-to-end positive verdict — bundle handles overlap a motive's cue
 and git head changed; motive footer bumps, projection holds worked."
