@@ -512,5 +512,38 @@ recorded attempts, the bough status is \"unreachable\"."
        (should (member "day:2026-05-19" handles))
        (should (member "week:2026-W21" handles))))))
 
+;; ---------------------------------------------------------------------
+;; newest-segment-end must compare by parsed instant, not string.
+;; Segment files can carry mixed timestamp offsets during a capture-side
+;; format transition (e.g. the firefox plugin's UTC-`Z` → local-offset
+;; fix): a `Z' instant 10 h ahead of local sorts LOWER as a string than
+;; a stale `+10:00' one, so a naive `string>' picks the older entry and
+;; reports a false `stale-Nm'.
+;; ---------------------------------------------------------------------
+
+(ert-deftest dl-satan-memory-evidence/newest-segment-end-single-offset ()
+  "All-same-offset: returns the max instant (unchanged behaviour)."
+  (should (equal "2026-05-29T19:00:00+10:00"
+                 (dl-satan-memory-evidence--newest-segment-end
+                  (list '(:end_ts "2026-05-29T17:00:00+10:00")
+                        '(:end_ts "2026-05-29T19:00:00+10:00")
+                        '(:end_ts "2026-05-29T18:00:00+10:00"))))))
+
+(ert-deftest dl-satan-memory-evidence/newest-segment-end-mixed-offset ()
+  "Mixed `Z' + `+10:00': newest by INSTANT wins even when its string
+sorts lower.  `2026-05-29T08:00:00Z' (= 18:00 +10:00) is later than
+`2026-05-29T17:00:00+10:00' (= 07:00Z) but `\"17\"' > `\"08\"' as a
+string, so a `string>'-based selector returns the wrong (older) entry."
+  (should (equal "2026-05-29T08:00:00Z"
+                 (dl-satan-memory-evidence--newest-segment-end
+                  (list '(:end_ts "2026-05-29T17:00:00+10:00")
+                        '(:end_ts "2026-05-29T08:00:00Z"))))))
+
+(ert-deftest dl-satan-memory-evidence/newest-segment-end-empty ()
+  "No segments / no parseable `:end_ts' → nil."
+  (should (null (dl-satan-memory-evidence--newest-segment-end nil)))
+  (should (null (dl-satan-memory-evidence--newest-segment-end
+                 '((:start_ts "2026-05-29T17:00:00+10:00"))))))
+
 (provide 'dl-satan-memory-evidence-test)
 ;;; dl-satan-memory-evidence-test.el ends here

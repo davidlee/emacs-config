@@ -126,15 +126,21 @@ as drop-the-slice."
             (error (cons "malformed" nil))))))))
 
 (defun dl-satan-memory-evidence--newest-segment-end (segments)
-  "Return the max :end_ts string across SEGMENTS, or nil when none qualify.
-Segments may be appended out of order in tests/fixtures, so the
-freshness check takes max rather than trusting file position."
-  (let (best)
+  "Return the :end_ts string with the latest INSTANT across SEGMENTS,
+or nil when none qualify.  Segments may be appended out of order
+in tests/fixtures, so the freshness check takes the max rather than
+trusting file position.  Comparison is by parsed instant, not by
+string: a capture-side offset transition (e.g. the firefox plugin's
+UTC-`Z' → local-offset fix) leaves mixed offsets in a file, and a
+`Z' instant ahead of local sorts LOWER as a string than a stale
+local one — a string max would then report a false `stale-Nm'."
+  (let (best best-t)
     (dolist (seg segments)
       (let ((ts (plist-get seg :end_ts)))
-        (when (and (stringp ts)
-                   (or (null best) (string> ts best)))
-          (setq best ts))))
+        (when (stringp ts)
+          (let ((tt (ignore-errors (date-to-time ts))))
+            (when (and tt (or (null best-t) (time-less-p best-t tt)))
+              (setq best ts best-t tt))))))
     best))
 
 (defun dl-satan-memory-evidence--segments-status (path start end limit now)
