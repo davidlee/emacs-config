@@ -15,8 +15,8 @@
   :commands (consult-notes consult-notes-search-in-all-notes)
   :custom
   (consult-notes-file-dir-sources
-    `(("Journal"    ?j ,dl-notes-journal-dir)
-       ("Weekly"     ?w ,dl-notes-weekly-dir)
+    `( ;; ("Journal"    ?j ,dl-notes-journal-dir)
+       ;; ("Weekly"     ?w ,dl-notes-weekly-dir)
        ("Projects"   ?p ,dl-notes-projects-dir)
        ("Areas"      ?a ,dl-notes-areas-dir)
        ("Sources"    ?s ,dl-notes-sources-dir)
