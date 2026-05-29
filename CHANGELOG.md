@@ -2,6 +2,17 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-29 — SATAN: T-attr-2e shipped (decay integration test matrix + restart-while-disabled collision guard)
+
+Closes the four integration concerns T-attr-2d deferred (catch-up, disable-switch, restart, replay-determinism) and surfaces one design finding. Daemon-only changes (`~/dev/satan-attrd`) plus this doc pass; no broker code touched.
+
+Daemon (`~/dev/satan-attrd`):
+
+- **`satan-attrd c54c242`** — `tests/decay.rs`, five new tests (7 → 12 in the binary): `tick_catch_up_emits_single_event_for_multi_day_gap` (5-day gap → one −0.01 event, `days_since_last=5` preserved, delta NOT multiplied — §8); `tick_disabled_inserts_event_and_audit_but_skips_projection` (disabled → `disabled=true` event + audit row, no UPSERT, no `last_decay_at` bump; re-enable → next tick fires — §17.5/§17.8); `tick_survives_scheduler_restart_via_last_decay_at` (fresh scheduler same UTC day is a no-op, next day re-fires under a new `run_id`); `rebuild_clears_last_decay_at_so_decay_rearms` (§10.5/§17.8 — rebuild zeros `last_decay_at` so decay re-arms; replay is deterministic); and the `tick_restart_while_disabled_same_day_collision` probe. New helpers `force_target` (seed a global target to a known value / NULL `last_decay_at`) and `enable_attribute_updates` (pin the disable-switch true at test entry so a panicked predecessor can't leak `false` — the setting is shared DB state the `DECAY_TEST_LOCK` does not roll back).
+- **`satan-attrd 29d6902`** — `src/error.rs` + `src/decay.rs`, restart-while-disabled seq-collision guard. The per-UTC-day `seq` Counter is in-memory and resets on restart (§17.7); on the disabled path `last_decay_at` is never bumped, so cold targets stay due and a same-day restart re-emits identical `(run_id, seq)` rows. Because the event `id` derives from `(run_id, seq)`, the primary-key constraint trips first. `tick()` now maps that violation (PK or the `(run_id, seq)` UNIQUE) to a loud, attributed `Error::DecaySeqCollision { run_id, seq }` with a `tracing::error!` naming the cause, and aborts the tick — no projection mutated, no silent corruption. Structural fix (resume the Counter from `MAX(seq)+1` for today's `run_id` on construction) deferred to **T-attr-2f**.
+- 105 daemon tests green (was 100). `cargo fmt` clean. (Pre-existing `clippy::expect_used` denials on `clock.rs`/`decay.rs` mutex locks predate this PR and are untouched.)
+- **Scope note (DRY):** generic rebuild skip-disabled / replay-all coverage already lives in `tests/store.rs`; the new replay test asserts only the decay-specific `last_decay_at`-reset + re-arm rather than duplicating it.
+
 ## 2026-05-29 — SATAN: T-attr-2d shipped (idle decay applies, audit emits, disable gate wired)
 
 §15 Q7 resolved → option A (persistent `satan_attribute_settings` table broker-writes-daemon-reads). T-attr-2d lands across 2 broker commits + 5 daemon commits. Idle decay now fires daily on the 4 negative-pole attributes (shame, doubt, brooding, metamorphosis) through the same EventInsert apply pattern the source-event loop uses; disable switch threads through `MaintenanceInput.enabled` so `attribute-updates-enabled=nil` writes `disabled=true` event rows without UPSERTing the projection (per §17.5). Disable-switch / catch-up / restart / replay-determinism integration tests deferred to T-attr-2e per theme doc §"Migration sketch".

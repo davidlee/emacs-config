@@ -130,6 +130,18 @@ Daily run_id `maintenance:YYYY-MM-DD` (UTC). Recommended: `decay.rs` owns `Mutex
 - Restart: daemon restart mid-day, assert hourly tick within 1h, assert no double-fire if `last_decay_at` was bumped pre-crash.
 - Replay determinism: synthetic event log with mixed source events + maintenance events, replay yields byte-identical projection. Tests the `(ts, run_id, seq)` ordering with `maintenance:<utc-day>` run_ids.
 
+**Landed (T-attr-2e, 2026-05-29, daemon `~/dev/satan-attrd`).** Five `tests/decay.rs` tests (golden + floor already shipped in 2d):
+
+- `tick_catch_up_emits_single_event_for_multi_day_gap` — 5-day gap → one −0.01, `evidence_json.days_since_last = 5`, delta not multiplied.
+- `tick_disabled_inserts_event_and_audit_but_skips_projection` — `disabled=true` event + audit row, no UPSERT, no `last_decay_at` bump; re-enable → next tick fires.
+- `tick_survives_scheduler_restart_via_last_decay_at` — fresh scheduler same UTC day is a no-op (state is in `last_decay_at`, not the in-memory counter); next UTC day re-fires under a new `run_id`.
+- `rebuild_clears_last_decay_at_so_decay_rearms` — §10.5 rebuild zeros `last_decay_at` → decay re-arms; second rebuild reproduces identical values.
+- `tick_restart_while_disabled_same_day_collision` — **probe** (see finding below).
+
+Scope deviation (DRY): generic rebuild skip-disabled / replay-all coverage already exists in `tests/store.rs` (`rebuild_default_skips_disabled_events`, `rebuild_replays_events_in_ts_run_seq_order`). The replay test here asserts only the decay-specific `last_decay_at`-reset + re-arm rather than restating it.
+
+**Finding → T-attr-2f.** The restart probe confirmed a real `(run_id, seq)` collision: the per-UTC-day `seq` Counter is in-memory and resets on restart; on the disabled path `last_decay_at` is never bumped, so cold targets stay due and a same-day restart re-emits identical `(run_id, seq)` rows (the derived `id` PK trips first). 2e ships a **loud guard** — `tick()` maps the violation to `Error::DecaySeqCollision { run_id, seq }` (`tracing::error!` + abort, no projection mutated). The **structural fix** (resume the Counter from `MAX(seq)+1` for today's `run_id` on construction) is deferred to T-attr-2f. Normative wording: design-contract §17.8 "Restart-while-disabled seq collision".
+
 ## Catch-up policy (decided)
 
 **Single tick, not N.** Daemon down 5 days, restart: one −0.01 tick fires on the next hourly check, `last_decay_at` jumps to `now`.
@@ -164,7 +176,8 @@ T-attr-2a contract amend PR. One commit on `~/dev/satan-attrd` companion + broke
 - T-attr-2b: one PR — `0011_attribute_decay.sql` migration + backfill.
 - T-attr-2c: one PR — scheduler infra (Clock trait + `decay.rs` skeleton + interval task, no firing yet).
 - T-attr-2d: one PR — decay application + audit emit + `last_decay_at` bump + integration with disable switch.
-- T-attr-2e: one PR — golden + catch-up + disable + floor + restart + replay-determinism tests.
+- T-attr-2e: one PR — catch-up + disable + restart + replay-determinism tests (golden + floor shipped in 2d). **Landed 2026-05-29**; surfaced the restart-while-disabled seq collision (loud guard shipped, structural fix → 2f).
+- T-attr-2f (deferred, opened by 2e): resume the per-UTC-day `seq` Counter from `MAX(seq)+1` for today's `run_id` on `DecayScheduler` construction, so a mid-day restart while disabled no longer collides on `(run_id, seq)`. Until then the collision is loud and projection-safe (`Error::DecaySeqCollision`) and self-clears at the next UTC-day boundary. Scope: `src/decay.rs` (+ a `store` `max_seq_for_run` helper) + a test flipping the 2e probe from "collides loudly" to "resumes cleanly". See design-contract §17.8.
 
 Order is firm 2a → 2b → 2c → 2d → 2e. Each PR independently reviewable; only 2d flips behaviour observable in the broker.
 
@@ -302,10 +315,14 @@ When this theme is done:
   6. 85/85 daemon tests pass (60 unit + 8 dispatcher + 5 run_loop +
      12 store).
 
-T-attr-2d is the next concrete step — extend `DecayScheduler::tick`
-to dispatch synthetic `(source=maintenance, reason=idle_decay)` events
-through the existing dispatcher pipeline (caps, range_clamp, event
-INSERT, projection UPSERT, audit RPC), then bump `last_decay_at` on
-success.  Honours §17.5 disable-switch (disabled → event with
-`disabled=true`, skip UPSERT, do NOT bump `last_decay_at`).  Synthetic
-run_id `maintenance:<utc-day>` per §17.8.
+T-attr-2c, 2d, and 2e all landed 2026-05-29 (see CHANGELOG.md for the
+per-commit record). 2d extended `DecayScheduler::tick` to dispatch
+synthetic `(source=maintenance, reason=idle_decay)` events through the
+dispatcher pipeline + bump `last_decay_at`; 2e added the integration
+matrix and the restart-while-disabled seq-collision guard.
+
+**Next concrete step: T-attr-2f** — resume the per-UTC-day `seq` Counter
+from `MAX(seq)+1` on `DecayScheduler` construction so a mid-day restart
+while disabled stops colliding on `(run_id, seq)` (deferred from 2e; the
+collision is currently loud + projection-safe via `Error::DecaySeqCollision`).
+See §"Migration sketch" and design-contract §17.8.
