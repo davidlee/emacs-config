@@ -107,15 +107,11 @@ for ev in &events {
 
 The §17.5 contract paragraph "skip UPSERT when disabled" maps to the `if !ev.disabled` guard. The non-bump of `last_decay_at` when disabled is an additional decay-specific rule (not in the source-event loop) — implemented by gating the `bump_last_decay_at` call on the same `!ev.disabled` flag.
 
-### Open decision before 2d: how does decay see `attribute-updates-enabled`?
+### Decay sees `attribute-updates-enabled` via — resolved (2026-05-29, option A)
 
-§17.5 says "daemon-side check" but the existing pattern is "broker stamps `:enabled` per source-event payload" (`dl-satan-attribute.el:140/156/173`). Decay is daemon-originated — no incoming payload to consult. Three options:
+§15 Q7 resolved → **persistent settings table.** Migration `0012_attribute_settings.sql` introduces `satan_attribute_settings(name TEXT PK, value JSONB NOT NULL, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`. Broker writes `('attribute_updates_enabled', true|false)` on every `dl-satan-attribute-updates-enabled` toggle via `add-variable-watcher`; seeded on first emacs load from the defcustom default (`t`). Daemon `DecayScheduler::tick` SELECTs the row at the start of each tick and threads the boolean into `MaintenanceInput.enabled`, which `dispatch_maintenance` stamps onto each `EventInsert.disabled`. §17.5's apply rule then handles disabled rows unchanged — event written, audit RPC sent, UPSERT skipped, `last_decay_at` NOT bumped (so next-enabled tick still fires). Normative in design-contract §17.5 "Decay path".
 
-- **(A) Persistent settings table.** New `satan_attribute_settings(name TEXT PK, value JSONB)` migration. Broker writes `('attribute_updates_enabled', true|false)` on every `dl-satan-attribute-updates-enabled` toggle (via `add-variable-watcher` or `customize-set-variable` advice). Daemon scheduler reads per tick. Initial state seeded from defcustom default (`t`). One row, one cheap SELECT per hourly tick. **Recommended.**
-- **(B) Broker → daemon notify channel.** Reuse the `pg_notify` pattern: new channel `satan_attribute_settings_changed`; broker emits on toggle; daemon caches in memory. Cleaner real-time but requires startup-state query anyway + extra LISTEN. Over-engineering for a single boolean.
-- **(C) Skip disable for decay in v1.** Decay always runs while the daemon is up. Operator stops decay by stopping the daemon. Document as deliberate v1 trade-off. Cheapest, but `attribute-updates-enabled=nil` capsule render would show "disabled" while values silently drift downward — observability mismatch.
-
-Decision needed before 2d-PR opens. If (A): one migration in this PR (`0012_attribute_settings.sql`) + one broker hook + daemon scheduler read. If (C): contract amend §17.5 carving out decay + theme doc note + ship 2d without the gate (and skip the §"Tests (T-attr-2e)" disable-switch case).
+Rejected: (B) `pg_notify` + LISTEN cache — over-engineering for a single boolean that flips ≤ once/day; needs startup query anyway. (C) skip-disable-in-v1 — capsule "disabled" render would lie while values silently drifted downward (observability mismatch).
 
 ### Catch-up across daemon downtime
 
