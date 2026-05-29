@@ -62,18 +62,14 @@ no urgent owner.  Tick off and remove when shipped.
   (read-risk, no capability).  Verified live: `tick-pulse`,
   `tick-agent`, `morning` all expose it.
 
-- **Broker manifest tests red on `vcs_log` description (test-only).**
-  Surfaced 2026-05-30; distinct from the runtime gap above.
-  `dl-satan-broker/manifest-tools-shape` and
-  `…/refuses-spawn-when-budget-exceeded` fail with `SATAN: tool
-  description missing: …/vcs_log.md`.  `dl-satan-tool-json-schema`
-  resolves each tool's model-facing `.md` via
-  `dl-satan-tool--description`, which errors on a missing file (by
-  design — a tool without a description is a misconfiguration).  At
-  runtime the file is present (`~/notes/satan/tools/vcs_log.md`); only
-  the broker test's temp descriptions-dir fixture lacks it.  Fix:
-  stage a `vcs_log.md` stub into the broker test fixture (or whatever
-  builds its descriptions dir).  Not capability-migration scope.
+- ~~**Broker manifest tests red on `vcs_log` description (test-only).**~~
+  Fixed 2026-05-30.  `dl-satan-broker/manifest-tools-shape` and
+  `…/refuses-spawn-when-budget-exceeded` both build the `morning`
+  manifest, which now lists `vcs_log`; `dl-satan-tool--description`
+  errors on a missing `.md` (by design).  The runtime file was always
+  present (`~/notes/satan/tools/vcs_log.md`) — only the broker test's
+  `--with-tool-descriptions` fixture alists lacked the stub.  Added a
+  `vcs_log` entry to both alists.  Broker suite 20/20 green.
 
 ## Functional extensions
 
