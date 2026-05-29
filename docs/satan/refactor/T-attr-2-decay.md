@@ -56,7 +56,7 @@ Before any code, amend the contract:
 
 ## Schema migration (T-attr-2b)
 
-`0008_attribute_decay.sql`:
+`0011_attribute_decay.sql`:
 
 - Add `last_decay_at TIMESTAMPTZ NULL` to `satan_attributes` (per-attribute row).
 - Backfill: `UPDATE satan_attributes SET last_decay_at = NOW()` so existing rows do not immediately fire a "first tick" with N days of accumulated drift at deploy time.
@@ -123,7 +123,7 @@ T-attr-2a contract amend PR. One commit on `~/dev/satan-attrd` companion + broke
 ## Migration sketch
 
 - T-attr-2a: one PR, contract amend + this theme doc. No code.
-- T-attr-2b: one PR — `0008_attribute_decay.sql` migration + backfill.
+- T-attr-2b: one PR — `0011_attribute_decay.sql` migration + backfill.
 - T-attr-2c: one PR — scheduler infra (Clock trait + `decay.rs` skeleton + interval task, no firing yet).
 - T-attr-2d: one PR — decay application + audit emit + `last_decay_at` bump + integration with disable switch.
 - T-attr-2e: one PR — golden + catch-up + disable + floor + restart + replay-determinism tests.
@@ -199,4 +199,36 @@ When this theme is done:
   `last_decay_at` column reset deferred to T-attr-2b when the migration
   adds the column.
 
-T-attr-2b is the next concrete step (schema migration + backfill).
+- **T-attr-2b — schema migration + projection field (2026-05-29, daemon
+  commit `58e7bba` in `~/dev/satan-attrd`).**
+  1. `migrations/0011_attribute_decay.sql` — `ALTER TABLE
+     satan_attributes ADD COLUMN last_decay_at TIMESTAMPTZ NULL` +
+     backfill `SET last_decay_at = NOW()` on existing rows.  Backfill
+     prevents the first post-deploy hourly scheduler tick (T-attr-2c)
+     from synthesising a multi-day catch-up against pre-migration
+     values, per §17.8 "Catch-up across migration / rebuild".
+  2. **Migration slot rename.** Contract-pinned filename was
+     `0008_attribute_decay.sql` at 2a-amend time; slot 8 was already
+     taken by `0008_outcome_inbox.sql` which landed between 2a and 2b.
+     Migration renamed to next free slot `0011_`.  Contract §17.8 +
+     this theme doc + `plan.md` filename references updated; §16
+     change-history row records the slot reassignment.
+  3. `src/store.rs` — `AttributeRow` gains `last_decay_at:
+     Option<DateTime<Utc>>`.  `None` means "decay has never run for
+     this row" (fresh insert / post-rebuild reset); `Some(ts)` is the
+     wallclock of the last successful tick.  `lookup_attribute` SELECT
+     extended.
+  4. `rebuild_projection` §10.5 zero-step now also resets
+     `last_decay_at = NULL` (the deferral from 2a's `fb2b33d` is now
+     resolved — column exists).  Per §17.8: rebuild is an
+     operator-triggered reset; the scheduler treats post-rebuild rows
+     as "decay never ran" and fires on the next hourly check.
+  5. `tests/store.rs:rebuild_is_from_zero_when_event_log_is_empty_for_scope`
+     extended: seeds `last_decay_at = NOW()` on the pre-rebuild row,
+     asserts NULL post-rebuild — proves the zero-step clears the
+     column rather than relying on the column's default NULL.
+  6. 85/85 daemon tests pass (60 unit + 8 dispatcher + 5 run_loop +
+     12 store).
+
+T-attr-2c is the next concrete step — `Clock` trait + `decay.rs`
+skeleton + `tokio::time::interval` task, no firing yet.
