@@ -6,14 +6,14 @@
 
 - **Delta**: `DE-002` — satan-attrd integration tests leak `test:<uuid>` rows into production `satan_memory`.
 - **Backlog source**: `ISSUE-003`.
-- **State**: scoped + designed + planned. **Not yet implemented.** Next = execute Phase 01.
+- **State**: P01 (harness engine) **implemented + committed + phase completed** (12/12). Next = **P02 call-site migration** (needs a phase-02 sheet first).
 
 ### Required reading (in order)
 
 1. `DE-002.md` — scope, two-defect framing, acceptance criteria.
 2. `DR-002.md` — **canonical design (v2)**. §4.1 harness pseudocode, §4.2 sweep, §4.3 rejected alts, §5 verification, §7 decisions (DEC-1..6).
-3. `IP-002.md` — phase plan (P01 harness engine, P02 call-site migration).
-4. `phases/phase-01.md` — **active phase sheet**, 7-task breakdown + exit criteria.
+3. `IP-002.md` — phase plan; **§P02 specs the next phase** (call-site migration, VT-suite-green).
+4. `phases/phase-01.md` — **completed** P01 sheet — read §9 Decisions + §10 Findings (sqlx socket caveat, accumulation) before P02.
 
 ### Related documents
 
@@ -65,13 +65,14 @@
 
 ### Commit-state guidance
 
-- Worktree clean for DE-002 artefacts — committed `7e8d7a3`, `1f4b971`, `1c29300`.
-- Pre-existing **unrelated** dirty files in `~/.emacs.d/` (NOT part of DE-002, do not bundle): `.spec-driver/run/events.jsonl`, `init.el`, untracked `.spec-driver/registry/policies.yaml`, `apps/dl-eca.el`.
-- Code commits land in `~/dev/satan-attrd/` per repo doctrine — separate from these artefact commits.
+- P01 committed: **satan-attrd `1600e90`** (harness code: `tests/common/mod.rs` + `tests/harness.rs`); **~/.emacs.d `b6f9113`** (DE-002 artefacts + memory). Earlier artefact commits: `7e8d7a3`, `1f4b971`, `1c29300`.
+- Code commits land in `~/dev/satan-attrd/` per repo doctrine — separate from `.emacs.d` artefact commits. P02 follows the same split.
+- **satan-attrd** has a pre-existing staged `flake.lock` (NOT ours) — do not bundle; commit P02 test files by explicit pathspec.
+- Pre-existing **unrelated** dirty files in `~/.emacs.d/` (NOT part of DE-002, do not bundle): `.spec-driver/run/events.jsonl` (runtime log churn), `init.el`, untracked `.spec-driver/registry/policies.yaml`, `apps/dl-eca.el`.
 
 ## Next Agent Instructions
 
-P01 engine is proven green. Invoke `/using-spec-driver`, then `/execute-phase` for **DE-002 / IP-002 Phase 02** (call-site migration).
+P01 engine is proven green. Invoke `/using-spec-driver`. No `phases/phase-02.md` exists yet, so route `/plan-phases` (P02 is already fully specced in IP-002 §P02 — objectives + VT-suite-green exit criteria; the sheet is quick) **then** `/execute-phase` for **DE-002 / IP-002 Phase 02**.
 
 Phase 02 = delete the now-dead `cleanup_*` apparatus, in `~/dev/satan-attrd/`:
 1. Remove `cleanup_scope`/`cleanup_run` **defs** from `tests/common/mod.rs`.
