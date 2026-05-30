@@ -6,13 +6,10 @@ home-switch:
 used:
   @rg use-package -g '*.el' -I --trim | egrep -v '^;' | cut -d ' ' -f 2 | tr ')' ' ' | sort | uniq
 
-# Run the ERT suite in the live Emacs server (fast suites; DB/IO excluded).
+# Run the ERT suite in the live Emacs server. DB-backed tests skip
+# unless their test database (satan_memory_test, ...) is reachable.
 check:
   @emacsclient --eval '(dl-test-run-suite)' | tee /dev/stderr | grep -q PASS
-
-# Run the full ERT suite, including Postgres/daemon-backed suites.
-check-all:
-  @emacsclient --eval '(dl-test-run-suite t)' | tee /dev/stderr | grep -q PASS
 
 clean:
   @find ~/.emacs.d -name '*.elc' -delete
