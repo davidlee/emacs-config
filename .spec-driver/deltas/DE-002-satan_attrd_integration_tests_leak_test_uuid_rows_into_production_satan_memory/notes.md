@@ -31,6 +31,8 @@
 ### Relevant memories
 
 - `feedback_subagent_worktree_pinning` — **pin absolute `~/dev/satan-attrd/` paths in any subagent prompt**; worktree isolation flag unreliable. Directly applies if dispatching P01/P02 to sub-agents.
+- `mem.fact.satan-attrd.sqlx-socket-host` — sqlx drops the `?host=` socket param; VT-no-prod is the real socket-reach proof. CI portability caveat.
+- `mem.pattern.satan-attrd.devshell-toolchain` — system `cargo` lacks fmt/clippy; run satan-attrd cargo via `direnv exec .` (flake devshell, sets prod-socket `DATABASE_URL`). Needed for any audit re-verification.
 
 ### Relevant doctrine
 
@@ -48,7 +50,8 @@
 ### Incomplete work / loose ends
 
 - **P01 (harness engine) — DONE** (`tests/common/mod.rs` + `tests/harness.rs`, satan-attrd). All three carry-forwards resolved (below).
-- **P02 (call-site migration) — outstanding.** Delete `cleanup_*` defs + ~21 tail calls; keep redundant isolation (DEC-5); `Justfile` comment.
+- **P02 (call-site migration) — DONE** (satan-attrd `fe18bae`). `cleanup_*` defs + 24 direct tails + run_loop wrapper removed; DEC-5 isolation kept; Justfile comment. Suite green, prod `test:%` == 0. Evidence in §Phase 02 below.
+- **Remaining for delta closure**: `/audit-change` (AUD vs ISSUE-003/DR-002) → `/close-change` (coverage gate, complete delta, ISSUE-003 lifecycle). No code work left.
 - ~~`SWEEP_MARGIN_MS` default~~ — **resolved**: `const SWEEP_MARGIN_MS: u64 = 60_000` (no env override).
 - ~~`with_db` return type~~ — **resolved**: returns `PgConnectOptions`; callers `connect_with`.
 - ~~STOP/CREATEDB~~ — **cleared**: role `david` has CREATEDB (`rolcreatedb=t`); gate passed, no escalation.
@@ -65,10 +68,12 @@
 
 ### Commit-state guidance
 
-- P01 committed: **satan-attrd `1600e90`** (harness code: `tests/common/mod.rs` + `tests/harness.rs`); **~/.emacs.d `b6f9113`** (DE-002 artefacts + memory). Earlier artefact commits: `7e8d7a3`, `1f4b971`, `1c29300`.
-- Code commits land in `~/dev/satan-attrd/` per repo doctrine — separate from `.emacs.d` artefact commits. P02 follows the same split.
-- **satan-attrd** has a pre-existing staged `flake.lock` (NOT ours) — do not bundle; commit P02 test files by explicit pathspec.
-- Pre-existing **unrelated** dirty files in `~/.emacs.d/` (NOT part of DE-002, do not bundle): `.spec-driver/run/events.jsonl` (runtime log churn), `init.el`, untracked `.spec-driver/registry/policies.yaml`, `apps/dl-eca.el`.
+- P01 committed: **satan-attrd `1600e90`**; **~/.emacs.d `b6f9113`**. Earlier artefact commits: `7e8d7a3`, `1f4b971`, `1c29300`.
+- P02 committed: **satan-attrd `fe18bae`** (6 files, explicit pathspec); **~/.emacs.d** `13cea10` (P02 plan), `d5db09f` (reconcile: phase-02/IP/notes), `2ed57a3` (memory `mem.pattern.satan-attrd.devshell-toolchain` + resolved links).
+- Code commits land in `~/dev/satan-attrd/` per repo doctrine — separate from `.emacs.d` artefact commits.
+- **satan-attrd** still has the pre-existing staged `flake.lock` (NOT ours) — do not bundle; commit by explicit pathspec.
+- Pre-existing **unrelated** dirty in `~/.emacs.d/` (NOT part of DE-002, do not bundle): `.spec-driver/run/events.jsonl` (runtime churn), `init.el`, untracked `.spec-driver/registry/policies.yaml`, `apps/dl-eca.el`.
+- **Worktree is clean** for DE-002 — all delta artefacts committed. The audit agent can start without a pending-commit step; commit fresh AUD artefacts per the small-frequent-`.spec-driver` doctrine.
 
 ### Phase 02 evidence (2026-05-30)
 
