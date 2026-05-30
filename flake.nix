@@ -7,12 +7,13 @@
     devshell.url = "github:numtide/devshell";
     pub.url = "path:/home/david/flakes/pub";
     llm-agents.url = "github:numtide/llm-agents.nix";
-    # spec-driver.url = "github:davidlee/spec-driver";
+    spec-driver.url = "github:davidlee/spec-driver";
     zig-overlay.url = "github:mitchellh/zig-overlay";
   };
 
   outputs = inputs @ {
     flake-parts,
+    spec-driver,
     zig-overlay,
     ...
   }:
@@ -39,19 +40,23 @@
           if isLinux
           then inputs.pub.lib.${system}.mkJailedAgents {inherit (inputs) llm-agents;}
           else {};
-
-        projectPkgs = with pkgs; [
-          zigPackage
-          nodejs
-        ];
+        spec-driver-pkg = spec-driver.packages.${system}.default;
+        projectPkgs = with pkgs;
+          [
+            zigPackage
+            nodejs
+          ]
+          ++ [spec-driver-pkg];
 
         jailEnvOptions = with jailLib.combinators; [
           (try-fwd-env "OPENROUTER_API_KEY")
         ];
 
         # workspaceDeps = [ "/home/david/.emacs.d/" ];
-        # workspaceDeps = [ "/home/david/flakes/" ];
-        workspaceDeps = ["/home/david/notes"];
+        workspaceDeps = [
+          "/home/david/flakes/"
+          "/home/david/notes/"
+        ];
 
         # SATAN — phase-1 fake harness.  Emits ready, one tool_call, then
         # final with one org_update_owned_block action.  Used by the
@@ -106,12 +111,12 @@
               filter = path: type: let
                 base = baseNameOf (toString path);
               in
-                type
-                == "directory"
-                || (lib.hasSuffix ".py" base
-                  && !(lib.hasPrefix "test_" base));
+                type == "directory" || (lib.hasSuffix ".py" base && !(lib.hasPrefix "test_" base));
             };
-            nativeBuildInputs = [pkgs.makeWrapper pkgs.ruff];
+            nativeBuildInputs = [
+              pkgs.makeWrapper
+              pkgs.ruff
+            ];
             dontConfigure = true;
             dontBuild = true;
             doCheck = true;
@@ -240,6 +245,12 @@
         devshells.default = {
           packages = projectPkgs ++ lib.optionals isLinux (lib.attrValues jailPkgs);
           commands = [
+            {
+              name = "sdr";
+              help = "spec-driver";
+              command = "spec-driver $@";
+            }
+
             {
               name = "jpi";
               help = "op run -- jailed-pi $@";
