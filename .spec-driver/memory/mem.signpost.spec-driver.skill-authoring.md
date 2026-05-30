@@ -29,6 +29,13 @@ provenance:
       ref: mem.pattern.installer.boot-architecture
     - kind: delta
       ref: DE-055
+links:
+  missing:
+    - raw: ADR-004
+    - raw: ADR-005
+    - raw: PROD-016
+    - raw: mem.pattern.installer.boot-architecture
+    - raw: DE-055
 ---
 
 # Skill authoring in spec-driver

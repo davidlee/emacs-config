@@ -4,16 +4,15 @@ name: Shared block ID regex patterns
 kind: memory
 status: active
 memory_type: pattern
-created: '2026-05-30'
-updated: '2026-05-30'
-verified: '2026-05-30'
+created: "2026-05-30"
+updated: "2026-05-30"
+verified: "2026-05-30"
 confidence: medium
-tags:
-- blocks
-- validation
-- patterns
-summary: REQUIREMENT_ID_PATTERN/SPEC_ID_PATTERN live in blocks/id_patterns.py; (SPEC|PROD|ISSUE)
-  + (FR|NF|NFR); reused by revision + verification blocks
+tags: [blocks, validation, patterns]
+summary: REQUIREMENT_ID_PATTERN/SPEC_ID_PATTERN live in blocks/id_patterns.py; (SPEC|PROD|ISSUE) + (FR|NF|NFR); reused by revision + verification blocks
+links:
+  missing:
+    - raw: DE-142
 ---
 
 # Shared block ID regex patterns

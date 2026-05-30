@@ -24,6 +24,9 @@ provenance:
     - kind: delta
       ref: DE-083
       note: Settled post-audit authorship branch criteria
+links:
+  missing:
+    - raw: SPEC-116
 ---
 
 # Audits
