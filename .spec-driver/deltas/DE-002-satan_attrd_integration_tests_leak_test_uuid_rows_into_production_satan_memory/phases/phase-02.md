@@ -4,7 +4,7 @@ slug: "002-satan_attrd_integration_tests_leak_test_uuid_rows_into_production_sat
 name: IP-002 Phase 02
 created: "2026-05-30"
 updated: "2026-05-30"
-status: draft  # one of: completed | deferred | draft | in-progress | pending
+status: completed  # one of: completed | deferred | draft | in-progress | pending
 kind: phase  # one of: audit | delta | design_revision | issue | memory | phase | plan | policy | problem | prod | requirement | risk | spec | standard | task | verification
 plan: IP-002
 delta: DE-002
@@ -37,13 +37,13 @@ proven engine — no design latitude.
 
 ## 4. Exit Criteria / Done When
 
-- [ ] `cleanup_scope` + `cleanup_run` defs removed from `tests/common/mod.rs`.
-- [ ] All 25 `cleanup_*` tail calls removed (store 11, decay 5, dispatcher 8, run_loop 1) + `run_loop.rs:16` import edited.
-- [ ] DEC-5 isolation **kept**: `unique_scope`, `unique_run_id`, `upsert_raw`, `select_raw`, `REBUILD_LOCK`, `DECAY_TEST_LOCK`, snapshot/restore — untouched.
-- [ ] `Justfile`: comment noting `DATABASE_URL` is a server pointer (db component ignored — tests self-provision).
-- [ ] Full integration suite green: `cargo test --test '*'`.
-- [ ] `just check` green (clippy `-D unwrap_used -D expect_used` + fmt) — no newly-unused `scope`/`run_id`/`pool` bindings left dangling.
-- [ ] Post-run prod check: `SELECT count(*) FROM satan_attributes WHERE scope LIKE 'test:%'` == 0 (VT-suite-green).
+- [x] `cleanup_scope` + `cleanup_run` defs removed from `tests/common/mod.rs`.
+- [x] All 24 direct `common::cleanup_*` tail calls removed (store 11, decay 5, dispatcher 8) + `run_loop.rs` import edited; run_loop's local `cleanup()` wrapper + its 4 call sites removed (see DEC `2026-05-30`).
+- [x] DEC-5 isolation **kept**: `unique_scope`, `unique_run_id`, `upsert_raw`, `select_raw`, `REBUILD_LOCK`, `DECAY_TEST_LOCK`, `PROJECTION_LOCK`, snapshot/restore — untouched.
+- [x] `Justfile`: comment noting `DATABASE_URL` is a server pointer (db component ignored — tests self-provision).
+- [x] Full integration suite green: `cargo test --test '*'` → **42 passed** (decay 12, dispatcher 8, harness 4, run_loop 5, store 13); unit/bins **69 passed**.
+- [x] `just check` green: clippy exit 0 (`-D unwrap_used -D expect_used`; pedantic `-W` only — pre-existing cast warns, none introduced); `cargo fmt --check` clean. No dangling bindings.
+- [x] Post-run prod check: `SELECT count(*) FROM satan_attributes WHERE scope LIKE 'test:%'` == **0** before and after, under prod-pointing `DATABASE_URL` (VT-suite-green).
 
 ## 5. Verification
 
@@ -63,13 +63,13 @@ _(Status: `[ ]` todo, `[WIP]`, `[x]` done, `[blocked]`)_
 
 | Status | ID  | Description | Parallel? | Notes |
 | ------ | --- | ----------- | --------- | ----- |
-| [ ] | 2.1 | Delete `cleanup_scope` + `cleanup_run` defs (`tests/common/mod.rs:248–266`, incl. doc comment) | [ ] | self-contained; no helper deps |
-| [ ] | 2.2 | Delete 11 calls in `tests/store.rs` (L84,165,223,268,335,400,484,485,552,553,628) | [P] | mix scope/run; qualified `common::` |
-| [ ] | 2.3 | Delete 5 calls in `tests/decay.rs` (L125,153,177,211,245) | [P] | all `cleanup_scope`, qualified |
-| [ ] | 2.4 | Delete 8 calls in `tests/dispatcher.rs` (L138,183,214,241,287,379,476,524) | [P] | all `cleanup_run`, qualified |
-| [ ] | 2.5 | Delete call in `tests/run_loop.rs:78` + drop `cleanup_run` from `use common::{…}` (L16) | [P] | named import — must edit `use` list |
-| [ ] | 2.6 | `Justfile`: comment `DATABASE_URL` = server pointer (db component ignored) | [P] | doc-only |
-| [ ] | 2.7 | Run full suite + `just check`; confirm prod `test:%` == 0; capture evidence | [ ] | gate — VT-suite-green |
+| [x] | 2.1 | Delete `cleanup_scope` + `cleanup_run` defs (`tests/common/mod.rs`, incl. doc comment) | [ ] | self-contained; no helper deps |
+| [x] | 2.2 | Delete 11 calls in `tests/store.rs` | [P] | mix scope/run; qualified `common::` |
+| [x] | 2.3 | Delete 5 calls in `tests/decay.rs` | [P] | all `cleanup_scope`, qualified |
+| [x] | 2.4 | Delete 8 calls in `tests/dispatcher.rs` | [P] | all `cleanup_run`, qualified |
+| [x] | 2.5 | `tests/run_loop.rs`: remove local `cleanup()` wrapper + 4 call sites; drop `cleanup_run` from `use`; update module doc | [P] | wrapper bundled cleanup_run + audit/outcome inbox deletes (DEC below) |
+| [x] | 2.6 | `Justfile`: comment `DATABASE_URL` = server pointer (db component ignored) | [P] | doc-only |
+| [x] | 2.7 | Run full suite + clippy + fmt; confirm prod `test:%` == 0; capture evidence | [ ] | gate — VT-suite-green PASS |
 
 ### Task Details
 
@@ -100,17 +100,20 @@ _(2.2–2.6 parallelisable; 2.1 lands with or after them to avoid a transient un
 
 ## 9. Decisions & Outcomes
 
-- `2026-05-30` — Call count is **25** (store 11, decay 5, dispatcher 8, run_loop 1), not the ~21 estimated in the P01 handoff. Confirmed by `rg`; store carried 11 (3 scope + 8 run), not ≈8.
+- `2026-05-30` — Direct `common::cleanup_*` tail-call count is **24** (store 11, decay 5, dispatcher 8), not the ~21 estimated in the P01 handoff. Store carried 11 (4 scope + 7 run), not ≈8.
+- `2026-05-30` — **run_loop: removed the whole local `cleanup()` wrapper, not just the `cleanup_run` line** (user decision, this session). `run_loop.rs` had no direct `cleanup_run` tail — its only use was one line inside a local `cleanup()` helper that *also* deleted `satan_audit_inbox`/`satan_outcome_inbox` rows. All five deletions across that file are post-assertion tails on a disposable per-test DB → pure leak-hygiene. Removing the wrapper + its 4 call sites is faithful to DE-002's intent (DEC-5 preserves redundant *isolation*; this is *hygiene*) and avoids leaving a confusing half-wrapper. Bare ad-hoc hygiene DELETEs not wired to `cleanup_*` were left as-is and out of scope: `run_loop.rs` L380 (`satan_audit_inbox`) and `store.rs` `get_setting_bool_…` settings delete — both fall under "other apparatus = future delta".
 
 ## 10. Findings / Research Notes
 
-- Defs at `tests/common/mod.rs:250` (`cleanup_scope`) / `:258` (`cleanup_run`); both raw `sqlx::query` DELETEs, no shared deps → safe straight delete.
-- `run_loop.rs` is the only site importing `cleanup_run` by name (`use common::{…}`, L16); the other three files call via qualified `common::` path → no `use` edit there.
+- Defs were `cleanup_scope`/`cleanup_run` in `tests/common/mod.rs`; both raw `sqlx::query` DELETEs, no shared deps → safe straight delete.
+- `run_loop.rs` was the only site importing `cleanup_run` by name (`use common::{…}`); the other three files called via qualified `common::` path → no `use` edit there.
 - No `cleanup_*` references in `src/` or `tests/harness.rs` — strictly test-tail hygiene, as DR-002 §4 asserts.
+- Deleting tail calls left **no** unused `scope`/`run_id`/`pool` bindings — every binding still feeds its test's assertions (the §6 STOP condition never triggered).
+- `cargo fmt` collapsed the blank lines left by tail deletion; no manual whitespace cleanup needed.
 
 ## 11. Wrap-up Checklist
 
-- [ ] Exit criteria satisfied
-- [ ] Verification evidence stored in `notes.md`
-- [ ] DR/IP/coverage updated (VT-suite-green → status, IP §9 P02 checkbox)
+- [x] Exit criteria satisfied
+- [x] Verification evidence stored in `notes.md` + §4 above
+- [x] DR/IP/coverage updated (VT-suite-green → verified, IP §9 P02 checkbox)
 - [ ] Hand-off / close-out: route `/audit-change` → `/close-change` (delta closure)

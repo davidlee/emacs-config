@@ -6,7 +6,7 @@
 
 - **Delta**: `DE-002` — satan-attrd integration tests leak `test:<uuid>` rows into production `satan_memory`.
 - **Backlog source**: `ISSUE-003`.
-- **State**: P01 (harness engine) **implemented + committed + phase completed** (12/12). Next = **P02 call-site migration** (needs a phase-02 sheet first).
+- **State**: P01 (harness engine) + P02 (call-site migration) **implemented + committed + completed**; IP-002 `completed`, all 4 VTs `verified`. Next = **`/audit-change` → `/close-change`** (reconcile-to-close).
 
 ### Required reading (in order)
 
@@ -70,17 +70,29 @@
 - **satan-attrd** has a pre-existing staged `flake.lock` (NOT ours) — do not bundle; commit P02 test files by explicit pathspec.
 - Pre-existing **unrelated** dirty files in `~/.emacs.d/` (NOT part of DE-002, do not bundle): `.spec-driver/run/events.jsonl` (runtime log churn), `init.el`, untracked `.spec-driver/registry/policies.yaml`, `apps/dl-eca.el`.
 
+### Phase 02 evidence (2026-05-30)
+
+- **Scope executed**: removed `cleanup_scope`/`cleanup_run` defs (`tests/common/mod.rs`); 24 direct `common::cleanup_*` tail calls (store 11, decay 5, dispatcher 8); run_loop's local `cleanup()` wrapper + its 4 call sites + the `use` import + stale module-doc step. Justfile comment added.
+- **DEC-5 kept** (verified present post-edit): `REBUILD_LOCK` (store), `DECAY_TEST_LOCK` + snapshot/restore (decay), `PROJECTION_LOCK` + `reset_projection` (run_loop), `unique_scope`/`unique_run_id`/`upsert_raw`/`select_raw`.
+- **run_loop decision** (user, this session): deleted the *whole* local `cleanup()` wrapper, not just the `cleanup_run` line — it had no direct `cleanup_run` tail; all five deletions in that file are post-assertion hygiene on a disposable DB. Left out of scope (future apparatus delta): `run_loop.rs` L380 bare `audit_inbox` delete, `store.rs` settings-row delete in `get_setting_bool_…` — bare ad-hoc DELETEs not wired to `cleanup_*`.
+- **Verification** (`direnv exec .` → flake devshell; `DATABASE_URL=postgres:///satan_memory?host=/run/postgresql` = prod socket, strong leak test):
+  - `cargo clippy --all-targets --all-features -- -D unwrap_used -D expect_used -W pedantic -A too_many_lines` → **exit 0** (4 pre-existing pedantic `cast_possible_wrap` warns in unmodified decay lines; none introduced; `-W` not `-D` so lint passes).
+  - `cargo fmt --all --check` → clean.
+  - `cargo test --test '*'` → **42 passed** (decay 12, dispatcher 8, harness 4, run_loop 5, store 13).
+  - `cargo test --lib --bins` → **69 passed**.
+  - prod `SELECT count(*) … scope LIKE 'test:%'` → **0** before and after (VT-suite-green).
+- **Commits**: code → **satan-attrd `fe18bae`** (6 files, explicit pathspec; pre-existing staged `flake.lock` left out). Artefacts → `~/.emacs.d` (P02 plan `13cea10`; this reconciliation commit pending).
+- **Status**: IP-002 + both phases **completed**; coverage VT-with-db/VT-no-prod/VT-sweep-gc/VT-suite-green all **verified**. Next = `/audit-change` then `/close-change`.
+
 ## Next Agent Instructions
 
-P01 engine is proven green. Invoke `/using-spec-driver`. No `phases/phase-02.md` exists yet, so route `/plan-phases` (P02 is already fully specced in IP-002 §P02 — objectives + VT-suite-green exit criteria; the sheet is quick) **then** `/execute-phase` for **DE-002 / IP-002 Phase 02**.
+**P01 + P02 implemented, committed, green.** Both phases + IP-002 are `completed`; all four VTs `verified`. Next = reconcile-to-close: invoke `/using-spec-driver` → `/audit-change` (build AUD comparing impl vs ISSUE-003/DR-002; disposition VT evidence) → `/close-change` (coverage gate + complete delta + ISSUE-003 lifecycle).
 
-Phase 02 = delete the now-dead `cleanup_*` apparatus, in `~/dev/satan-attrd/`:
-1. Remove `cleanup_scope`/`cleanup_run` **defs** from `tests/common/mod.rs`.
-2. Remove ~21 `cleanup_*(...)` **tail calls**: `tests/store.rs` (≈8), `tests/decay.rs` (5), `tests/dispatcher.rs` (8), `tests/run_loop.rs`.
-3. **Keep** redundant isolation per DEC-5 (`unique_scope`, `REBUILD_LOCK`, `DECAY_TEST_LOCK`, snapshot/restore) and `upsert_raw`/`select_raw`/`unique_*`.
-4. `Justfile`: comment that `DATABASE_URL` is a server pointer (db component ignored by tests).
-5. Re-run full suite + clippy + fmt; confirm prod `test:%` count still 0.
+What to verify in the audit:
+- Both defect angles of DE-002 closed: (a) no prod write target — `shared_pool` self-provisions + `current_database()` guard (P01); (b) `cleanup_*` apparatus gone (P02). Prod `satan_attributes` `test:%` == 0 across runs.
+- DEC-5 redundant isolation deliberately **retained** (not a gap): `REBUILD_LOCK`, `DECAY_TEST_LOCK`, `PROJECTION_LOCK`, snapshot/restore, `unique_*`. Apparatus removal is a future delta, not this one.
+- Out-of-scope bare hygiene DELETEs intentionally left: `run_loop.rs` L380 `audit_inbox`, `store.rs` settings delete (see phase-02 §9 DEC).
 
-Reference IP-002 §P02 and DR-002 §4 (code-impact table). Engine source of truth: `tests/common/mod.rs` (`shared_pool`/`with_db`/`sweep_stale`/`create_database`) + `tests/harness.rs` (VTs).
+Source of truth: `tests/common/mod.rs` (`shared_pool`/`with_db`/`sweep_stale`/`create_database`), `tests/harness.rs` (P01 VTs). Code lives in `~/dev/satan-attrd/` (separate repo, HEAD `fe18bae`).
 
 Caveat for any CI/portability work: sqlx ignores the socket `?host=` param (memory `mem.fact.satan-attrd.sqlx-socket-host`); on a host without `/var/run`→`/run` use `$PGHOST` or a tcp `DATABASE_URL`.
