@@ -3,7 +3,7 @@ id: ISSUE-003
 name: "satan-attrd integration tests leak test:<uuid> rows into production satan_memory"
 created: "2026-05-30"
 updated: "2026-05-30"
-status: open  # one of: in-progress | open | resolved | triaged
+status: in-progress  # one of: in-progress | open | resolved | triaged
 kind: issue  # one of: audit | delta | design_revision | issue | memory | phase | plan | policy | problem | prod | requirement | risk | spec | standard | task | verification
 categories: [satan, attributes, testing]
 severity: p2  # one of: p1 | p2 | p3 | p4
@@ -60,8 +60,22 @@ Flush the orphaned rows (blocked from auto-run — destructive prod-DB write):
 psql satan_memory -c "DELETE FROM satan_attributes WHERE scope LIKE 'test:%';"
 ```
 
+## Resolution
+
+- `2026-05-30` — **Leak mechanism fixed** by DE-002 (chose option C, disposable
+  per-test DB) and verified by AUD-001 (conformance, all findings aligned). At
+  satan-attrd `fe18bae`: `shared_pool()` self-provisions
+  `satan_attrd_test_<epoch>_<uuid>` + asserts `current_database()` before any
+  write (prod never a write target), and the best-effort `cleanup_*` apparatus is
+  removed (disposable DB → panic-safe). Full suite green; prod `test:%` == 0.
+- **Status `in-progress`, not `resolved`**: the **immediate-remediation flush**
+  (`DELETE FROM satan_attributes WHERE scope LIKE 'test:%'`) is a destructive prod
+  write, **out of DE-002 scope**, human-run out-of-band. Mark `resolved` only once
+  a human has run that flush and confirmed the existing orphaned rows are gone.
+
 ## Related
 
+- DE-002 / DR-002 / AUD-001 — fix, design, and conformance audit.
 - IMPR-003 (attribute capsule render) — discovered while verifying its blocker.
   The `global` scope is clean and shows real drift; this issue is the
   data-hygiene tail, not an IMPR-003 blocker.

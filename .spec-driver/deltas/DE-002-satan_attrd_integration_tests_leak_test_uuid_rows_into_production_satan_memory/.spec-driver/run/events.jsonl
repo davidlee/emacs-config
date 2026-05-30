@@ -1,0 +1,3 @@
+{"v":1,"ts":"2026-05-30T09:10:12.281278+00:00","session":"323f071f-8f35-488d-86e7-9b6edf5b5bae","cmd":"artifact.read","argv":["artifact.read","IP-002.md"],"artifacts":["DE-002"],"exit_code":0,"status":"ok","artifact_type":"plan"}
+{"v":1,"ts":"2026-05-30T09:10:20.097210+00:00","session":"323f071f-8f35-488d-86e7-9b6edf5b5bae","cmd":"artifact.read","argv":["artifact.read","notes.md"],"artifacts":["DE-002"],"exit_code":0,"status":"ok","artifact_type":"delta"}
+{"v":1,"ts":"2026-05-30T09:10:27.634627+00:00","session":"323f071f-8f35-488d-86e7-9b6edf5b5bae","cmd":"artifact.read","argv":["artifact.read","phases/phase-01.md"],"artifacts":["DE-002"],"exit_code":0,"status":"ok","artifact_type":"phase"}
