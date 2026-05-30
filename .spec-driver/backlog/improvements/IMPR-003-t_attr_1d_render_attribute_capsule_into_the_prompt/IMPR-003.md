@@ -6,8 +6,14 @@ updated: "2026-05-30"
 status: idea
 kind: improvement
 categories: [satan, attributes]
-tags: [ready]
+tags: [in-progress]
 ---
+
+> **Status 2026-05-30:** bar block already shipped (commit `8612667`) — render
+> module, prompt wiring, tank surface, 21 ERT tests. Remaining work (pressure
+> summary line + e2e verification) scoped as **DE-001**. This item tracks until
+> DE-001 closes.
+
 
 # T-attr-1d: render attribute capsule into the prompt
 
