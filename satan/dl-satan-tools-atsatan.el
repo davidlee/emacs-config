@@ -28,7 +28,6 @@
 (require 'json)
 (require 'dl-notes-paths)
 (require 'dl-satan-tools)
-(require 'dl-satan-tick)              ; for dl-satan-tick-register at load time
 (require 'dl-satan-intervention)      ; manual-outcome writer (T1.5b PR 4)
 (require 'dl-satan-audit)              ; audit-reopen (T1.5b PR 4)
 (require 'dl-satan-observer-classify) ; --maturity-state (T1.5b PR 4)
@@ -647,23 +646,10 @@ authoring run for projection rebuild."
                       comment  (:type string :required nil))
        :handler 'dl-satan-tool/notes-at-satan-intervention-done))
 
-(dl-satan-tick-register
- "agent"
- :tools '("notes_at_satan_scan" "notes_at_satan_done"
-          "notes_at_satan_intervention_done"
-          "org_read_context"
-          "inbox_append"
-          "notify_send"
-          "hippocampus_write"
-          "memory_mark" "memory_resonate" "memory_show_trace"
-          "bough_read"
-          "agenda_read"
-          "vcs_log"
-          "patch_job_create" "patch_job_status")
- :capabilities '(write-notes inbox-write memory-write notify)
- :budget-tokens 100000
- :budget-tool-calls 15
- :timeout-seconds 120)
+;; The `tick-agent' mode that drives these @satan tools is registered in
+;; dl-satan-tick.el, beside `tick-pulse' and `dl-satan-tick-pool' — all
+;; tick modes in one place.  The tool *handlers* live here; the mode
+;; *spec* lives there.
 
 (provide 'dl-satan-tools-atsatan)
 ;;; dl-satan-tools-atsatan.el ends here

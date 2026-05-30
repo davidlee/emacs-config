@@ -11,8 +11,10 @@
 ;;                         max 200.  Each segment: app_id, workspace,
 ;;                         start/end timestamps, duration_s.
 ;;   - "recent_browser" -> last N firefox tab segments for today, same
-;;                         shape contract as recent_focus.  Each
-;;                         segment: origin (URL stripped to origin),
+;;                         shape contract as recent_focus.  Each segment
+;;                         is returned verbatim: full url + domain +
+;;                         title_start/title_end (panopticon strips only
+;;                         query/fragment at capture, never to origin),
 ;;                         start/end timestamps, duration_s.
 ;;   - "current"        -> currently-focused window snapshot from sway.
 ;;                         {app_id, workspace, output, title, pid}.

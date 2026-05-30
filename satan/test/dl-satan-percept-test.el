@@ -215,6 +215,104 @@ hardcoded header in elisp."
     (should (null (dl-satan-percept-render-block framing percept)))))
 
 ;; ---------------------------------------------------------------------
+;; Attention block — raw focus + browser sight in the capsule.
+;; Distinct from the handle block: this renders evidence_window segments
+;; verbatim (url + title), bypassing canon's closed-world buckets, so
+;; the live agent sees what tab/app it was actually on.
+;; ---------------------------------------------------------------------
+
+(defconst dl-satan-percept-test--attention-framing
+  '(("attention_block_header" . "# Recent attention")))
+
+(ert-deftest dl-satan-percept/attention-block-interleaves-focus-and-browser ()
+  "Focus + browser segments render interleaved by start_ts (ascending);
+browser lines carry url + title, focus lines carry app + workspace."
+  (let* ((percept
+          (list :evidence_window
+                (list :focus_segments
+                      (list (list :app_id "Alacritty" :workspace "01"
+                                  :last_title "satan-git-visibility-issue"
+                                  :start_ts "2026-05-30T09:55:00+10:00"
+                                  :duration_s 180))
+                      :browser_segments
+                      (list (list :source "firefox"
+                                  :url "https://docs.python.org/3/library/json.html"
+                                  :domain "docs.python.org"
+                                  :title_end "json — JSON encoder and decoder"
+                                  :start_ts "2026-05-30T09:58:00+10:00"
+                                  :duration_s 65)))))
+         (lines (dl-satan-percept-render-attention-block
+                 dl-satan-percept-test--attention-framing percept)))
+    (should (equal (car lines) "# Recent attention"))
+    (should (equal (nth 1 lines)
+                   "- 3m  Alacritty  ws01  \"satan-git-visibility-issue\""))
+    (should (equal (nth 2 lines)
+                   (concat "- 1m  firefox  "
+                           "https://docs.python.org/3/library/json.html"
+                           "  \"json — JSON encoder and decoder\"")))))
+
+(ert-deftest dl-satan-percept/attention-block-drops-browser-app-focus ()
+  "A focus segment for a browser app is suppressed — the browser tab
+segments cover that span at finer (per-URL) grain."
+  (let* ((percept
+          (list :evidence_window
+                (list :focus_segments
+                      (list (list :app_id "firefox" :workspace "02"
+                                  :last_title "should not appear"
+                                  :start_ts "2026-05-30T10:00:00+10:00"
+                                  :duration_s 120))
+                      :browser_segments nil)))
+         (lines (dl-satan-percept-render-attention-block
+                 dl-satan-percept-test--attention-framing percept)))
+    (should (null lines))))
+
+(ert-deftest dl-satan-percept/attention-block-without-framing-key-yields-nil ()
+  "Mind owns the header; an absent key suppresses the block (no fallback)."
+  (let ((percept (list :evidence_window
+                       (list :focus_segments
+                             (list (list :app_id "Emacs" :start_ts "x"
+                                         :duration_s 10))))))
+    (should (null (dl-satan-percept-render-attention-block
+                   '(("now" . "# Now")) percept)))))
+
+(ert-deftest dl-satan-percept/attention-block-caps-at-limit ()
+  "Only the most-recent `dl-satan-percept-attention-limit' segments render."
+  (let* ((dl-satan-percept-attention-limit 2)
+         (mk (lambda (n)
+               (list :app_id "Emacs"
+                     :last_title (format "f%d" n)
+                     :start_ts (format "2026-05-30T10:0%d:00+10:00" n)
+                     :duration_s 10)))
+         (percept (list :evidence_window
+                        (list :focus_segments
+                              (list (funcall mk 1) (funcall mk 2) (funcall mk 3)))))
+         (lines (dl-satan-percept-render-attention-block
+                 dl-satan-percept-test--attention-framing percept)))
+    (should (= (length lines) 3))
+    (should (equal (nth 1 lines) "- 10s  Emacs  \"f2\""))
+    (should (equal (nth 2 lines) "- 10s  Emacs  \"f3\""))))
+
+(ert-deftest dl-satan-percept/attention-block-drops-subsecond-segments ()
+  "Sub-second focus + browser segments are capture noise; filtered out."
+  (let* ((percept
+          (list :evidence_window
+                (list :focus_segments
+                      (list (list :app_id "Emacs" :last_title "blip"
+                                  :start_ts "2026-05-30T10:00:00+10:00"
+                                  :duration_s 0.4)
+                            (list :app_id "Emacs" :last_title "real"
+                                  :start_ts "2026-05-30T10:01:00+10:00"
+                                  :duration_s 30))
+                      :browser_segments
+                      (list (list :source "firefox" :url "https://x.test/"
+                                  :title_end "flash"
+                                  :start_ts "2026-05-30T10:00:30+10:00"
+                                  :duration_s 0)))))
+         (lines (dl-satan-percept-render-attention-block
+                 dl-satan-percept-test--attention-framing percept)))
+    (should (equal lines (list "# Recent attention" "- 30s  Emacs  \"real\"")))))
+
+;; ---------------------------------------------------------------------
 ;; Determinism rig (A3) — richer fixture, drives focus + browser + ctx
 ;; ---------------------------------------------------------------------
 

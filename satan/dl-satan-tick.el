@@ -95,6 +95,33 @@ The prompt file defaults to `<prompts>/tick/SHORT-NAME.txt'."
 ;; Default registration: a single lightweight pulse tick.
 (dl-satan-tick-register "pulse")
 
+;; tick-agent: the heavier @satan-directive + patch-orchestration tick.
+;; Registered here beside tick-pulse and `dl-satan-tick-pool' so every
+;; tick mode lives in one file — it was previously stranded in
+;; dl-satan-tools-atsatan.el and got overlooked when its tool list was
+;; edited.  The tools it names (notes_at_satan_*, patch_job_*) are
+;; defined in dl-satan-tools-atsatan.el / dl-satan-tools-patch.el, both
+;; of which load before dl-satan.el's load-time `check-tool-references',
+;; so naming them here is safe even though those files require us.
+(dl-satan-tick-register
+ "agent"
+ :tools '("notes_at_satan_scan" "notes_at_satan_done"
+          "notes_at_satan_intervention_done"
+          "org_read_context"
+          "inbox_append"
+          "notify_send"
+          "hippocampus_write"
+          "memory_mark" "memory_resonate" "memory_show_trace"
+          "bough_read"
+          "agenda_read"
+          "activity_read"
+          "vcs_log"
+          "patch_job_create" "patch_job_status")
+ :capabilities '(write-notes inbox-write memory-write notify)
+ :budget-tokens 100000
+ :budget-tool-calls 15
+ :timeout-seconds 120)
+
 (defun my/satan-tick ()
   "Run one tick: pick a mode from `dl-satan-tick-pool', skip in quiet hours.
 Returns the run-id, or nil if the tick was suppressed."

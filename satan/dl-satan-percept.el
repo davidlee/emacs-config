@@ -133,5 +133,122 @@ block entirely instead of emitting an empty header."
     (when (and handles header)
       (cons header (mapcar (lambda (h) (concat "- " h)) handles)))))
 
+;; ---------------------------------------------------------------------
+;; Attention block — raw focus + browser segments from the evidence
+;; window, rendered verbatim into the capsule.
+;;
+;; The handle block above is the *memory* view: closed-world, low-
+;; cardinality canon tokens that persist as scars.  That deliberate
+;; coarseness is wrong for live situational awareness — it can't say
+;; which tab or terminal the user was actually on.  This block is the
+;; *perceptual* view: it reads `evidence_window.{focus,browser}_segments'
+;; (already captured with full url + title by panopticon, already
+;; window-bounded + middle-truncated by the evidence assembler) and
+;; renders them straight, no bucketing.  Memory stays disciplined; the
+;; agent gets sight.
+;; ---------------------------------------------------------------------
+
+(defconst dl-satan-percept--attention-framing-key "attention_block_header"
+  "Framing.txt key supplying the attention block's section header.
+Owned by mind (`~/notes/satan/system/framing.txt'); absent key
+suppresses the block, same contract as `--framing-key'.")
+
+(defcustom dl-satan-percept-attention-limit 12
+  "Max interleaved focus+browser segments rendered in the attention block.
+The evidence assembler already caps each source; this bounds the merged
+stream so a busy window can't blow the tick capsule budget."
+  :type 'integer :group 'dl-satan)
+
+(defconst dl-satan-percept--attention-title-max 80
+  "Segment titles are truncated to this many characters in the block.")
+
+(defconst dl-satan-percept--attention-min-seconds 1
+  "Segments shorter than this (seconds) are capture noise and dropped.
+Sub-second focus/tab flickers — a window touched in passing — carry no
+attention signal and only crowd the block.")
+
+(defun dl-satan-percept--attention-subsecond-p (seg)
+  "Return non-nil when SEG's duration is below the noise floor."
+  (< (or (plist-get seg :duration_s) 0)
+     dl-satan-percept--attention-min-seconds))
+
+(defun dl-satan-percept--format-duration (seconds)
+  "Render SECONDS (a number) as a compact duration: `45s', `3m', `1h20m'."
+  (let ((s (round (or seconds 0))))
+    (cond ((< s 60) (format "%ds" s))
+          ((< s 3600) (format "%dm" (round (/ s 60.0))))
+          (t (format "%dh%dm" (/ s 3600) (round (/ (mod s 3600) 60.0)))))))
+
+(defun dl-satan-percept--attention-title (title)
+  "Return TITLE truncated to `--attention-title-max' (ellipsis if cut),
+or nil when TITLE is nil/empty."
+  (when (and (stringp title) (not (string-empty-p title)))
+    (if (> (length title) dl-satan-percept--attention-title-max)
+        (concat (substring title 0 dl-satan-percept--attention-title-max) "…")
+      title)))
+
+(defun dl-satan-percept--attention-focus-line (seg)
+  "Render focus SEG as a line, or nil when its app is a browser.
+Browser-app focus spans are dropped: the browser tab segments cover
+them at per-URL grain, so a bare `firefox' focus line would be noise."
+  (let ((app (plist-get seg :app_id)))
+    (unless (equal "browser" (dl-satan-memory-canon--app-surface app))
+      (let ((ws (plist-get seg :workspace))
+            (title (dl-satan-percept--attention-title
+                    (plist-get seg :last_title))))
+        (concat (format "- %s  %s"
+                        (dl-satan-percept--format-duration
+                         (plist-get seg :duration_s))
+                        (or app "?"))
+                (when ws (format "  ws%s" ws))
+                (when title (format "  \"%s\"" title)))))))
+
+(defun dl-satan-percept--attention-browser-line (seg)
+  "Render browser tab SEG as a line: duration, source, url, title."
+  (let ((title (dl-satan-percept--attention-title
+                (plist-get seg :title_end))))
+    (concat (format "- %s  %s  %s"
+                    (dl-satan-percept--format-duration
+                     (plist-get seg :duration_s))
+                    (or (plist-get seg :source) "browser")
+                    (or (plist-get seg :url) (plist-get seg :domain) "?"))
+            (when title (format "  \"%s\"" title)))))
+
+(defun dl-satan-percept-render-attention-block (framing percept)
+  "Return the `# Recent attention' block as a list of lines, or nil.
+FRAMING is the parsed framing alist; PERCEPT is the build result.
+
+Interleaves PERCEPT's `evidence_window' focus + browser segments by
+`:start_ts' (ascending — a timeline), keeps the most recent
+`dl-satan-percept-attention-limit', and renders each verbatim (url +
+title).  Browser-app focus segments are dropped (see
+`--attention-focus-line').  Returns nil when the header is absent
+(mind owns it) or no segment survives — absence is absence."
+  (let ((header (cdr (assoc dl-satan-percept--attention-framing-key framing)))
+        (ev (plist-get percept :evidence_window)))
+    (when (and header ev)
+      (let* ((focus (cl-remove-if #'dl-satan-percept--attention-subsecond-p
+                                  (plist-get ev :focus_segments)))
+             (browser (cl-remove-if #'dl-satan-percept--attention-subsecond-p
+                                    (plist-get ev :browser_segments)))
+             (rows
+              (append
+               (delq nil
+                     (mapcar
+                      (lambda (s)
+                        (let ((line (dl-satan-percept--attention-focus-line s)))
+                          (and line (cons (plist-get s :start_ts) line))))
+                      focus))
+               (mapcar
+                (lambda (s)
+                  (cons (plist-get s :start_ts)
+                        (dl-satan-percept--attention-browser-line s)))
+                browser)))
+             (sorted (sort rows (lambda (a b)
+                                  (string< (or (car a) "") (or (car b) "")))))
+             (capped (last sorted dl-satan-percept-attention-limit)))
+        (when capped
+          (cons header (mapcar #'cdr capped)))))))
+
 (provide 'dl-satan-percept)
 ;;; dl-satan-percept.el ends here

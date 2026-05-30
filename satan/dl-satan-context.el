@@ -304,8 +304,8 @@ BUNDLE is the context plist providing `:now', `:today_text', `:sources',
 `:recent_runs', `:percept', `:resonance', `:motive', `:sensor_status',
 `:attributes'.
 Missing framing.txt signals — there is no canonical fallback.  Block
-order: `# Now' → attributes → percept → resonance → motive → sensors →
-mode-specific (today / sources / recent runs).  Each block self-suppresses
+order: `# Now' → attributes → percept → attention → resonance → motive →
+sensors → mode-specific (today / sources / recent runs).  Each block self-suppresses
 when its source is empty/absent (A4, A6, A8, A15)."
   (let* ((framing (dl-satan-context--framing))
          (parts (list (string-trim-right assembled)))
@@ -316,6 +316,8 @@ when its source is empty/absent (A4, A6, A8, A15)."
                         (dl-satan-attribute-render-block
                          framing (plist-get bundle :attributes))
                         (dl-satan-percept-render-block
+                         framing (plist-get bundle :percept))
+                        (dl-satan-percept-render-attention-block
                          framing (plist-get bundle :percept))
                         (dl-satan-resonance-render-block
                          framing (plist-get bundle :resonance))
