@@ -93,7 +93,14 @@
                        :severity "low"
                        :cue-handles '("bough_node:abc"))))
            (cl-letf*
-               (((symbol-function 'completing-read)
+               ( ;; Pin the read-path clock so the iv (ts 2026-05-23T12:00,
+                ;; 30-min window) is mature but not stale at mark time:
+                ;; ts+30m < now < ts+30m+24h.  Without this, wall-clock "now"
+                ;; reads it stale (excluded) or — too soon — pending (marking
+                ;; a pending iv violates outcome-semantics invariant 3).
+                ((symbol-function 'dl-satan-intervention-mark--now-iso)
+                 (lambda () "2026-05-23T13:00:00+1000"))
+                ((symbol-function 'completing-read)
                  (lambda (prompt collection &optional _p _r _i _h def)
                    (cond
                     ((string-prefix-p "Intervention" prompt)

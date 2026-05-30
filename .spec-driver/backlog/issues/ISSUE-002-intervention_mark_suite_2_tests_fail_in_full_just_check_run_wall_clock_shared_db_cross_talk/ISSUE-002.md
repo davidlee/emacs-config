@@ -3,7 +3,7 @@ id: ISSUE-002
 name: "intervention-mark suite: 2 tests fail in full just check run (wall-clock + shared-DB cross-talk)"
 created: "2026-05-30"
 updated: "2026-05-30"
-status: open  # one of: in-progress | open | resolved | triaged
+status: resolved  # one of: in-progress | open | resolved | triaged
 kind: issue  # one of: audit | delta | design_revision | issue | memory | phase | plan | policy | problem | prod | requirement | risk | spec | standard | task | verification
 categories: [satan, testing]
 severity: p3  # one of: p1 | p2 | p3 | p4
@@ -45,3 +45,17 @@ suites sharing the DB), or isolate/serialize DB suites.
 
 `just check` with `satan_memory_test` reachable →
 `FAIL 2 unexpected / 862 total`.
+
+## Resolution (2026-05-30)
+
+Fixed in the test by pinning the read-path clock: the `cl-letf*` in
+`dispatch-routes-to-writer` now stubs `dl-satan-intervention-mark--now-iso`
+to `2026-05-23T13:00:00+1000` — mature (past the 30-min window) but not stale
+(before `ts + window + 24h`). Production code unchanged; this was a test that
+never pinned its clock.
+
+`recent-orders-newest-first` needed no change — its full-run failure was
+secondary: the dispatch test errored mid-run and left the shared
+`satan_memory_test` dirty for the next suite. With dispatch passing (clean
+`reset-and-migrate` teardown), the cross-talk is gone. `just check` is green
+(`PASS 859/862`, 3 skipped), stable across repeat runs.
