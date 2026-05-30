@@ -3,7 +3,7 @@ id: ISSUE-003
 name: "satan-attrd integration tests leak test:<uuid> rows into production satan_memory"
 created: "2026-05-30"
 updated: "2026-05-30"
-status: in-progress  # one of: in-progress | open | resolved | triaged
+status: resolved  # one of: in-progress | open | resolved | triaged
 kind: issue  # one of: audit | delta | design_revision | issue | memory | phase | plan | policy | problem | prod | requirement | risk | spec | standard | task | verification
 categories: [satan, attributes, testing]
 severity: p2  # one of: p1 | p2 | p3 | p4
