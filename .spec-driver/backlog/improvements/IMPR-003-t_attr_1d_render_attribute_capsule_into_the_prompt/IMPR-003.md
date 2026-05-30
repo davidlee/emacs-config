@@ -3,16 +3,19 @@ id: IMPR-003
 name: "T-attr-1d: render attribute capsule into the prompt"
 created: "2026-05-30"
 updated: "2026-05-30"
-status: idea
+status: resolved
 kind: improvement
 categories: [satan, attributes]
-tags: [in-progress]
+tags: [done]
 ---
 
-> **Status 2026-05-30:** bar block already shipped (commit `8612667`) — render
-> module, prompt wiring, tank surface, 21 ERT tests. Remaining work (pressure
-> summary line + e2e verification) scoped as **DE-001**. This item tracks until
-> DE-001 closes.
+> **Resolved 2026-05-30.** Bar block delivered in commit `8612667` — render
+> module (`dl-satan-attribute-render.el`), prompt wiring (`dl-satan-context.el`
+> populates `:attributes` pre-spawn + emits the `# Attributes` block), tank
+> surface (`dl-satan-tank.el`), 21 ERT tests, disable-aware. The model feels its
+> own state in-prompt. The brief's derived **pressure** line was dropped as YAGNI
+> (display-only gloss, re-states bars + duplicates §4 decision rules). Closure
+> recorded in **DE-001** (deferred — no work required).
 
 
 # T-attr-1d: render attribute capsule into the prompt
