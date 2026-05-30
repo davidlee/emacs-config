@@ -56,3 +56,5 @@ oauth2-auto.plist
 /url/cache
 /eshell
 /bookmarks
+.spec-driver/run/
+.pi/APPEND_SYSTEM.md

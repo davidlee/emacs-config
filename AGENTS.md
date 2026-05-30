@@ -1,3 +1,7 @@
+@.spec-driver/agents/boot.md
+
+@.spec-driver/AGENTS.md
+
 # AGENTS.md — orientation for future agents
 
 
