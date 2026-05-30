@@ -17,9 +17,11 @@ broker dispatches `memory_mark` / `memory_resonate` / `memory_show_trace`
 from morning, motd, tick-pulse, self-edit-{mech,mind}; `bough_read` is
 the only path into bough; `hippocampus_write` emits an `auto_rule`
 cross-ref trace per write; grammar v2 fixture + renormalize CLI land
-end-to-end. There is no "next step" in the original v1 plan — the work
-ahead is the deferred quality sweep, the DR-116 follow-up once it
-ships, and the explicit v1 non-goals if the user wants to start a v2.
+end-to-end. There is no "next step" in the original v1 plan. The
+deferred quality sweep is **done** (§1 `b27236ff`, §2 `fb4bbe8a`,
+§3 `936a07ed`, §4+§7 `2f8fdc78`, §6 `169da374`); the DR-116 follow-up
+landed 2026-05-21. The only work ahead is the explicit v1 non-goals,
+if the user wants to start a v2.
 
 ## Read in this order
 

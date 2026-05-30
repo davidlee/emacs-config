@@ -113,6 +113,9 @@ JSON (D10).
 
 ## B2. `--max-depth N` on `node subtree`
 
+> Tracked in the backlog as **IMPR-004** (2026-05-30). Detail below retained as
+> the upstream brief.
+
 **Today**
 
 `bough --json node subtree <NANOID>` returns the full subtree with no

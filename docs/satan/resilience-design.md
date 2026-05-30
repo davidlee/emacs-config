@@ -356,7 +356,7 @@ Suggested order (each is a standalone PR):
 2. **Token-only triggers.** Rate-limit degradation deferred — 0/91
    recent failures were 429s. All failures were config errors or
    budget ceiling. Rate-limit retry is a follow-up if it becomes
-   a real problem.
+   a real problem. → backlog **RISK-001** (2026-05-30).
 3. **No tick-mode collapse.** All modes use same tier logic. If a
    tier removes zero tools from a narrow mode, the system message
    still signals wind-down intent.
@@ -367,6 +367,7 @@ Suggested order (each is a standalone PR):
    crash-context is diagnostic-only, not a control signal.
    Provider-agnosticism goal means any typed exception layer must
    support N providers — not worth it until rate limits are real.
+   → backlog **IMPR-005** (2026-05-30).
 6. **Tool-call budgets.** Set to 100 across the board (effectively
    uncapped). Progressive token degradation replaces tool-call limits
    as the wind-down mechanism. Machinery stays wired for future use.

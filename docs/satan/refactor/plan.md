@@ -27,7 +27,7 @@ T4 / T8 / T6   (quick wins + test split; parallel to all)
 → T1.5b         negative classifier implementation             ✓ merged
 → T-attr-1      attribute layer (Shame dispatcher)             ← in-progress (1a/1b/1c/1e-hc/1e-sensor merged)
 → T-attr-2      attribute layer (idle decay)                   ✓ done (2026-05-29: 2a–2f landed)
-→ T-attr-1d     capsule render (was deferred behind T-attr-2)  ← next
+→ T-attr-1d     capsule render (was deferred behind T-attr-2)  ← next (backlog IMPR-003)
 → T-attr-1e     remaining sources (percept/resonance/tool_error)
 → T3 Path A     capsule registry (only if rendering pain real)
 ```
