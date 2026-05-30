@@ -160,6 +160,36 @@
         (should (equal (plist-get m :matched_handles) '("app:firefox")))))
      (err (ert-fail (format "resonate failed: %S" err))))))
 
+(ert-deftest dl-satan-memory-store/resonate-returns-payload ()
+  "Each match carries the trace's own payload text inline, so the model
+recognises the recalled context without a `memory_show_trace' round-trip."
+  (dl-satan-memory-store-test--with-db
+   (dl-satan-memory-store-test--basic-mark)
+   (pcase (dl-satan-memory-store-resonate :cue-handles '("app:firefox"))
+     (`(ok . ,matches)
+      (let ((m (car matches)))
+        (should (equal (plist-get m :payload)
+                       "user pivoted from terminal to docs"))))
+     (err (ert-fail (format "resonate failed: %S" err))))))
+
+(ert-deftest dl-satan-memory-store/resonate-collapses-payload-whitespace ()
+  "Payload newlines/tabs collapse to spaces server-side so the inline
+payload stays single-line and the tab-split row parser cannot misframe."
+  (dl-satan-memory-store-test--with-db
+   (dl-satan-memory-store-mark
+    :trace-id "20260519T100000-multi1"
+    :kind "observation" :trace-origin "llm_mark" :source "t"
+    :observed-start-at "2026-05-19T09:50:00+10:00"
+    :observed-end-at   "2026-05-19T10:00:00+10:00"
+    :payload "line one\n\twith tab" :grammar-version 1
+    :handles (list (list :handle "app:firefox"
+                         :source (list :rule_id "r" :origin "observed"))))
+   (pcase (dl-satan-memory-store-resonate :cue-handles '("app:firefox"))
+     (`(ok . ,matches)
+      (should (equal (plist-get (car matches) :payload)
+                     "line one  with tab")))
+     (err (ert-fail (format "resonate failed: %S" err))))))
+
 (ert-deftest dl-satan-memory-store/resonate-orders-by-score ()
   (dl-satan-memory-store-test--with-db
    ;; t1: matches "app:firefox" only (weight 1)

@@ -2,6 +2,15 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-30 — SATAN: inline recalled trace payload in the resonance block
+
+Auto-resonance injected each prior trace as `trace_id + score + matched handles` only — to actually read the recalled context the model had to spend a `memory_show_trace` round-trip against a tight tick budget (≤4–15 tool calls). Phase 2 had cut the payload text the design intended. Closed the loop by carrying the payload inline.
+
+- **Store — one query, no migration.** `dl-satan-memory-store-resonate` widened its SELECT to `JOIN traces t ON t.id = r.trace_id` and return a 4th column: the trace's own payload, newline/tab-collapsed server-side via the same `REPLACE(REPLACE(…, E'\n', ' '), E'\t', ' ')` as `-recent`/`-show`. That collapse is load-bearing — it keeps the payload single-line so the `\t`-split / `\n`-row parser can't misframe; the parse guard bumped `(= 3 …)` → `(= 4 …)` and each row gained `:payload`. No change to the `memory_resonate` SQL function.
+- **Renderer — third line.** `dl-satan-resonance-render-block` now pushes an indented, quoted `"<payload>"` line per match, truncated to 120c (`--payload-max`, mirrors the attention-title cap) so one trace can't blow the capsule. Self-suppresses on nil/empty payload — no empty quotes. `derive` needs no logic change; `:payload` rides through `:matches` verbatim. No new framing key (rides under the existing resonance header).
+- **Build fix (drive-by).** The broker test was missing `(require 'dl-satan-tools-vcs)`, so `morning`-mode manifest assembly errored `unknown tool: vcs_log` once vcs_log entered the hand-written modes — a gap the earlier vcs_log commits left red. Added the require.
+- **Tests** — 2 store tests (payload returned; newline/tab collapse round-trips) against the live `satan_memory_test` DB; 3 render tests (payload line, nil/empty suppression, long-payload truncation), red→green via TDD. 151/151 across resonance/store/broker/memory-tools/context/percept; changed files byte-compile clean. No new `.el` → no `home-manager switch`.
+
 ## 2026-05-30 — SATAN: browser/tab sight in the tick capsule (+ tick-agent co-location)
 
 SATAN reported being "blind" to browsing during agent ticks despite panopticon capturing full url/tab/title. Two independent gaps, plus the structural root cause that let one of them persist.

@@ -4,11 +4,19 @@ description: handover — inline the recalled trace's payload text in the resona
 metadata:
   type: project
   topic: satan
-  status: open
+  status: shipped
   updated_at: 2026-05-30
 ---
 
 # Handover — resonance payload enrichment
+
+> **Shipped 2026-05-30.** The open loop below is closed. Implemented exactly as
+> the sketch describes: `-resonate` SELECT widened with the `traces` join + 4th
+> payload column (guard `3`→`4`, `:payload` on each row); renderer emits the
+> third quoted line truncated to 120c (`dl-satan-resonance--payload-max`),
+> self-suppressing on empty. Tab/newline collapse and graceful-degrade kept. A
+> drive-by build fix added the missing `(require 'dl-satan-tools-vcs)` to the
+> broker test. Retained as the design rationale for the inline-payload decision.
 
 ## State: shipped, one enrichment open
 

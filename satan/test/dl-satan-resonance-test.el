@@ -247,6 +247,60 @@ key suppresses the block (mind owns the header)."
     (should (equal (nth 4 lines)
                    "    matched: app:firefox, mode:motd"))))
 
+(ert-deftest dl-satan-resonance/render-block-includes-payload-line ()
+  "A match carrying `:payload' emits a third indented, quoted line so the
+model reads the recalled context without a `memory_show_trace' round-trip."
+  (let* ((framing '(("resonance_block_header" . "# Resonance")))
+         (result (list :status 'ok
+                       :matches
+                       (list (list :trace_id "20260518T120000-aaa"
+                                   :score 11.2
+                                   :matched_handles '("domain_kind:docs")
+                                   :payload
+                                   (concat "after terminal error in emacs.d, "
+                                           "user moved to docs and produced "
+                                           "no artifact")))))
+         (lines (dl-satan-resonance-render-block framing result)))
+    (should (equal (nth 1 lines) "- 20260518T120000-aaa  score 11.2"))
+    (should (equal (nth 2 lines) "    matched: domain_kind:docs"))
+    (should (equal (nth 3 lines)
+                   (concat "    \"after terminal error in emacs.d, "
+                           "user moved to docs and produced no artifact\"")))))
+
+(ert-deftest dl-satan-resonance/render-block-omits-empty-payload-line ()
+  "Nil or empty payload self-suppresses the third line (no empty quotes);
+the match still renders its trace_id + matched lines."
+  (let* ((framing '(("resonance_block_header" . "# Resonance")))
+         (result (list :status 'ok
+                       :matches
+                       (list (list :trace_id "t-nil" :score 1.0
+                                   :matched_handles '("app:firefox"))
+                             (list :trace_id "t-empty" :score 2.0
+                                   :matched_handles '("app:firefox")
+                                   :payload "")))))
+    (should (equal (dl-satan-resonance-render-block framing result)
+                   (list "# Resonance"
+                         "- t-nil  score 1.0"
+                         "    matched: app:firefox"
+                         "- t-empty  score 2.0"
+                         "    matched: app:firefox")))))
+
+(ert-deftest dl-satan-resonance/render-block-truncates-long-payload ()
+  "An over-long payload is truncated with an ellipsis so one recalled
+trace cannot blow the tick capsule budget."
+  (let* ((framing '(("resonance_block_header" . "# Resonance")))
+         (long (make-string 300 ?x))
+         (result (list :status 'ok
+                       :matches
+                       (list (list :trace_id "t1" :score 1.0
+                                   :matched_handles '("app:firefox")
+                                   :payload long))))
+         (lines (dl-satan-resonance-render-block framing result))
+         (payload-line (nth 3 lines)))
+    (should (string-prefix-p "    \"" payload-line))
+    (should (string-suffix-p "…\"" payload-line))
+    (should (< (length payload-line) (length long)))))
+
 (ert-deftest dl-satan-resonance/render-block-without-framing-key-yields-nil ()
   "Mind owns the header text; absent key in framing.txt suppresses the
 section.  Guards against silent fallback to a hardcoded header."

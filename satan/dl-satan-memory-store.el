@@ -275,8 +275,12 @@ element recursively prepared); symbols become strings."
           (db dl-satan-memory-store-database))
   "Inverted-index lookup against `trace_handles' filtered by
 CUE-HANDLES.  Returns (ok . LIST) of plists
-  (:trace_id ID :score N :matched_handles LIST)
-sorted by SCORE desc, or (error . MSG).  No state mutation per §6.4."
+  (:trace_id ID :score N :matched_handles LIST :payload SINGLE-LINE)
+sorted by SCORE desc, or (error . MSG).  No state mutation per §6.4.
+PAYLOAD is the matched trace's own text, joined in-query and
+newline/tab-collapsed to a single line (same as `-recent'/`-show') so
+the model recognises the recalled context without a `memory_show_trace'
+round-trip — and so the tab-split row parser below cannot misframe."
   (when (or (null cue-handles) (zerop (length cue-handles)))
     (cl-return-from dl-satan-memory-store-resonate (cons 'ok nil)))
   (let* ((handles-arr (dl-satan-memory-store--format-pg-array cue-handles))
@@ -288,9 +292,11 @@ sorted by SCORE desc, or (error . MSG).  No state mutation per §6.4."
                          `(("kinds" . ,(dl-satan-memory-store--format-pg-array
                                         kinds))))))
          (sql (format
-               (concat "SELECT trace_id, score, matched_handles "
+               (concat "SELECT r.trace_id, r.score, r.matched_handles, "
+                       "REPLACE(REPLACE(t.payload, E'\n', ' '), E'\t', ' ') "
                        "FROM memory_resonate(:'handles'::text[], "
-                       "%d::smallint, %s::float8, %d::int, %s)")
+                       "%d::smallint, %s::float8, %d::int, %s) r "
+                       "JOIN traces t ON t.id = r.trace_id")
                grammar-version
                (number-to-string min-score)
                limit
@@ -301,13 +307,14 @@ sorted by SCORE desc, or (error . MSG).  No state mutation per §6.4."
        (cons 'ok
              (cl-loop for line in (split-string out "\n" t)
                       for parts = (split-string line "\t")
-                      when (= 3 (length parts))
+                      when (= 4 (length parts))
                       collect
                       (list :trace_id (nth 0 parts)
                             :score (string-to-number (nth 1 parts))
                             :matched_handles
                             (dl-satan-memory-store--parse-pg-array
-                             (nth 2 parts))))))
+                             (nth 2 parts))
+                            :payload (nth 3 parts)))))
       (err err))))
 
 ;; ---------------------------------------------------------------------

@@ -63,7 +63,9 @@ test knobs:
 Result plist shape:
   :status   symbol  — `ok' / `gate-skip' / `memory-unreachable' / `no-match'
   :cue      list    — handles passed to the store (gate-admit case only)
-  :matches  list    — store rows, each `(:trace_id :score :matched_handles)'
+  :matches  list    — store rows, each
+                      `(:trace_id :score :matched_handles :payload)';
+                      `:payload' rides through verbatim to the renderer
 
 The renderer only emits a block when `:status' is `ok' (A4); the other
 statuses are present so audit can see why a tick produced no block.
@@ -102,6 +104,22 @@ psql blip should not fail the run (handover watch-out)."
 Mind owns the text under `~/notes/satan/system/framing.txt'; elisp
 never hardcodes the header (governance §Mind/mechanism).")
 
+(defconst dl-satan-resonance--payload-max 120
+  "Recalled payload text is truncated to this many characters in the block.
+Bounds one match's third line so a long payload can't blow the tick
+capsule budget (mirrors `dl-satan-percept--attention-title-max').")
+
+(defun dl-satan-resonance--payload-line (payload)
+  "Return the indented, quoted payload line for PAYLOAD, or nil.
+Nil/empty PAYLOAD self-suppresses the line.  Over-long PAYLOAD is
+truncated with an ellipsis to `--payload-max'."
+  (when (and (stringp payload) (not (string-empty-p payload)))
+    (let ((text (if (> (length payload) dl-satan-resonance--payload-max)
+                    (concat (substring payload 0 dl-satan-resonance--payload-max)
+                            "…")
+                  payload)))
+      (format "    \"%s\"" text))))
+
 (defun dl-satan-resonance--score-format (score)
   "Format SCORE like the design's `score N.N' example.
 Falls back to a printf `%g' when SCORE is non-numeric — defensive
@@ -118,7 +136,10 @@ Returns nil unless `:status' is `ok' and at least one match is present
 
   # Resonance
   - <trace_id>  score N.N
-      matched: handle1, handle2, …"
+      matched: handle1, handle2, …
+      \"<recalled payload text>\"
+
+The payload line self-suppresses when the match carries no payload."
   (let ((header (cdr (assoc dl-satan-resonance--framing-key framing)))
         (status (plist-get resonance :status))
         (matches (plist-get resonance :matches)))
@@ -134,7 +155,10 @@ Returns nil unless `:status' is `ok' and at least one match is present
                         (mapconcat #'identity
                                    (plist-get m :matched_handles)
                                    ", "))
-                lines))
+                lines)
+          (let ((payload-line (dl-satan-resonance--payload-line
+                               (plist-get m :payload))))
+            (when payload-line (push payload-line lines))))
         (nreverse lines)))))
 
 (provide 'dl-satan-resonance)

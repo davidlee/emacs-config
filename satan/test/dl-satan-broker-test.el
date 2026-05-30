@@ -30,6 +30,7 @@
 (require 'dl-satan-tools-memory)
 (require 'dl-satan-tools-motive)
 (require 'dl-satan-tools-bough)
+(require 'dl-satan-tools-vcs)            ; morning/tick modes reference vcs_log
 
 ;; Cross-cutter: assertion subject is broker (action-failed audit
 ;; emission); secondary subject is the tools dispatcher's
