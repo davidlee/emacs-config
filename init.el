@@ -25,6 +25,7 @@
 (require 'dl-eglot)
 (require 'dl-treesit)
 (require 'dl-delimiters)
+(require 'dl-test)
 
 ;; Completion / VOMPECCC
 (require 'dl-completion) ; vanilla emacs completion
