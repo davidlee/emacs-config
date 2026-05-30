@@ -47,10 +47,21 @@
 
 ### Incomplete work / loose ends
 
-- All implementation (P01 + P02) outstanding — no code written yet.
-- Open: `SWEEP_MARGIN_MS` default (≈60s) — fix in P01 (IP-002 §8).
-- Open: `with_db` return type — prefer returning `PgConnectOptions` over a lossy URL re-encode (phase-01 task 1.2 / risk).
-- **STOP condition** (phase-01 §6): if admin role lacks `CREATEDB` and no non-prod admin URL exists → raise with user (affects DEC-3). Verify CREATEDB in task 1.1 before coding.
+- **P01 (harness engine) — DONE** (`tests/common/mod.rs` + `tests/harness.rs`, satan-attrd). All three carry-forwards resolved (below).
+- **P02 (call-site migration) — outstanding.** Delete `cleanup_*` defs + ~21 tail calls; keep redundant isolation (DEC-5); `Justfile` comment.
+- ~~`SWEEP_MARGIN_MS` default~~ — **resolved**: `const SWEEP_MARGIN_MS: u64 = 60_000` (no env override).
+- ~~`with_db` return type~~ — **resolved**: returns `PgConnectOptions`; callers `connect_with`.
+- ~~STOP/CREATEDB~~ — **cleared**: role `david` has CREATEDB (`rolcreatedb=t`); gate passed, no escalation.
+
+### Phase 01 evidence (2026-05-30)
+
+- Gate 1.1: `psql .../postgres -tAc "SELECT current_user, rolcreatedb ..."` → `david|t`.
+- `cargo test --test harness` (with `DATABASE_URL=postgres:///satan_memory?host=/run/postgresql`) → **4 passed** (VT-with-db ×2, VT-no-prod, VT-sweep-gc).
+- `cargo test --test '*'` (same prod URL) → **42 passed** (decay 12, dispatcher 8, harness 4, run_loop 5, store 13). Existing call sites already run on throwaway DBs.
+- `cargo clippy --all-targets --all-features -- -D unwrap_used -D expect_used -W pedantic -A too_many_lines` → **exit 0**, no findings in `common/mod.rs`/`harness.rs`.
+- `cargo fmt --all --check` → clean.
+- Post-run prod check: `SELECT count(*) FROM satan_attributes WHERE scope LIKE 'test:%'` → **0** (no leak). 40 idle `satan_attrd_test_*` DBs left for next-run sweep (DR §4.2, by design).
+- **Sharp edge (new):** sqlx `PgConnectOptions::from_str` ignores the libpq `?host=` socket param — works here only via `/var/run`→`/run` symlink. Memory `mem.fact.satan-attrd.sqlx-socket-host`. Affects CI portability (use `$PGHOST` or tcp URL there).
 
 ### Commit-state guidance
 
@@ -60,15 +71,15 @@
 
 ## Next Agent Instructions
 
-Invoke `/using-spec-driver`, then `/execute-phase` for **DE-002 / IP-002 Phase 01**.
+P01 engine is proven green. Invoke `/using-spec-driver`, then `/execute-phase` for **DE-002 / IP-002 Phase 02** (call-site migration).
 
-Phase 01 = harness engine, TDD, in `~/dev/satan-attrd/`:
-1. Verify Postgres reachable + admin role has CREATEDB (gate; STOP if absent).
-2. TDD `with_db()` (both URL forms) → VT-with-db.
-3. epoch/`PROC_START_MS`/`SWEPT`/`SWEEP_MARGIN_MS`.
-4. TDD `sweep_stale()` (drop old idle, skip recent/in-use) → VT-sweep-gc.
-5. `create_database()` `TEMPLATE template0` + explicit CREATEDB-failure panic.
-6. Rewrite `shared_pool()` with `current_database()` guard before migrate → VT-no-prod.
-7. Smoke one existing test on a throwaway DB; clippy + fmt clean.
+Phase 02 = delete the now-dead `cleanup_*` apparatus, in `~/dev/satan-attrd/`:
+1. Remove `cleanup_scope`/`cleanup_run` **defs** from `tests/common/mod.rs`.
+2. Remove ~21 `cleanup_*(...)` **tail calls**: `tests/store.rs` (≈8), `tests/decay.rs` (5), `tests/dispatcher.rs` (8), `tests/run_loop.rs`.
+3. **Keep** redundant isolation per DEC-5 (`unique_scope`, `REBUILD_LOCK`, `DECAY_TEST_LOCK`, snapshot/restore) and `upsert_raw`/`select_raw`/`unique_*`.
+4. `Justfile`: comment that `DATABASE_URL` is a server pointer (db component ignored by tests).
+5. Re-run full suite + clippy + fmt; confirm prod `test:%` count still 0.
 
-Carry forward the two open design points (SWEEP_MARGIN_MS, with_db return type) and the CREATEDB STOP condition — resolve in-phase, escalate if blocked. Do NOT start P02 (call-site deletion) until the engine is proven green.
+Reference IP-002 §P02 and DR-002 §4 (code-impact table). Engine source of truth: `tests/common/mod.rs` (`shared_pool`/`with_db`/`sweep_stale`/`create_database`) + `tests/harness.rs` (VTs).
+
+Caveat for any CI/portability work: sqlx ignores the socket `?host=` param (memory `mem.fact.satan-attrd.sqlx-socket-host`); on a host without `/var/run`→`/run` use `$PGHOST` or a tcp `DATABASE_URL`.

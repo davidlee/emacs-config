@@ -4,7 +4,7 @@ slug: "002-satan_attrd_integration_tests_leak_test_uuid_rows_into_production_sat
 name: IP-002 Phase 01
 created: "2026-05-30"
 updated: "2026-05-30"
-status: draft  # one of: completed | deferred | draft | in-progress | pending
+status: completed  # one of: completed | deferred | draft | in-progress | pending
 kind: phase  # one of: audit | delta | design_revision | issue | memory | phase | plan | policy | problem | prod | requirement | risk | spec | standard | task | verification
 plan: IP-002
 delta: DE-002
@@ -31,15 +31,15 @@ bound to a fresh throwaway DB, and production can never be a write target.
 
 - [x] DR-002 v2 accepted (review integrated)
 - [x] IP-002 phase plan written
-- [ ] Postgres reachable; admin role has CREATEDB (verify first task)
+- [x] Postgres reachable; admin role has CREATEDB (verified task 1.1: role `david`, `rolcreatedb=t`)
 
 ## 4. Exit Criteria / Done When
 
-- [ ] `with_db()` rewrites both socket (`postgres:///x?host=/run/postgresql`) and tcp (`postgresql://u:p@h:5432/x`) forms — VT-with-db green.
-- [ ] `shared_pool()` provisions `satan_attrd_test_<epoch_ms>_<uuid>`, asserts `current_database()` == that name before migrate — VT-no-prod green.
-- [ ] `sweep_stale()` drops an old idle stray DB and skips a recent one — VT-sweep-gc green.
-- [ ] At least one pre-existing test (e.g. `migration_seeds_eight_global_attributes`) passes unchanged on a throwaway DB.
-- [ ] `cargo clippy --all-targets … -D unwrap_used -D expect_used` clean; `cargo fmt --check` clean.
+- [x] `with_db()` rewrites both socket (`postgres:///x?host=/run/postgresql`) and tcp (`postgresql://u:p@h:5432/x`) forms — VT-with-db green.
+- [x] `shared_pool()` provisions `satan_attrd_test_<epoch_ms>_<uuid>`, asserts `current_database()` == that name before migrate — VT-no-prod green.
+- [x] `sweep_stale()` drops an old idle stray DB and skips a recent one — VT-sweep-gc green.
+- [x] At least one pre-existing test (`migration_seeds_eight_global_attributes`) passes unchanged on a throwaway DB — in fact the **full** suite (42 tests) passes.
+- [x] `cargo clippy --all-targets … -D unwrap_used -D expect_used` clean (exit 0); `cargo fmt --check` clean.
 
 ## 5. Verification
 
@@ -60,13 +60,13 @@ _(Status: `[ ]` todo, `[WIP]`, `[x]` done, `[blocked]`)_
 
 | Status | ID  | Description | Parallel? | Notes |
 | ------ | --- | ----------- | --------- | ----- |
-| [ ] | 1.1 | Verify Postgres reachable + admin role has CREATEDB | [ ] | gate before coding |
-| [ ] | 1.2 | TDD `with_db(url, db)` via `PgConnectOptions`; unit test both URL forms (VT-with-db) | [ ] | red→green→refactor |
-| [ ] | 1.3 | Add `epoch_ms`/`epoch_of`, `PROC_START_MS`, `SWEPT` OnceCell, `SWEEP_MARGIN_MS` | [ ] | |
-| [ ] | 1.4 | TDD `sweep_stale()` — drop old idle, skip recent/in-use (VT-sweep-gc) | [ ] | seed stray DBs in test |
-| [ ] | 1.5 | `create_database()` — `TEMPLATE template0`; explicit CREATEDB-failure panic | [ ] | |
-| [ ] | 1.6 | Rewrite `shared_pool()`: admin conn → sweep-once → create → connect → `current_database()` guard → migrate (VT-no-prod) | [ ] | depends 1.2–1.5 |
-| [ ] | 1.7 | Smoke: one existing test green on throwaway DB; clippy + fmt clean | [ ] | exit gate |
+| [x] | 1.1 | Verify Postgres reachable + admin role has CREATEDB | [ ] | PASS — role `david` `rolcreatedb=t` |
+| [x] | 1.2 | TDD `with_db(url, db)` via `PgConnectOptions`; unit test both URL forms (VT-with-db) | [ ] | returns `PgConnectOptions` (no lossy re-encode) |
+| [x] | 1.3 | Add `epoch_ms`/`epoch_of`, `PROC_START_MS`, `SWEPT` OnceCell, `SWEEP_MARGIN_MS` | [ ] | `LazyLock` (std) not `once_cell`; `tokio::sync::OnceCell` |
+| [x] | 1.4 | TDD `sweep_stale()` — drop old idle, skip recent/in-use (VT-sweep-gc) | [ ] | seeds old(epoch 1000) + recent(far-future) DBs |
+| [x] | 1.5 | `create_database()` — `TEMPLATE template0`; explicit CREATEDB-failure panic | [ ] | matches SQLSTATE 42501 |
+| [x] | 1.6 | Rewrite `shared_pool()`: admin conn → sweep-once → create → connect → `current_database()` guard → migrate (VT-no-prod) | [ ] | done |
+| [x] | 1.7 | Smoke: one existing test green on throwaway DB; clippy + fmt clean | [ ] | full suite (42) green; clippy exit 0; fmt clean |
 
 ### Task Details
 
@@ -85,22 +85,28 @@ _(Status: `[ ]` todo, `[WIP]`, `[x]` done, `[blocked]`)_
 
 | Risk | Mitigation | Status |
 | --- | --- | --- |
-| CREATEDB missing on socket role | Task 1.1 gates; explicit panic message | open |
-| `with_db` lossy URL re-encode | Prefer returning `PgConnectOptions` over a string round-trip | open |
-| Sweep test pollutes other runs | Use clearly old/recent epochs and unique uuids; tests clean their own seeded DBs | open |
+| CREATEDB missing on socket role | Task 1.1 gates; explicit panic message | **resolved** — role `david` has CREATEDB; gate passed |
+| `with_db` lossy URL re-encode | Prefer returning `PgConnectOptions` over a string round-trip | **resolved** — `with_db` returns `PgConnectOptions`; callers `connect_with` |
+| Sweep test pollutes other runs | Use clearly old/recent epochs and unique uuids; tests clean their own seeded DBs | **resolved** — VT-sweep-gc drops its recent DB on the happy path |
+| sqlx ignores `?host=` socket param | Relies on `/var/run`→`/run` symlink + sqlx default socket dir; portability caveat for CI | **open (carry to P02/ops)** — see Findings |
 
 ## 9. Decisions & Outcomes
 
 - `2026-05-30` — Phase scoped to the harness engine only; call-site migration deferred to P02 so the engine is proven before fan-out.
+- `2026-05-30` — **`with_db` returns `PgConnectOptions`** (not a re-encoded URL string); callers use `connect_with`. Resolves the open return-type question (carry-forward #2) and avoids a lossy round-trip.
+- `2026-05-30` — **`SWEEP_MARGIN_MS` = 60_000** as a plain `const` (carry-forward #1). No env override added; if ever needed it's a one-line change.
+- `2026-05-30` — Used `std::sync::LazyLock` (edition 2024) instead of `once_cell::Lazy` — **no new dependency** for `PROC_START_MS`. `SWEPT` uses `tokio::sync::OnceCell` (tokio `sync` feature already on).
 
 ## 10. Findings / Research Notes
 
-- `shared_pool` is per-test (`tests/common/mod.rs:35`); 38 call sites → per-test DBs (DR-002 DEC-2).
+- `shared_pool` is per-test (`tests/common/mod.rs`); 38 call sites → per-test DBs (DR-002 DEC-2).
 - Migrations seed globals (`0007`) + settings (`0012`); fresh DB is test-ready.
+- **Sharp edge — sqlx ignores the libpq `?host=` socket query param.** `PgConnectOptions::from_str("postgres:///db?host=/run/postgresql")` does **not** carry that socket path; `get_host()` falls back to sqlx's compiled default `/var/run/postgresql` (or `$PGHOST`). It connects correctly **on this machine only because `/var/run`→`/run` is a symlink** to the same socket dir (verified by a live `current_database()` connect probe). Consequence: the VT-with-db socket test asserts only the db-swap, not a literal host; **VT-no-prod is the real socket-reach proof.** CI/portability note: a host without that symlink (or with a different socket dir) needs `$PGHOST` or a tcp `DATABASE_URL`. Captured as memory `mem.fact.satan-attrd.sqlx-socket-host`.
+- **Accumulation observed:** a full run left 40 idle `satan_attrd_test_*` DBs; the next run's sweep reclaims them (DR §4.2, by design). Prod `satan_attributes` `test:%` rows stayed at **0** across all runs.
 
 ## 11. Wrap-up Checklist
 
-- [ ] Exit criteria satisfied
-- [ ] Verification evidence stored in `notes.md`
-- [ ] DR/IP updated if the engine deviated from design
-- [ ] Hand-off note to P02 (call-site migration)
+- [x] Exit criteria satisfied
+- [x] Verification evidence stored in `notes.md`
+- [x] DR/IP updated if the engine deviated from design — no design deviation; return-type + margin decisions recorded above (within DR §4.1/§4.2/§8 envelope)
+- [x] Hand-off note to P02 (call-site migration) — see `notes.md`
