@@ -39,6 +39,7 @@ metadata:
 - [at-satan/plan](at-satan/plan.md)
 
 ## Tracking
+- [resonance-payload-handover](resonance-payload-handover.md) — open: inline the recalled trace's payload text in the resonance block (Phase 2 cut it)
 - [bough-gaps](bough-gaps.md) — bough CLI gaps surfaced by SATAN
 - [follow-ups](follow-ups.md) — durable cleanup / audit items deferred during perceptual-layer v0
 - [refactor/plan](refactor/plan.md) — refactor themes index (T1, T1.5, T2–T4, T6–T8, T-attr-1)
