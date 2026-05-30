@@ -6,7 +6,7 @@ updated: "2026-05-30"
 status: idea
 kind: improvement
 categories: [satan, attributes]
-tags: [blocked]
+tags: [ready]
 ---
 
 # T-attr-1d: render attribute capsule into the prompt
@@ -22,10 +22,20 @@ attrs" RPC pre-spawn and renders. Disable-aware: if attribute updates are off,
 render `Attributes: disabled` — not the frozen projection (stale values are
 indistinguishable from genuinely-low pressure).
 
-**Blocked:** needs ≥1 real `satan_intervention_outcomes` row + visible attribute
-drift off the fixture-pinned 0.50, so the render shows something meaningful.
-The outcome-classification timestamp bug (fixed 2026-05-29) previously left the
-table empty; watch for real outcome rows + drift over the following days.
+**Unblocked 2026-05-30.** Both gate conditions met in production `satan_memory`:
+- `satan_intervention_outcomes`: 1 row (post timestamp-fix), so the pipeline
+  writes. Caveat: it is `unknown`/low-confidence (`no_correlation`) — proves
+  plumbing, not yet an outcome→attribute coupling.
+- `global`-scope attribute drift is real and outcome-backed: doubt 0.6,
+  shame 0.65, metamorphosis 0.49 (all from a `harmful` classification 2026-05-23),
+  brooding 0.175 (hippocampus_write), curiosity 0.40 (panopticon_backlog sensor).
+  295 events; updates enabled. Render would show meaningful, non-flat state.
+
+Render the **`global`** scope only. `test:<uuid>` rows in `satan_attributes` are
+test-isolation leakage, not real state — see ISSUE-003; filter them out.
+
+Prior block was the outcome-classification timestamp bug (fixed 2026-05-29) that
+left the table empty.
 
 `refactor/plan.md` (`← next`) and `T-attr-1-attribute-layer.md §"Next actions"`
 both point at this item.
