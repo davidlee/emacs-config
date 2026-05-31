@@ -25,10 +25,7 @@
   :type 'directory :group 'dl-satan)
 
 (defun dl-satan-tools-hippocampus--slugify (s)
-  (let* ((down (downcase s))
-         (clean (replace-regexp-in-string "[^a-z0-9]+" "-" down))
-         (trim (replace-regexp-in-string "\\(^-+\\|-+$\\)" "" clean)))
-    (if (string-empty-p trim) "untitled" trim)))
+  (or (dl-satan-memory-canon--slugify s) "untitled"))
 
 (defun dl-satan-tools-hippocampus--mode-str (raw)
   (cond ((null raw) nil)

@@ -102,10 +102,7 @@ output handler and written from `satan_final.summary'."
            (cons 'error (format "multiple SATAN blocks named %s in %s" block path)))))))))
 
 (defun dl-satan-tools-org--slugify (s)
-  (let* ((down (downcase s))
-         (clean (replace-regexp-in-string "[^a-z0-9]+" "-" down))
-         (trim (replace-regexp-in-string "\\(^-+\\|-+$\\)" "" clean)))
-    (if (string-empty-p trim) "untitled" trim)))
+  (or (dl-satan-memory-canon--slugify s) "untitled"))
 
 (defun dl-satan-tool/proposal-stage (args ctx)
   "Implements proposal_stage.  ARGS: (:title STR :body STR).
