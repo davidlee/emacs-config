@@ -65,3 +65,37 @@
   already implementing after handoff acceptance, so Phase 02 status and
   `workflow/state.yaml` were reconciled manually to make `IP-004-P02` the active
   in-progress phase.
+
+## 2026-05-31 - Phase 02 execution
+
+- Implemented the steady-state wiring:
+  - `/home/david/flakes` commit `eb79fce` (`shared emacs`) defines
+    `pub.packages.${system}.emacs` in `pub/emacs.nix`, consumes it from
+    `modules/home/emacs.nix`, and aligns `pub` inputs with the parent flake.
+  - `.emacs.d/flake.nix` consumes the pub wrapped Emacs, adds `postgresql_18`,
+    `supabase-cli`, and `just` to project packages, and applies Supabase TCP
+    env plus the rootless Docker socket bind to all specDev jailed agents.
+  - `Justfile` now has additive `db-start`, `db-stop`, `db-status`, `db-init`,
+    and `check-batch` recipes; host `check` remains the live-daemon path.
+  - `supabase/config.toml` exists with `[db].port = 54322`.
+- Validation evidence:
+  - `alejandra` over the touched Nix files passed.
+  - `just --list`, `just --dry-run check-batch`, and `just --dry-run db-init`
+    passed.
+  - Host psql against
+    `postgresql://postgres:postgres@127.0.0.1:54322/postgres` returned `1`.
+  - `nix eval /home/david/flakes/pub#packages.x86_64-linux.emacs.name --raw`
+    returned `emacs-unstable-pgtk-with-packages-30.2`.
+  - `nix eval .#packages.x86_64-linux.jailed-pi.name --raw` returned
+    `jailed-pi` after the local `pub` lock was refreshed.
+  - A concurrent `nix build .#packages.x86_64-linux.jailed-pi --no-link` /
+    devshell probe crashed the caller shell and was not repeated; user then
+    resynced and ran `home-manager`, unblocking the other agent.
+- Phase 02 is complete as wiring/eval work only. Phase 03 still owns jailed
+  `db-start`/`db-init`/`check-batch` evidence and the proof that DB-backed tests
+  do not merely skip.
+- The new `/home/david/flakes/pub/emacs.nix` had to be git-tracked before Nix
+  could see it, confirming the flake tracked-file trap already documented in
+  `docs/emacs/traps.md`; no new memory is needed.
+- `.spec-driver` changes from Phase 02 remain uncommitted in this repo. The
+  worktree also contains staged/unowned DE-003 follow-up changes; preserve them.

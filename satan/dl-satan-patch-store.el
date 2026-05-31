@@ -19,6 +19,7 @@
 (require 'json)
 (require 'subr-x)
 (require 'dl-satan-db)
+(require 'dl-satan-jsonl)
 
 (defgroup dl-satan-patch nil
   "SATAN patch-agent."
@@ -67,24 +68,6 @@ defaults to a 4-char base36 random string."
 ;; ---------------------------------------------------------------------
 ;; psql plumbing
 ;; ---------------------------------------------------------------------
-
-(defun dl-satan-patch-store--prep-value (v)
-  "Recursively normalise V for `json-serialize'.
-Plists become objects; lists become arrays; symbols become strings;
-nil becomes :null."
-  (cond
-   ((null v) :null)
-   ((and (consp v) (keywordp (car v)))
-    (cl-loop for (k x) on v by #'cddr
-             collect k
-             collect (dl-satan-patch-store--prep-value x)))
-   ((listp v) (vconcat (mapcar #'dl-satan-patch-store--prep-value v)))
-   ((symbolp v) (symbol-name v))
-   (t v)))
-
-(defun dl-satan-patch-store--json (v)
-  "Serialise V (plist, list, or scalar) to a JSON string."
-  (json-serialize (dl-satan-patch-store--prep-value v)))
 
 ;; ---------------------------------------------------------------------
 ;; row parsing
@@ -192,10 +175,10 @@ Optional: JOB-ID (else minted from current time), STATE (default
                  ("branch"        . ,branch)
                  ("worktree_path" . ,worktree_path)
                  ("adapter"       . ,adapter)
-                 ("source"        . ,(dl-satan-patch-store--json (or source '())))
-                 ("context"       . ,(dl-satan-patch-store--json (or context '())))
-                 ("allowed"       . ,(dl-satan-patch-store--json (or allowed_paths '())))
-                 ("checks"        . ,(dl-satan-patch-store--json (or checks '())))))
+                 ("source"        . ,(json-serialize (dl-satan-jsonl-prepare (or source '())))
+                 ("context"       . ,(json-serialize (dl-satan-jsonl-prepare (or context '())))
+                 ("allowed"       . ,(json-serialize (dl-satan-jsonl-prepare (or allowed_paths '())))
+                 ("checks"        . ,(json-serialize (dl-satan-jsonl-prepare (or checks '())))))
          (result (dl-satan-db-query db dl-satan-patch-store-host dl-satan-patch-store-psql-program sql vars)))
     (pcase result
       (`(ok . ,_) (cons 'ok id))
@@ -270,7 +253,7 @@ The CHECK constraint enforces valid states server-side.  Returns
                  ((or :result :error)
                   (let ((col (if (eq k :result) "result_json" "error_json")))
                     (push (format "%s = :'%s'::jsonb" col name) sets)
-                    (push (cons name (dl-satan-patch-store--json v)) vars)))
+                    (push (cons name (json-serialize (dl-satan-jsonl-prepare v))) vars)))
                  ((or :started_at :finished_at)
                   (push (format "%s = :'%s'::timestamptz" name name) sets)
                   (push (cons name v) vars))
@@ -329,7 +312,7 @@ or (error . MSG)."
                "VALUES (:'id', :'kind', :'payload'::jsonb)"))
          (vars `(("id"      . ,job-id)
                  ("kind"    . ,kind)
-                 ("payload" . ,(dl-satan-patch-store--json
+                 ("payload" . ,(json-serialize (dl-satan-jsonl-prepare
                                 (or payload '())))))
          (result (dl-satan-db-query db dl-satan-patch-store-host dl-satan-patch-store-psql-program sql vars)))
     (pcase result

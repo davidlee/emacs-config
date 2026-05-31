@@ -4,7 +4,7 @@ slug: "004-jail_local_emacs_test_runner_supabase_isolated_postgres_for_jailed_ag
 name: Phase 02 - Steady-State Nix and Recipe Wiring
 created: "2026-05-31"
 updated: "2026-05-31"
-status: in-progress  # one of: completed | deferred | draft | in-progress | pending
+status: completed  # one of: completed | deferred | draft | in-progress | pending
 kind: phase  # one of: audit | delta | design_revision | issue | memory | phase | plan | policy | problem | prod | requirement | risk | spec | standard | task | verification
 plan: IP-004
 delta: DE-004
@@ -61,17 +61,17 @@ and does not claim end-to-end DB-backed suite evidence.
 
 ## 4. Exit Criteria / Done When
 
-- [ ] `pub` exports a define-once wrapped Emacs package without leaving a copied
+- [x] `pub` exports a define-once wrapped Emacs package without leaving a copied
   package list in `/home/david/flakes/modules/home/emacs.nix`.
-- [ ] `/home/david/flakes/modules/home/emacs.nix` consumes the `pub` wrapped
+- [x] `/home/david/flakes/modules/home/emacs.nix` consumes the `pub` wrapped
   Emacs package for host `home.packages`.
-- [ ] `.emacs.d/flake.nix` equips every specDev jailed agent with wrapped Emacs,
+- [x] `.emacs.d/flake.nix` equips every specDev jailed agent with wrapped Emacs,
   `postgresql`, `supabase-cli`, Docker socket access, Supabase DB env, and
   leaves `exposePostgres=false`.
-- [ ] `Justfile` has `db-start`, `db-init`, `db-status`, optional `db-stop`, and
+- [x] `Justfile` has `db-start`, `db-init`, `db-status`, optional `db-stop`, and
   additive `check-batch`; existing `check` remains unchanged.
-- [ ] `supabase/config.toml` exists with local DB port `54322`.
-- [ ] Nix/recipe evaluation checks pass for the touched surfaces, or failures
+- [x] `supabase/config.toml` exists with local DB port `54322`.
+- [x] Nix/recipe evaluation checks pass for the touched surfaces, or failures
   are recorded with concrete blockers.
 
 ## 5. Verification
@@ -86,6 +86,15 @@ and does not claim end-to-end DB-backed suite evidence.
 - `just --list` and `just --dry-run check-batch db-init`.
 - No full `just check-batch` requirement in this phase: DE-003 still owns the
   runtime DB host knob, and Phase 03 owns jailed execution evidence.
+
+Evidence recorded `2026-05-31`:
+
+- `alejandra flake.nix /home/david/flakes/flake.nix /home/david/flakes/modules/home/emacs.nix /home/david/flakes/pub/flake.nix /home/david/flakes/pub/emacs.nix` passed.
+- `just --list`, `just --dry-run check-batch`, and `just --dry-run db-init` passed.
+- `psql 'postgresql://postgres:postgres@127.0.0.1:54322/postgres' -XAtc 'select 1'` returned `1`.
+- `nix eval /home/david/flakes/pub#packages.x86_64-linux.emacs.name --raw` returned `emacs-unstable-pgtk-with-packages-30.2`.
+- `nix eval .#packages.x86_64-linux.jailed-pi.name --raw` returned `jailed-pi`.
+- Concurrent `nix build .#packages.x86_64-linux.jailed-pi --no-link` / devshell probing crashed the caller shell and was not repeated; user then resynced and ran `home-manager`, unblocking the other agent.
 
 ## 6. Assumptions & STOP Conditions
 
@@ -112,13 +121,13 @@ _(Status: `[ ]` todo, `[WIP]`, `[x]` done, `[blocked]`)_
 
 | Status | ID  | Description | Parallel? | Notes |
 | ------ | --- | ----------- | --------- | ----- |
-| [ ] | 2.1 | Refactor/export wrapped Emacs through `pub` | [ ] | Requires `/home/david/flakes` edits. |
-| [ ] | 2.2 | Consume `pub` wrapped Emacs from host home module | [ ] | Remove local package-list ownership from home module. |
-| [ ] | 2.3 | Add jailed-agent packages/env/binds in `.emacs.d/flake.nix` | [ ] | All specDev agents, `exposePostgres=false`. |
-| [ ] | 2.4 | Add Supabase local config | [x] | Use port `54322`. |
-| [ ] | 2.5 | Add Just recipes for DB lifecycle and batch checks | [x] | Preserve existing `check`. |
-| [ ] | 2.6 | Run feasible Nix/Just validation | [ ] | Full jailed suite deferred to Phase 03. |
-| [ ] | 2.7 | Reconcile DE/IP/DR/phase/notes with evidence | [ ] | Required before phase completion. |
+| [x] | 2.1 | Refactor/export wrapped Emacs through `pub` | [ ] | `/home/david/flakes` commit `eb79fce` exports `packages.emacs`. |
+| [x] | 2.2 | Consume `pub` wrapped Emacs from host home module | [ ] | `/home/david/flakes/modules/home/emacs.nix` consumes `inputs.pub.packages.${system}.emacs`. |
+| [x] | 2.3 | Add jailed-agent packages/env/binds in `.emacs.d/flake.nix` | [ ] | All specDev agents use `jailEnvOptions`; no `exposePostgres=true` added. |
+| [x] | 2.4 | Add Supabase local config | [x] | `supabase/config.toml` uses port `54322`. |
+| [x] | 2.5 | Add Just recipes for DB lifecycle and batch checks | [x] | `check` preserved; `db-start`, `db-stop`, `db-status`, `db-init`, `check-batch` added. |
+| [x] | 2.6 | Run feasible Nix/Just validation | [ ] | Eval/recipe checks passed; full jailed suite deferred to Phase 03; heavy build not repeated after shell crash. |
+| [x] | 2.7 | Reconcile DE/IP/DR/phase/notes with evidence | [ ] | Phase/IP/DE/notes updated for Phase 02 completion. |
 
 ### Task Details
 
@@ -190,16 +199,19 @@ _(Status: `[ ]` todo, `[WIP]`, `[x]` done, `[blocked]`)_
 
 | Risk | Mitigation | Status |
 | ---- | ---------- | ------ |
-| `/home/david/flakes` edits need sandbox approval | Request escalation before editing those files | Open |
-| DE-003 host knob absent | Scope Phase 02 to wiring/eval only; Phase 03 blocked until DE-003 lands | Open |
-| Pub package drifts from host | Define once in pub and consume from home module and jail | Open |
-| Docker socket path differs | Forward `DOCKER_HOST` and bind the known rootless socket path from vk | Open |
-| `supabase-cli` config format drift | Use vk's existing local config shape; validate with CLI in later phase | Open |
+| `/home/david/flakes` edits need sandbox approval | Request escalation before editing those files | Resolved for Phase 02 |
+| DE-003 host knob absent | Scope Phase 02 to wiring/eval only; Phase 03 blocked until DE-003 lands | Still Phase 03 concern |
+| Pub package drifts from host | Define once in pub and consume from home module and jail | Resolved by `pub` export + follows |
+| Docker socket path differs | Forward `DOCKER_HOST` and bind the known rootless socket path from vk | Resolved for current host |
+| `supabase-cli` config format drift | Use vk's existing local config shape; validate with CLI in later phase | Config added; runtime proof in Phase 03 |
 
 ## 9. Decisions & Outcomes
 
 - `2026-05-31` - Phase 02 may implement wiring while DE-003 remains absent, but
   must not claim full DB-backed suite success; that evidence stays in Phase 03.
+- `2026-05-31` - Phase 02 wiring completed. `/home/david/flakes` now owns the
+  wrapped Emacs export, `.emacs.d` consumes it for specDev jailed agents, and
+  Supabase/Just recipes are additive.
 
 ## 10. Findings / Research Notes
 
@@ -209,10 +221,19 @@ _(Status: `[ ]` todo, `[WIP]`, `[x]` done, `[blocked]`)_
   matching the vk rootless Docker socket bind.
 - `/home/david/flakes/pub` has its own `flake.lock`; input-follow strategy must
   be validated by Nix eval.
+- Supabase was already running at
+  `postgresql://postgres:postgres@127.0.0.1:54322/postgres`; host `psql`
+  connectivity returned `1`.
+- The first pub eval failed until the new `/home/david/flakes/pub/emacs.nix`
+  source file was git-tracked, confirming the flake tracked-file trap from
+  `docs/emacs/traps.md`.
+- User resynced and ran `home-manager` after the local lock refresh; this
+  unblocked the other agent. Do not infer Phase 03 jailed suite success from
+  this host-side rebuild.
 
 ## 11. Wrap-up Checklist
 
-- [ ] Exit criteria satisfied
-- [ ] Verification evidence stored
-- [ ] Spec/Delta/Plan updated with lessons
-- [ ] Hand-off notes to next phase (if any)
+- [x] Exit criteria satisfied
+- [x] Verification evidence stored
+- [x] Spec/Delta/Plan updated with lessons
+- [x] Hand-off notes to next phase (if any)

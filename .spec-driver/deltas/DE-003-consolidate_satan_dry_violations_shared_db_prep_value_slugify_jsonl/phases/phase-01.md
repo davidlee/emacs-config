@@ -67,11 +67,11 @@ _(Status: `[ ]` todo, `[WIP]`, `[x]` done, `[blocked]`)_
 
 | Status | ID | Description | Parallel? | Notes |
 |--------|----|-------------|-----------|-------|
-| [ ] | 1.1 | Create `dl-satan-db.el` + test suite | — | Shared psql runner with `-q` |
-| [ ] | 1.2 | Switch memory-store `--query` → `dl-satan-db-query` | — | Latent `-q` bug fix here |
-| [ ] | 1.3 | Switch patch-store `--query` → `dl-satan-db-query` | — | |
-| [ ] | 1.4 | Switch attribute `--query` → `dl-satan-db-query` | — | |
-| [ ] | 1.5 | Switch `memory-migrate--psql` → `dl-satan-db` (with extra-flags) | — | `--single-transaction` passthrough |
+| [x] | 1.1 | Create `dl-satan-db.el` + test suite | — | Shared psql runner with `-q` |
+| [x] | 1.2 | Switch memory-store `--query` → `dl-satan-db-query` | — | Latent `-q` bug fix here |
+| [x] | 1.3 | Switch patch-store `--query` → `dl-satan-db-query` | — | |
+| [x] | 1.4 | Switch attribute `--query` → `dl-satan-db-query` | — | |
+| [x] | 1.5 | Switch `memory-migrate--psql` → `dl-satan-db` (with extra-flags) | — | `--single-transaction` passthrough |
 | [ ] | 2.1 | Kill memory-store `--prep-value`/`--prep-plist` → `dl-satan-jsonl-prepare` | — | |
 | [ ] | 2.2 | Kill patch-store `--prep-value` → `dl-satan-jsonl-prepare` | — | |
 | [ ] | 2.3 | Kill attribute `--prep-value` → `dl-satan-jsonl-prepare` | — | |

@@ -18,6 +18,7 @@
 (require 'json)
 (require 'subr-x)
 (require 'dl-satan-db)
+(require 'dl-satan-jsonl)
 (require 'dl-satan-memory-grammar)
 
 (declare-function dl-satan-attribute-build-hippocampus-payload "dl-satan-attribute")
@@ -171,27 +172,6 @@ Only emits when `dl-satan-memory-store--current-run-id' is set
 (defun dl-satan-memory-store--null-if-nil (v)
   (if (null v) :null v))
 
-(defun dl-satan-memory-store--prep-plist (plist)
-  "Recursively normalize PLIST for `json-serialize':
-nil-valued slots become `:null', nested plists are walked, lists of
-plists are converted to vectors of plists."
-  (cl-loop for (k v) on plist by #'cddr
-           collect k
-           collect (dl-satan-memory-store--prep-value v)))
-
-(defun dl-satan-memory-store--prep-value (v)
-  "Recursively normalise V for `json-serialize'.
-Plists become objects; any other list becomes a JSON array (each
-element recursively prepared); symbols become strings."
-  (cond
-   ((null v) :null)
-   ((and (consp v) (keywordp (car v)))
-    (dl-satan-memory-store--prep-plist v))
-   ((listp v)
-    (vconcat (mapcar #'dl-satan-memory-store--prep-value v)))
-   ((symbolp v) (symbol-name v))
-   (t v)))
-
 (defun dl-satan-memory-store--build-mark-payload
     (tid kind origin src start end body val outc sv gv md rt handles links)
   "Internal: build the JSONB blob memory_mark_trace consumes."
@@ -199,7 +179,7 @@ element recursively prepared); symbols become strings."
          (vconcat
           (mapcar
            (lambda (h)
-             (dl-satan-memory-store--prep-plist
+             (dl-satan-jsonl-prepare
               (list :handle (plist-get h :handle)
                     :source (or (plist-get h :source) '())
                     :grammar_version (or (plist-get h :grammar_version) gv))))
@@ -223,9 +203,9 @@ element recursively prepared); symbols become strings."
            :outcome (dl-satan-memory-store--null-if-nil outc)
            :schema_version sv
            :grammar_version gv
-           :metadata_json (or (and md (dl-satan-memory-store--prep-value md))
+           :metadata_json (or (and md (dl-satan-jsonl-prepare md))
                               '())
-           :retention_json (or (and rt (dl-satan-memory-store--prep-value rt))
+           :retention_json (or (and rt (dl-satan-jsonl-prepare rt))
                                (list :policy "normal"))
            :handles handle-rows
            :links link-rows))))

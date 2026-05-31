@@ -7,7 +7,7 @@ export PGPASSWORD := "postgres"
 default: home-switch
 
 home-switch:
-  cd ~/flakes && git add . && nix flake update panopticon emacs-config satan-patcher satan-attrd && just home-switch
+  cd ~/flakes && git add . && nix flake update pub panopticon emacs-config satan-patcher satan-attrd && just home-switch
 
 used:
   @rg use-package -g '*.el' -I --trim | egrep -v '^;' | cut -d ' ' -f 2 | tr ')' ' ' | sort | uniq

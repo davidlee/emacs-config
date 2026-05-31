@@ -20,6 +20,7 @@
 (require 'json)
 (require 'subr-x)
 (require 'dl-satan-db)
+(require 'dl-satan-jsonl)
 
 (defgroup dl-satan-attribute nil
   "SATAN attribute layer broker surface."
@@ -55,28 +56,6 @@ projection UPSERT.  Operator rollback path for the attributes tranche
 ;; ---------------------------------------------------------------------
 ;; JSON helpers (shared shape with dl-satan-patch-store)
 ;; ---------------------------------------------------------------------
-
-(defun dl-satan-attribute--prep-value (v)
-  "Recursively normalise V for `json-serialize'.
-Plists become objects; lists become arrays; symbols become strings; nil
-becomes :null.  Booleans (`t' and `:false') are passed through verbatim
-so `json-serialize' renders JSON `true`/`false`."
-  (cond
-   ((null v) :null)
-   ((eq v t) t)
-   ((eq v :false) :false)
-   ((eq v :null) :null)
-   ((and (consp v) (keywordp (car v)))
-    (cl-loop for (k x) on v by #'cddr
-             collect k
-             collect (dl-satan-attribute--prep-value x)))
-   ((listp v) (vconcat (mapcar #'dl-satan-attribute--prep-value v)))
-   ((symbolp v) (symbol-name v))
-   (t v)))
-
-(defun dl-satan-attribute--json (v)
-  "Serialise V to a JSON string."
-  (json-serialize (dl-satan-attribute--prep-value v)))
 
 ;; ---------------------------------------------------------------------
 ;; psql plumbing
@@ -157,7 +136,7 @@ PAYLOAD is a plist built via `dl-satan-attribute-build-outcome-payload',
 `dl-satan-attribute-build-sensor-payload'; serialised to JSONB.
 Returns (ok . ID) carrying the inserted row id, or (error . MSG)."
   (let* ((database (or db dl-satan-attribute-database))
-         (json (dl-satan-attribute--json payload))
+         (json (json-serialize (dl-satan-jsonl-prepare payload)))
          (sql (concat
                "WITH ins AS ("
                " INSERT INTO satan_outcome_inbox (payload_json) "
