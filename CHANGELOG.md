@@ -2,6 +2,14 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-31 — SATAN: content-backlog sensor (DE-005 P02)
+
+New `panopticon_content_backlog` sensor emits attribute signals when uninspected page captures accumulate — near-clone of the curiosity (segment-backlog) sensor.
+
+- **Sensor** (`dl-satan-sensor-content.el`): walks `articles.jsonl` via P01's lenient reader, counts captures newer than watermark, enqueues attribute payload, advances watermark. Disable switch `dl-satan-sensor-content-enabled`. Scheduled alongside curiosity in the broker probe loop.
+- **DEC-5 watermark**: stores max `captured_at` string verbatim (UTC-millis-Z), NOT formatted `now()` — broker ts uses local offset (`+10:00`), so lexical comparison between formats is meaningless.
+- **Tests**: 8 new ert (backlog detect, no-backlog, DEC-5 format, disabled→no-op, empty store, malformed-line skip, run-id guard, initial watermark). 31/31 pass (23 P01 + 8 new).
+
 ## 2026-05-30 — SATAN: inline recalled trace payload in the resonance block
 
 Auto-resonance injected each prior trace as `trace_id + score + matched handles` only — to actually read the recalled context the model had to spend a `memory_show_trace` round-trip against a tight tick budget (≤4–15 tool calls). Phase 2 had cut the payload text the design intended. Closed the loop by carrying the payload inline.
