@@ -28,6 +28,7 @@
 (require 'dl-satan-observer)
 (require 'dl-satan-sensor-alerts)
 (require 'dl-satan-sensor-curiosity)
+(require 'dl-satan-sensor-content)
 (require 'dl-satan-sensor-wpm)
 
 (defvar dl-satan-memory-store--current-run-id)
@@ -741,6 +742,12 @@ Returns the run-id."
            (_curiosity-signal
             (condition-case _err
                 (dl-satan-sensor-curiosity-probe
+                 :run-id run-id
+                 :ts (plist-get prepare :time_now))
+              (error nil)))
+           (_content-signal
+            (condition-case _err
+                (dl-satan-sensor-content-probe
                  :run-id run-id
                  :ts (plist-get prepare :time_now))
               (error nil)))

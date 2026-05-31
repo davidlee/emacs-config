@@ -15,40 +15,39 @@
 - **`nreverse` for newest-first**: `(last all N)` returns file order (oldest→newest). Reversed to newest-first with `nreverse`.
 - **search scope now uses condition-case for rg errors** (soft-fail), `call-process` with `t` destination (insert in current buffer), arg-vector (no shell).
 
+## 2026-05-31 P02
+
+- 31/31 ert pass (23 P01 + 8 new sensor tests) in batch mode
+- Files created: `satan/dl-satan-sensor-content.el`, `satan/test/dl-satan-sensor-content-test.el`
+- Files edited: `satan/dl-satan-broker.el` (+ `(require 'dl-satan-sensor-content)`, + `_content-signal` probe call)
+- Phase sheet: `phases/phase-02.md` (created + populated)
+
+### DEC-5 implementation
+- Sensor watermark stores max `captured_at` string verbatim (UTC-millis-Z), never formatted `now()`
+- `dl-satan-sensor-content-mark-inspected` takes `high-water` directly (no default-to-now)
+- `--count-uninspected` returns `(count . high-water)` — high-water is max captured_at seen
+- Broker's `:ts` used ONLY in attribute payload, NOT for watermark
+
+### Discoveries
+- **Sensor depends on `dl-satan-tools-content`** for the lenient JSONL reader — cross-module dependency from sensor→tools. Acceptable per DR-005 (same in-tree family). Curiosity has no equivalent dependency because it reads a different data source (segments, not articles.jsonl).
+- **`defcustom` clash in batch tests**: `let`-binding `dl-satan-attribute-updates-enabled` then `require`ing `dl-satan-attribute` inside the let caused "Defining as dynamic an already lexical var". Fixed by requiring `dl-satan-attribute` at top level and testing the disable path via `dl-satan-sensor-content-enabled` instead.
+- **Call site confirmed**: `dl-satan-broker.el` line 743 (`let*` block, `condition-case` wrapped, after curiosity probe).
+
+### Pending
+- Git add new files (flake visibility — trap #1)
+- `custom-vars.el` and `flake.nix` have uncommitted changes (compile-angel side effects); review before P04 switch
+- P03 next: panopticon.content percept rule + evidence probe (O3)
+
 ## New Agent Instructions (2026-05-31)
 
 ### Task
-Execute **Phase P02**: content-backlog sensor (O2) with DEC-5 watermark.
-Active phase sheet: `.spec-driver/deltas/DE-005-satan_content_percept_content_read_tool/phases/phase-02.md`
+Execute **Phase P03**: panopticon.content percept rule + evidence probe (O3).
+Active phase sheet: `phases/phase-03.md` (needs creation).
 
 ### Required reading
-- `DE-005.md` (§3 O2, risk R5 DEC-5)
-- `DR-005.md` (§4.2 sensor contract, DEC-5 watermark)
-- `IP-005.md` (§4 P02 row)
-- `phase-02.md` (phase sheet — will need creating)
-- `satan/dl-satan-sensor-curiosity.el` — clone target
-- `satan/dl-satan-tools-content.el` — reuses `--read-jsonl-lenient`, `--clamp-limit`
-
-### Key files
-| Path | Change |
-|------|--------|
-| `satan/dl-satan-sensor-content.el` | **NEW** — sensor probe + watermark + disable switch |
-| `satan/test/dl-satan-sensor-content-test.el` | **NEW** — ert suite |
-| `satan/dl-satan.el` | EDIT — `(require 'dl-satan-sensor-content)` |
-| (tick call site) | EDIT — add sensor probe alongside curiosity probe |
-
-### Relevant memories
-- `mem.pattern.satan.jsonl-arity-trap` — avoid `dl-satan-jsonl-read-file`; use lenient reader
-- `mem.pattern.satan.rg-json-path` — rg `--json` path field is `{:text "..."}`
-- `mem.signpost.satan.orientation` — SATAN architecture overview
-
-### DEC-5 watermark (critical)
-The content sensor's watermark stores the **max `captured_at` string seen verbatim** (UTC-millis-`Z`),
-NOT a formatted `now()`. This is the ONE place the content sensor must NOT copy curiosity verbatim —
-curiosity stores a local-offset timestamp (`+10:00`), and comparing `Z` vs `+` lexically is meaningless.
-The broker passes `(plist-get prepare :time_now)` as `ts` — broker-generated, not a panopticon `captured_at`.
-
-### Pending
-- Phase-02.md needs creation (`spec-driver create phase IP-005 --phase 2`)
-- Confirm exact tick/probe call site (mirror curiosity's registration) — implementation-time task
-- `custom-vars.el` and `flake.nix` have uncommitted changes (compile-angel side effects); review before P04 switch
+- `DE-005.md` (§3 O3)
+- `DR-005.md` (§4.3 percept rule, DEC-2)
+- `IP-005.md` (§4 P03 row)
+- `satan/dl-satan-memory-canon.el` — defrule pattern
+- `satan/dl-satan-memory-evidence.el` — evidence window builder, browser-probe precedent
+- `satan/dl-satan-resonance.el` — §S2 admission gate"
