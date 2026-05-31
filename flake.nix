@@ -83,6 +83,10 @@
         workspaceDeps = [
           "/home/david/flakes/"
           "/home/david/notes/"
+          "/home/david/.local/state/behaviour/"
+          "/home/david/dev/satan-attrd/"
+          "/home/david/dev/satan-patcher/"
+          "/home/david/dev/panopticon/"
         ];
 
         # SATAN — phase-1 fake harness.  Emits ready, one tool_call, then

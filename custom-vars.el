@@ -18,10 +18,11 @@
  '(dl-shpool-known-sessions '(".emacs.d" "hris" "team" "claude"))
  '(org-timeblock-current-time-indicator t)
  '(org-timeblock-span 1)
- '(package-selected-packages nil)
+ '(package-selected-packages '(eca))
  '(package-vc-selected-packages
-    '((repeat-fu :url
-        "https://codeberg.org/ideasman42/emacs-repeat-fu.git")
+    '((eca :url "https://github.com/editor-code-assistant/eca-emacs")
+       (repeat-fu :url
+         "https://codeberg.org/ideasman42/emacs-repeat-fu.git")
        (gptel-openrouter :url
          "https://github.com/darcamo/gptel-openrouter.git")
        (otpp :url
@@ -43,7 +44,8 @@
        (combobulate :vc-backend Git :url
          "https://github.com/mickeynp/combobulate.git")
        (meow-vterm :url "https://github.com/accelbread/meow-vterm.git")))
- '(safe-local-variable-values '((lexical-bindings . t) (lexical-binding . f))))
+ '(safe-local-variable-values '((lexical-bindings . t) (lexical-binding . f)))
+ '(zoom-window-mode-line-color "#005500"))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
