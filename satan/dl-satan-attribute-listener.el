@@ -84,8 +84,10 @@ success, nil on race (already claimed), or signal an error on DB failure."
                "  WHERE id = :'id' AND claimed_at IS NULL "
                "  RETURNING payload_json::text"
                ") SELECT payload_json FROM claimed"))
-         (result (dl-satan-attribute--query
+         (result (dl-satan-db-query
                   dl-satan-attribute-database
+                  dl-satan-attribute-host
+                  dl-satan-attribute-psql-program
                   sql `(("id" . ,inbox-id)))))
     (pcase result
       (`(ok . ,out)
@@ -113,8 +115,10 @@ success, nil on race (already claimed), or signal an error on DB failure."
 (defun dl-satan-attribute-listener--delete-row (inbox-id)
   "DELETE the inbox row.  Returns nil; logs on failure."
   (let* ((sql "DELETE FROM satan_audit_inbox WHERE id = :'id'")
-         (result (dl-satan-attribute--query
+         (result (dl-satan-db-query
                   dl-satan-attribute-database
+                  dl-satan-attribute-host
+                  dl-satan-attribute-psql-program
                   sql `(("id" . ,inbox-id)))))
     (pcase result
       (`(error . ,msg)
@@ -135,8 +139,10 @@ reply channel and logs the rejection."
                ") "
                "SELECT pg_notify('satan_audit_reply', inbox_id::text) "
                "FROM ins"))
-         (result (dl-satan-attribute--query
+         (result (dl-satan-db-query
                   dl-satan-attribute-database
+                  dl-satan-attribute-host
+                  dl-satan-attribute-psql-program
                   sql `(("id" . ,inbox-id) ("msg" . ,err-msg)))))
     (pcase result
       (`(error . ,msg)

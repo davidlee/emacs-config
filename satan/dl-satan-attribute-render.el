@@ -53,8 +53,10 @@ Row order in the capsule follows this list order.")
 (defun dl-satan-attribute-snapshot ()
   "Return current attribute values as an alist ((name-string . value) ...).
 Returns nil on query failure (block suppresses)."
-  (let ((result (dl-satan-attribute--query
+  (let ((result (dl-satan-db-query
                  dl-satan-attribute-database
+                 dl-satan-attribute-host
+                 dl-satan-attribute-psql-program
                  dl-satan-attribute-render--snapshot-sql
                  nil)))
     (pcase result

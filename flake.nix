@@ -60,6 +60,7 @@
             postgresql_18
             supabase-cli
             wrappedEmacs
+            sqlite
           ]
           ++ [spec-driver-pkg];
 
