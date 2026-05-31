@@ -19,8 +19,8 @@
 (defun dl-satan-tools-hippocampus-test--reachable-p ()
   (pcase (let ((dl-satan-memory-migrate-database
                 dl-satan-tools-hippocampus-test--db))
-           (dl-satan-memory-migrate--psql
-            dl-satan-tools-hippocampus-test--db
+           (dl-satan-db-psql
+            dl-satan-tools-hippocampus-test--db dl-satan-memory-migrate-host dl-satan-memory-migrate-psql-program
             (list "-A" "-t" "-c" "SELECT 1")))
     (`(ok . ,_) t)
     (_ nil)))
@@ -28,8 +28,8 @@
 (defun dl-satan-tools-hippocampus-test--reset-and-migrate ()
   (let ((dl-satan-memory-migrate-database
          dl-satan-tools-hippocampus-test--db))
-    (dl-satan-memory-migrate--psql
-     dl-satan-tools-hippocampus-test--db
+    (dl-satan-db-psql
+     dl-satan-tools-hippocampus-test--db dl-satan-memory-migrate-host dl-satan-memory-migrate-psql-program
      (list "-c"
            (concat
             "DROP TABLE IF EXISTS "
@@ -56,16 +56,16 @@
        ,@body)))
 
 (defun dl-satan-tools-hippocampus-test--trace-count ()
-  (let ((result (dl-satan-memory-migrate--psql
-                 dl-satan-tools-hippocampus-test--db
+  (let ((result (dl-satan-db-psql
+                 dl-satan-tools-hippocampus-test--db dl-satan-memory-migrate-host dl-satan-memory-migrate-psql-program
                  (list "-A" "-t" "-c" "SELECT COUNT(*) FROM traces"))))
     (pcase result
       (`(ok . ,out) (string-to-number (string-trim out)))
       (_ -1))))
 
 (defun dl-satan-tools-hippocampus-test--all-trace-ids ()
-  (let ((result (dl-satan-memory-migrate--psql
-                 dl-satan-tools-hippocampus-test--db
+  (let ((result (dl-satan-db-psql
+                 dl-satan-tools-hippocampus-test--db dl-satan-memory-migrate-host dl-satan-memory-migrate-psql-program
                  (list "-A" "-t" "-c"
                        "SELECT id FROM traces ORDER BY id"))))
     (pcase result

@@ -27,15 +27,15 @@
   "Per-test list of kwarg plists handed to `dl-satan-intervention-create'.")
 
 (defun dl-satan-tools-patch-test--reachable-p ()
-  (pcase (dl-satan-memory-migrate--psql
-          dl-satan-tools-patch-test--db
+  (pcase (dl-satan-db-psql
+          dl-satan-tools-patch-test--db dl-satan-memory-migrate-host dl-satan-memory-migrate-psql-program
           (list "-A" "-t" "-c" "SELECT 1"))
     (`(ok . ,_) t)
     (_ nil)))
 
 (defun dl-satan-tools-patch-test--truncate ()
-  (dl-satan-memory-migrate--psql
-   dl-satan-tools-patch-test--db
+  (dl-satan-db-psql
+   dl-satan-tools-patch-test--db dl-satan-memory-migrate-host dl-satan-memory-migrate-psql-program
    (list "-c" "TRUNCATE patch_job_events, patch_jobs RESTART IDENTITY CASCADE")))
 
 (defun dl-satan-tools-patch-test--mkrepo (dir)

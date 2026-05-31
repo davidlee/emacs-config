@@ -16,6 +16,7 @@
 (require 'cl-lib)
 (require 'json)
 (require 'subr-x)
+(require 'dl-satan-db)
 
 (defgroup dl-satan-memory nil
   "SATAN memory substrate."
@@ -82,37 +83,11 @@ Sorted ascending by version.  Signals on version collision."
                             (plist-get b :filename)))
     sorted))
 
-(defun dl-satan-memory-migrate--psql (db args &optional input)
-  "Run psql against DB with ARGS; optional INPUT string to stdin.
-Return cons (ok . OUTPUT) or (error . MESSAGE)."
-  (with-temp-buffer
-    (let* ((full-args (append (list "-h" dl-satan-memory-migrate-host
-                                    "-d" db
-                                    "--no-psqlrc"
-                                    "-v" "ON_ERROR_STOP=1")
-                              args))
-           (status (if input
-                       (let ((in-buf (current-buffer)))
-                         (with-temp-buffer
-                           (insert input)
-                           (apply #'call-process-region
-                                  (point-min) (point-max)
-                                  dl-satan-memory-migrate-psql-program
-                                  nil in-buf nil full-args)))
-                     (apply #'call-process
-                            dl-satan-memory-migrate-psql-program
-                            nil t nil full-args))))
-      (if (and (integerp status) (zerop status))
-          (cons 'ok (buffer-string))
-        (cons 'error
-              (format "psql exit %s on %s: %s"
-                      status db (string-trim (buffer-string))))))))
-
 (defun dl-satan-memory-migrate--applied (db)
   "Return applied rows from DB.schema_migrations as plists, sorted asc.
 If the table does not exist, return nil."
-  (let* ((result (dl-satan-memory-migrate--psql
-                  db
+  (let* ((result (dl-satan-db-psql
+                  db dl-satan-memory-migrate-host dl-satan-memory-migrate-psql-program
                   (list "-A" "-t" "-F" "|" "-c"
                         (concat "SELECT version, filename, checksum "
                                 "FROM schema_migrations ORDER BY version")))))
@@ -147,8 +122,9 @@ row in the same transaction."
                             version
                             (dl-satan-memory-migrate--sql-literal filename)
                             (dl-satan-memory-migrate--sql-literal checksum))))
-         (result   (dl-satan-memory-migrate--psql
-                    db (list "--single-transaction" "-f" "-") script)))
+         (result   (dl-satan-db-psql
+                    db dl-satan-memory-migrate-host dl-satan-memory-migrate-psql-program
+                    (list "--single-transaction" "-f" "-") script)))
     (pcase result
       (`(ok . ,_) checksum)
       (`(error . ,msg) (user-error "Migration %d (%s) failed: %s"
@@ -312,8 +288,9 @@ would skip (must be max(applied)+1, max+2, ...)."
            "         WHERE th.trace_id = t.id AND th.active), '') "
            "FROM traces t "
            "ORDER BY t.id"))
-         (result (dl-satan-memory-migrate--psql
-                  db (list "-A" "-t" "-F" "\t" "-c" sql))))
+         (result (dl-satan-db-psql
+                  db dl-satan-memory-migrate-host dl-satan-memory-migrate-psql-program
+                  (list "-A" "-t" "-F" "\t" "-c" sql))))
     (pcase result
       (`(ok . ,out)
        (cl-loop for line in (split-string out "\n" t)
@@ -400,7 +377,7 @@ its own condition-case)."
     (if (equal new-handles current)
         'skipped
       (let* ((sql (dl-satan-memory-renormalize--apply-sql row version canon))
-             (result (dl-satan-memory-migrate--psql db (list "-f" "-") sql)))
+             (result (dl-satan-db-psql db dl-satan-memory-migrate-host dl-satan-memory-migrate-psql-program (list "-f" "-") sql)))
         (pcase result
           (`(ok . ,_) 'updated)
           (`(error . ,msg)
@@ -453,8 +430,9 @@ grammar_version is below the current elisp grammar version."
            "SELECT 'stale'::text, ''::text, COUNT(*)::text "
            "FROM per_trace WHERE gv < "
            (number-to-string current)))
-         (result (dl-satan-memory-migrate--psql
-                  db (list "-A" "-t" "-F" "\t" "-c" sql))))
+         (result (dl-satan-db-psql
+                  db dl-satan-memory-migrate-host dl-satan-memory-migrate-psql-program
+                  (list "-A" "-t" "-F" "\t" "-c" sql))))
     (pcase result
       (`(ok . ,out)
        (let (by-version stale)

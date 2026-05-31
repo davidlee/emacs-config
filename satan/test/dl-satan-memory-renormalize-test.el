@@ -21,8 +21,8 @@
 (defun dl-satan-memory-renormalize-test--reachable-p ()
   (pcase (let ((dl-satan-memory-migrate-database
                 dl-satan-memory-renormalize-test--db))
-           (dl-satan-memory-migrate--psql
-            dl-satan-memory-renormalize-test--db
+           (dl-satan-db-psql
+            dl-satan-memory-renormalize-test--db dl-satan-memory-migrate-host dl-satan-memory-migrate-psql-program
             (list "-A" "-t" "-c" "SELECT 1")))
     (`(ok . ,_) t)
     (_ nil)))
@@ -30,8 +30,8 @@
 (defun dl-satan-memory-renormalize-test--reset-and-migrate ()
   (let ((dl-satan-memory-migrate-database
          dl-satan-memory-renormalize-test--db))
-    (dl-satan-memory-migrate--psql
-     dl-satan-memory-renormalize-test--db
+    (dl-satan-db-psql
+     dl-satan-memory-renormalize-test--db dl-satan-memory-migrate-host dl-satan-memory-migrate-psql-program
      (list "-c"
            (concat
             "DROP TABLE IF EXISTS "
@@ -106,8 +106,8 @@ supplied, is the raw hints.phase value preserved in metadata_json."
                        "FROM trace_handles WHERE trace_id = %s "
                        "ORDER BY grammar_version, handle")
                (dl-satan-memory-migrate--sql-literal trace-id)))
-         (result (dl-satan-memory-migrate--psql
-                  dl-satan-memory-renormalize-test--db
+         (result (dl-satan-db-psql
+                  dl-satan-memory-renormalize-test--db dl-satan-memory-migrate-host dl-satan-memory-migrate-psql-program
                   (list "-A" "-t" "-F" "\t" "-c" sql))))
     (pcase result
       (`(ok . ,out)
@@ -131,8 +131,8 @@ supplied, is the raw hints.phase value preserved in metadata_json."
                        "metadata_json::text "
                        "FROM traces WHERE id = %s")
                (dl-satan-memory-migrate--sql-literal trace-id)))
-         (result (dl-satan-memory-migrate--psql
-                  dl-satan-memory-renormalize-test--db
+         (result (dl-satan-db-psql
+                  dl-satan-memory-renormalize-test--db dl-satan-memory-migrate-host dl-satan-memory-migrate-psql-program
                   (list "-A" "-t" "-F" "\t" "-c" sql))))
     (pcase result
       (`(ok . ,out)
@@ -322,8 +322,8 @@ inactive, inserts v2 rows active, and trace row remains intact."
                     "ORDER BY grammar_version")
             (dl-satan-memory-migrate--sql-literal
              "20260519T100000-acc001")))
-          (result (dl-satan-memory-migrate--psql
-                   dl-satan-memory-renormalize-test--db
+          (result (dl-satan-db-psql
+                   dl-satan-memory-renormalize-test--db dl-satan-memory-migrate-host dl-satan-memory-migrate-psql-program
                    (list "-A" "-t" "-c" sql))))
      (pcase result
        (`(ok . ,out)

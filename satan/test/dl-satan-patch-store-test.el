@@ -13,15 +13,15 @@
 (defconst dl-satan-patch-store-test--db "satan_memory_test")
 
 (defun dl-satan-patch-store-test--reachable-p ()
-  (pcase (dl-satan-memory-migrate--psql
-          dl-satan-patch-store-test--db
+  (pcase (dl-satan-db-psql
+          dl-satan-patch-store-test--db dl-satan-memory-migrate-host dl-satan-memory-migrate-psql-program
           (list "-A" "-t" "-c" "SELECT 1"))
     (`(ok . ,_) t)
     (_ nil)))
 
 (defun dl-satan-patch-store-test--truncate ()
-  (dl-satan-memory-migrate--psql
-   dl-satan-patch-store-test--db
+  (dl-satan-db-psql
+   dl-satan-patch-store-test--db dl-satan-memory-migrate-host dl-satan-memory-migrate-psql-program
    (list "-c" "TRUNCATE patch_job_events, patch_jobs RESTART IDENTITY CASCADE")))
 
 (defmacro dl-satan-patch-store-test--with-db (&rest body)

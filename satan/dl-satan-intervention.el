@@ -281,8 +281,9 @@ caller sees a `user-error'."
               :events events
               :validation-error verr)
       (let* ((script (dl-satan-intervention--build-rebuild-script events))
-             (result (dl-satan-memory-migrate--psql
-                      db (list "--single-transaction" "-f" "-") script)))
+             (result (dl-satan-db-psql
+                      db dl-satan-memory-migrate-host dl-satan-memory-migrate-psql-program
+                      (list "--single-transaction" "-f" "-") script)))
         (pcase result
           (`(ok . ,_)
            (list :total (length events)
@@ -355,8 +356,9 @@ implicitly through the audit record's `:ts'."
 
 (defun dl-satan-intervention--exec-sql (db sql)
   "Run SQL through `psql --single-transaction'.  Signals on failure."
-  (let ((result (dl-satan-memory-migrate--psql
-                 db (list "--single-transaction" "-f" "-") sql)))
+  (let ((result (dl-satan-db-psql
+                 db dl-satan-memory-migrate-host dl-satan-memory-migrate-psql-program
+                 (list "--single-transaction" "-f" "-") sql)))
     (pcase result
       (`(ok . ,_) nil)
       (`(error . ,msg) (user-error "dl-satan-intervention SQL: %s" msg)))))
@@ -769,8 +771,9 @@ the offset width.  nil / empty pass through unchanged."
                "  ON i.id = o.intervention_id "
                "WHERE i.id = "
                (dl-satan-intervention--quote-text intervention-id)))
-         (result (dl-satan-memory-migrate--psql
-                  db (list "-A" "-t" "-F" "|" "-c" sql))))
+         (result (dl-satan-db-psql
+                  db dl-satan-memory-migrate-host dl-satan-memory-migrate-psql-program
+                  (list "-A" "-t" "-F" "|" "-c" sql))))
     (pcase result
       (`(ok . ,out)
        (let* ((line (string-trim out)))
@@ -812,8 +815,9 @@ projection."
                "  AND i.ts + (i.outcome_window_minutes * INTERVAL '1 minute') "
                "      + INTERVAL '24 hours' >= " now-lit " "
                "ORDER BY i.ts ASC"))
-         (result (dl-satan-memory-migrate--psql
-                  db (list "-A" "-t" "-F" "|" "-c" sql))))
+         (result (dl-satan-db-psql
+                  db dl-satan-memory-migrate-host dl-satan-memory-migrate-psql-program
+                  (list "-A" "-t" "-F" "|" "-c" sql))))
     (pcase result
       (`(ok . ,out)
        (cl-loop for line in (split-string out "\n" t)
@@ -847,8 +851,9 @@ plist shape produced by `dl-satan-intervention-lookup' under
                where
                " ORDER BY i.ts DESC LIMIT "
                (number-to-string limit)))
-         (result (dl-satan-memory-migrate--psql
-                  db (list "-A" "-t" "-F" "|" "-c" sql))))
+         (result (dl-satan-db-psql
+                  db dl-satan-memory-migrate-host dl-satan-memory-migrate-psql-program
+                  (list "-A" "-t" "-F" "|" "-c" sql))))
     (pcase result
       (`(ok . ,out)
        (cl-loop for line in (split-string out "\n" t)

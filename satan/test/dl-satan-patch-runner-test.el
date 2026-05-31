@@ -20,14 +20,14 @@
 ;; ---------------------------------------------------------------------
 
 (defun dl-satan-patch-runner-test--reachable-p ()
-  (pcase (dl-satan-memory-migrate--psql
-          dl-satan-patch-runner-test--db
+  (pcase (dl-satan-db-psql
+          dl-satan-patch-runner-test--db dl-satan-memory-migrate-host dl-satan-memory-migrate-psql-program
           (list "-A" "-t" "-c" "SELECT 1"))
     (`(ok . ,_) t) (_ nil)))
 
 (defun dl-satan-patch-runner-test--truncate ()
-  (dl-satan-memory-migrate--psql
-   dl-satan-patch-runner-test--db
+  (dl-satan-db-psql
+   dl-satan-patch-runner-test--db dl-satan-memory-migrate-host dl-satan-memory-migrate-psql-program
    (list "-c" "TRUNCATE patch_job_events, patch_jobs RESTART IDENTITY CASCADE")))
 
 (defun dl-satan-patch-runner-test--mkrepo (dir)

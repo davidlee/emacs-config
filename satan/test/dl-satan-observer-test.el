@@ -39,8 +39,8 @@
 (defun dl-satan-observer-test--reachable-p ()
   (pcase (let ((dl-satan-memory-migrate-database
                 dl-satan-observer-test--db))
-           (dl-satan-memory-migrate--psql
-            dl-satan-observer-test--db
+           (dl-satan-db-psql
+            dl-satan-observer-test--db dl-satan-memory-migrate-host dl-satan-memory-migrate-psql-program
             (list "-A" "-t" "-c" "SELECT 1")))
     (`(ok . ,_) t)
     (_ nil)))
@@ -48,8 +48,8 @@
 (defun dl-satan-observer-test--reset-and-migrate ()
   "Drop everything in the test DB and re-run migrations through 0006."
   (let ((dl-satan-memory-migrate-database dl-satan-observer-test--db))
-    (dl-satan-memory-migrate--psql
-     dl-satan-observer-test--db
+    (dl-satan-db-psql
+     dl-satan-observer-test--db dl-satan-memory-migrate-host dl-satan-memory-migrate-psql-program
      (list "-c"
            (concat
             "DROP TABLE IF EXISTS "

@@ -79,16 +79,16 @@ FN-SYM to call it.  After BODY, VAR holds the captured arg list."
 (defun dl-satan-tools-memory-test--reachable-p ()
   (pcase (let ((dl-satan-memory-migrate-database
                 dl-satan-tools-memory-test--db))
-           (dl-satan-memory-migrate--psql
-            dl-satan-tools-memory-test--db
+           (dl-satan-db-psql
+            dl-satan-tools-memory-test--db dl-satan-memory-migrate-host dl-satan-memory-migrate-psql-program
             (list "-A" "-t" "-c" "SELECT 1")))
     (`(ok . ,_) t)
     (_ nil)))
 
 (defun dl-satan-tools-memory-test--reset-and-migrate ()
   (let ((dl-satan-memory-migrate-database dl-satan-tools-memory-test--db))
-    (dl-satan-memory-migrate--psql
-     dl-satan-tools-memory-test--db
+    (dl-satan-db-psql
+     dl-satan-tools-memory-test--db dl-satan-memory-migrate-host dl-satan-memory-migrate-psql-program
      (list "-c"
            (concat
             "DROP TABLE IF EXISTS "

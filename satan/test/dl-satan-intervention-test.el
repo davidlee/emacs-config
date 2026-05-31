@@ -22,8 +22,8 @@
 (defun dl-satan-intervention-test--reachable-p ()
   (pcase (let ((dl-satan-memory-migrate-database
                 dl-satan-intervention-test--db))
-           (dl-satan-memory-migrate--psql
-            dl-satan-intervention-test--db
+           (dl-satan-db-psql
+            dl-satan-intervention-test--db dl-satan-memory-migrate-host dl-satan-memory-migrate-psql-program
             (list "-A" "-t" "-c" "SELECT 1")))
     (`(ok . ,_) t)
     (_ nil)))
@@ -31,8 +31,8 @@
 (defun dl-satan-intervention-test--reset-and-migrate ()
   "Drop everything in the test DB and re-run migrations through 0006."
   (let ((dl-satan-memory-migrate-database dl-satan-intervention-test--db))
-    (dl-satan-memory-migrate--psql
-     dl-satan-intervention-test--db
+    (dl-satan-db-psql
+     dl-satan-intervention-test--db dl-satan-memory-migrate-host dl-satan-memory-migrate-psql-program
      (list "-c"
            (concat
             "DROP TABLE IF EXISTS "
@@ -121,8 +121,8 @@ The bucket is parsed from run-id's leading YYYYMMDD."
 (defun dl-satan-intervention-test--rows (table)
   "Return a sorted list of pipe-joined row strings from TABLE."
   (let* ((sql (concat "SELECT * FROM " table " ORDER BY 1"))
-         (result (dl-satan-memory-migrate--psql
-                  dl-satan-intervention-test--db
+         (result (dl-satan-db-psql
+                  dl-satan-intervention-test--db dl-satan-memory-migrate-host dl-satan-memory-migrate-psql-program
                   (list "-A" "-t" "-F" "|" "-c" sql))))
     (pcase result
       (`(ok . ,out)
@@ -131,8 +131,8 @@ The bucket is parsed from run-id's leading YYYYMMDD."
 
 (defun dl-satan-intervention-test--count (table)
   (let* ((sql (concat "SELECT COUNT(*) FROM " table))
-         (result (dl-satan-memory-migrate--psql
-                  dl-satan-intervention-test--db
+         (result (dl-satan-db-psql
+                  dl-satan-intervention-test--db dl-satan-memory-migrate-host dl-satan-memory-migrate-psql-program
                   (list "-A" "-t" "-c" sql))))
     (pcase result
       (`(ok . ,out) (string-to-number (string-trim out)))
@@ -330,8 +330,8 @@ The bucket is parsed from run-id's leading YYYYMMDD."
                :classified_at "2026-05-23T13:00:00+1000"))))
            (dl-satan-intervention-rebuild
             dl-satan-intervention-test--db root)
-           (let* ((result (dl-satan-memory-migrate--psql
-                           dl-satan-intervention-test--db
+           (let* ((result (dl-satan-db-psql
+                           dl-satan-intervention-test--db dl-satan-memory-migrate-host dl-satan-memory-migrate-psql-program
                            (list "-A" "-t" "-F" "|" "-c"
                                  "SELECT classification, confidence FROM satan_intervention_outcomes")))
                   (row (and (eq (car result) 'ok)
