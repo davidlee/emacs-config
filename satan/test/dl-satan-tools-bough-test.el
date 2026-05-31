@@ -187,7 +187,8 @@ returns each as its own array under `:transitions' / `:created'."
 ;; ---------- integration (skip when bough absent) ----------
 
 (defvar dl-satan-bough-test--bough-ok
-  (and (file-executable-p dl-satan-bough-program)))
+  (and (not (file-exists-p "/workspace"))          ; bough can't vfork in jail
+       (file-executable-p dl-satan-bough-program)))
 
 (ert-deftest dl-satan-bough/active-scope-shape ()
   (skip-unless dl-satan-bough-test--bough-ok)
