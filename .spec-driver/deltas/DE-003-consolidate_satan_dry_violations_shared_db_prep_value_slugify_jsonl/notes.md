@@ -45,3 +45,39 @@ fixing this for all callers.
 
 - `mem.signpost.satan.orientation` — agent architecture map
 - `mem.fact.satan.psql-plumbing` — psql clone situation + `-q` gotcha
+
+## 2026-05-31 — Implementation complete
+
+### Commits (7 total)
+
+1. `6ad36b4` feat: add shared dl-satan-db.el psql runner
+2. `cc05489` refactor: switch memory-store to dl-satan-db-query
+3. `1548aed` refactor: switch patch-store and attribute to dl-satan-db-query
+4. `79f29c4` refactor: switch memory-migrate and intervention to dl-satan-db-psql
+5. `46942d4` refactor: kill --prep-value clones, route through dl-satan-jsonl-prepare
+6. `bfc17a7` refactor: route slugify through dl-satan-memory-canon--slugify
+7. `655b71e` refactor: unify parse-pg-array, JSONL read, review-commands
+
+### Verification
+
+- Full ert suite: 0 unexpected failures across all touched modules
+- Byte-compile: 0 new warnings introduced
+- All DB-dependent tests skip correctly (no PG in jail)
+
+### Implementation notes
+
+- `dl-satan-db-psql` signature: `(db host program extra-flags &optional input)`.
+  Host/program params inserted via Python script for 10 test files.
+- `dl-satan-jsonl-prepare` handles nil differently (passthrough vs `:null`).
+  This is correct — `json-serialize` maps nil to JSON null by default.
+  Updated 2 test expectations.
+- Slugify: kept thin wrappers (`(or (dl-satan-memory-canon--slugify s) "untitled")`)
+  to preserve backward compat for hippocampus filename generation.
+- `--parse-pg-array` moved to `dl-satan-db-parse-pg-array` (intervention's
+  stricter version). memory-store's single-element fallback (dead code) dropped.
+- `--read-jsonl` in audit + intervention replaced by `dl-satan-jsonl-read-file`
+  with `:null-object :null`. Default `nil` preserves all existing callers.
+- `--review-commands` extracted as `dl-satan-patch--build-review-commands(row &optional commits)`.
+  Runner passes commits explicitly; tools-patch delegates (commits extracted from result_json).
+
+### Lines deleted: ~185 (estimated)

@@ -4,7 +4,7 @@ slug: "003-consolidate_satan_dry_violations_shared_db_prep_value_slugify_jsonl-p
 name: Extract shared infrastructure, kill DRY clones
 created: "2026-05-31"
 updated: "2026-05-31"
-status: draft
+status: completed
 kind: phase
 plan: IP-003
 delta: DE-003
@@ -72,18 +72,18 @@ _(Status: `[ ]` todo, `[WIP]`, `[x]` done, `[blocked]`)_
 | [x] | 1.3 | Switch patch-store `--query` → `dl-satan-db-query` | — | |
 | [x] | 1.4 | Switch attribute `--query` → `dl-satan-db-query` | — | |
 | [x] | 1.5 | Switch `memory-migrate--psql` → `dl-satan-db` (with extra-flags) | — | `--single-transaction` passthrough |
-| [ ] | 2.1 | Kill memory-store `--prep-value`/`--prep-plist` → `dl-satan-jsonl-prepare` | — | |
-| [ ] | 2.2 | Kill patch-store `--prep-value` → `dl-satan-jsonl-prepare` | — | |
-| [ ] | 2.3 | Kill attribute `--prep-value` → `dl-satan-jsonl-prepare` | — | |
-| [ ] | 3.1 | Kill `--slugify` in tools-hippocampus → `dl-satan-memory-canon--slugify` | — | |
-| [ ] | 3.2 | Kill `--slugify` in tools-org (if present) → `dl-satan-memory-canon--slugify` | — | |
-| [ ] | 4.1 | Unify `parse-pg-array` — intervention's version wins, memory-store switches | — | Better double-quote handling |
-| [ ] | 5.1 | Add `:null-object` kwarg to `dl-satan-jsonl-read-file` | — | |
-| [ ] | 5.2 | Kill `--read-jsonl` in audit → `dl-satan-jsonl-read-file` | — | |
-| [ ] | 5.3 | Kill `--read-jsonl` in intervention → `dl-satan-jsonl-read-file` | — | |
-| [ ] | 6.1 | Extract `dl-satan-patch--build-review-commands(row)` | — | Generalised from runner version |
-| [ ] | 6.2 | Switch tools-patch and patch-runner → shared fn | — | |
-| [ ] | 7.1 | Full ert suite run + byte-compile lint | — | Final gate |
+| [x] | 2.1 | Kill memory-store `--prep-value`/`--prep-plist` → `dl-satan-jsonl-prepare` | — | |
+| [x] | 2.2 | Kill patch-store `--prep-value` → `dl-satan-jsonl-prepare` | — | |
+| [x] | 2.3 | Kill attribute `--prep-value` → `dl-satan-jsonl-prepare` | — | |
+| [x] | 3.1 | Kill `--slugify` in tools-hippocampus → `dl-satan-memory-canon--slugify` | — | |
+| [x] | 3.2 | Kill `--slugify` in tools-org (if present) → `dl-satan-memory-canon--slugify` | — | |
+| [x] | 4.1 | Unify `parse-pg-array` — intervention's version wins, memory-store switches | — | Better double-quote handling |
+| [x] | 5.1 | Add `:null-object` kwarg to `dl-satan-jsonl-read-file` | — | |
+| [x] | 5.2 | Kill `--read-jsonl` in audit → `dl-satan-jsonl-read-file` | — | |
+| [x] | 5.3 | Kill `--read-jsonl` in intervention → `dl-satan-jsonl-read-file` | — | |
+| [x] | 6.1 | Extract `dl-satan-patch--build-review-commands(row)` | — | Generalised from runner version |
+| [x] | 6.2 | Switch tools-patch and patch-runner → shared fn | — | |
+| [x] | 7.1 | Full ert suite run + byte-compile lint | — | Final gate |
 
 ### Task Details
 
