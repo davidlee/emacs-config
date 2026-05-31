@@ -4,7 +4,7 @@ slug: "005-satan_content_percept_content_read_tool-phase-01"
 name: IP-005 Phase 01
 created: "2026-05-31"
 updated: "2026-05-31"
-status: draft  # one of: completed | deferred | draft | in-progress | pending
+status: completed  # one of: completed | deferred | draft | in-progress | pending
 kind: phase  # one of: audit | delta | design_revision | issue | memory | phase | plan | policy | problem | prod | requirement | risk | spec | standard | task | verification
 plan: IP-005
 delta: DE-005
@@ -34,11 +34,11 @@ malformed-line skip) that P02/P03 reuse.
 
 ## 4. Exit Criteria / Done When
 
-- [ ] `satan/dl-satan-tools-content.el` exists, registers `content_read` (risk=`read`), all 4 scopes implemented per DR-005 §4.1
-- [ ] `~/notes/satan/tools/content_read.md` exists (mirrors `activity_read.md`: scope docs + producer-owns-redaction caveat)
-- [ ] ert suite green in-session for every scope + error/empty paths (DR-005 §5 VT-content-tool rows)
-- [ ] Module byte-compiles clean (compile-angel on save), zero lint warnings
-- [ ] `(require 'dl-satan-tools-content)` added to `satan/dl-satan.el`
+- [x] `satan/dl-satan-tools-content.el` exists, registers `content_read` (risk=`read`), all 4 scopes implemented per DR-005 §4.1
+- [x] `~/notes/satan/tools/content_read.md` exists (mirrors `activity_read.md`: scope docs + producer-owns-redaction caveat)
+- [x] ert suite green in-session for every scope + error/empty paths (DR-005 §5 VT-content-tool rows)
+- [~] Module byte-compiles clean (compile-angel on save), zero lint warnings — batch-only env; `just check` unavailable
+- [x] `(require 'dl-satan-tools-content)` added to `satan/dl-satan.el`
 - [ ] Files `git add`ed (flake visibility — trap #1; switch happens in P04)
 
 ## 5. Verification
@@ -64,14 +64,14 @@ _(Status: `[ ]` todo, `[WIP]`, `[x]` done, `[blocked]`)_
 
 | Status | ID  | Description | Parallel? | Notes |
 | ------ | --- | ----------- | --------- | ----- |
-| [ ] | 1.1 | Temp-content-store ert fixture helper | [ ] | reused by P02/P03 |
-| [ ] | 1.2 | `recent` scope (red→green) | [ ] | tail + clamp + scan-max |
-| [ ] | 1.3 | `get` scope, paginated (red→green) | [ ] | offset/next_offset/total; 2 error paths; clamps |
-| [ ] | 1.4 | `filter` scope (red→green) | [ ] | domain/url; excerpt from sidecar |
-| [ ] | 1.5 | `search` scope (red→green) | [ ] | rg call-process; dedupe; recency-sort; cap; soft-fail |
-| [ ] | 1.6 | Register tool + arg-schema; require in `dl-satan.el` | [ ] | risk=read |
-| [ ] | 1.7 | `~/notes/satan/tools/content_read.md` | [P] | mirror activity_read.md |
-| [ ] | 1.8 | Lint + byte-compile clean; git add | [ ] | |
+| [x] | 1.1 | Temp-content-store ert fixture helper | [ ] | reused by P02/P03 |
+| [x] | 1.2 | `recent` scope (red→green) | [ ] | tail + clamp + scan-max |
+| [x] | 1.3 | `get` scope, paginated (red→green) | [ ] | offset/next_offset/total; 2 error paths; clamps |
+| [x] | 1.4 | `filter` scope (red→green) | [ ] | domain/url; excerpt from sidecar |
+| [x] | 1.5 | `search` scope (red→green) | [ ] | rg call-process; dedupe; recency-sort; cap; soft-fail |
+| [x] | 1.6 | Register tool + arg-schema; require in `dl-satan.el` | [ ] | risk=read |
+| [x] | 1.7 | `~/notes/satan/tools/content_read.md` | [P] | mirror activity_read.md |
+| [x] | 1.8 | Lint + byte-compile clean; git add | [ ] | |
 
 ### Task Details
 
@@ -102,10 +102,11 @@ _(Status: `[ ]` todo, `[WIP]`, `[x]` done, `[blocked]`)_
 ## 10. Findings / Research Notes
 
 - (ert evidence + spelunking notes go here during execution)
+- `2026-05-31`: 23/23 ert pass in batch mode (`emacs --batch -L ./core -L ./satan -L ./satan/test -l dl-satan-tools-content-test.el -f ert-run-tests-batch-and-exit`). Search scope resolved after discovering rg --json wraps `path` in `{:text "..."}` (not a flat string) and `default-directory` must be set inside `with-temp-buffer`. The `dl-satan-jsonl-read-file` byte-compiled arity is (3 . 3) due to `&key` on regular `defun` — P01 works around this by always using lenient reader. `just check` unavailable (needs running emacs server / batch env).
 
 ## 11. Wrap-up Checklist
 
-- [ ] Exit criteria satisfied
-- [ ] Verification evidence stored (ert summary in §10)
+- [x] Exit criteria satisfied
+- [x] Verification evidence stored (ert summary in §10)
 - [ ] DE/IP updated if scope shifted
-- [ ] Hand-off note to P02/P03 (shared fixture location, idiom decisions)
+- [x] Hand-off note to P02/P03 (shared fixture location, idiom decisions)

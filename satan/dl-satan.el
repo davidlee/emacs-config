@@ -18,6 +18,7 @@
 (require 'dl-satan-tools-inbox)
 (require 'dl-satan-tools-agenda)
 (require 'dl-satan-tools-activity)
+(require 'dl-satan-tools-content)
 (require 'dl-satan-tools-notes)
 (require 'dl-satan-tools-docs)
 (require 'dl-satan-tools-sway)
