@@ -36,6 +36,7 @@
 (require 'dl-satan-tank)
 (require 'dl-satan-intervention)
 (require 'dl-satan-attribute-listener)   ; daemon → broker audit LISTEN (opt-in)
+(require 'dl-satan-mcp)
 
 ;; Hard-fail at load if any mode :tools entry has no matching registration.
 ;; Replaces the documentary-only `:modes' field that used to live on every
@@ -50,7 +51,7 @@
 (defun my/satan-run (name)
   "Run a SATAN session in mode NAME.  Returns the run-id string."
   (interactive
-   (list (completing-read "SATAN mode: " (dl-satan-mode-names) nil t)))
+    (list (completing-read "SATAN mode: " (dl-satan-mode-names) nil t)))
   (let ((run-id (dl-satan-broker-run name)))
     (when (called-interactively-p 'interactive)
       (message "SATAN run started: %s" run-id))
