@@ -17,6 +17,7 @@
 (require 'cl-lib)
 (require 'json)
 (require 'subr-x)
+(require 'dl-satan-db)
 (require 'dl-satan-memory-grammar)
 
 (declare-function dl-satan-attribute-build-hippocampus-payload "dl-satan-attribute")
@@ -70,40 +71,6 @@ suffix for testability; defaults to a 6-char base36 random string."
 ;; ---------------------------------------------------------------------
 ;; psql plumbing
 ;; ---------------------------------------------------------------------
-
-(defun dl-satan-memory-store--query (db sql variables)
-  "Run SQL against DB with VARIABLES (alist of name . value) bound via
-`-v'.  Return (ok . STDOUT-TRIMMED) or (error . MSG).  Use `:''name''
-inside SQL to safely splice a string value as a SQL literal.
-
-SQL is fed to psql on stdin via `-f -' because `-c' does not perform
-variable substitution.  Field separator is tab so multi-column
-SELECTs are unambiguous to parse."
-  (let* ((var-args (cl-loop for (k . v) in variables
-                            append (list "-v"
-                                         (format "%s=%s" k v))))
-         (full-args (append (list "-h" dl-satan-memory-store-host
-                                  "-d" db
-                                  "--no-psqlrc"
-                                  "-X" "-A" "-t"
-                                  "-F" "\t"
-                                  "-v" "ON_ERROR_STOP=1")
-                            var-args
-                            (list "-f" "-"))))
-    (with-temp-buffer
-      (let* ((out-buf (current-buffer))
-             (status
-              (with-temp-buffer
-                (insert sql)
-                (apply #'call-process-region
-                       (point-min) (point-max)
-                       dl-satan-memory-store-psql-program
-                       nil out-buf nil full-args))))
-        (if (and (integerp status) (zerop status))
-            (cons 'ok (string-trim (buffer-string)))
-          (cons 'error (format "psql exit %s on %s: %s"
-                                status db
-                                (string-trim (buffer-string)))))))))
 
 (defun dl-satan-memory-store--parse-pg-array (s)
   "Parse a `{a,b,c}' postgres array literal into a list of strings.
@@ -170,8 +137,9 @@ If OUTCOME is non-nil the caller must include a matching
                 schema-version grammar-version
                 metadata-json retention-json
                 handles links))
-         (result (dl-satan-memory-store--query
-                  db "SELECT memory_mark_trace(:'payload'::jsonb)"
+         (result (dl-satan-db-query
+                  db dl-satan-memory-store-host dl-satan-memory-store-psql-program
+                  "SELECT memory_mark_trace(:'payload'::jsonb)"
                   `(("payload" . ,blob)))))
     (pcase result
       (`(ok . ,out)
@@ -301,7 +269,7 @@ round-trip — and so the tab-split row parser below cannot misframe."
                (number-to-string min-score)
                limit
                kinds-arg))
-         (result (dl-satan-memory-store--query db sql vars)))
+         (result (dl-satan-db-query db dl-satan-memory-store-host dl-satan-memory-store-psql-program sql vars)))
     (pcase result
       (`(ok . ,out)
        (cons 'ok
@@ -327,8 +295,9 @@ round-trip — and so the tab-split row parser below cannot misframe."
 Returns (ok . PLIST) on success — PLIST has `:trace', `:handles',
 `:links'.  Returns (ok . nil) when the trace_id is absent.
 Returns (error . MSG) on psql or parse error."
-  (let* ((result (dl-satan-memory-store--query
-                  db "SELECT memory_show_trace(:'tid')"
+  (let* ((result (dl-satan-db-query
+                  db dl-satan-memory-store-host dl-satan-memory-store-psql-program
+                  "SELECT memory_show_trace(:'tid')"
                   `(("tid" . ,trace-id)))))
     (pcase result
       (`(ok . ,out)
@@ -385,7 +354,7 @@ text is returned (no length cap)."
                (or gv-filter "")
                (or kinds-filter "")
                limit))
-         (result (dl-satan-memory-store--query db sql vars)))
+         (result (dl-satan-db-query db dl-satan-memory-store-host dl-satan-memory-store-psql-program sql vars)))
     (pcase result
       (`(ok . ,out)
        (cons 'ok
