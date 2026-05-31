@@ -99,3 +99,19 @@
   `docs/emacs/traps.md`; no new memory is needed.
 - `.spec-driver` changes from Phase 02 remain uncommitted in this repo. The
   worktree also contains staged/unowned DE-003 follow-up changes; preserve them.
+
+## 2026-05-31 - Phase 03/04 collapse + close
+
+- User judgement: P03 is ceremony (jailed agents already run `check-batch` against
+  Supabase in practice) and P04 is mostly redundant bwrap checking whose only live
+  concern is exposePostgres. Collapsed both into evidence capture rather than
+  authoring separate phase sheets.
+- exposePostgres is already `false` for every specDev profile in
+  `~/flakes/pub/jailed-agents.nix` (lines 126/133/140); no override to `true` in
+  `.emacs.d/flake.nix`, none uncommitted. The R5 bootstrap exception was therefore
+  never enabled — teardown is a no-op.
+- VH-DE004-ISO evidence: user ran `ls /run/postgresql` inside a specDev jail ->
+  `cannot access '/run/postgresql': No such file or directory`. Host Postgres socket
+  dir absent inside the jail => prod isolation (AC closure target #3) proven.
+- VA-DE004-P03 marked verified-by-practice; VH-DE004-ISO marked verified. IP-004
+  §9 and the DE-004/IP-004 phase blocks reconciled to P03/P04 completed.

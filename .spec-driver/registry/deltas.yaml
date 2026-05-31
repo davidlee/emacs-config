@@ -107,7 +107,7 @@ deltas:
         status: completed
   DE-004:
     kind: delta
-    status: in-progress
+    status: completed
     name: Delta - Jail-local Emacs test runner + Supabase-isolated Postgres for jailed
       agents
     slug: jail_local_emacs_test_runner_supabase_isolated_postgres_for_jailed_agents
