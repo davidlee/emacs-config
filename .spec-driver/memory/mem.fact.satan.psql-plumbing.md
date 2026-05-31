@@ -1,11 +1,11 @@
 ---
 id: mem.fact.satan.psql-plumbing
-name: "SATAN psql plumbing: shared module planned"
+name: "SATAN psql plumbing: shared module extracted (DE-003 landed)"
 memory_type: fact
 status: active
 confidence: high
 tags: [satan, db, dry]
-summary: "Four modules carry private --query clones. DE-003 will extract dl-satan-db.el. Key gotcha: memory-store lacks -q flag; shared fn adds it."
+summary: "DE-003 extracted dl-satan-db.el. Two surfaces: dl-satan-db-query(db host program sql vars) for common case, dl-satan-db-psql(db host program extra-flags &optional input) for custom flags. Always -q."
 provenance:
   sources:
     - "satan/dl-satan-memory-store.el:74"
@@ -15,6 +15,8 @@ provenance:
     - DE-003
     - DR-003
   verified: "2026-05-31"
+  sources:
+    - "satan/dl-satan-db.el (2026-05-31, DE-003 commit 6ad36b4)"
 scope:
   paths:
     - satan/dl-satan-memory-store.el
@@ -27,54 +29,64 @@ links:
   missing:
     - raw: DR-003
     - raw: POL-001
+updated: "2026-05-31"
+review_by: "2026-09-01"
 ---
 
-# SATAN psql plumbing: shared module planned
+# SATAN psql plumbing: shared module extracted (DE-003 landed)
 
-Four modules carry private psql `--query` functions with identical shapes.
-[[DE-003]] will extract a shared `dl-satan-db.el`.
+[[DE-003]] extracted a shared `dl-satan-db.el` replacing 4 private psql clones.
 
-## Current state (2026-05-31)
+## Current state (post DE-003, 2026-05-31)
 
-| Module | Function | `-q` flag |
-|--------|----------|:---------:|
-| `dl-satan-memory-store.el` | `--query(db sql vars)` | ✗ |
-| `dl-satan-patch-store.el` | `--query(db sql vars)` | ✓ |
-| `dl-satan-attribute.el` | `--query(db sql vars)` | ✓ |
-| `dl-satan-memory-migrate.el` | `--psql(db flags sql)` (different shape) | ✓ |
+| Caller | Uses |
+|--------|------|
+| `dl-satan-memory-store.el` | `dl-satan-db-query(db host program sql vars)` |
+| `dl-satan-patch-store.el` | `dl-satan-db-query(db host program sql vars)` |
+| `dl-satan-attribute.el` | `dl-satan-db-query(db host program sql vars)` |
+| `dl-satan-memory-migrate.el` | `dl-satan-db-psql(db host program extra-flags &optional input)` |
+| `dl-satan-intervention.el` | `dl-satan-db-psql(...)` via `--exec-sql` and direct calls |
 
-All three `--query` clones assemble identical psql args (`-X -A -t -F "\t" -v ON_ERROR_STOP=1`), run via `call-process-region`, return `(ok . stdout) | (error . msg)`.
+## Two surfaces
 
-## The `-q` gotcha
+### `dl-satan-db-query(db host program sql variables)`
+- Always passes `-q -X -A -t -F "\t" -v ON_ERROR_STOP=1`
+- Variables supplied as alist `((name . value) ...)`, bound via `-v name=value`
+- SQL fed on stdin with `-f -` (needed for variable substitution)
+- Returns `(ok . string-trimmed-stdout)` or `(error . "psql exit N on DB: msg")`
+- **Use this for the common case**: SQL + variable substitution → trimmed result
 
-`-q` suppresses psql's welcome banner (`psql (16.x)\nType "help" for help.\n`).
-**`dl-satan-memory-store--query` does NOT pass `-q`.** The welcome banner could
-appear in stdout before the result. `string-trim` may strip it in practice, but
-this is fragile — if stdout is otherwise empty, the banner becomes the result.
+### `dl-satan-db-psql(db host program extra-flags &optional input)`
+- Base args only `-h HOST -d DB --no-psqlrc -v ON_ERROR_STOP=1`
+- Caller controls all other flags via `extra-flags` list
+- When `input` is given, feeds via stdin (caller must include `-f -` in extra-flags)
+- When `input` is nil, runs via `call-process` (caller must include `-c SQL`)
+- Returns `(ok . untrimmed-stdout)` — **NOT trimmed**, matching old `--psql` semantics
+- **Use this only when caller needs custom flags** (--single-transaction, -c inline SQL, custom -F)
 
-The shared `dl-satan-db-query` in [[DE-003]] will **always** pass `-q`, fixing
-this for all callers.
+## The `-q` gotcha (fixed)
+
+`dl-satan-db-query` **always** passes `-q` (quiet mode), fixing a latent bug
+where `dl-satan-memory-store--query` lacked `-q` and psql welcome-banner could
+leak into stdout.
 
 ## Each module uses different defcustoms
 
-Each module names its config differently:
+Callers pass their own host/program defcustoms explicitly:
 
-- `dl-satan-memory-store-host` / `-database` / `-psql-program`
-- `dl-satan-patch-store-host` / `-database` / `-psql-program`
-- `dl-satan-attribute-host` / `-database` / `-psql-program`
+- memory-store: `dl-satan-memory-store-host` / `dl-satan-memory-store-psql-program`
+- patch-store: `dl-satan-patch-store-host` / `dl-satan-patch-store-psql-program`
+- attribute: `dl-satan-attribute-host` / `dl-satan-attribute-psql-program`
+- memory-migrate: `dl-satan-memory-migrate-host` / `dl-satan-memory-migrate-psql-program`
 
-The shared fn accepts `(db host program sql vars)` — callers pass their own
-defcustom values. No global config migration needed.
+## Do NOT add a new psql clone
 
-## Until DE-003 lands
-
-Do NOT add a 5th psql `--query` clone. If a new module needs psql access:
-1. Read `dl-satan-memory-store--query` for the pattern
-2. Strongly prefer waiting for `dl-satan-db.el` instead
-3. If unavoidable, include `-q` in psql args and add a note referencing this memory
+Use `dl-satan-db-query` for the common case. Use `dl-satan-db-psql` only when
+custom flags are needed. Never add a private `--query` function to a new module.
 
 ## Related
 
-- [[DE-003]] — delta that will extract `dl-satan-db.el`
-- [[DR-003]] — design decisions (DEC-001 covers the shared signature)
-- [[POL-001]] — extraction policy (confirms these modules stay in broker)
+- [[DE-003]] — delta that extracted this module
+- [[DR-003]] — DEC-001 covers the shared signature
+- [[POL-001]] — extraction policy (these modules stay in broker)
+- `satan/dl-satan-db.el` — the module itself
