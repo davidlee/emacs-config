@@ -2,6 +2,15 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-31 — SATAN: panopticon.content percept rule (DE-005 P03)
+
+Captures now shape resonance: the evidence window carries a `:content_recent` slice (last-N articles.jsonl, metadata only — no bodies), and a new `panopticon.content` canon rule emits `content_domain:<d>` handles that admit the §S2 resonance gate automatically. Per DEC-2, this is percept-shaping only — no write into the memory store.
+
+- **Evidence probe** (`dl-satan-memory-evidence--content-probe`): reads articles.jsonl tail via P01's lenient reader, returns hash/domain/url/title/captured_at metadata only. Wired into `assemble-with-bounds` as `:content_recent` (raw) + `:content` (sensor_status). Defcustom `dl-satan-memory-evidence-content-limit` (default 10).
+- **Canon defrule** (`panopticon.content`): deduplicates captures by domain, emits `content_domain:<domain>` per unique domain. Follows `panopticon.current.app` pattern.
+- **Resonance** — `panopticon.content` is NOT in the §S2 exclude list (`ctx.mode`/`time.day_week`/`cwd.project`/`cwd.file_kind` only), so capture-domain handles admit the cue automatically.
+- **Tests**: 9 new ert (probe shape/empty/limit/malformed, defrule dedupe/empty/missing, admittability). 40/40 pass.
+
 ## 2026-05-31 — SATAN: content-backlog sensor (DE-005 P02)
 
 New `panopticon_content_backlog` sensor emits attribute signals when uninspected page captures accumulate — near-clone of the curiosity (segment-backlog) sensor.
