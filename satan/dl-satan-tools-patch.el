@@ -74,20 +74,7 @@ Patch jobs need triage time before review.")
 (defun dl-satan-tools-patch--review-commands (row)
   "Build a small list of suggested review shell commands for ROW.
 Empty list when the job has produced no commits yet."
-  (let* ((repo (plist-get row :repo))
-         (base (plist-get row :base_ref))
-         (branch (plist-get row :branch))
-         (result (plist-get row :result_json))
-         (commits (and result (plist-get result :commits))))
-    (when (and repo base branch (consp commits))
-      (let* ((first-sha (plist-get (car commits) :sha))
-             (cmds (list (format "git -C %s diff %s...%s" repo base branch)
-                         (format "git -C %s log %s..%s" repo base branch))))
-        (when first-sha
-          (setq cmds (append cmds
-                             (list (format "git -C %s cherry-pick %s"
-                                           repo first-sha)))))
-        cmds))))
+  (dl-satan-patch--build-review-commands row))
 
 ;; ---------------------------------------------------------------------
 ;; patch_job_create

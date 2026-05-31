@@ -83,25 +83,7 @@ Walks YYYY-MM-DD/<run-id>/ buckets; flat runs/<run-id>/ also supported."
 
 ;; ---------- transcript reader ----------
 
-(defun dl-satan-intervention--read-jsonl (path)
-  "Read PATH as JSONL, returning a list of plists in file order."
-  (let ((coding-system-for-read 'utf-8))
-    (with-temp-buffer
-      (insert-file-contents path)
-      (goto-char (point-min))
-      (let (out)
-        (while (not (eobp))
-          (let ((line (buffer-substring-no-properties
-                       (point) (line-end-position))))
-            (unless (string-empty-p (string-trim line))
-              (push (json-parse-string line
-                                       :object-type 'plist
-                                       :array-type 'list
-                                       :null-object :null
-                                       :false-object :false)
-                    out))
-            (forward-line 1)))
-        (nreverse out)))))
+
 
 (defun dl-satan-intervention--run-id-from-path (path)
   "Derive a run-id from PATH (parent directory name)."
@@ -114,7 +96,7 @@ Returns a list of plists with keys (:ts :event :payload :run_id :seq :path).
 SEQ is the within-file record index, used as a tiebreaker."
   (let (out)
     (dolist (path (dl-satan-intervention--transcript-files runs-dir))
-      (let ((records (dl-satan-intervention--read-jsonl path))
+      (let ((records (dl-satan-jsonl-read-file path :null-object :null))
             (file-run-id (dl-satan-intervention--run-id-from-path path))
             (seq 0))
         (dolist (rec records)
@@ -681,23 +663,6 @@ MEMORY-MARK-FN is the function used to write the trace; defaults to
                              :null-object :null
                              :false-object :false)
         (error nil)))))
-
-(defun dl-satan-intervention--parse-pg-array-text (text)
-  "Parse the PostgreSQL textual representation of a `text[]' array.
-Handles the standard `{a,b,c}' shape with double-quote escaping;
-returns nil for empty `{}'."
-  (cond
-   ((or (null text) (string-empty-p text)) nil)
-   ((not (and (string-prefix-p "{" text) (string-suffix-p "}" text))) nil)
-   (t (let ((inner (substring text 1 -1)))
-        (cond
-         ((string-empty-p inner) nil)
-         (t (mapcar (lambda (e)
-                      (if (and (string-prefix-p "\"" e)
-                               (string-suffix-p "\"" e))
-                          (substring e 1 -1)
-                        e))
-                    (split-string inner ","))))))))
 
 (defun dl-satan-intervention--normalize-pg-timestamp (cell)
   "Make a `psql -A' timestamptz CELL parseable by `date-to-time'.

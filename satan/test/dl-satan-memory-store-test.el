@@ -67,12 +67,12 @@
     (should (string-match-p "\\`[0-9]\\{8\\}T[0-9]\\{6\\}-[a-z0-9]\\{6\\}\\'" id))))
 
 (ert-deftest dl-satan-memory-store/parse-pg-array-empty ()
-  (should (null (dl-satan-memory-store--parse-pg-array nil)))
-  (should (null (dl-satan-memory-store--parse-pg-array "")))
-  (should (null (dl-satan-memory-store--parse-pg-array "{}"))))
+  (should (null (dl-satan-db-parse-pg-array nil)))
+  (should (null (dl-satan-db-parse-pg-array "")))
+  (should (null (dl-satan-db-parse-pg-array "{}"))))
 
 (ert-deftest dl-satan-memory-store/parse-pg-array-simple ()
-  (should (equal (dl-satan-memory-store--parse-pg-array "{app:firefox,mode:motd}")
+  (should (equal (dl-satan-db-parse-pg-array "{app:firefox,mode:motd}")
                  '("app:firefox" "mode:motd"))))
 
 (ert-deftest dl-satan-memory-store/format-pg-array ()

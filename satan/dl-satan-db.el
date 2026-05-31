@@ -104,5 +104,25 @@ include -f - so psql reads from stdin; otherwise include -c SQL."
               (format "psql exit %s on %s: %s"
                       status db (string-trim (buffer-string))))))))
 
+;; ---------------------------------------------------------------------
+;; pg-array parser (from dl-satan-intervention, better double-quote handling)
+;; ---------------------------------------------------------------------
+
+(defun dl-satan-db-parse-pg-array (text)
+  "Parse a PostgreSQL text[] literal like \"{a,b,c}\" into a list of strings.
+Handles double-quoted entries.  Returns nil for empty input or \"{}\"."
+  (cond
+   ((or (null text) (string-empty-p text)) nil)
+   ((not (and (string-prefix-p "{" text) (string-suffix-p "}" text))) nil)
+   (t (let ((inner (substring text 1 -1)))
+        (cond
+         ((string-empty-p inner) nil)
+         (t (mapcar (lambda (e)
+                      (if (and (string-prefix-p "\"" e)
+                               (string-suffix-p "\"" e))
+                          (substring e 1 -1)
+                        e))
+                    (split-string inner ","))))))))
+
 (provide 'dl-satan-db)
 ;;; dl-satan-db.el ends here

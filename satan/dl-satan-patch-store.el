@@ -349,5 +349,31 @@ or (error . MSG)."
                                       (nth 3 parts))))))
       (err err))))
 
+;; ---------------------------------------------------------------------
+;; shared review-commands builder (used by tools-patch + patch-runner)
+;; ---------------------------------------------------------------------
+
+(defun dl-satan-patch--build-review-commands (row &optional commits)
+  "Build suggested review shell commands for ROW.
+COMMITS, when nil, is extracted from ROW's `:result_json'.
+Returns nil when repo/base/branch are absent."
+  (let* ((repo (plist-get row :repo))
+         (base (plist-get row :base_ref))
+         (branch (plist-get row :branch))
+         ;; If commits not provided, extract from result_json
+         (commits (or commits
+                      (let ((result (plist-get row :result_json)))
+                        (and result (plist-get result :commits))))))
+    (when (and repo base branch)
+      (let ((cmds (list (format "git -C %s diff %s...%s" repo base branch)
+                        (format "git -C %s log %s..%s" repo base branch))))
+        (when (consp commits)
+          (let ((sha (plist-get (car commits) :sha)))
+            (when sha
+              (setq cmds (append cmds
+                                 (list (format "git -C %s cherry-pick %s"
+                                               repo sha)))))))
+        cmds))))
+
 (provide 'dl-satan-patch-store)
 ;;; dl-satan-patch-store.el ends here

@@ -605,25 +605,7 @@ success or an error string on failure."
                          :null-object :null
                          :false-object :false))))
 
-(defun dl-satan-audit--read-jsonl (path)
-  "Read PATH as JSONL, return list of plists in order."
-  (let ((coding-system-for-read 'utf-8))
-    (with-temp-buffer
-      (insert-file-contents path)
-      (goto-char (point-min))
-      (let (out)
-        (while (not (eobp))
-          (let ((line (buffer-substring-no-properties
-                       (point) (line-end-position))))
-            (unless (string-empty-p (string-trim line))
-              (push (json-parse-string line
-                                       :object-type 'plist
-                                       :array-type 'list
-                                       :null-object :null
-                                       :false-object :false)
-                    out))
-            (forward-line 1)))
-        (nreverse out)))))
+
 
 (defun dl-satan-audit-p/has-manifest (dir)
   (and (file-readable-p (expand-file-name "manifest.json" dir))
@@ -638,8 +620,8 @@ success or an error string on failure."
        t))
 
 (defun dl-satan-audit-p/transcript-monotonic (dir)
-  (let ((records (dl-satan-audit--read-jsonl
-                  (expand-file-name "transcript.jsonl" dir)))
+  (let ((records (dl-satan-jsonl-read-file
+                  (expand-file-name "transcript.jsonl" dir) :null-object :null))
         (prev nil)
         (ok t))
     (dolist (r records)
@@ -650,8 +632,8 @@ success or an error string on failure."
 
 (defun dl-satan-audit-p/calls-match-results (dir)
   "Every tool-call id has a matching tool-result id."
-  (let ((records (dl-satan-audit--read-jsonl
-                  (expand-file-name "transcript.jsonl" dir)))
+  (let ((records (dl-satan-jsonl-read-file
+                  (expand-file-name "transcript.jsonl" dir) :null-object :null))
         (calls (make-hash-table :test 'equal))
         (results (make-hash-table :test 'equal)))
     (dolist (r records)

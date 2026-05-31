@@ -108,18 +108,7 @@ No-op when `dl-satan-patch-runner-enabled' is nil."
 (defun dl-satan-patch-runner--review-commands (row commits)
   "Build the review_commands list for the result_json.
 ROW is the job row plist; COMMITS the list of (:sha :subject) plists."
-  (let* ((repo (plist-get row :repo))
-         (base (plist-get row :base_ref))
-         (branch (plist-get row :branch))
-         (cmds (list (format "git -C %s diff %s...%s" repo base branch)
-                     (format "git -C %s log %s..%s" repo base branch))))
-    (when (consp commits)
-      (let ((sha (plist-get (car commits) :sha)))
-        (when sha
-          (setq cmds (append cmds
-                             (list (format "git -C %s cherry-pick %s"
-                                           repo sha)))))))
-    cmds))
+  (dl-satan-patch--build-review-commands row commits))
 
 (defun dl-satan-patch-runner--assemble-result (row adapter-result commits diffstat)
   "Build the final result_json plist for the job."

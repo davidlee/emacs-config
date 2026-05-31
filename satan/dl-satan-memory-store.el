@@ -73,23 +73,6 @@ suffix for testability; defaults to a 6-char base36 random string."
 ;; psql plumbing
 ;; ---------------------------------------------------------------------
 
-(defun dl-satan-memory-store--parse-pg-array (s)
-  "Parse a `{a,b,c}' postgres array literal into a list of strings.
-Empty input or `{}' returns nil.  Does not handle escaped commas
-inside double-quoted entries; sufficient for handle strings, which
-the CHECK constraint restricts to a safe charset."
-  (cond
-   ((or (null s) (string-empty-p s) (string= s "{}")) nil)
-   ((and (string-prefix-p "{" s) (string-suffix-p "}" s))
-    (let ((inner (substring s 1 -1)))
-      (mapcar
-       (lambda (e)
-         (if (and (string-prefix-p "\"" e) (string-suffix-p "\"" e))
-             (substring e 1 -1)
-           e))
-       (split-string inner ","))))
-   (t (list s))))
-
 (defun dl-satan-memory-store--format-pg-array (values)
   "Format VALUES (list of strings) as a postgres array literal."
   (concat "{"
@@ -260,7 +243,7 @@ round-trip — and so the tab-split row parser below cannot misframe."
                       (list :trace_id (nth 0 parts)
                             :score (string-to-number (nth 1 parts))
                             :matched_handles
-                            (dl-satan-memory-store--parse-pg-array
+                            (dl-satan-db-parse-pg-array
                              (nth 2 parts))
                             :payload (nth 3 parts)))))
       (err err))))

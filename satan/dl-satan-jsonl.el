@@ -95,13 +95,17 @@ ON-ERROR  is called with (RAW-LINE . ERROR-MSG) on parse failure."
                               :null-object :null :false-object :false)))
     (process-send-string proc (concat line "\n"))))
 
-(defun dl-satan-jsonl-read-file (path)
+(defun dl-satan-jsonl-read-file (path &key null-object)
   "Return a list of plists, one per non-empty JSON line at PATH.
 nil if PATH is unreadable.  Malformed lines signal — callers that
 need lenient parsing must wrap.  Decoder shape matches the inbound
 filter (`:object-type plist', `:array-type list', `:null-object nil',
 `:false-object :false') so the round-trip is symmetric for plists
-that don't carry JSON nulls."
+that don't carry JSON nulls.
+
+NULL-OBJECT is passed to `json-parse-string' (default nil).  The
+audit transcript reader passes `:null' to match the writer's
+`:null-object :null'."
   (when (file-readable-p path)
     (with-temp-buffer
       (let ((coding-system-for-read 'utf-8))
@@ -115,7 +119,7 @@ that don't carry JSON nulls."
               (push (json-parse-string line
                                        :object-type 'plist
                                        :array-type 'list
-                                       :null-object nil
+                                       :null-object (or null-object nil)
                                        :false-object :false)
                     acc)))
           (forward-line 1))
