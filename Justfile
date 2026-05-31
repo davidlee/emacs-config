@@ -12,10 +12,14 @@ home-switch:
 used:
   @rg use-package -g '*.el' -I --trim | egrep -v '^;' | cut -d ' ' -f 2 | tr ')' ' ' | sort | uniq
 
-# Run the ERT suite in the live Emacs server. DB-backed tests skip
-# unless their test database (satan_memory_test, ...) is reachable.
+# Run the full ERT suite in batch mode (the default).
+# SATAN_DB_HOST redirects DB tests to the test DB; without it the
+# chokepoint guard refuses the production socket loudly.
 check:
-  @emacsclient --eval '(dl-test-run-suite)' | tee /dev/stderr | grep -q PASS
+  @emacs --batch -Q --init-directory="{{justfile_directory()}}" \
+    -L core -L lisp -L org -L editing -L completion -L apps -L lang -L dev -L satan -L satan/test -L lisp/test \
+    -l dev/dl-test.el \
+    --eval '(princ (dl-test-run-suite))' 2>&1 | tee /dev/stderr | grep -q PASS
 
 db-start:
   supabase start
@@ -37,14 +41,12 @@ db-init db="satan_memory_test":
     -l satan/dl-satan-memory-migrate.el \
     --eval '(let ((dl-satan-memory-migrate-host (or (getenv "SATAN_DB_HOST") "127.0.0.1"))) (dl-satan-memory-migrate-apply "{{db}}"))'
 
-check-batch:
-  #!/usr/bin/env bash
-  set -euo pipefail
-  cd "{{justfile_directory()}}"
-  emacs --batch -Q --init-directory="{{justfile_directory()}}" \
-    -L core -L lisp -L org -L editing -L completion -L apps -L lang -L dev -L satan -L satan/test -L lisp/test \
-    -l dev/dl-test.el \
-    --eval '(dl-test-run-suite)' | tee /dev/stderr | grep -q PASS
+# Run the ERT suite in the live Emacs server, redirecting DB tests to
+# the test DB via a let-binding on dl-satan-db-host-override.
+# The redirect lasts only the suite's dynamic extent; the live
+# broker's production connection is untouched.
+check-interactive:
+  @emacsclient --eval '(let ((dl-satan-db-host-override (or (getenv "SATAN_DB_HOST") "127.0.0.1"))) (dl-test-run-suite))' | tee /dev/stderr | grep -q PASS
 
 clean:
   @find ~/.emacs.d -name '*.elc' -delete

@@ -7,6 +7,7 @@
 
 (require 'ert)
 (require 'cl-lib)
+(require 'dl-satan-db)
 (require 'dl-satan-patch-store)
 (require 'dl-satan-memory-migrate)
 
@@ -227,7 +228,7 @@ Returns (PROC . BUFFER).  stdin is /dev/null so psql does not block on EOF."
                (format "*satan-patch-listen-%s*" channel)))
          (cmd (format "exec %s -h %s -d %s --no-psqlrc -X -c %s -c %s < /dev/null"
                       (shell-quote-argument dl-satan-patch-store-psql-program)
-                      (shell-quote-argument dl-satan-patch-store-host)
+                      (shell-quote-argument (dl-satan-db-resolve-host dl-satan-patch-store-host))
                       (shell-quote-argument dl-satan-patch-store-test--db)
                       (shell-quote-argument
                        (format "LISTEN %s;" channel))

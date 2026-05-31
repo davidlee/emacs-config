@@ -16,8 +16,6 @@ provenance:
 scope:
   globs: [satan/**, docs/satan/**]
 links:
-  out:
-    - id: DE-003
   missing:
     - raw: POL-001
 ---

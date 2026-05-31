@@ -356,7 +356,8 @@ or (error . MSG)."
 (defun dl-satan-patch--build-review-commands (row &optional commits)
   "Build suggested review shell commands for ROW.
 COMMITS, when nil, is extracted from ROW's `:result_json'.
-Returns nil when repo/base/branch are absent."
+Returns nil until the job has produced commits — a queued job has
+nothing to review."
   (let* ((repo (plist-get row :repo))
          (base (plist-get row :base_ref))
          (branch (plist-get row :branch))
@@ -364,16 +365,13 @@ Returns nil when repo/base/branch are absent."
          (commits (or commits
                       (let ((result (plist-get row :result_json)))
                         (and result (plist-get result :commits))))))
-    (when (and repo base branch)
+    (when (and repo base branch (consp commits))
       (let ((cmds (list (format "git -C %s diff %s...%s" repo base branch)
-                        (format "git -C %s log %s..%s" repo base branch))))
-        (when (consp commits)
-          (let ((sha (plist-get (car commits) :sha)))
-            (when sha
-              (setq cmds (append cmds
-                                 (list (format "git -C %s cherry-pick %s"
-                                               repo sha)))))))
-        cmds))))
+                        (format "git -C %s log %s..%s" repo base branch)))
+            (sha (plist-get (car commits) :sha)))
+        (if sha
+            (append cmds (list (format "git -C %s cherry-pick %s" repo sha)))
+          cmds)))))
 
 (provide 'dl-satan-patch-store)
 ;;; dl-satan-patch-store.el ends here

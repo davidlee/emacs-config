@@ -4,6 +4,11 @@
 
 # AGENTS.md — orientation for future agents
 
+## Commit Gate
+
+`just check` is green
+
+## Misc 
 
 when searching:
 - use rg | fd, not find | grep
@@ -57,7 +62,7 @@ from `init.el`.
 | Set `:ensure nil` + want package available | Add to `extraEmacsPackages` in `emacs.nix` |
 | Adding stuff that has nothing to do with a text editor | [read](./docs/satan/refactor/extraction-policy.md)| 
 
-## The four traps (summary)
+## four traps 
 
 1. **Flake builds see only git-tracked files** — untracked `.el` is invisible to the parser.
 2. **`:ensure nil`** — emacs-overlay refuses to install. Use `extraEmacsPackages` instead.

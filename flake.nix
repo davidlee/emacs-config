@@ -60,9 +60,15 @@
             postgresql_18
             supabase-cli
             wrappedEmacs
+            emacsclient-commands
             sqlite
           ]
           ++ [spec-driver-pkg];
+
+        emacsClientJailOptions = with jailLib.combinators; [
+          (try-fwd-env "XDG_RUNTIME_DIR")
+          # (try-readwrite "/run/user/1000/emacs/server")
+        ];
 
         apiKeyJailOptions = with jailLib.combinators; [
           (try-fwd-env "OPENROUTER_API_KEY")
@@ -78,8 +84,10 @@
           (set-env "PGPASSWORD" "postgres")
         ];
 
-        jailEnvOptions = apiKeyJailOptions ++ supabaseJailOptions;
-
+        jailEnvOptions =
+          apiKeyJailOptions
+          ++ supabaseJailOptions
+          ++ emacsClientJailOptions;
         # workspaceDeps = [ "/home/david/.emacs.d/" ];
         workspaceDeps = [
           "/home/david/flakes/"
@@ -232,19 +240,13 @@
             extraOptions = jailEnvOptions;
             inherit workspaceDeps;
           };
-          jailed-gemini = jailLib.makeJailedGemini {
-            profile = "specDev";
-            extraPkgs = projectPkgs;
-            extraOptions = jailEnvOptions;
-            inherit workspaceDeps;
-          };
           jailed-zero = jailLib.makeJailedZerostack {
             profile = "specDev";
             extraPkgs = projectPkgs;
             extraOptions = jailEnvOptions;
             inherit workspaceDeps;
           };
-          satan-jailed-fake-harness = jailLib.makeJailedAgent {
+          SATAN-jailed-fake-harness = jailLib.makeJailedAgent {
             name = "satan-fake-harness";
             agent = satanFakeHarness;
             profile = "offline";

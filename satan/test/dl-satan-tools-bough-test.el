@@ -9,6 +9,7 @@
 
 (require 'ert)
 (require 'cl-lib)
+(require 'dl-satan-db)
 (require 'dl-satan-tools)
 (require 'dl-satan-tools-bough)
 
@@ -184,39 +185,96 @@ returns each as its own array under `:transitions' / `:created'."
     ;; pcase then falls through to the catch-all error.
     (should (eq 'error (car res)))))
 
-;; ---------- integration (skip when bough absent) ----------
+;; ---------- integration (self-provisioning, test-host only) ----------
+;;
+;; bough is an external binary that connects via DATABASE_URL/PG env and
+;; does NOT route through dl-satan-db.el (DEC-007).  It defaults to the
+;; `bough_production' DB on whatever host the PG env points at, so a bare
+;; run under `just check' would hit the production socket.  These tests
+;; therefore run ONLY when `dl-satan-db-host-override' names a test host
+;; (never prod), and self-provision their own `bough_test' DB:
+;;   1. CREATE DATABASE bough_test (idempotent, via the psql chokepoint)
+;;   2. bough init   (migrations + default workspace, idempotent)
+;; Every bough invocation in these tests is pinned to that DB by binding
+;; DATABASE_URL.  Replaces the old `/workspace' jail proxy.
 
-(defvar dl-satan-bough-test--bough-ok
-  (and (not (file-exists-p "/workspace"))          ; bough can't vfork in jail
-       (file-executable-p dl-satan-bough-program)))
+(defconst dl-satan-bough-test--db "bough_test")
+
+(defun dl-satan-bough-test--db-url ()
+  "Full DATABASE_URL for the bough test DB on the resolved test host.
+Returns nil when the override carrier is unset or names the production
+socket — so bough is never created on or pointed at production."
+  (let ((host dl-satan-db-host-override))
+    (when (and host (not (equal host "/run/postgresql")))
+      (format "postgres://%s:%s@%s:%s/%s"
+              (or (getenv "PGUSER") "postgres")
+              (or (getenv "PGPASSWORD") "postgres")
+              host
+              (or (getenv "PGPORT") "5432")
+              dl-satan-bough-test--db))))
+
+(defvar dl-satan-bough-test--ready 'unset
+  "Memoized provisioning result: t/nil once computed, `unset' before.")
+
+(defun dl-satan-bough-test--ensure ()
+  "Idempotently provision + migrate the bough test DB; memoized.
+Non-nil when the integration tests may run: bough executable, a test
+host, and `bough init' succeeds.  Never touches the production DB."
+  (when (eq dl-satan-bough-test--ready 'unset)
+    (setq dl-satan-bough-test--ready
+          (let ((url (dl-satan-bough-test--db-url)))
+            (and url
+                 (file-executable-p dl-satan-bough-program)
+                 (progn
+                   ;; CREATE DATABASE on the maintenance DB; ignore "already exists".
+                   (dl-satan-db-psql
+                    "postgres" dl-satan-db-host-override dl-satan-db-default-program
+                    (list "-c" (format "CREATE DATABASE %s"
+                                        dl-satan-bough-test--db)))
+                   (let ((process-environment
+                          (cons (concat "DATABASE_URL=" url) process-environment)))
+                     (eq 0 (call-process dl-satan-bough-program nil nil nil
+                                         "init" "--database-url" url))))))))
+  (and dl-satan-bough-test--ready t))
+
+(defmacro dl-satan-bough-test--with-db (&rest body)
+  "Skip unless the bough test DB is provisioned, then run BODY with every
+bough invocation pinned to it via DATABASE_URL."
+  (declare (indent 0))
+  `(progn
+     (skip-unless (dl-satan-bough-test--ensure))
+     (let ((process-environment
+            (cons (concat "DATABASE_URL=" (dl-satan-bough-test--db-url))
+                  process-environment)))
+       ,@body)))
 
 (ert-deftest dl-satan-bough/active-scope-shape ()
-  (skip-unless dl-satan-bough-test--bough-ok)
-  (let ((res (dl-satan-tool/bough-read (list :scope "active") nil)))
-    (should (eq 'ok (car res)))
-    (let ((payload (cdr res)))
-      (should (equal "active" (plist-get payload :scope)))
-      (should (listp (plist-get payload :nodes))))))
+  (dl-satan-bough-test--with-db
+    (let ((res (dl-satan-tool/bough-read (list :scope "active") nil)))
+      (should (eq 'ok (car res)))
+      (let ((payload (cdr res)))
+        (should (equal "active" (plist-get payload :scope)))
+        (should (listp (plist-get payload :nodes)))))))
 
 (ert-deftest dl-satan-bough/day-not-found-becomes-ok-nil ()
-  (skip-unless dl-satan-bough-test--bough-ok)
-  ;; A date far in the past with no day entry.
-  (let* ((res (dl-satan-tool/bough-read
-               (list :scope "day" :date "1999-01-01") nil))
-         (payload (cdr res)))
-    (should (eq 'ok (car res)))
-    (should (equal "1999-01-01" (plist-get payload :date)))
-    (should (null (plist-get payload :day)))))
+  (dl-satan-bough-test--with-db
+    ;; A date far in the past with no day entry.
+    (let* ((res (dl-satan-tool/bough-read
+                 (list :scope "day" :date "1999-01-01") nil))
+           (payload (cdr res)))
+      (should (eq 'ok (car res)))
+      (should (equal "1999-01-01" (plist-get payload :date)))
+      (should (null (plist-get payload :day))))))
 
 (ert-deftest dl-satan-bough/week-scope-bounds ()
-  (skip-unless dl-satan-bough-test--bough-ok)
-  (let* ((res (dl-satan-tool/bough-read
-               (list :scope "week" :date "2026-05-20") nil))
-         (payload (cdr res)))
-    (should (eq 'ok (car res)))
-    (should (equal "2026-05-18" (plist-get payload :start_date)))
-    (should (equal "2026-05-24" (plist-get payload :end_date)))
-    (should (listp (plist-get payload :days)))))
+  (dl-satan-bough-test--with-db
+    (let* ((res (dl-satan-tool/bough-read
+                 (list :scope "week" :date "2026-05-20") nil))
+           (payload (cdr res)))
+      (should (eq 'ok (car res)))
+      (should (equal "2026-05-18" (plist-get payload :start_date)))
+      (should (equal "2026-05-24" (plist-get payload :end_date)))
+      (should (listp (plist-get payload :days))))))
 
 (provide 'dl-satan-tools-bough-test)
 ;;; dl-satan-tools-bough-test.el ends here

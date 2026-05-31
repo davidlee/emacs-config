@@ -14,8 +14,12 @@
 ;;     work/                   work compartment (mirrors the class taxonomy
 ;;                             + meetings/ + people/)
 
-(defconst dl-notes-root (expand-file-name "~/notes")
-  "Root of the notes corpus.")
+(defconst dl-notes-root
+  (cond ((file-directory-p "/workspace/notes") "/workspace/notes")
+        (t (expand-file-name "~/notes")))
+  "Root of the notes corpus.
+In a Nix-built jail, notes are mounted at /workspace/notes;
+elsewhere the canonical ~/notes path is used.")
 
 (defun my/notes-path (&rest segments)
   "Return SEGMENTS joined under `dl-notes-root'."

@@ -4,6 +4,38 @@ Notable changes to this Emacs config. Loosely dated; not versioned.
 
 ## 2026-05-31 — SATAN: test suite fixes (DE-003 refactor regressions)
 
+### DE-006 — DB host isolation: read SATAN_DB_HOST env var
+
+Resolve the Postgres host once at the `dl-satan-db` chokepoint via a
+dynamic carrier seeded from `SATAN_DB_HOST`.  Batch (`just check`) redirects
+to the test DB through the env var; interactive (`just check-interactive`)
+redirects by `let`-binding the carrier for the suite's extent.  The
+production broker is never disturbed.
+
+- `satan/dl-satan-db.el` — `dl-satan-db-host-override` carrier,
+  `dl-satan-db-resolve-host` (single resolution point + batch prod-guard),
+  `dl-satan-db-database-url`, `dl-satan-db-test-db-available-p`
+- `Justfile` — `check` is now batch (was `check-batch`);
+  `check-interactive` is the emacsclient path (was `check`)
+- `dev/dl-test.el` — pre-flight check refuses batch against prod socket
+- All DB-touching tests route through the shared predicate or resolver
+- 5 migrate tests now pass against test DB (were hitting prod socket)
+- Chokepoint VT: 10 new tests, 21/21 passing
+
+Closing the suite exposed two issues the batch rename un-masked (the old
+emacsclient `check` was interactive and tolerated both silently):
+
+- **`dev/dl-test.el`** — the suite loop `load`ed test files that an
+  earlier-sorting sibling had already `require`d for fixture macros; in batch
+  `ert-deftest` errors on "redefined (or loaded twice)". Loop now skips files
+  whose feature is already `provide`d. Also cleared 4 flaky failures that were
+  running against the half-loaded second copy.
+- **`satan/dl-satan-patch-store.el`** — restored the `(consp commits)` guard in
+  `dl-satan-patch--build-review-commands` (dropped by DE-003's unification), so
+  queued jobs again return empty `:review_commands` per the tool's contract.
+
+Suite green: 920/923, 0 unexpected, 3 skipped (real-PG / real-pi integration).
+
 DE-003 (655b71e) removed `dl-satan-audit--read-jsonl` and `dl-satan-patch-store--json`
 but left stale call-sites in broker tests and patch-worktree. Additionally, the
 `defun` with `&key` lambda-list in `dl-satan-jsonl-read-file` byte-compiles to

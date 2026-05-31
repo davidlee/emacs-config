@@ -16,18 +16,21 @@
 
 (require 'ert)
 (require 'cl-lib)
+(require 'dl-satan-db)
 (require 'dl-satan-memory-grammar)
 
 (defconst dl-satan-memory-grammar-test--db
   (or (getenv "SATAN_MEMORY_TEST_DB") "satan_memory"))
 
-(defconst dl-satan-memory-grammar-test--host "/run/postgresql")
+(defconst dl-satan-memory-grammar-test--host "/run/postgresql"
+  "Production host default.  Overridden at call time by `dl-satan-db-resolve-host';
+the actual connection target is the resolved host, not this literal.")
 
 (defun dl-satan-memory-grammar-test--psql (sql)
   "Run SQL against the configured DB.  Return rows as list-of-strings.
 Each line is split on `|'.  Returns nil on connection failure."
   (with-temp-buffer
-    (let* ((args (list "-h" dl-satan-memory-grammar-test--host
+    (let* ((args (list "-h" (dl-satan-db-resolve-host dl-satan-memory-grammar-test--host)
                        "-d" dl-satan-memory-grammar-test--db
                        "--no-psqlrc" "-A" "-t" "-F" "|"
                        "-v" "ON_ERROR_STOP=1"
@@ -42,8 +45,7 @@ Each line is split on `|'.  Returns nil on connection failure."
                  (split-string (buffer-string) "\n")))))))
 
 (defun dl-satan-memory-grammar-test--db-reachable-p ()
-  (let ((rows (dl-satan-memory-grammar-test--psql "SELECT 1")))
-    (and rows (equal (caar rows) "1"))))
+  (dl-satan-db-test-db-available-p dl-satan-memory-grammar-test--db))
 
 ;; ---------- pure internal consistency ----------
 

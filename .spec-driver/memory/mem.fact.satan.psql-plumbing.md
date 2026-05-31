@@ -7,16 +7,8 @@ confidence: high
 tags: [satan, db, dry]
 summary: "DE-003 extracted dl-satan-db.el. Two surfaces: dl-satan-db-query(db host program sql vars) for common case, dl-satan-db-psql(db host program extra-flags &optional input) for custom flags. Always -q."
 provenance:
-  sources:
-    - "satan/dl-satan-memory-store.el:74"
-    - "satan/dl-satan-patch-store.el:70"
-    - "satan/dl-satan-attribute.el:84"
-    - satan/dl-satan-memory-migrate.el
-    - DE-003
-    - DR-003
+  sources: ["satan/dl-satan-db.el (2026-05-31, DE-003 commit 6ad36b4)"]
   verified: "2026-05-31"
-  sources:
-    - "satan/dl-satan-db.el (2026-05-31, DE-003 commit 6ad36b4)"
 scope:
   paths:
     - satan/dl-satan-memory-store.el
@@ -24,8 +16,6 @@ scope:
     - satan/dl-satan-attribute.el
     - satan/dl-satan-memory-migrate.el
 links:
-  out:
-    - id: DE-003
   missing:
     - raw: DR-003
     - raw: POL-001

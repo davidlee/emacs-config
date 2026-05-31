@@ -119,7 +119,7 @@ base_ref."
                      :branch branch
                      :worktree_path wt
                      :allowed_paths (or allowed '())
-                     :checks (or checks '())))))
+                     :checks (or checks '()))))))
            ;; Exclude the manifest from this worktree's git status so a
            ;; clean adapter run shows up as truly clean.  Per-worktree
            ;; exclude lives in the linked worktree's gitdir.

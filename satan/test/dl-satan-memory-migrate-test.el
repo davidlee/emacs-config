@@ -10,9 +10,14 @@
 
 (require 'ert)
 (require 'cl-lib)
+(require 'dl-satan-db)
 (require 'dl-satan-memory-migrate)
 
 (defconst dl-satan-memory-migrate-test--db "satan_memory_test")
+
+(defun dl-satan-memory-migrate-test--db-available-p ()
+  "Non-nil when the migrate test DB is reachable (delegates to the shared predicate)."
+  (dl-satan-db-test-db-available-p dl-satan-memory-migrate-test--db))
 
 (defun dl-satan-memory-migrate-test--reset-db ()
   "Drop every table in the test DB.  Best-effort, idempotent."
@@ -76,6 +81,7 @@
 ;; ---------- end-to-end against the real migrations ----------
 
 (ert-deftest dl-satan-memory-migrate/applies-real-migrations ()
+  (skip-unless (dl-satan-memory-migrate-test--db-available-p))
   (dl-satan-memory-migrate-test--reset-db)
   (let ((dl-satan-memory-migrate-database dl-satan-memory-migrate-test--db))
     (let ((applied (dl-satan-memory-migrate-apply)))
@@ -86,6 +92,7 @@
       (should (= 6 (length status))))))
 
 (ert-deftest dl-satan-memory-migrate/re-apply-is-noop ()
+  (skip-unless (dl-satan-memory-migrate-test--db-available-p))
   (dl-satan-memory-migrate-test--reset-db)
   (let ((dl-satan-memory-migrate-database dl-satan-memory-migrate-test--db))
     (dl-satan-memory-migrate-apply)
@@ -94,6 +101,7 @@
 ;; ---------- tampering detection ----------
 
 (ert-deftest dl-satan-memory-migrate/refuses-tampered-file ()
+  (skip-unless (dl-satan-memory-migrate-test--db-available-p))
   (dl-satan-memory-migrate-test--with-tempdir
    (lambda (dir)
      (let ((p (dl-satan-memory-migrate-test--write
@@ -110,6 +118,7 @@
 ;; ---------- version-skip refusal ----------
 
 (ert-deftest dl-satan-memory-migrate/refuses-version-skip ()
+  (skip-unless (dl-satan-memory-migrate-test--db-available-p))
   (dl-satan-memory-migrate-test--with-tempdir
    (lambda (dir)
      (dl-satan-memory-migrate-test--write
@@ -123,6 +132,7 @@
 ;; ---------- missing recorded file ----------
 
 (ert-deftest dl-satan-memory-migrate/refuses-missing-recorded-file ()
+  (skip-unless (dl-satan-memory-migrate-test--db-available-p))
   (dl-satan-memory-migrate-test--with-tempdir
    (lambda (dir)
      (let ((p (dl-satan-memory-migrate-test--write

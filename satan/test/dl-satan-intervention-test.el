@@ -395,7 +395,7 @@ The bucket is parsed from run-id's leading YYYYMMDD."
 (defun dl-satan-intervention-test--transcript-events (audit)
   "Return all parsed transcript records appended to AUDIT."
   (let ((path (dl-satan-audit-handle-transcript-path audit)))
-    (dl-satan-intervention--read-jsonl path)))
+    (dl-satan-jsonl-read-file path :null-object :null)))
 
 (ert-deftest dl-satan-intervention/create-emits-audit-and-projects ()
   (dl-satan-intervention-test--with-db

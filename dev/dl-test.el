@@ -1,11 +1,16 @@
-;;; dl-test.el --- Run the ERT suite over emacsclient -*- lexical-binding: t; -*-
+;;; dl-test.el --- Run the ERT suite -*- lexical-binding: t; -*-
 
-;; Drives the project's ERT suites from the *live* Emacs server so
-;; `just check' can verify a change without spawning a throwaway batch
-;; Emacs (which would have to rebuild the whole load-path).  The runner
-;; returns a one-line summary string — `emacsclient --eval' prints the
-;; return value, and the justfile recipe greps it for the exit code.
-;; Per-test detail lands in *Messages* (the server's stderr).
+;; Drives the project's ERT suites.  Two paths:
+;;
+;;   `just check'             — batch (emacs --batch), the default.
+;;   `just check-interactive' — live Emacs server (emacsclient),
+;;                              let-binds dl-satan-db-host-override
+;;                              so DB tests hit the test DB without
+;;                              disturbing the production broker.
+;;
+;; The runner returns a one-line summary string; the Justfile recipes
+;; grep it for PASS/FAIL.  Per-test detail lands in *Messages*
+;; (the server's stderr) for check-interactive, or stdout for check.
 ;;
 ;; Side-effect policy lives in the suites, not here: DB-touching tests
 ;; isolate to a dedicated test database (satan_memory_test / trace_test /
@@ -15,7 +20,8 @@
 ;; mem.fact.satan.test-db-isolation).
 ;;
 ;; CLI shape (see ../Justfile):
-;;   emacsclient --eval '(dl-test-run-suite)'
+;;   emacs --batch … --eval '(dl-test-run-suite)'          # check
+;;   emacsclient --eval '(let (…) (dl-test-run-suite))'    # check-interactive
 
 ;;; Code:
 
@@ -46,15 +52,30 @@ with \"test-\".")
 (defun dl-test-run-suite ()
   "Load and run the ERT suites, returning a one-line summary string.
 Clears previously-defined tests first so only freshly-loaded files
-run.  DB-backed tests `skip-unless' their test database is reachable."
+run.  DB-backed tests `skip-unless' their test database is reachable.
+
+In batch mode without SATAN_DB_HOST or SATAN_FAILOVER_TO_SYSTEM_DB,
+errors loudly before loading any test files — never touches the
+production database from a test run."
+  ;; Pre-flight: refuse to run batch tests against the production socket.
+  (when (and noninteractive
+             (not (getenv "SATAN_DB_HOST"))
+             (not (getenv "SATAN_FAILOVER_TO_SYSTEM_DB")))
+    (error "dl-test: refusing to run batch tests against production socket; set SATAN_DB_HOST or SATAN_FAILOVER_TO_SYSTEM_DB"))
   (ert-delete-all-tests)
   (let ((load-errors '()))
     (dolist (f (dl-test--suite-files))
-      (condition-case err
-          (load f nil t)
-        (error (push (format "%s: %s" (file-name-base f)
-                             (error-message-string err))
-                     load-errors))))
+      ;; A sibling suite file may `require' this one for its fixture
+      ;; macros, which loads it (and defines its tests) before the loop
+      ;; reaches it.  Loading again re-runs every `ert-deftest', which
+      ;; errors in batch ("redefined (or loaded twice)").  Skip files
+      ;; whose feature is already provided.
+      (unless (featurep (intern (file-name-base f)))
+        (condition-case err
+            (load f nil t)
+          (error (push (format "%s: %s" (file-name-base f)
+                               (error-message-string err))
+                       load-errors)))))
     (let* ((stats (ert-run-tests-batch t))
            (total (ert-stats-total stats))
            (unexpected (ert-stats-completed-unexpected stats))
