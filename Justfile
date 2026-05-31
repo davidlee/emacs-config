@@ -53,3 +53,8 @@ clean:
 
 wc:
   @find ~/.emacs.d/{core,lisp,dev,lang,editing,completion,apps,org,satan} -name '*.el' | xargs wc -l ;
+
+hello-satan:
+  emacsclient -e "(progn (set 'dl-satan-mcp-enabled t)(load-file \"./satan/dl-satan-mcp.el\")(my/satan-mcp-start))"
+  jpi -e .pi/extensions/satan.ts
+

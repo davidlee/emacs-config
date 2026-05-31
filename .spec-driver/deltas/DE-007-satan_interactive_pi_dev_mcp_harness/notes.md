@@ -241,8 +241,38 @@ pattern — only the schema emission path translates.
 
 ### Remaining for Phase 3
 
-- `home-manager switch` to pick up new .el + flake change
-- Live VH test (VH-mcp-live-pi): start server, run jailed-pi with extension,
+- [x] `home-manager switch` to pick up new .el + flake change
+- [x] Live VH test (VH-mcp-live-pi): start server, run jailed-pi with extension,
   call read + write tools, verify transcript
-- CHANGELOG update
-- Commit + push
+- [x] CHANGELOG update
+- [x] Commit + push
+
+## Adversarial review — 2026-06-01
+
+Review of 8c4ab80 ("end to end viable"). Architecture solid: dispatch reuse
+correct, audit integration thorough, POL-001 trust boundary respected.
+
+### Resolved during review
+
+| # | Finding | Resolution |
+|---|---------|------------|
+| F1 | `custom-vars.el` enabled MCP by default (O5 conflict) | Intentional — defcustom gates *auto-start*, not manual start; `enabled` semantics clarified |
+| F2 | `interactive.txt` not tracked in repo | Committed |
+| F3 | Phase sheet exit criteria stale | home-manager switch + VH done; phase sheet updated |
+| F4 | Dead require `dl-satan-jsonl` in `dl-satan-mcp.el` | Removed |
+| F5 | No test for `test.` tool name filtering | Test added |
+
+### Follow-ups (low severity, not blocking)
+
+- **F6 `prin1-to-string` for tool results** — produces Elisp repr, not JSON.
+  Fine for text display in Option A; Option C should emit structured JSON.
+- **F7 `tools/list` re-reads description files from disk** every call.
+  Would benefit from caching (manifest already built in mint-session).
+- **F8 TypeBox enum cast assumes string values** — `v as string` breaks
+  on numeric enums. Documented limitation; fix when needed.
+- **F9 No automated launcher** — `my/satan-mcp-pi-session` prints a message
+  but doesn't start pi. Intentional for Option A; consider a
+  `my/satan-mcp-pi-launch` helper that prints the exact jailed-pi command.
+- **F10 Sentinel `broken` event** — matched in regex but `make-network-process`
+  doesn't emit it (pipe-only). Harmless dead code; the `deleted` branch covers
+  network disconnection.

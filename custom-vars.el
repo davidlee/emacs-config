@@ -15,7 +15,6 @@
        "720838034f1dd3b3da66f6bd4d053ee67c93a747b219d1c546c41c4e425daf93"
        "6dcf1ca4c7432773084b9d52649ee5eb2c663131c4c06859f648dea98d9acb3e"
        default))
- '(dl-satan-mcp-enabled t)
  '(dl-shpool-known-sessions '(".emacs.d" "hris" "team" "claude"))
  '(org-timeblock-current-time-indicator t)
  '(org-timeblock-span 1)
