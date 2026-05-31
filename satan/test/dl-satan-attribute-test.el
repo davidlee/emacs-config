@@ -132,8 +132,8 @@
   ;; `--write-enabled-setting' should bind JSON `true' on a t input,
   ;; `false' on nil — verified by intercepting `--query'.
   (let (captured-sql captured-vars)
-    (cl-letf (((symbol-function 'dl-satan-attribute--query)
-               (lambda (_db sql vars)
+    (cl-letf (((symbol-function 'dl-satan-db-query)
+               (lambda (_db _host _program sql vars)
                  (setq captured-sql sql captured-vars vars)
                  '(ok . ""))))
       (dl-satan-attribute--write-enabled-setting t)

@@ -5,7 +5,17 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-parts.url = "github:hercules-ci/flake-parts";
     devshell.url = "github:numtide/devshell";
-    pub.url = "path:/home/david/flakes/pub";
+    emacs-overlay.url = "https://github.com/nix-community/emacs-overlay/archive/master.tar.gz";
+    emacs-config = {
+      url = "path:/home/david/.emacs.d";
+      flake = false;
+    };
+    pub = {
+      url = "path:/home/david/flakes/pub";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.emacs-overlay.follows = "emacs-overlay";
+      inputs.emacs-config.follows = "emacs-config";
+    };
     llm-agents.url = "github:numtide/llm-agents.nix";
     spec-driver.url = "github:davidlee/spec-driver";
     zig-overlay.url = "github:mitchellh/zig-overlay";
@@ -41,16 +51,33 @@
           then inputs.pub.lib.${system}.mkJailedAgents {inherit (inputs) llm-agents;}
           else {};
         spec-driver-pkg = spec-driver.packages.${system}.default;
+        wrappedEmacs = inputs.pub.packages.${system}.emacs;
         projectPkgs = with pkgs;
           [
             zigPackage
             nodejs
+            just
+            postgresql_18
+            supabase-cli
+            wrappedEmacs
           ]
           ++ [spec-driver-pkg];
 
-        jailEnvOptions = with jailLib.combinators; [
+        apiKeyJailOptions = with jailLib.combinators; [
           (try-fwd-env "OPENROUTER_API_KEY")
         ];
+
+        supabaseJailOptions = with jailLib.combinators; [
+          (try-fwd-env "DOCKER_HOST")
+          (try-readwrite "/run/user/1000/docker.sock")
+          (set-env "SATAN_DB_HOST" "127.0.0.1")
+          (set-env "PGHOST" "127.0.0.1")
+          (set-env "PGPORT" "54322")
+          (set-env "PGUSER" "postgres")
+          (set-env "PGPASSWORD" "postgres")
+        ];
+
+        jailEnvOptions = apiKeyJailOptions ++ supabaseJailOptions;
 
         # workspaceDeps = [ "/home/david/.emacs.d/" ];
         workspaceDeps = [
@@ -179,7 +206,7 @@
             name = "pi-research";
             profile = "research";
             extraPkgs = projectPkgs;
-            extraOptions = jailEnvOptions;
+            extraOptions = apiKeyJailOptions;
             inherit workspaceDeps;
           };
           jailed-opencode = jailLib.makeJailedOpencode {

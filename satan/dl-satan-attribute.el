@@ -19,6 +19,7 @@
 (require 'cl-lib)
 (require 'json)
 (require 'subr-x)
+(require 'dl-satan-db)
 
 (defgroup dl-satan-attribute nil
   "SATAN attribute layer broker surface."
@@ -80,34 +81,6 @@ so `json-serialize' renders JSON `true`/`false`."
 ;; ---------------------------------------------------------------------
 ;; psql plumbing
 ;; ---------------------------------------------------------------------
-
-(defun dl-satan-attribute--query (db sql variables)
-  "Run SQL against DB with VARIABLES (alist NAME . VALUE).  Return
-\(ok . STDOUT-TRIMMED) or (error . MSG)."
-  (let* ((var-args (cl-loop for (k . v) in variables
-                            append (list "-v" (format "%s=%s" k v))))
-         (full-args (append (list "-h" dl-satan-attribute-host
-                                  "-d" db
-                                  "--no-psqlrc"
-                                  "-X" "-A" "-t" "-q"
-                                  "-F" "\t"
-                                  "-v" "ON_ERROR_STOP=1")
-                            var-args
-                            (list "-f" "-"))))
-    (with-temp-buffer
-      (let* ((out-buf (current-buffer))
-             (status
-              (with-temp-buffer
-                (insert sql)
-                (apply #'call-process-region
-                       (point-min) (point-max)
-                       dl-satan-attribute-psql-program
-                       nil out-buf nil full-args))))
-        (if (and (integerp status) (zerop status))
-            (cons 'ok (string-trim (buffer-string)))
-          (cons 'error (format "psql exit %s on %s: %s"
-                               status db
-                               (string-trim (buffer-string)))))))))
 
 ;; ---------------------------------------------------------------------
 ;; payload construction
@@ -193,8 +166,9 @@ Returns (ok . ID) carrying the inserted row id, or (error . MSG)."
                ") "
                "SELECT id, pg_notify('satan_outcome_inbox', id::text) "
                "FROM ins"))
-         (result (dl-satan-attribute--query
-                  database sql `(("payload" . ,json)))))
+         (result (dl-satan-db-query
+                  database dl-satan-attribute-host dl-satan-attribute-psql-program
+                  sql `(("payload" . ,json)))))
     (pcase result
       (`(ok . ,out)
        (let* ((parts (split-string out "\t"))
@@ -227,7 +201,7 @@ VALUE is a Lisp boolean (`t' or `nil').  Returns (ok . _) or (error . MSG)."
                "VALUES ('attribute_updates_enabled', :'value'::jsonb) "
                "ON CONFLICT (name) DO UPDATE "
                "  SET value = EXCLUDED.value, updated_at = NOW()")))
-    (dl-satan-attribute--query database sql `(("value" . ,json-value)))))
+    (dl-satan-db-query database dl-satan-attribute-host dl-satan-attribute-psql-program sql `(("value" . ,json-value)))))
 
 (defun dl-satan-attribute--on-enabled-change (_sym newval op _where)
   "Variable-watcher hook for `dl-satan-attribute-updates-enabled'.

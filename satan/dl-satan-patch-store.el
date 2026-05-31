@@ -18,6 +18,7 @@
 (require 'cl-lib)
 (require 'json)
 (require 'subr-x)
+(require 'dl-satan-db)
 
 (defgroup dl-satan-patch nil
   "SATAN patch-agent."
@@ -66,35 +67,6 @@ defaults to a 4-char base36 random string."
 ;; ---------------------------------------------------------------------
 ;; psql plumbing
 ;; ---------------------------------------------------------------------
-
-(defun dl-satan-patch-store--query (db sql variables)
-  "Run SQL against DB with VARIABLES (alist NAME . VALUE) bound via -v.
-Return (ok . STDOUT-TRIMMED) or (error . MSG).  Use `:'name'' inside
-SQL to splice a value safely as a SQL literal."
-  (let* ((var-args (cl-loop for (k . v) in variables
-                            append (list "-v" (format "%s=%s" k v))))
-         (full-args (append (list "-h" dl-satan-patch-store-host
-                                  "-d" db
-                                  "--no-psqlrc"
-                                  "-X" "-A" "-t" "-q"
-                                  "-F" "\t"
-                                  "-v" "ON_ERROR_STOP=1")
-                            var-args
-                            (list "-f" "-"))))
-    (with-temp-buffer
-      (let* ((out-buf (current-buffer))
-             (status
-              (with-temp-buffer
-                (insert sql)
-                (apply #'call-process-region
-                       (point-min) (point-max)
-                       dl-satan-patch-store-psql-program
-                       nil out-buf nil full-args))))
-        (if (and (integerp status) (zerop status))
-            (cons 'ok (string-trim (buffer-string)))
-          (cons 'error (format "psql exit %s on %s: %s"
-                                status db
-                                (string-trim (buffer-string)))))))))
 
 (defun dl-satan-patch-store--prep-value (v)
   "Recursively normalise V for `json-serialize'.
@@ -224,7 +196,7 @@ Optional: JOB-ID (else minted from current time), STATE (default
                  ("context"       . ,(dl-satan-patch-store--json (or context '())))
                  ("allowed"       . ,(dl-satan-patch-store--json (or allowed_paths '())))
                  ("checks"        . ,(dl-satan-patch-store--json (or checks '())))))
-         (result (dl-satan-patch-store--query db sql vars)))
+         (result (dl-satan-db-query db dl-satan-patch-store-host dl-satan-patch-store-psql-program sql vars)))
     (pcase result
       (`(ok . ,_) (cons 'ok id))
       (err err))))
@@ -239,8 +211,9 @@ Optional: JOB-ID (else minted from current time), STATE (default
 Returns (ok . PLIST) or (ok . nil) if missing, or (error . MSG)."
   (let* ((sql (format "SELECT %s FROM patch_jobs WHERE id = :'id'"
                       (dl-satan-patch-store--row-select)))
-         (result (dl-satan-patch-store--query
-                  db sql `(("id" . ,job-id)))))
+         (result (dl-satan-db-query
+                  db dl-satan-patch-store-host dl-satan-patch-store-psql-program
+                  sql `(("id" . ,job-id)))))
     (pcase result
       (`(ok . ,out)
        (cond
@@ -258,7 +231,7 @@ Returns (ok . LIST) or (error . MSG)."
                       where
                       limit))
          (vars (if state `(("state" . ,state)) nil))
-         (result (dl-satan-patch-store--query db sql vars)))
+         (result (dl-satan-db-query db dl-satan-patch-store-host dl-satan-patch-store-psql-program sql vars)))
     (pcase result
       (`(ok . ,out)
        (cons 'ok
@@ -306,7 +279,7 @@ The CHECK constraint enforces valid states server-side.  Returns
                   (push (cons name v) vars)))))
     (let* ((sql (format "UPDATE patch_jobs SET %s WHERE id = :'id'"
                         (mapconcat #'identity (nreverse sets) ", ")))
-           (result (dl-satan-patch-store--query db sql vars)))
+           (result (dl-satan-db-query db dl-satan-patch-store-host dl-satan-patch-store-psql-program sql vars)))
       (pcase result
         (`(ok . ,_) (cons 'ok job-id))
         (err err)))))
@@ -334,7 +307,7 @@ FOR UPDATE SKIP LOCKED."
            "FROM claimed c "
            "WHERE p.id = c.id "
            "RETURNING " (dl-satan-patch-store--row-select "p")))
-         (result (dl-satan-patch-store--query db sql nil)))
+         (result (dl-satan-db-query db dl-satan-patch-store-host dl-satan-patch-store-psql-program sql nil)))
     (pcase result
       (`(ok . ,out)
        (cond
@@ -358,7 +331,7 @@ or (error . MSG)."
                  ("kind"    . ,kind)
                  ("payload" . ,(dl-satan-patch-store--json
                                 (or payload '())))))
-         (result (dl-satan-patch-store--query db sql vars)))
+         (result (dl-satan-db-query db dl-satan-patch-store-host dl-satan-patch-store-psql-program sql vars)))
     (pcase result
       (`(ok . ,_) (cons 'ok nil))
       (err err))))
@@ -376,8 +349,9 @@ or (error . MSG)."
                "WHERE job_id = :'id' "
                "ORDER BY at ASC, id ASC "
                (format "LIMIT %d" limit)))
-         (result (dl-satan-patch-store--query
-                  db sql `(("id" . ,job-id)))))
+         (result (dl-satan-db-query
+                  db dl-satan-patch-store-host dl-satan-patch-store-psql-program
+                  sql `(("id" . ,job-id)))))
     (pcase result
       (`(ok . ,out)
        (cons 'ok

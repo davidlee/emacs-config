@@ -1,0 +1,22 @@
+schema: supekku.workflow.state
+version: 1
+artifact:
+  id: DE-004
+  kind: delta
+  path: .spec-driver/deltas/DE-004-jail_local_emacs_test_runner_supabase_isolated_postgres_for_jailed_agents
+  notes_path: .spec-driver/deltas/DE-004-jail_local_emacs_test_runner_supabase_isolated_postgres_for_jailed_agents/notes.md
+phase:
+  id: IP-004-P02
+  status: in_progress
+  path: .spec-driver/deltas/DE-004-jail_local_emacs_test_runner_supabase_isolated_postgres_for_jailed_agents/phases/phase-02.md
+workflow:
+  status: implementing
+  active_role: implementer
+  handoff_boundary: phase
+  claimed_by: david
+timestamps:
+  created: '2026-05-30T23:42:58+00:00'
+  updated: '2026-05-31T00:15:55+00:00'
+plan:
+  id: IP-004
+  path: .spec-driver/deltas/DE-004-jail_local_emacs_test_runner_supabase_isolated_postgres_for_jailed_agents/IP-004.md

@@ -1,0 +1,28 @@
+schema: supekku.workflow.handoff
+version: 1
+artifact:
+  id: DE-004
+  kind: delta
+transition:
+  from_role: implementer
+  to_role: implementer
+  status: accepted
+  boundary: phase
+phase:
+  id: IP-004-P01
+  status: complete
+required_reading:
+- .spec-driver/deltas/DE-004-jail_local_emacs_test_runner_supabase_isolated_postgres_for_jailed_agents/DE-004.md
+- .spec-driver/deltas/DE-004-jail_local_emacs_test_runner_supabase_isolated_postgres_for_jailed_agents/IP-004.md
+- .spec-driver/deltas/DE-004-jail_local_emacs_test_runner_supabase_isolated_postgres_for_jailed_agents/phases/phase-01.md
+- .spec-driver/deltas/DE-004-jail_local_emacs_test_runner_supabase_isolated_postgres_for_jailed_agents/notes.md
+next_activity:
+  kind: implementation
+timestamps:
+  emitted_at: '2026-05-30T23:52:30+00:00'
+git:
+  head: a21a39bc
+  branch: main
+  worktree:
+    has_uncommitted_changes: true
+    has_staged_changes: false
