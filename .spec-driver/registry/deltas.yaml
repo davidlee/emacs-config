@@ -70,3 +70,169 @@ deltas:
         delta: DE-002
         phase: IP-002-P02
         status: completed
+  DE-003:
+    kind: delta
+    status: completed
+    name: 'Delta - Consolidate SATAN DRY violations: shared db, prep-value, slugify,
+      JSONL'
+    slug: consolidate_satan_dry_violations_shared_db_prep_value_slugify_jsonl
+    updated: '2026-05-31'
+    path: .spec-driver/deltas/DE-003-consolidate_satan_dry_violations_shared_db_prep_value_slugify_jsonl/DE-003.md
+    relations:
+    - type: relates_to
+      target: POL-001
+      attributes: {}
+    plan:
+      id: IP-003
+      overview:
+        schema: supekku.plan.overview
+        version: 1
+        plan: IP-003
+        delta: DE-003
+        revision_links:
+          aligns_with:
+          - DR-003
+        specs:
+          primary: []
+          collaborators: []
+        requirements:
+          targets: []
+          dependencies: []
+        phases:
+        - id: IP-003-P01
+      phases:
+      - plan: IP-003
+        delta: DE-003
+        phase: IP-003-P01
+        status: completed
+  DE-004:
+    kind: delta
+    status: in-progress
+    name: Delta - Jail-local Emacs test runner + Supabase-isolated Postgres for jailed
+      agents
+    slug: jail_local_emacs_test_runner_supabase_isolated_postgres_for_jailed_agents
+    updated: '2026-05-31'
+    path: .spec-driver/deltas/DE-004-jail_local_emacs_test_runner_supabase_isolated_postgres_for_jailed_agents/DE-004.md
+    relations:
+    - type: relates_to
+      target: POL-001
+      attributes: {}
+    - type: depends_on
+      target: DE-003
+      attributes: {}
+    plan:
+      id: IP-004
+      overview:
+        schema: supekku.plan.overview
+        version: 1
+        plan: IP-004
+        delta: DE-004
+        revision_links:
+          aligns_with:
+          - DR-004
+        specs:
+          primary: []
+          collaborators: []
+        requirements:
+          targets:
+          - DE-004 acceptance criteria
+          dependencies:
+          - DE-003
+        phases:
+        - id: IP-004-P01
+          name: Phase 01 - Readiness and Isolation Gates
+          objective: Resolve DE-004's remaining design gates before any steady-state
+            wiring.
+          entrance_criteria:
+          - DE-004 and DR-004 exist and name the same target state.
+          - POL-001 read; no required ADRs or standards apply.
+          - No DE-004 code/Nix edits have started.
+          exit_criteria:
+          - DE-003 dependency state is known and the backup-gated bootstrap path is
+            ready because DE-003 is currently blocked by DB access.
+          - Jail-to-Supabase reachability is proven or the DR is revised for a bind/socket
+            fallback.
+          - Batch Emacs invocation, test DB inventory, auth/role assumptions, and
+            migration source are recorded.
+          - pub Emacs export strategy avoids a duplicated package list and has a pin-alignment
+            plan.
+        - id: IP-004-P02
+          name: Phase 02 - Steady-State Nix and Recipe Wiring
+          objective: Add the non-bootstrap wiring for wrapped Emacs, Supabase tooling,
+            and batch recipes.
+          entrance_criteria:
+          - Phase 01 complete.
+          - DE-003 SATAN_DB_HOST knob available, or its absence is an explicit blocker.
+          - Any temporary host-Postgres bootstrap exposure has been removed.
+          exit_criteria:
+          - pub exports the wrapped Emacs derivation without copy-pasting the package
+            list.
+          - .emacs.d/flake.nix equips every specDev jailed agent with Emacs, psql,
+            Supabase CLI, docker socket access, and Supabase env.
+          - Justfile has db-start, db-init, and additive check-batch recipes; host
+            check remains unchanged.
+          - supabase/config.toml exists with the planned local DB port.
+        - id: IP-004-P03
+          name: Phase 03 - Jailed Test Execution
+          objective: Prove the jailed batch suite runs against Supabase without relying
+            on the host daemon or host DB socket.
+          entrance_criteria: &id001
+          - Phase 02 complete.
+          - home-manager switch or equivalent Nix rebuild has applied the jail package
+            changes.
+          - Supabase local stack can start.
+          exit_criteria: &id002
+          - A jailed agent runs just db-start, just db-init, and just check-batch
+            successfully.
+          - DB-backed tests are not skipped because Supabase is reachable.
+          - Any mechanical fixes remain within DR-004 scope; design deviations are
+            reflected back into DR/IP.
+        - id: IP-004-P04
+          name: Phase 04 - Isolation Evidence and Close Prep
+          objective: Capture closure evidence and ensure no bootstrap exception or
+            live DB exposure remains.
+          entrance_criteria: &id003
+          - Phase 03 complete.
+          - All temporary bootstrap changes, if used, have an explicit teardown checklist.
+          exit_criteria: &id004
+          - exposePostgres is false for steady-state DE-004 agents.
+          - Inside the jail, /run/postgresql is absent or psql -h /run/postgresql
+            -l fails.
+          - VA/VH evidence is recorded and DE/IP/phase notes are reconciled for audit/close.
+      phases:
+      - plan: IP-004
+        delta: DE-004
+        phase: IP-004-P01
+        status: completed
+      - plan: IP-004
+        delta: DE-004
+        objective: Add the non-bootstrap wiring for wrapped Emacs, Supabase tooling,
+          and batch recipes.
+        entrance_criteria:
+        - Phase 01 complete.
+        - DE-003 SATAN_DB_HOST knob available, or its absence is an explicit blocker.
+        - Any temporary host-Postgres bootstrap exposure has been removed.
+        exit_criteria:
+        - pub exports the wrapped Emacs derivation without copy-pasting the package
+          list.
+        - .emacs.d/flake.nix equips every specDev jailed agent with Emacs, psql, Supabase
+          CLI, docker socket access, and Supabase env.
+        - Justfile has db-start, db-init, and additive check-batch recipes; host check
+          remains unchanged.
+        - supabase/config.toml exists with the planned local DB port.
+        phase: IP-004-P02
+        status: completed
+      - id: IP-004-P03
+        name: Phase 03 - Jailed Test Execution
+        objective: Prove the jailed batch suite runs against Supabase without relying
+          on the host daemon or host DB socket.
+        entrance_criteria: *id001
+        exit_criteria: *id002
+        phase: IP-004-P03
+      - id: IP-004-P04
+        name: Phase 04 - Isolation Evidence and Close Prep
+        objective: Capture closure evidence and ensure no bootstrap exception or live
+          DB exposure remains.
+        entrance_criteria: *id003
+        exit_criteria: *id004
+        phase: IP-004-P04
