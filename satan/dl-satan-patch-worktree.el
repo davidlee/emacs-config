@@ -111,7 +111,8 @@ base_ref."
          (let ((manifest (expand-file-name ".satan-patch-manifest.json" wt)))
            (with-temp-file manifest
              (insert
-              (dl-satan-patch-store--json
+              (json-serialize
+               (dl-satan-jsonl-prepare
                (list :job_id id
                      :repo repo
                      :base_ref base

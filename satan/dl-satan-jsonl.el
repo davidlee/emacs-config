@@ -95,7 +95,7 @@ ON-ERROR  is called with (RAW-LINE . ERROR-MSG) on parse failure."
                               :null-object :null :false-object :false)))
     (process-send-string proc (concat line "\n"))))
 
-(defun dl-satan-jsonl-read-file (path &key null-object)
+(cl-defun dl-satan-jsonl-read-file (path &key null-object)
   "Return a list of plists, one per non-empty JSON line at PATH.
 nil if PATH is unreadable.  Malformed lines signal — callers that
 need lenient parsing must wrap.  Decoder shape matches the inbound

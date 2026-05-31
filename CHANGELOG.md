@@ -2,6 +2,23 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-05-31 — SATAN: test suite fixes (DE-003 refactor regressions)
+
+DE-003 (655b71e) removed `dl-satan-audit--read-jsonl` and `dl-satan-patch-store--json`
+but left stale call-sites in broker tests and patch-worktree. Additionally, the
+`defun` with `&key` lambda-list in `dl-satan-jsonl-read-file` byte-compiles to
+arity `(3 . 3)` — callers with one arg hit `wrong-number-of-arguments`.
+
+- **`dl-satan-jsonl-read-file`**: `defun` → `cl-defun` (fixes arity trap; ~15 tests
+  in activity, evidence, sleipnir-doctor, percept restored)
+- **broker tests**: `dl-satan-audit--read-jsonl` → `dl-satan-jsonl-read-file
+  :null-object :null` (4 tests restored)
+- **patch-worktree**: `dl-satan-patch-store--json` → `json-serialize
+  (dl-satan-jsonl-prepare ...)` (7 tests restored)
+
+Post-fix: 748/857 pass. 26 remaining failures pre-existing (attribute void-function,
+DB socket, bough NixOS, missing docs/tick prompt).
+
 ## 2026-05-31 — SATAN: panopticon.content percept rule (DE-005 P03)
 
 Captures now shape resonance: the evidence window carries a `:content_recent` slice (last-N articles.jsonl, metadata only — no bodies), and a new `panopticon.content` canon rule emits `content_domain:<d>` handles that admit the §S2 resonance gate automatically. Per DEC-2, this is percept-shaping only — no write into the memory store.

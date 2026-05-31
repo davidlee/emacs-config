@@ -72,8 +72,8 @@ record using the canonical failed-action plist shape
              run-ctx
              '(:type "tool_call" :id "c-cap" :name "notify_send"
                :args (:title "t" :body "b"))))
-          (let* ((records (dl-satan-audit--read-jsonl
-                           (expand-file-name "transcript.jsonl" dir)))
+          (let* ((records (dl-satan-jsonl-read-file
+                           (expand-file-name "transcript.jsonl" dir) :null-object :null))
                  (failed-action (cl-find-if
                                  (lambda (r)
                                    (and (equal (plist-get r :dir) "broker")
@@ -615,8 +615,8 @@ entirely so untouched runs keep the original four-partition shape."
           (cl-letf (((symbol-function 'dl-satan-broker--mark-failed-on-disk)
                      (lambda (&rest _) nil)))
             (dl-satan-broker--finalize run-ctx))
-          (let* ((records (dl-satan-audit--read-jsonl
-                           (expand-file-name "transcript.jsonl" dir)))
+          (let* ((records (dl-satan-jsonl-read-file
+                           (expand-file-name "transcript.jsonl" dir) :null-object :null))
                  (crash-ctx (cl-find-if
                              (lambda (r)
                                (and (equal (plist-get r :dir) "broker")
@@ -659,8 +659,8 @@ entirely so untouched runs keep the original four-partition shape."
           (cl-letf (((symbol-function 'dl-satan-broker--mark-failed-on-disk)
                      (lambda (&rest _) nil)))
             (dl-satan-broker--finalize run-ctx))
-          (let* ((records (dl-satan-audit--read-jsonl
-                           (expand-file-name "transcript.jsonl" dir)))
+          (let* ((records (dl-satan-jsonl-read-file
+                           (expand-file-name "transcript.jsonl" dir) :null-object :null))
                  (crash-ctx (cl-find-if
                              (lambda (r)
                                (and (equal (plist-get r :dir) "broker")
@@ -695,8 +695,8 @@ entirely so untouched runs keep the original four-partition shape."
           (cl-letf (((symbol-function 'dl-satan-broker--mark-failed-on-disk)
                      (lambda (&rest _) nil)))
             (dl-satan-broker--finalize run-ctx))
-          (let* ((records (dl-satan-audit--read-jsonl
-                           (expand-file-name "transcript.jsonl" dir)))
+          (let* ((records (dl-satan-jsonl-read-file
+                           (expand-file-name "transcript.jsonl" dir) :null-object :null))
                  (crash-ctx (cl-find-if
                              (lambda (r)
                                (and (equal (plist-get r :dir) "broker")
