@@ -354,6 +354,22 @@ allowlist within the window."
              "domain_kind:docs" 'observed
              (format "/browser_segments/%d" match-idx))))))
 
+(dl-satan-memory-canon-defrule panopticon.content (ev _hints _ctx)
+  "From `:content_recent' captures: emit `content_domain:<d>' per unique
+domain.  Deduped within the rule so busy reading a single domain yields
+one handle, not N.  Metadata only — page bodies are NOT in the evidence
+window and are NOT written to the memory store (DEC-2)."
+  (let ((captures (plist-get ev :content_recent)))
+    (when captures
+      (let ((domains (cl-delete-duplicates
+                      (delq nil (mapcar (lambda (c) (plist-get c :domain)) captures))
+                      :test #'string=)))
+        (mapcar (lambda (domain)
+                  (dl-satan-memory-canon--emit
+                   (concat "content_domain:" domain) 'observed
+                   "/content_recent"))
+                domains)))))
+
 (dl-satan-memory-canon-defrule bough.recent_status_change (ev _hints _ctx)
   "If any `bough_recent' entry is a status_changed event, emit
 `bough_event:status_changed' and `artifact:bough_status_change' once."

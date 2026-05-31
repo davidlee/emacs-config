@@ -38,6 +38,27 @@
 - `custom-vars.el` and `flake.nix` have uncommitted changes (compile-angel side effects); review before P04 switch
 - P03 next: panopticon.content percept rule + evidence probe (O3)
 
+## 2026-05-31 P03
+
+- 40/40 ert pass (23 P01 + 8 P02 + 9 new rule/evidence tests)
+- Files created: `satan/test/dl-satan-memory-content-rule-test.el`
+- Files edited: `satan/dl-satan-memory-evidence.el` (+ require, + defcustom, + content-probe, + wiring), `satan/dl-satan-memory-canon.el` (+ panopticon.content defrule)
+- Phase sheet: `phases/phase-03.md` (created + populated)
+
+### Implementation
+- **Evidence content-probe** (`dl-satan-memory-evidence--content-probe`): reads last-N articles.jsonl rows (metadata only — hash/domain/url/title/captured_at). Returns `(cons STATUS CAPTURES)` following the segments-status pattern. Wired into assemble-with-bounds as `:content_recent` in raw + `:content` in sensor_status. Cue-only mode skips.
+- **Canon defrule** (`panopticon.content`): deduplicates captures by domain, emits `content_domain:<d>` per unique domain. Follows `panopticon.current.app` pattern.
+- **Resonance**: `panopticon.content` is NOT in `dl-satan-resonance--excluded-rule-ids` → its handles admit §S2 gate automatically. DEC-2: NO write into memory store.
+
+### Discoveries
+- Evidence module now depends on `dl-satan-tools-content` (for `--read-articles-jsonl` and `dl-satan-tools-content-dir`). Acceptable — evidence already depends on tools-activity/tools-bough.
+- Content-probe is metadata-only (no bodies enter evidence). This keeps the evidence window small — each capture row is ~5 fields, so even N=50 is negligible.
+- Rule deduplication by domain prevents N emission handles for N captures from the same domain.
+
+### Pending
+- Git add new files
+- P04 next: Integration — `home-manager switch`, full suite, CHANGELOG
+
 ## New Agent Instructions (2026-05-31)
 
 ### Task

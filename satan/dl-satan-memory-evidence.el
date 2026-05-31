@@ -37,6 +37,7 @@
 (require 'dl-satan-jsonl)
 (require 'dl-satan-tools-activity)
 (require 'dl-satan-tools-bough)
+(require 'dl-satan-tools-content)
 
 ;; ---------------------------------------------------------------------
 ;; Configuration
@@ -61,6 +62,10 @@ Capped further by `:run_started_at' (see §4.1)."
 
 (defcustom dl-satan-memory-evidence-budget-hard-cap 65536
   "Hard byte cap for the JSON-serialised evidence (§4.3)."
+  :type 'integer :group 'dl-satan)
+
+(defcustom dl-satan-memory-evidence-content-limit 10
+  "Maximum content captures retained in the evidence window (newest)."
   :type 'integer :group 'dl-satan)
 
 (defcustom dl-satan-memory-evidence-recent-files-limit 8
@@ -171,6 +176,25 @@ Newest entry is taken by max :end_ts so files written out of order
                      (tail (and filt (last filt limit))))
                 (cons "ok" (or tail '()))))))
         (error (cons "malformed" '()))))))
+
+(defun dl-satan-memory-evidence--content-probe (limit)
+  "Return (STATUS . CAPTURES) for the panopticon content store.
+STATUS is `\"ok\"' / `\"missing\"' / `\"malformed\"'.
+CAPTURES is the last LIMIT articles.jsonl rows, metadata only
+(:hash :domain :url :title :captured_at).  Uses the lenient JSONL
+reader (skips malformed lines per O-1)."
+  (let* ((articles (dl-satan-tools-content--read-articles-jsonl :skip-malformed t))
+         (tail (and articles (last articles (min limit (length articles))))))
+    (if (null articles)
+        (cons "missing" '())
+      (cons "ok"
+            (mapcar (lambda (a)
+                      (list :hash (plist-get a :content_hash)
+                            :domain (plist-get a :domain)
+                            :url (plist-get a :url)
+                            :title (plist-get a :title)
+                            :captured_at (plist-get a :captured_at)))
+                    (or tail '()))))))
 
 (defun dl-satan-memory-evidence--git-commits-status (paths start end limit)
   "Return (STATUS . COMMITS) for the git-activity feed across PATHS.
@@ -551,6 +575,8 @@ about substrate slices."
                         dl-satan-memory-evidence-seg-limit))
          (bough-limit (or (plist-get opts :bough_limit)
                           dl-satan-memory-evidence-bough-limit))
+         (content-limit (or (plist-get opts :content_limit)
+                            dl-satan-memory-evidence-content-limit))
          (budget-target (or (plist-get opts :budget_target_bytes)
                             dl-satan-memory-evidence-budget-target))
          (budget-hard (or (plist-get opts :budget_hard_cap_bytes)
@@ -576,6 +602,10 @@ about substrate slices."
                       (dl-satan-memory-evidence--git-commits-status
                        (dl-satan-memory-evidence--git-feed-paths root start end)
                        start end seg-limit)))
+         (content-probe (if cue-only
+                            (cons "ok" '())
+                          (dl-satan-memory-evidence--content-probe
+                           content-limit)))
          (dl-satan-memory-evidence--bough-tracking t)
          (dl-satan-memory-evidence--bough-attempts 0)
          (dl-satan-memory-evidence--bough-ok 0)
@@ -590,12 +620,14 @@ about substrate slices."
                               :focus (car focus-probe)
                               :browser (car browser-probe)
                               :bough bough-status
-                              :git (car git-probe)))
+                              :git (car git-probe)
+                              :content (car content-probe)))
          (raw (list
                :current_window (cdr current-probe)
                :focus_segments (cdr focus-probe)
                :browser_segments (cdr browser-probe)
                :git_commits (cdr git-probe)
+               :content_recent (cdr content-probe)
                :bough_recent bough-recent
                :bough_active bough-active
                :bough_day bough-day
