@@ -4,7 +4,7 @@ slug: "006-db_host_isolation_read_satan_db_host_env_var_instead_of_hardcoding_ru
 name: IP-006 Phase 03 — Rename sweep, close
 created: "2026-05-31"
 updated: "2026-05-31"
-status: in-progress
+status: completed
 kind: phase
 plan: IP-006
 delta: DE-006
