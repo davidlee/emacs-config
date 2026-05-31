@@ -51,12 +51,14 @@
              id))))
 
 (ert-deftest dl-satan-patch-store/prep-value-plist ()
-  (should (equal (dl-satan-patch-store--prep-value
+  ;; dl-satan-jsonl-prepare passes nil through; json-serialize maps it
+  ;; to JSON null by default (same end result as the old --prep-value).
+  (should (equal (dl-satan-jsonl-prepare
                   (list :a 1 :b "two" :c nil))
-                 (list :a 1 :b "two" :c :null))))
+                 (list :a 1 :b "two" :c nil))))
 
 (ert-deftest dl-satan-patch-store/prep-value-nested-list ()
-  (let ((out (dl-satan-patch-store--prep-value
+  (let ((out (dl-satan-jsonl-prepare
               (list :handles (list (list :handle "a")
                                    (list :handle "b"))))))
     (should (equal (plist-get out :handles)

@@ -95,7 +95,7 @@
              :related-motive-id "m42"
              :cue-handles '("focus:sway:firefox")
              :is-revision t :revises "prior"))
-         (json (dl-satan-attribute--json p))
+         (json (json-serialize (dl-satan-jsonl-prepare p)))
          (parsed (json-parse-string json
                                     :object-type 'plist
                                     :array-type 'list
@@ -114,15 +114,17 @@
 ;; ---------------------------------------------------------------------
 
 (ert-deftest dl-satan-attribute/prep-value-null-list-symbol ()
-  (should (eq :null (dl-satan-attribute--prep-value nil)))
+  ;; dl-satan-jsonl-prepare passes nil/t/:null/:false through;
+  ;; json-serialize handles them correctly.
+  (should (eq nil (dl-satan-jsonl-prepare nil)))
   ;; Plist → object-shaped plist (preserved).
-  (let ((p (dl-satan-attribute--prep-value '(:a 1 :b nil))))
+  (let ((p (dl-satan-jsonl-prepare '(:a 1 :b nil))))
     (should (equal 1 (plist-get p :a)))
-    (should (eq :null (plist-get p :b))))
+    (should (eq nil (plist-get p :b))))
   ;; List → vector.
-  (should (equal [1 2 3] (dl-satan-attribute--prep-value '(1 2 3))))
+  (should (equal [1 2 3] (dl-satan-jsonl-prepare '(1 2 3))))
   ;; Symbol → string.
-  (should (equal "foo" (dl-satan-attribute--prep-value 'foo))))
+  (should (equal "foo" (dl-satan-jsonl-prepare 'foo))))
 
 ;; ---------------------------------------------------------------------
 ;; satan_attribute_settings write surface (T-attr-2d Q7=A)

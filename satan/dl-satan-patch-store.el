@@ -175,10 +175,10 @@ Optional: JOB-ID (else minted from current time), STATE (default
                  ("branch"        . ,branch)
                  ("worktree_path" . ,worktree_path)
                  ("adapter"       . ,adapter)
-                 ("source"        . ,(json-serialize (dl-satan-jsonl-prepare (or source '())))
-                 ("context"       . ,(json-serialize (dl-satan-jsonl-prepare (or context '())))
-                 ("allowed"       . ,(json-serialize (dl-satan-jsonl-prepare (or allowed_paths '())))
-                 ("checks"        . ,(json-serialize (dl-satan-jsonl-prepare (or checks '())))))
+                 ("source"        . ,(json-serialize (dl-satan-jsonl-prepare (or source '()))))
+                 ("context"       . ,(json-serialize (dl-satan-jsonl-prepare (or context '()))))
+                 ("allowed"       . ,(json-serialize (dl-satan-jsonl-prepare (or allowed_paths '()))))
+                 ("checks"        . ,(json-serialize (dl-satan-jsonl-prepare (or checks '()))))))
          (result (dl-satan-db-query db dl-satan-patch-store-host dl-satan-patch-store-psql-program sql vars)))
     (pcase result
       (`(ok . ,_) (cons 'ok id))
@@ -313,7 +313,7 @@ or (error . MSG)."
          (vars `(("id"      . ,job-id)
                  ("kind"    . ,kind)
                  ("payload" . ,(json-serialize (dl-satan-jsonl-prepare
-                                (or payload '())))))
+                                (or payload '()))))))
          (result (dl-satan-db-query db dl-satan-patch-store-host dl-satan-patch-store-psql-program sql vars)))
     (pcase result
       (`(ok . ,_) (cons 'ok nil))
