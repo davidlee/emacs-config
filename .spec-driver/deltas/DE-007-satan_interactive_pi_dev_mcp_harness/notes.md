@@ -168,3 +168,81 @@ write run-state globals. The only run-state coupling is `current-run-id`
 (memory-store, a global) → covered by DEC-7 (bind-around-dispatch) + DEC-8
 (mutual exclusion). **Conclusion:** the 8-key synthetic session tool-ctx is
 sufficient; the reuse claim holds. Codex #7 resolved.
+
+## Phase 3 — IN PROGRESS (2026-05-31)
+
+### Fix: test tool pollution & socket determinism
+
+**Problem 1:** R7 fail-fast rejected startup because `dl-satan-mcp--interactive-tools`
+(union of ALL registered tools) included `test.*` stubs from `dl-satan-tools-test.el`
+(`test.allowed-check`, `test.no-cap`, `test.cap-required`, `test.cap-ok`). These have
+no description files because they're internal test fixtures.
+**Fix:** Filter `string-prefix-p "test."` in `dl-satan-mcp--interactive-tools`.
+
+**Problem 2:** The randomized socket filename (`%06x.sock`) can't be predicted
+for the Nix flake bwrap bind-mount.
+**Fix:** Added `dl-satan-mcp-socket-filename` defcustom (default `"mcp.sock"`)
+and changed `dl-satan-mcp--socket-path` to use it. The parent dir is still
+0700 + anti-symlink (DEC-10); the filename alone is deterministic.
+
+**Result:** Socket path is `$XDG_RUNTIME_DIR/satan/mcp/mcp.sock`.
+
+### Commits
+
+- Both fixes in `satan/dl-satan-mcp.el`.
+
+### .pi/extensions/satan.ts — created (2026-05-31)
+
+Adapted from `phases/spike/satan-extension-spike.ts`. Changes from spike:
+- Socket path: `$XDG_RUNTIME_DIR/satan/mcp/mcp.sock` (matches
+  `dl-satan-mcp-runtime-dir` + `dl-satan-mcp-socket-filename`)
+- Removed spike scaffolding comments; production-ready error handling
+- Registration counter replaces per-tool notifications (less noise)
+
+### satan/prompts/interactive.txt — created (2026-05-31)
+
+Location: `~/notes/satan/prompts/interactive.txt` (resolves to
+`/workspace/notes/satan/prompts/interactive.txt` inside the jail).
+Option A static system prompt: no satan_final, pi drives its own loop.
+
+### Flake update (2026-05-31)
+
+`flake.nix` mcpJailOptions: socket path changed from
+`/run/user/1000/satan-mcp-smoke.sock` (spike) to
+`/run/user/1000/satan/mcp/mcp.sock` (real).
+
+### Fix: JSON schema regex dialect mismatch in sway_border_set (2026-05-31)
+
+**Problem:** `dl-satan-sway-hex-pattern` (`\`#[0-9a-fA-F]\{6\}\'`) is
+valid Elisp regex but was serialized verbatim into the JSON schema for the pi
+harness. JavaScript's regex engine rejects `\{` as an invalid escape — JS uses
+bare `{6}` for quantifiers.
+
+**Fix:** Added `dl-satan-tool--pattern-to-jsonschema` in `dl-satan-tools.el`
+that translates Elisp regex dialect → JS-compatible form at the JSON schema
+emission boundary:
+
+| Elisp | JS |
+|---|---|
+| `` \` `` (start anchor) | `^` |
+| `\'` (end anchor) | `$` |
+| `\{` `\}` (quant braces) | `{` `}` |
+
+Runtime Elisp validator (`string-match-p`) still uses the original Elisp
+pattern — only the schema emission path translates.
+
+**Files changed:**
+- `satan/dl-satan-tools.el` — translation function + wiring into
+  `dl-satan-tool--args-schema-to-jsonschema`
+- `satan/test/test-sway-border.el` — updated expected pattern in
+  `jsonschema-nests-properties` test
+
+**Verification:** `just check` — 932/938 pass, 0 unexpected.
+
+### Remaining for Phase 3
+
+- `home-manager switch` to pick up new .el + flake change
+- Live VH test (VH-mcp-live-pi): start server, run jailed-pi with extension,
+  call read + write tools, verify transcript
+- CHANGELOG update
+- Commit + push

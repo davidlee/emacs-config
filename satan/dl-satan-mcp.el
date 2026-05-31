@@ -43,6 +43,12 @@ Must live under XDG_RUNTIME_DIR (no /tmp — DEC-10).
   "MCP protocol version advertised in initialize response."
   :type 'string :group 'dl-satan)
 
+(defcustom dl-satan-mcp-socket-filename "mcp.sock"
+  "Filename for the MCP unix-domain socket (inside `dl-satan-mcp-runtime-dir').
+Fixed by default so the jail bwrap bind-mount can reference a stable path.
+The runtime dir is still 0700 (DEC-10)."
+  :type 'string :group 'dl-satan)
+
 (defcustom dl-satan-mcp-server-name "satan-mcp"
   "Server name advertised in initialize response."
   :type 'string :group 'dl-satan)
@@ -50,13 +56,18 @@ Must live under XDG_RUNTIME_DIR (no /tmp — DEC-10).
 ;; ── Interactive mode-spec (DEC-9) ───────────────────────────────────────────
 
 (defun dl-satan-mcp--interactive-tools ()
-  "Return the union of all registered SATAN tool names."
-  (mapcar #'car dl-satan-tools))
+  "Return the union of all registered SATAN tool names.
+Excludes internal test stubs (names prefixed `test.')."
+  (cl-loop for (name . _spec) in dl-satan-tools
+           unless (string-prefix-p "test." name)
+           collect name))
 
 (defun dl-satan-mcp--interactive-capabilities ()
-  "Return the union of all capabilities referenced by any registered tool."
+  "Return the union of all capabilities referenced by any registered tool.
+Excludes internal test stubs (names prefixed `test.')."
   (delete-dups
    (cl-loop for (name . spec) in dl-satan-tools
+            unless (string-prefix-p "test." name)
             for cap = (plist-get spec :capability)
             when cap collect cap)))
 
@@ -107,12 +118,12 @@ descriptions, so we check eagerly at startup rather than crashing mid-session."
 ;; ── Internal: socket path & hardening (DEC-10) ──────────────────────────────
 
 (defun dl-satan-mcp--socket-path ()
-  "Return the randomized socket path under `dl-satan-mcp-runtime-dir'.
-File name is <random>.sock.  Seeds the PRNG on first call."
-  (random t)  ; seed from system entropy
-  (expand-file-name
-   (format "%06x.sock" (random (expt 16 6)))
-   dl-satan-mcp-runtime-dir))
+  "Return the socket path under `dl-satan-mcp-runtime-dir'.
+Filename is `dl-satan-mcp-socket-filename' (fixed, so the flake
+bwrap bind-mount can reference a stable path).  The runtime dir
+is still 0700 (DEC-10)."
+  (expand-file-name dl-satan-mcp-socket-filename
+                    dl-satan-mcp-runtime-dir))
 
 (defun dl-satan-mcp--check-socket-dir ()
   "Validate the socket parent directory (DEC-10).
@@ -266,13 +277,13 @@ SESSION carries the tool-ctx and audit handle."
     ;; DEC-7: bind current-run-id around dispatch for memory-write attribution
     (let ((dl-satan-memory-store--current-run-id run-id))
       ;; Audit the inbound tool_call (mimics membrane :dir in)
-      (dl-satan-audit-record audit 'in 'tool_call call)
+      (dl-satan-audit-record audit 'in 'tool-call call)
       (let ((res (dl-satan-tool-dispatch
                   call
                   (plist-get mode :tools)
                   tool-ctx)))
-        ;; Audit the outbound tool_result
-        (dl-satan-audit-record audit 'out 'tool_result res)
+        ;; Audit the outbound tool-result
+        (dl-satan-audit-record audit 'out 'tool-result res)
         (if (eq (plist-get res :ok) t)
             (let ((result-val (plist-get res :result)))
               (dl-satan-mcp--send

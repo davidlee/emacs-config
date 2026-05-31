@@ -223,6 +223,20 @@ missing — a tool without a description is a misconfiguration."
     ('array   "array")
     (_ (error "SATAN: unsupported arg type: %S" sym))))
 
+(defun dl-satan-tool--pattern-to-jsonschema (pattern)
+  "Translate Elisp regex PATTERN to a JS-compatible regex string.
+Only handles the subset of Elisp regex features we use in tool
+schemas:
+  \\`  → ^     (beginning-of-string anchor)
+  \\'  → $     (end-of-string anchor)
+  \\{  → {     (quantifier brace open)
+  \\}  → }     (quantifier brace close)"
+  (thread-last pattern
+    (string-replace "\\`" "^")
+    (string-replace "\\'" "$")
+    (string-replace "\\{" "{")
+    (string-replace "\\}" "}")))
+
 (defun dl-satan-tool--args-schema-to-jsonschema (args-schema)
   "Convert an elisp `:args-schema' plist into a JSON Schema parameters dict.
 Returns a plist: (:type \"object\" :properties (...) :required [...]).
@@ -253,7 +267,8 @@ Recurses into `:shape' for nested object args."
         (when enum
           (setq prop (plist-put prop :enum (vconcat enum))))
         (when pattern
-          (setq prop (plist-put prop :pattern pattern)))
+          (setq prop (plist-put prop :pattern
+                                (dl-satan-tool--pattern-to-jsonschema pattern))))
         (push (cons (intern (concat ":" (symbol-name key))) prop) props)
         (when req
           (push (symbol-name key) required)))

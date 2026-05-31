@@ -414,8 +414,8 @@ Uses a unique id.  Blocks until one response line is received."
                        (buffer-string))
                      "\n" t)))
          ;; Should have tool_call + tool_result records
-         (should (cl-some (lambda (l) (string-match-p "tool_call" l)) lines))
-         (should (cl-some (lambda (l) (string-match-p "tool_result" l)) lines))))
+         (should (cl-some (lambda (l) (string-match-p "tool-call" l)) lines))
+         (should (cl-some (lambda (l) (string-match-p "tool-result" l)) lines))))
      (dl-satan-mcp-test--stop))))
 
 ;; ── VT-mcp-startup ─────────────────────────────────────────────────────────

@@ -2,6 +2,33 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-06-01 — DE-007: SATAN interactive pi.dev MCP harness (Phase 3)
+
+SATAN can now be driven interactively from a `pi.dev` session instead of only
+via scheduled batch runs. An Emacs-hosted MCP server exposes SATAN tools over
+a unix-domain socket; pi connects via a TS extension (node-net UDS, no socat).
+
+### New
+
+- `satan/dl-satan-mcp.el` — MCP server (initialize, tools/list, tools/call,
+  ping) over hardened UDS. Reuses `dl-satan-tool-dispatch`, schema emitter,
+  audit infrastructure. Per-session run lifecycle with synthetic audit bundle.
+- `.pi/extensions/satan.ts` — pi Extension bridging MCP→pi tools. JSON Schema
+  → TypeBox conversion, error handling, ping command for diagnostics.
+- `satan/prompts/interactive.txt` — static system prompt (Option A).
+- `satan/dl-satan-run.el` — extracted shared run infrastructure (struct,
+  mint-id, tool-ctx) required by both broker and MCP server.
+- `satan/test/dl-satan-mcp-test.el` — 15 ert tests (JSON-RPC, tools/list,
+  tools/call, session lifecycle, startup guards).
+- `flake.nix` — MCP socket bind-mount in jailed-pi profile.
+
+### Fixes
+
+- `dl-satan-tools.el` — Elisp regex → JS regex translation for `:pattern` args
+  in JSON Schema emission.
+- `dl-satan-mcp.el` — test tools excluded from interactive mode union;
+  deterministic socket filename for flake bind-mount.
+
 ## 2026-05-31 — SATAN: test suite fixes (DE-003 refactor regressions)
 
 ### DE-006 — DB host isolation: read SATAN_DB_HOST env var

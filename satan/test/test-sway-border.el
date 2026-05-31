@@ -80,7 +80,7 @@
     (should (equal (plist-get focused-prop :type) "object"))
     (should (equal (plist-get border-prop :type) "string"))
     (should (equal (plist-get border-prop :pattern)
-                   "\\`#[0-9a-fA-F]\\{6\\}\\'"))))
+                   "^#[0-9a-fA-F]{6}$"))))
 
 ;; ---------- sway_border_set handler ----------
 
