@@ -604,8 +604,10 @@ about substrate slices."
                        start end seg-limit)))
          (content-probe (if cue-only
                             (cons "ok" '())
-                          (dl-satan-memory-evidence--content-probe
-                           content-limit)))
+                          (let ((dl-satan-tools-content-dir
+                                 (expand-file-name "content/" root)))
+                            (dl-satan-memory-evidence--content-probe
+                             content-limit))))
          (dl-satan-memory-evidence--bough-tracking t)
          (dl-satan-memory-evidence--bough-attempts 0)
          (dl-satan-memory-evidence--bough-ok 0)
