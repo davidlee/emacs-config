@@ -68,11 +68,12 @@
           ++ [spec-driver-pkg];
 
         mcpJailOptions = with jailLib.combinators; [
+          # expose SATAN MCP
           (try-readwrite "/run/user/1000/satan/mcp/mcp.sock")
           (try-fwd-env "XDG_RUNTIME_DIR")
           (try-fwd-env "SATAN_MCP_SOCKET")
-          # this would be insecure (allow arbitrary elisp execution):
-          # (try-readwrite "/run/user/1000/emacs/server")
+          # (allow arbitrary elisp execution):
+          (try-readwrite "/run/user/1000/emacs/server")
         ];
 
         apiKeyJailOptions = with jailLib.combinators; [
