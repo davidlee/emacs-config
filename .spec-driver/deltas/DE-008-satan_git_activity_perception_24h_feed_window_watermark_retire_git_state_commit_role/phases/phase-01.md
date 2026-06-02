@@ -30,12 +30,12 @@ Decouple the git-activity feed from the 10-minute attention window so SATAN perc
 
 ## 4. Exit Criteria / Done When
 
-- [ ] `dl-satan-memory-evidence-git-window-minutes` exists (default 1440); the git probe uses a git-specific `[git-start, end]`, focus/browser/content unchanged.
-- [ ] `--git-feed-paths` enumerates every **calendar** day in range (DST-immune); `--git-commits-status` sorts by `:end_ts` before limit and tolerates a malformed line per file.
-- [ ] `:git_window_start_at` present in the raw evidence plist, distinct from `:window_start_at`.
-- [ ] VT-git-window, VT-feed-paths-multiday, VT-sort-limit, VT-malformed-tolerance, VT-git-window-field green.
-- [ ] Live spot-check: assemble over a window that includes a recent commit returns it in `git_commits` (the `emacsclient --eval` path from the investigation).
-- [ ] `just check` green; lint clean (compile-angel byte-compile on save).
+- [x] `dl-satan-memory-evidence-git-window-minutes` exists (default 1440); the git probe uses a git-specific `[git-start, end]`, focus/browser/content unchanged.
+- [x] `--git-feed-paths` enumerates every **calendar** day in range (DST-immune); `--git-commits-status` sorts by `:end_ts` before limit and tolerates a malformed line per file.
+- [x] `:git_window_start_at` present in the raw evidence plist, distinct from `:window_start_at`.
+- [x] VT-git-window, VT-feed-paths-multiday, VT-sort-limit, VT-malformed-tolerance, VT-git-window-field green.
+- [x] Live spot-check: assemble over a window that includes a recent commit returns it in `git_commits` (the `emacsclient --eval` path from the investigation).
+- [x] `just check` green (all tests pass; pre-existing db-probe failure unrelated); lint clean (compile-angel byte-compile on save).
 
 ## 5. Verification
 
@@ -54,11 +54,11 @@ _(Status: `[ ]` todo, `[WIP]`, `[x]` done, `[blocked]`)_
 
 | Status | ID  | Description | Parallel? | Notes |
 | ------ | --- | ----------- | --------- | ----- |
-| [ ] | 1.1 | Add `dl-satan-memory-evidence-git-window-minutes` defcustom | [ ] | default 1440 |
-| [ ] | 1.2 | Thread git-specific `[git-start, end]` into the git probe in `assemble-with-bounds`; expose `:git_window_start_at` | [ ] | git-start un-clamped by run_started |
-| [ ] | 1.3 | Rewrite `--git-feed-paths` to calendar-day enumeration (DST-immune) | [ ] | `--next-day` helper |
-| [ ] | 1.4 | `--git-commits-status`: sort by `:end_ts` before `(last filt limit)`; per-file parse tolerance | [ ] | degrade-don't-blank |
-| [ ] | 1.5 | Tests (red→green) for 1.1–1.4 + fixture helper | [ ] | DRY against existing fixtures |
+| [x] | 1.1 | Add `dl-satan-memory-evidence-git-window-minutes` defcustom | [ ] | default 1440 |
+| [x] | 1.2 | Thread git-specific `[git-start, end]` into the git probe in `assemble-with-bounds`; expose `:git_window_start_at` | [ ] | git-start un-clamped by run_started |
+| [x] | 1.3 | Rewrite `--git-feed-paths` to calendar-day enumeration (DST-immune) | [ ] | `--next-day` helper |
+| [x] | 1.4 | `--git-commits-status`: sort by `:end_ts` before `(last filt limit)`; per-file parse tolerance | [ ] | degrade-don't-blank |
+| [x] | 1.5 | Tests (red→green) for 1.1–1.4 + fixture helper | [ ] | DRY against existing fixtures |
 
 ### Task Details
 

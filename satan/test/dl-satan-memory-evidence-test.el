@@ -376,6 +376,43 @@ populate them.  Keeps current_window and bough_active."
     (should (string-suffix-p "segments/git-2026-05-19.jsonl" (nth 0 paths)))
     (should (string-suffix-p "segments/git-2026-05-20.jsonl" (nth 1 paths)))))
 
+(ert-deftest dl-satan-memory-evidence/git-feed-paths-multiday ()
+  "VT-feed-paths-multiday: 24h+ horizon enumerates every calendar day.
+A window spanning three dates returns three paths, not just the
+endpoints.  This was a latent bug: the old implementation returned
+only start-day + end-day, missing intermediate days."
+  (let ((paths (dl-satan-memory-evidence--git-feed-paths
+                "/beh/" "2026-05-19T00:05:00+10:00"
+                "2026-05-21T23:55:00+10:00")))
+    (should (= 3 (length paths)))
+    (should (string-suffix-p "segments/git-2026-05-19.jsonl" (nth 0 paths)))
+    (should (string-suffix-p "segments/git-2026-05-20.jsonl" (nth 1 paths)))
+    (should (string-suffix-p "segments/git-2026-05-21.jsonl" (nth 2 paths)))))
+
+(ert-deftest dl-satan-memory-evidence/git-feed-paths-dst-fallback ()
+  "Calendar-day enumeration survives DST fall-back.
+Melbourne 2026-04-05: 03:00 AEDT → 02:00 AEST.  The old +86400s
+step would skip a date; calendar arithmetic does not."
+  (let ((paths (dl-satan-memory-evidence--git-feed-paths
+                "/beh/" "2026-04-04T23:00:00+11:00"
+                "2026-04-06T01:00:00+10:00")))
+    (should (= 3 (length paths)))
+    (should (string-suffix-p "segments/git-2026-04-04.jsonl" (nth 0 paths)))
+    (should (string-suffix-p "segments/git-2026-04-05.jsonl" (nth 1 paths)))
+    (should (string-suffix-p "segments/git-2026-04-06.jsonl" (nth 2 paths)))))
+
+(ert-deftest dl-satan-memory-evidence/git-feed-paths-next-day ()
+  "--next-day produces the correct next calendar date."
+  (should (equal "2026-05-20"
+                 (dl-satan-memory-evidence--next-day "2026-05-19")))
+  (should (equal "2026-06-01"
+                 (dl-satan-memory-evidence--next-day "2026-05-31")))
+  (should (equal "2026-01-01"
+                 (dl-satan-memory-evidence--next-day "2025-12-31")))
+  ;; Leap year: 2024-02-28 → 2024-02-29
+  (should (equal "2024-02-29"
+                 (dl-satan-memory-evidence--next-day "2024-02-28"))))
+
 (ert-deftest dl-satan-memory-evidence/git-commits-in-window ()
   (dl-satan-memory-evidence-test--in-tmp tmp
    (let ((path (expand-file-name "git-2026-05-19.jsonl" tmp)))
@@ -412,6 +449,7 @@ returned (here empty).  This is the divergent-freshness contract."
      (should (equal '() (cdr probe))))))
 
 (ert-deftest dl-satan-memory-evidence/git-commits-malformed ()
+  "Single malformed file with no readable siblings → \"malformed\"."
   (dl-satan-memory-evidence-test--in-tmp tmp
    (let ((path (expand-file-name "git-2026-05-19.jsonl" tmp)))
      (with-temp-file path (insert "{not json}\n"))
@@ -419,6 +457,95 @@ returned (here empty).  This is the divergent-freshness contract."
                    (list path) "2026-05-19T09:50:00+10:00"
                    "2026-05-19T10:00:00+10:00" 10)))
        (should (equal "malformed" (car probe)))))))
+
+(ert-deftest dl-satan-memory-evidence/git-commits-malformed-tolerant ()
+  "VT-malformed-tolerance: one bad file among good siblings doesn't blank
+all commits.  Good rows from the readable file survive."
+  (dl-satan-memory-evidence-test--in-tmp tmp
+   (let ((good-path (expand-file-name "git-2026-05-19.jsonl" tmp))
+         (bad-path (expand-file-name "git-2026-05-18.jsonl" tmp)))
+     (with-temp-file good-path
+       (insert "{\"repo\":\"/r/x\",\"slug\":\"x\",\"start_ts\":\"2026-05-19T09:55:00+10:00\",\"end_ts\":\"2026-05-19T09:55:00+10:00\"}\n"))
+     (with-temp-file bad-path
+       (insert "{not json}\n"))
+     (let ((probe (dl-satan-memory-evidence--git-commits-status
+                   (list bad-path good-path)
+                   "2026-05-19T09:50:00+10:00"
+                   "2026-05-19T10:00:00+10:00" 10)))
+       (should (equal "ok" (car probe)))
+       (should (= 1 (length (cdr probe))))
+       (should (equal "x" (plist-get (car (cdr probe)) :slug)))))))
+
+(ert-deftest dl-satan-memory-evidence/git-commits-sorted-by-end-ts ()
+  "VT-sort-limit: newest commit is genuinely the last after sorting by
+:end_ts, regardless of append order in the files."
+  (dl-satan-memory-evidence-test--in-tmp tmp
+   (let ((path (expand-file-name "git-2026-05-19.jsonl" tmp)))
+     ;; Write rows in non-chronological order.
+     (with-temp-file path
+       (insert "{\"repo\":\"/r/a\",\"slug\":\"middle\",\"start_ts\":\"2026-05-19T09:52:00+10:00\",\"end_ts\":\"2026-05-19T09:52:00+10:00\"}\n")
+       (insert "{\"repo\":\"/r/b\",\"slug\":\"newest\",\"start_ts\":\"2026-05-19T09:58:00+10:00\",\"end_ts\":\"2026-05-19T09:58:00+10:00\"}\n")
+       (insert "{\"repo\":\"/r/c\",\"slug\":\"oldest\",\"start_ts\":\"2026-05-19T09:51:00+10:00\",\"end_ts\":\"2026-05-19T09:51:00+10:00\"}\n"))
+     (let* ((probe (dl-satan-memory-evidence--git-commits-status
+                    (list path) "2026-05-19T09:50:00+10:00"
+                    "2026-05-19T10:00:00+10:00" 10))
+            (commits (cdr probe)))
+       (should (equal "ok" (car probe)))
+       (should (= 3 (length commits)))
+       (should (equal "oldest" (plist-get (nth 0 commits) :slug)))
+       (should (equal "middle" (plist-get (nth 1 commits) :slug)))
+       (should (equal "newest" (plist-get (nth 2 commits) :slug)))))))
+
+(ert-deftest dl-satan-memory-evidence/git-window-sees-commit-outside-10min ()
+  "VT-git-window: a commit 15 min ago (outside the 10-min focus window
+but inside the 24h git window) appears in :git_commits.
+Focus/browser segments remain on the 10-min window."
+  (dl-satan-memory-evidence-test--in-tmp tmp
+   (let* ((segments-dir (expand-file-name "segments" tmp))
+          (git-start-iso
+           (dl-satan-memory-evidence--iso-format
+            (time-subtract (date-to-time "2026-05-19T10:00:00+10:00")
+                           (seconds-to-time (* 60 1440))))))
+     (make-directory segments-dir t)
+     ;; Git commit at T-15 minutes → outside 10-min focus window, inside 24h git window.
+     (with-temp-file (expand-file-name "git-2026-05-19.jsonl" segments-dir)
+       (insert "{\"repo\":\"/r/satan\",\"slug\":\"satan\",\"start_ts\":\"2026-05-19T09:45:00+10:00\",\"end_ts\":\"2026-05-19T09:45:00+10:00\"}\n"))
+     ;; Focus segment at T-5 minutes → in both windows.
+     (with-temp-file (expand-file-name "focus-2026-05-19.jsonl" segments-dir)
+       (insert "{\"app_id\":\"emacs\",\"start_ts\":\"2026-05-19T09:55:00+10:00\",\"end_ts\":\"2026-05-19T09:58:00+10:00\",\"duration_s\":180}\n"))
+     (let* ((ctx (list :time_now "2026-05-19T10:00:00+10:00"
+                       :mode_name "motd"))
+            (out (dl-satan-memory-evidence-assemble
+                  ctx (list :behaviour_dir (file-name-as-directory tmp)
+                            :cwd tmp)))
+            (ss (plist-get out :sensor_status)))
+       ;; Git: the commit is inside the 24h git window.
+       (should (equal "ok" (plist-get ss :git)))
+       (should (= 1 (length (plist-get out :git_commits))))
+       ;; Focus: the focus segment is inside the 10-min window.
+       (should (= 1 (length (plist-get out :focus_segments))))
+       ;; Window fields: git_start_at ≠ window_start_at.
+       (should (stringp (plist-get out :git_window_start_at)))
+       (should (stringp (plist-get out :window_start_at)))
+       (should-not (equal (plist-get out :git_window_start_at)
+                          (plist-get out :window_start_at)))))))
+
+(ert-deftest dl-satan-memory-evidence/git-window-field-distinct ()
+  "VT-git-window-field: :git_window_start_at is present and strictly
+eaerlier than :window_start_at when git-window > window-minutes."
+  (dl-satan-memory-evidence-test--in-tmp tmp
+   (let* ((ctx (list :time_now "2026-05-19T10:00:00+10:00"
+                     :mode_name "motd"))
+          (out (dl-satan-memory-evidence-assemble
+                ctx (list :behaviour_dir (file-name-as-directory tmp)
+                          :cwd tmp)))
+          (git-start (plist-get out :git_window_start_at))
+          (win-start (plist-get out :window_start_at)))
+     (should (stringp git-start))
+     (should (stringp win-start))
+     ;; git-start should be earlier (wider window).
+     (should (time-less-p (date-to-time git-start)
+                          (date-to-time win-start))))))
 
 (ert-deftest dl-satan-memory-evidence/assemble-reads-git-feed ()
   "End-to-end: the feed surfaces as `:git_commits' + `:git' sensor_status."

@@ -48,6 +48,13 @@
 Capped further by `:run_started_at' (see §4.1)."
   :type 'integer :group 'dl-satan)
 
+(defcustom dl-satan-memory-evidence-git-window-minutes 1440
+  "Look-back horizon (minutes) for the git-activity feed.
+Decoupled from `dl-satan-memory-evidence-window-minutes' (the focus/
+browser attention window) because commits are bursty: a 10-min window
+almost never catches one.  Default 24h."
+  :type 'integer :group 'dl-satan)
+
 (defcustom dl-satan-memory-evidence-seg-limit 10
   "Maximum focus/browser segments retained per source (newest)."
   :type 'integer :group 'dl-satan)
@@ -198,39 +205,67 @@ reader (skips malformed lines per O-1)."
 
 (defun dl-satan-memory-evidence--git-commits-status (paths start end limit)
   "Return (STATUS . COMMITS) for the git-activity feed across PATHS.
-PATHS is a list of `segments/git-%F.jsonl' files (today, plus yesterday
-when the window crosses midnight).  Commits are BURSTY: a feed whose
-newest entry is days old is NORMAL, not a fault — so unlike
-`--segments-status' this NEVER reports `stale-Nm' and never drops the
-slice for age.  STATUS is the JSON-friendly string `\"ok\"' (≥1 path
-readable with rows), `\"missing\"' (no readable path / no rows), or
-`\"malformed\"' (a JSON parse error).  COMMITS is the in-window tail
-\(newest LIMIT) when STATUS is `\"ok\"', `()' otherwise.  Reuses
-`--filter-segments' (rows carry `:start_ts'/`:end_ts' = commit instant)."
-  (condition-case _err
-      (let* ((readable (cl-remove-if-not #'file-readable-p paths))
-             (all (apply #'append
-                         (mapcar #'dl-satan-jsonl-read-file
-                                 readable))))
-        (cond
-         ((null all) (cons "missing" '()))
-         (t (let* ((filt (dl-satan-memory-evidence--filter-segments
-                          all start end))
-                   (tail (and filt (last filt limit))))
-              (cons "ok" (or tail '()))))))
-    (error (cons "malformed" '()))))
+PATHS is a list of `segments/git-%F.jsonl' files.  Commits are BURSTY:
+a feed whose newest entry is days old is NORMAL, not a fault — so
+unlike `--segments-status' this NEVER reports `stale-Nm' and never
+drops the slice for age.  STATUS is `\"ok\"' (≥1 path readable with
+rows), `\"missing\"' (no readable path / no rows), or `\"malformed\"'
+(no path readable because the sole readable file had only parse errors).
+COMMITS is the in-window tail (newest LIMIT) sorted by :end_ts ascending
+so the last entry is genuinely the newest commit.  Reuses
+`--filter-segments' (rows carry `:start_ts'/`:end_ts' = commit instant).
+
+Per-file parse tolerance: a malformed line in one day-file is silently
+skipped without blanking good rows from sibling files."
+  (let* ((readable (cl-remove-if-not #'file-readable-p paths))
+         (all nil)
+         (any-error nil))
+    (dolist (path readable)
+      (condition-case _err
+          (setq all (append all (dl-satan-jsonl-read-file path)))
+        (error (setq any-error t))))
+    (cond
+     ((null all)
+      (cons (if any-error "malformed" "missing") '()))
+     (t (let* ((filt (dl-satan-memory-evidence--filter-segments
+                      all start end))
+               (sorted (and filt
+                             (sort (copy-sequence filt)
+                                   (lambda (a b)
+                                     (time-less-p
+                                      (date-to-time (plist-get a :end_ts))
+                                      (date-to-time (plist-get b :end_ts)))))))
+               (tail (and sorted (last sorted limit))))
+          (cons "ok" (or tail '())))))))
+
+(defun dl-satan-memory-evidence--next-day (day-str)
+  "Return the ISO date string for the calendar day after DAY-STR.
+DAY-STR is `%F' (e.g. \"2026-04-05\").  Uses calendar arithmetic so
+DST transitions cannot produce duplicate or skipped dates."
+  (let* ((parsed (parse-iso8601-time-string (concat day-str "T00:00:00")))
+         (decoded (decode-time parsed))
+         (y (decoded-time-year decoded))
+         (m (decoded-time-month decoded))
+         (d (decoded-time-day decoded))
+         (next (calendar-gregorian-from-absolute
+                (1+ (calendar-absolute-from-gregorian (list m d y))))))
+    (format "%04d-%02d-%02d"
+            (elt next 2) (elt next 0) (elt next 1))))
 
 (defun dl-satan-memory-evidence--git-feed-paths (root start end)
-  "Return the `segments/git-%F.jsonl' paths covering the [START, END] window.
-END's date always; START's date too when the window crosses midnight."
-  (let* ((end-day (substring end 0 10))
-         (start-day (substring start 0 10))
-         (days (if (equal start-day end-day)
-                   (list end-day)
-                 (list start-day end-day))))
-    (mapcar (lambda (d)
-              (expand-file-name (format "segments/git-%s.jsonl" d) root))
-            days)))
+  "Return `segments/git-%F.jsonl' paths for every calendar day in [START, END].
+Enumerates day-by-day (inclusive) using calendar arithmetic, so a 24h+
+horizon that spans three calendar dates correctly returns three paths.
+DST transitions cannot cause duplicate or skipped dates."
+  (let* ((start-day (substring start 0 10))
+         (end-day (substring end 0 10))
+         (day start-day)
+         (acc '()))
+    (while (string-lessp day end-day)
+      (push (expand-file-name (format "segments/git-%s.jsonl" day) root) acc)
+      (setq day (dl-satan-memory-evidence--next-day day)))
+    (push (expand-file-name (format "segments/git-%s.jsonl" end-day) root) acc)
+    (nreverse acc)))
 
 (defvar dl-satan-memory-evidence--bough-tracking nil
   "When non-nil, `--bough-call' records reachability in the vars below.
@@ -597,11 +632,15 @@ about substrate slices."
                            (expand-file-name
                             (format "segments/browser-%s.jsonl" today) root)
                            start end seg-limit now-t)))
+         (git-start (dl-satan-memory-evidence--iso-format
+                      (time-subtract (date-to-time end)
+                                     (seconds-to-time
+                                      (* 60 dl-satan-memory-evidence-git-window-minutes)))))
          (git-probe (if cue-only
                         (cons "ok" '())
                       (dl-satan-memory-evidence--git-commits-status
-                       (dl-satan-memory-evidence--git-feed-paths root start end)
-                       start end seg-limit)))
+                       (dl-satan-memory-evidence--git-feed-paths root git-start end)
+                       git-start end seg-limit)))
          (content-probe (if cue-only
                             (cons "ok" '())
                           (let ((dl-satan-tools-content-dir
@@ -637,6 +676,7 @@ about substrate slices."
                :fs_state (dl-satan-memory-evidence--fs-state cwd)
                :window_start_at start
                :window_end_at end
+               :git_window_start_at git-start
                :sensor_status sensor-status)))
     (dl-satan-memory-evidence--truncate raw budget-target budget-hard)))
 
