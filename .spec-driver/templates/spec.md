@@ -1,11 +1,13 @@
 ---
-id: "{{ spec_id }}"
-name: "{{ name }}"
-slug: "{{ slug }}"
-kind: spec  # one of: audit | delta | design_revision | issue | memory | phase | plan | policy | problem | prod | requirement | risk | spec | standard | task | verification
-status: draft  # one of: active | archived | deprecated | draft | stub
-created: "{{ today }}"
-updated: "{{ today }}"
+id: '{{ spec_id }}'
+name: '{{ name }}'
+slug: '{{ slug }}'
+kind: spec
+status: draft
+created: '{{ today }}'
+updated: '{{ today }}'
+category: unknown
+c4_level: unknown
 ---
 
 # {{ spec_id }} – {{ name }}

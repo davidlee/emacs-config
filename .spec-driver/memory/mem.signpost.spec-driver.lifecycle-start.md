@@ -13,18 +13,13 @@ scope:
     - supekku/about/lifecycle.md
     - supekku/scripts/lib/requirements/registry.py
     - supekku/scripts/lib/requirements/lifecycle.py
-  commands:
-    - uv run spec-driver sync
-    - uv run spec-driver validate workspace
+  commands: [uv run spec-driver sync, uv run spec-driver validate workspace]
 provenance:
   sources:
     - kind: doc
       ref: supekku/about/lifecycle.md
     - kind: memory
       ref: mem.concept.spec-driver.requirement-lifecycle
-links:
-  missing:
-    - raw: PROB-002
 ---
 
 # Lifecycle Guidance Start Here

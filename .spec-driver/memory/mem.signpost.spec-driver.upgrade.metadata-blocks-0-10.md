@@ -1,19 +1,20 @@
 ---
 id: mem.signpost.spec-driver.upgrade.metadata-blocks-0-10
 slug: upgrade-metadata-blocks-0-10
-name: "Upgrade Runbook: Metadata Blocks (0.10)"
+name: 'Upgrade Runbook: Metadata Blocks (0.10)'
 kind: memory
 status: active
 memory_type: signpost
-created: "2026-05-30"
-updated: "2026-05-30"
-verified: "2026-05-30"
+created: '2026-05-30'
+updated: '2026-05-30'
+verified: '2026-05-30'
 confidence: medium
-tags: [spec-driver, upgrade, migration]
-summary: "Client upgrade runbook for the 0.10 metadata-blocks consolidation: admin migrate sequence, per-kind strict-mode flip, and drift-ledger residual model."
-links:
-  missing:
-    - raw: mem.pattern.architecture.migration-principles
+tags:
+- spec-driver
+- upgrade
+- migration
+summary: 'Client upgrade runbook for the 0.10 metadata-blocks consolidation: admin
+  migrate sequence, per-kind strict-mode flip, and drift-ledger residual model.'
 ---
 
 # Upgrade Runbook: Metadata Blocks (0.10)
@@ -120,3 +121,4 @@ PROD-004). Drift-disposition model and the known migrator defects (false-positiv
 heuristic, requirement backfill debt) are tracked in **ISSUE-064**. Related:
 [[mem.pattern.architecture.migration-principles]],
 [[mem.signpost.spec-driver.file-map]].
+

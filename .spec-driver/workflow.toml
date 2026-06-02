@@ -1,4 +1,4 @@
-spec_driver_installed_version = "0.10.0"
+spec_driver_installed_version = "0.10.2"
 ## spec-driver workflow configuration
 ##
 ## All options below show their defaults.  Uncomment and change any
@@ -134,3 +134,6 @@ exec = "spec-driver"
 
 ## Optional derived cache; populated by `admin migrate`. Not authoritative.
 # [schema_version]
+
+[migrations]
+last_applied = "v0_10_0_005_revision_metadata"

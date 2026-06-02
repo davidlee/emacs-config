@@ -5,15 +5,17 @@ name: Object-scoped FieldMetadata.conditional_rules (per-item if/then)
 kind: memory
 status: active
 memory_type: pattern
-created: "2026-05-29"
-updated: "2026-05-29"
-verified: "2026-05-29"
+created: '2026-05-29'
+updated: '2026-05-29'
+verified: '2026-05-29'
 confidence: medium
-tags: [metadata, validator, spec-driver]
-summary: FieldMetadata.conditional_rules apply per object (incl. array items) via _apply_conditional_rules in _validate_object; mirror of BlockMetadata top-level rules
-links:
-  missing:
-    - raw: mem.pattern.validation.per-kind-block-wiring
+tags:
+- metadata
+- validator
+- spec-driver
+summary: FieldMetadata.conditional_rules apply per object (incl. array items) via
+  _apply_conditional_rules in _validate_object; mirror of BlockMetadata top-level
+  rules
 ---
 
 # Object-scoped FieldMetadata.conditional_rules (per-item if/then)
