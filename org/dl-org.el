@@ -27,7 +27,7 @@
   (org-id-link-to-org-use-id 'create-if-interactive)
   (org-todo-keywords
     '((sequence "TODO(t)" "NEXT(n)" "STARTED(s)" "WAITING(w@/!)" "MAYBE(m/!)"
-        "|" "DONE(d!)" "CANCELED(c@)" "MOVED(m@)")))
+        "|" "DONE(d!)" "CANCELED(c@)" "MOVED(v@)")))
   (org-tag-alist
     '( ("@work" . ?w)
        ("@home" . ?h)
