@@ -313,6 +313,7 @@ parsing with `:array-type 'vector')."
       (dl-satan-audit--iv-require-string  payload :message)
       (dl-satan-audit--iv-require-string-or-null payload :related_motive_id)
       (dl-satan-audit--iv-require-array   payload :cue_handles)
+      (dl-satan-audit--iv-require-array   payload :percept_handles)
       (dl-satan-audit--iv-require-string  payload :expected_outcome)
       (dl-satan-audit--iv-require-integer payload :outcome_window_minutes)
       (dl-satan-audit--iv-require-enum    payload :severity

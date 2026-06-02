@@ -34,6 +34,7 @@
                :message               "kanban needs DONE update"
                :related_motive_id     "morning.kanban-cleanup"
                :cue_handles           '("bough_node:abc" "bough_project:def")
+               :percept_handles       '("app:emacs")
                :expected_outcome      "user opens kanban.org and updates DONE column"
                :outcome_window_minutes 30
                :severity              "low")))

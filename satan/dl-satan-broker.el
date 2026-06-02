@@ -276,7 +276,8 @@ through `dl-satan-intervention-create' (and the matching classify /
 lookup APIs)."
   (let* ((mode (dl-satan-run-mode run-ctx))
          (prepare (dl-satan-run-prepare run-ctx))
-         (time-now (plist-get prepare :time_now)))
+         (time-now (plist-get prepare :time_now))
+         (percept (plist-get prepare :percept)))
     (list :id (dl-satan-run-id run-ctx)
           :mode-name (plist-get mode :name)
           :capabilities (plist-get mode :capabilities)
@@ -284,7 +285,8 @@ lookup APIs)."
           :hippocampus-dir dl-satan-hippocampus-dir
           :run-started-at time-now
           :time-now time-now
-          :audit (dl-satan-run-audit run-ctx))))
+          :audit (dl-satan-run-audit run-ctx)
+          :percept-handles (and percept (plist-get percept :handles)))))
 
 (defun dl-satan-broker--tee-stdout (path chunk)
   (let ((coding-system-for-write 'utf-8))

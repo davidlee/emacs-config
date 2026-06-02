@@ -36,6 +36,7 @@
      (list "-c"
            (concat
             "DROP TABLE IF EXISTS "
+            "satan_pattern_outcomes, satan_patterns, "
             "satan_intervention_outcomes, satan_interventions, "
             "patch_job_events, patch_jobs, "
             "trace_links, trace_handles, traces, "
@@ -91,6 +92,7 @@ The bucket is parsed from run-id's leading YYYYMMDD."
                  :message                "do the thing"
                  :related_motive_id      "morning.kanban-cleanup"
                  :cue_handles            '("bough_node:abc")
+                 :percept_handles        '()
                  :expected_outcome       "user opens kanban.org"
                  :outcome_window_minutes 30
                  :severity               "low")))
@@ -384,13 +386,14 @@ The bucket is parsed from run-id's leading YYYYMMDD."
                          (list :run_id run-id :mode (list :name "morning"))
                          '(:bundle t))))
 
-(defun dl-satan-intervention-test--build-ctx (audit run-id &optional ts)
+(defun dl-satan-intervention-test--build-ctx (audit run-id &optional ts percept-handles)
   (list :id run-id
         :mode-name "morning"
         :time-now (or ts "2026-05-23T12:00:00+1000")
         :run-started-at (or ts "2026-05-23T12:00:00+1000")
         :capabilities '(notify)
-        :audit audit))
+        :audit audit
+        :percept-handles percept-handles))
 
 (defun dl-satan-intervention-test--transcript-events (audit)
   "Return all parsed transcript records appended to AUDIT."
@@ -780,6 +783,133 @@ as `:stale', so no outcome row was ever written."
     (should (equal (date-to-time (plist-get iv :ts))
                    (date-to-time "2026-05-28T23:22:32+00")))
     (should (= 30 (plist-get iv :outcome_window_minutes)))))
+
+;; ---------- DE-009 Phase 01 — percept-handle snapshot -------------------
+
+(ert-deftest dl-satan-intervention/percept-snapshot-stamps-from-ctx ()
+  "VT-intervention-percept-snapshot: intervention.created stamps
+percept_handles_json from ctx :percept-handles."
+  (dl-satan-intervention-test--with-db
+   (dl-satan-intervention--reset-counters)
+   (let* ((root (make-temp-file "satan-iv-run-" t))
+          (run-id "20260523T120000-morning-aaaaaa")
+          (audit (dl-satan-intervention-test--open-audit root run-id))
+          (handles '("app:emacs" "surface_transition:browser->editor"))
+          (ctx (dl-satan-intervention-test--build-ctx
+                audit run-id nil handles)))
+     (unwind-protect
+         (let ((iv-id (dl-satan-intervention-create
+                       :ctx ctx :kind "notify"
+                       :target-surface "dbus" :message "test"
+                       :expected-outcome "x" :outcome-window-minutes 30
+                       :severity "low")))
+           ;; Audit payload carries percept_handles.
+           (let* ((events (dl-satan-intervention-test--transcript-events audit))
+                  (created (cl-find "intervention.created" events
+                                    :key (lambda (r) (plist-get r :event))
+                                    :test #'equal)))
+             (should created)
+             (should (equal handles
+                            (plist-get (plist-get created :payload)
+                                       :percept_handles))))
+           ;; Projection row carries percept_handles_json.
+           (let ((row (dl-satan-intervention-lookup iv-id)))
+             (should row)
+             ;; percept_handles_json is not in the lookup columns yet
+             ;; (Phase 02 reads it via its own SQL); verify via raw psql.
+             (let* ((sql (concat "SELECT percept_handles_json::text FROM "
+                                "satan_interventions WHERE id = "
+                                (dl-satan-intervention--quote-text iv-id)))
+                    (result (dl-satan-db-psql
+                             dl-satan-intervention-test--db
+                             dl-satan-memory-migrate-host
+                             dl-satan-memory-migrate-psql-program
+                             (list "-A" "-t" "-c" sql))))
+               (should (eq (car result) 'ok))
+               (let ((parsed (json-parse-string (string-trim (cdr result))
+                                                :object-type 'plist
+                                                :array-type 'list
+                                                :null-object :null
+                                                :false-object :false)))
+                 (should (equal handles parsed))))))
+       (delete-directory root t)))))
+
+(ert-deftest dl-satan-intervention/percept-snapshot-nil-ctx-yields-empty ()
+  "VT-intervention-percept-snapshot: nil :percept-handles → []."
+  (dl-satan-intervention-test--with-db
+   (dl-satan-intervention--reset-counters)
+   (let* ((root (make-temp-file "satan-iv-run-" t))
+          (run-id "20260523T120000-morning-bbbbbb")
+          (audit (dl-satan-intervention-test--open-audit root run-id))
+          ;; No :percept-handles in ctx (nil).
+          (ctx (dl-satan-intervention-test--build-ctx
+                audit run-id nil nil)))
+     (unwind-protect
+         (let ((iv-id (dl-satan-intervention-create
+                       :ctx ctx :kind "notify"
+                       :target-surface "dbus" :message "test"
+                       :expected-outcome "x" :outcome-window-minutes 30
+                       :severity "low")))
+           ;; Audit payload carries [] for percept_handles (may be
+           ;; nil after json-parse-string with :array-type 'list).
+           (let* ((events (dl-satan-intervention-test--transcript-events audit))
+                  (created (cl-find "intervention.created" events
+                                    :key (lambda (r) (plist-get r :event))
+                                    :test #'equal)))
+             (should created)
+             (let ((ph (plist-get (plist-get created :payload) :percept_handles)))
+               (should (or (null ph) (equal ph '())))))
+           ;; Projection backfills to [] (verify via raw psql).
+           (let* ((sql (concat "SELECT percept_handles_json::text FROM "
+                              "satan_interventions WHERE id = "
+                              (dl-satan-intervention--quote-text iv-id)))
+                  (result (dl-satan-db-psql
+                           dl-satan-intervention-test--db
+                           dl-satan-memory-migrate-host
+                           dl-satan-memory-migrate-psql-program
+                           (list "-A" "-t" "-c" sql))))
+             (should (eq (car result) 'ok))
+             (should (equal "[]" (string-trim (cdr result)))))))
+       (delete-directory root t))))
+
+(ert-deftest dl-satan-intervention/percept-snapshot-migration-backfills-legacy ()
+  "VT-intervention-percept-snapshot: migration backfills pre-existing rows to []."
+  (dl-satan-intervention-test--with-db
+   ;; Insert a row via raw SQL (bypassing the create API) to simulate a
+   ;; pre-migration legacy intervention.
+   (let ((legacy-id "20260523T120000-morning-legacy.iv01"))
+     (dl-satan-db-psql
+      dl-satan-intervention-test--db dl-satan-memory-migrate-host dl-satan-memory-migrate-psql-program
+      (list "-c"
+            (concat
+             "INSERT INTO satan_interventions ("
+             "id, run_id, ts, mode, kind, target_surface, message, "
+             "cue_handles_json, expected_outcome, "
+             "outcome_window_minutes, severity) VALUES ("
+             (dl-satan-intervention--quote-text legacy-id) ", "
+             (dl-satan-intervention--quote-text "20260523T120000-morning-legacy") ", "
+             (format "%s::timestamptz"
+                     (dl-satan-intervention--quote-text
+                      "2026-05-23T12:00:00+1000")) ", "
+             (dl-satan-intervention--quote-text "morning") ", "
+             (dl-satan-intervention--quote-text "notify") ", "
+             (dl-satan-intervention--quote-text "dbus") ", "
+             (dl-satan-intervention--quote-text "legacy") ", "
+             (format "%s::jsonb" (dl-satan-intervention--quote-text "[]")) ", "
+             (dl-satan-intervention--quote-text "x") ", "
+             "30, "
+             (dl-satan-intervention--quote-text "low") ")")))
+     ;; The INSERT doesn't include percept_handles_json, so it gets the default '[]'.
+     (let* ((sql (concat "SELECT percept_handles_json::text FROM "
+                        "satan_interventions WHERE id = "
+                        (dl-satan-intervention--quote-text legacy-id)))
+            (result (dl-satan-db-psql
+                     dl-satan-intervention-test--db
+                     dl-satan-memory-migrate-host
+                     dl-satan-memory-migrate-psql-program
+                     (list "-A" "-t" "-c" sql))))
+       (should (eq (car result) 'ok))
+       (should (equal "[]" (string-trim (cdr result))))))))
 
 (provide 'dl-satan-intervention-test)
 ;;; dl-satan-intervention-test.el ends here

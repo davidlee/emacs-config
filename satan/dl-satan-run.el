@@ -102,7 +102,8 @@ Reads frozen `time_now' from RUN-CTX's prepare plist — one allocation,
 reused across all tool calls in the run."
   (let* ((mode (dl-satan-run-mode run-ctx))
          (prepare (dl-satan-run-prepare run-ctx))
-         (time-now (plist-get prepare :time_now)))
+         (time-now (plist-get prepare :time_now))
+         (percept (plist-get prepare :percept)))
     (list :id (dl-satan-run-id run-ctx)
           :mode-name (plist-get mode :name)
           :capabilities (plist-get mode :capabilities)
@@ -110,7 +111,8 @@ reused across all tool calls in the run."
           :hippocampus-dir dl-satan-hippocampus-dir
           :run-started-at time-now
           :time-now time-now
-          :audit (dl-satan-run-audit run-ctx))))
+          :audit (dl-satan-run-audit run-ctx)
+          :percept-handles (and percept (plist-get percept :handles)))))
 
 (provide 'dl-satan-run)
 ;;; dl-satan-run.el ends here

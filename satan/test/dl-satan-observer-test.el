@@ -53,6 +53,7 @@
      (list "-c"
            (concat
             "DROP TABLE IF EXISTS "
+            "satan_pattern_outcomes, satan_patterns, "
             "satan_intervention_outcomes, satan_interventions, "
             "patch_job_events, patch_jobs, "
             "trace_links, trace_handles, traces, "

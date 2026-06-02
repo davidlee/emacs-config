@@ -4,7 +4,7 @@ slug: "009-satan_pattern_records_and_scars_outcome_linked_pattern_local_learning
 name: IP-009 Phase 01
 created: "2026-06-03"
 updated: "2026-06-03"
-status: draft  # one of: completed | deferred | draft | in-progress | pending
+status: completed  # one of: completed | deferred | draft | in-progress | pending
 kind: phase  # one of: audit | delta | design_revision | issue | memory | phase | plan | policy | problem | prod | requirement | risk | spec | standard | task | verification
 plan: IP-009
 delta: DE-009
@@ -32,19 +32,19 @@ match against — with zero behavioural change to classification or the global p
 ## 3. Entrance Criteria
 
 - [x] DR-009 accepted; IP-009 phase plan written.
-- [ ] Jailed test Postgres available (DE-004/DE-006 harness).
+- [x] Jailed test Postgres available (DE-004/DE-006 harness).
 
 ## 4. Exit Criteria / Done When
 
-- [ ] `0007_patterns.sql` applies cleanly forward: `ALTER satan_interventions ADD
+- [x] `0007_patterns.sql` applies cleanly forward: `ALTER satan_interventions ADD
       percept_handles_json JSONB NOT NULL DEFAULT '[]'` + GIN; `satan_patterns`;
       `satan_pattern_outcomes` (no FK to interventions); `satan_pattern_stats` view.
-- [ ] `intervention.created` stamps `percept_handles_json` from tool-ctx `:percept-handles`;
+- [x] `intervention.created` stamps `percept_handles_json` from tool-ctx `:percept-handles`;
       nil/absent percept → `[]`. Audit validator accepts the new field; insert persists it.
-- [ ] `:percept-handles` threaded into both tool-ctx builders (`dl-satan-broker--tool-ctx`,
+- [x] `:percept-handles` threaded into both tool-ctx builders (`dl-satan-broker--tool-ctx`,
       `dl-satan-run-tool-ctx`), nil-safe for interactive/MCP runs.
-- [ ] `VT-intervention-percept-snapshot` green.
-- [ ] Existing intervention/outcome projection tests + global-attribute tests still green
+- [x] `VT-intervention-percept-snapshot` green.
+- [x] Existing intervention/outcome projection tests + global-attribute tests still green
       (no regression). `bin/elisp-locate-paren-error` clean on every edited `.el`.
 
 ## 5. Verification
@@ -72,11 +72,11 @@ _(Status: `[ ]` todo, `[WIP]`, `[x]` done, `[blocked]`)_
 
 | Status | ID | Description | Parallel? | Notes |
 | --- | --- | --- | --- | --- |
-| [ ] | 1.1 | Write `0007_patterns.sql` (all DE-009 schema) | [ ] | mirror 0006 style/CHECKs |
-| [ ] | 1.2 | Thread `:percept-handles` into both tool-ctx builders | [P] | nil-safe |
-| [ ] | 1.3 | Stamp `percept_handles_json` in `intervention-create` (payload + validator + insert SQL) | [ ] | depends on 1.1, 1.2 |
-| [ ] | 1.4 | `VT-intervention-percept-snapshot` + migration-apply test | [ ] | depends on 1.3 |
-| [ ] | 1.5 | Run regression suites + `just check` + paren-check | [ ] | gate |
+| [x] | 1.1 | Write `0007_patterns.sql` (all DE-009 schema) | [ ] | mirror 0006 style/CHECKs |
+| [x] | 1.2 | Thread `:percept-handles` into both tool-ctx builders | [P] | nil-safe |
+| [x] | 1.3 | Stamp `percept_handles_json` in `intervention-create` (payload + validator + insert SQL) | [ ] | depends on 1.1, 1.2 |
+| [x] | 1.4 | `VT-intervention-percept-snapshot` + migration-apply test | [ ] | depends on 1.3 |
+| [x] | 1.5 | Run regression suites + `just check` + paren-check | [ ] | gate |
 
 ### Task Details
 
@@ -111,7 +111,7 @@ _(Status: `[ ]` todo, `[WIP]`, `[x]` done, `[blocked]`)_
 
 ## 11. Wrap-up Checklist
 
-- [ ] Exit criteria satisfied
-- [ ] Verification evidence stored (test run output in notes.md)
-- [ ] DE/DR/IP updated if anything shifted
-- [ ] Hand-off note to Phase 02 (rebuild can assume the snapshot column is populated)
+- [x] Exit criteria satisfied
+- [x] Verification evidence stored (test run output in notes.md)
+- [x] DE/DR/IP updated if anything shifted
+- [x] Hand-off note to Phase 02 (rebuild can assume the snapshot column is populated)

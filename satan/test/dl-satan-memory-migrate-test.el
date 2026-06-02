@@ -26,6 +26,7 @@
      dl-satan-memory-migrate-test--db dl-satan-memory-migrate-host dl-satan-memory-migrate-psql-program
      (list "-c"
            (concat "DROP TABLE IF EXISTS "
+                   "satan_pattern_outcomes, satan_patterns, "
                    "satan_intervention_outcomes, satan_interventions, "
                    "patch_job_events, patch_jobs, "
                    "trace_links, trace_handles, traces, "
@@ -85,11 +86,11 @@
   (dl-satan-memory-migrate-test--reset-db)
   (let ((dl-satan-memory-migrate-database dl-satan-memory-migrate-test--db))
     (let ((applied (dl-satan-memory-migrate-apply)))
-      (should (equal '(1 2 3 4 5 6) applied)))
+      (should (equal '(1 2 3 4 5 6 7) applied)))
     (let ((status (dl-satan-memory-migrate-status)))
       (should (cl-every (lambda (e) (eq 'applied (plist-get e :status)))
                         status))
-      (should (= 6 (length status))))))
+      (should (= 7 (length status))))))
 
 (ert-deftest dl-satan-memory-migrate/re-apply-is-noop ()
   (skip-unless (dl-satan-memory-migrate-test--db-available-p))

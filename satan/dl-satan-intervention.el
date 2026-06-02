@@ -152,8 +152,8 @@ become vectors before serialization."
   (concat
    "INSERT INTO satan_interventions ("
    "id, run_id, ts, mode, kind, target_surface, message, "
-   "related_motive_id, cue_handles_json, expected_outcome, "
-   "outcome_window_minutes, severity) VALUES ("
+   "related_motive_id, cue_handles_json, percept_handles_json, "
+   "expected_outcome, outcome_window_minutes, severity) VALUES ("
    (mapconcat
     #'identity
     (list (dl-satan-intervention--quote-text (plist-get payload :intervention_id))
@@ -165,7 +165,8 @@ become vectors before serialization."
           (dl-satan-intervention--quote-text (plist-get payload :target_surface))
           (dl-satan-intervention--quote-text (plist-get payload :message))
           (dl-satan-intervention--quote-text (plist-get payload :related_motive_id))
-          (dl-satan-intervention--quote-jsonb (or (plist-get payload :cue_handles) '()))
+          (dl-satan-intervention--quote-jsonb (or (plist-get payload :cue_handles) (vector)))
+          (dl-satan-intervention--quote-jsonb (or (plist-get payload :percept_handles) (vector)))
           (dl-satan-intervention--quote-text (plist-get payload :expected_outcome))
           (number-to-string (plist-get payload :outcome_window_minutes))
           (dl-satan-intervention--quote-text (plist-get payload :severity)))
@@ -380,7 +381,8 @@ intact for later rebuild."
                 :target_surface         target-surface
                 :message                message
                 :related_motive_id      (or related-motive-id :null)
-                :cue_handles            (or cue-handles '())
+                :cue_handles            (or cue-handles (vector))
+                :percept_handles        (or (plist-get ctx :percept-handles) (vector))
                 :expected_outcome       expected-outcome
                 :outcome_window_minutes outcome-window-minutes
                 :severity               severity))
