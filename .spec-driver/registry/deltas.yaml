@@ -374,7 +374,7 @@ deltas:
     name: 'Delta - SATAN git-activity perception: 24h feed window + watermark, retire
       git_state commit role'
     slug: satan_git_activity_perception_24h_feed_window_watermark_retire_git_state_commit_role
-    updated: '2026-06-02'
+    updated: '2026-06-03'
     path: .spec-driver/deltas/DE-008-satan_git_activity_perception_24h_feed_window_watermark_retire_git_state_commit_role/DE-008.md
     plan:
       id: IP-008
@@ -404,3 +404,38 @@ deltas:
         delta: DE-008
         phase: IP-008-P02
         status: draft
+  DE-009:
+    kind: delta
+    status: in-progress
+    name: Delta - SATAN pattern records and scars - outcome-linked pattern-local learning
+    slug: satan_pattern_records_and_scars_outcome_linked_pattern_local_learning
+    updated: '2026-06-03'
+    path: .spec-driver/deltas/DE-009-satan_pattern_records_and_scars_outcome_linked_pattern_local_learning/DE-009.md
+    plan:
+      id: IP-009
+      overview:
+        schema: supekku.plan.overview
+        version: 1
+        plan: IP-009
+        delta: DE-009
+        revision_links:
+          aligns_with: []
+        specs:
+          primary: []
+          collaborators: []
+        requirements:
+          targets: []
+          dependencies: []
+        phases:
+        - id: IP-009-P01
+        - id: IP-009-P02
+        - id: IP-009-P03
+      phases:
+      - plan: IP-009
+        delta: DE-009
+        phase: IP-009-P01
+        status: draft
+      - id: IP-009-P02
+        phase: IP-009-P02
+      - id: IP-009-P03
+        phase: IP-009-P03
