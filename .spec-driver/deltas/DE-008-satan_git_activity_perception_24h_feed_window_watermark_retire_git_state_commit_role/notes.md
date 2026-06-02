@@ -6,30 +6,43 @@
 
 Five changes in `satan/dl-satan-memory-evidence.el`:
 
-1. **`dl-satan-memory-evidence-git-window-minutes`** defcustom (default 1440 = 24h) — decoupled from the 10-min attention window.
-2. **`--git-feed-paths` rewritten** — calendar-day enumeration via `--next-day` helper using `calendar-gregorian-from-absolute` arithmetic (DST-immune).
-3. **`--git-commits-status` hardened** — per-file JSONL parse tolerance (one bad day-file doesn't blank good siblings); filtered rows sorted by `:end_ts` before limit so newest is genuinely the last.
-4. **`git-start` threaded** into `assemble-with-bounds` — git probe window computed from `end - git-window-minutes`, un-clamped by `run_started`. Focus/browser/content probes unchanged.
-5. **`:git_window_start_at`** exposed in the raw evidence plist alongside `:window_start_at`.
+1. **`dl-satan-memory-evidence-git-window-minutes`** defcustom (default 1440 = 24h).
+2. **`--git-feed-paths` rewritten** — calendar-day enumeration via `--next-day` (DST-immune).
+3. **`--git-commits-status` hardened** — per-file parse tolerance + sort by `:end_ts`.
+4. **`git-start` threaded** into `assemble-with-bounds` — git probe on 24h window.
+5. **`:git_window_start_at`** exposed in raw evidence plist.
 
-Seven new ERT tests, all passing:
-- `git-feed-paths-multiday`, `git-feed-paths-dst-fallback`, `git-feed-paths-next-day`
-- `git-commits-malformed-tolerant`, `git-commits-sorted-by-end-ts`
-- `git-window-sees-commit-outside-10min`, `git-window-field-distinct`
+7 new ERT tests, all passing. Live spot-check: 5 real cross-repo commits in 24h window.
 
-`just check`: 945 total, 1 pre-existing failure (db-probe), 0 new failures.
+Commit: `a3dc8c1`
 
-### Surprises / Adaptations
+### Surprises
 
-- `--next-day` uses `parse-iso8601-time-string` + `decode-time` + `calendar-absolute-from-gregorian` rather than `calendar-extract-day`. The `calendar.el` API is designed for interactive use with `(month day year)` lists; the decode-time bridge is the cleanest path for a `%F` string input.
-- The DR specified `string-lessp` for the while-loop guard. Confirmed correct: `%F` format is lexicographically chronological (`"2026-05-19"` < `"2026-05-20"`).
+- `--next-day` uses `parse-iso8601-time-string` + `decode-time` + `calendar-absolute-from-gregorian`; `calendar.el` API is designed for `(month day year)` lists.
+- `%F` format is lexicographically chronological — `string-lessp` correct for the while-loop guard.
 
-### Rough edges / follow-ups
+## Phase 02 — Outcome predicate + git_state demotion (2026-06-02)
 
-- **Live spot-check pending**: `emacsclient --eval` of the assemble path with a 24h window over a tracked repo. Requires an active Emacs daemon with the new code loaded. Not gating for phase exit (ERT covers the logic); P02 VA-live-tick covers this end-to-end.
-- **`seg-limit` (Q2)**: still 10 commits in the rendered tail. Sufficient for current commit volume; observer predicate scans the full filtered set, so the limit only affects the capsule view.
-- **`:crosses_midnight` guard (Q3)**: not addressed here; P02 predicate inherits the punt. Separate follow-up delta.
+### What's done
 
-### Commit state
+1. **Predicate swap**: `:git_head_changed` → `:git_commit_observed` in `dl-satan-observer-classify.el`.
+   - `--git-row-matches-motive`: `string-equal` on expanded paths (NOT `file-equal-p` — returns nil for non-existent paths).
+   - `--git-row-in-window`: `:end_ts` in `(:intervention_emitted_at, window-end]`.
+   - No baseline needed (window-anchored).
+2. **Tank**: git line renders `:git_commits` count + newest sha + `:git_window_start_at`.
+3. **Docs**: `outcome-semantics.md`, `CHANGELOG.md`, `perceptual-design.md` updated.
+4. **Tests**: 6 new P2 tests + 4 integration fixture updates + tank test update.
 
-Uncommitted. `.spec-driver/**` and code changes will be committed together per doctrine.
+`just check`: 947 total, 1 pre-existing failure (db-probe), 0 new failures.
+
+Commit: `5de4dc6`
+
+### Surprises
+
+- **`file-equal-p` trap**: Returns nil for non-existent paths (unspecified per docstring). Switched to `string-equal` on `expand-file-name` + `directory-file-name` normalized paths. Test fixtures use temp paths that don't exist on disk — caught during integration test debugging.
+
+### Follow-ups
+
+- VA-live-tick pending
+- `:crosses_midnight` guard (Q3) still not addressed
+- `:dirty` retargeting deferred to follow-up delta

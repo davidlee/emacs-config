@@ -44,14 +44,14 @@ Replace `:git_head_changed` (P2) with `:git_commit_observed` (repo-scoped, windo
 
 | Status | ID  | Description | Notes |
 | ------ | --- | ----------- | ----- |
-| [ ] | 2.1 | Add `--git-row-matches-motive` + `--git-row-in-window` helpers | pure functions |
-| [ ] | 2.2 | Add `--predicate-git-commit-observed`; replace in registry; remove P2 | DR-008 §4.3 |
-| [ ] | 2.3 | Update tank git line: render `:git_commits` count + newest, drop `:head_short`/`:dirty` | DR-008 §4.4 |
-| [ ] | 2.4 | Update `docs/satan/attributes/outcome-semantics.md` | replace predicate vocabulary |
-| [ ] | 2.5 | Update `CHANGELOG.md` | DE-008 entry |
-| [ ] | 2.6 | Update `docs/satan/perceptual-design.md` | git feed 24h + :git_commit_observed |
-| [ ] | 2.7 | Tests: VT-commit-observed + VT-p2-retired in `dl-satan-observer-test.el` | red→green |
-| [ ] | 2.8 | Final removal-surface audit: `rg ':git_head_changed\|git-head-changed'` | empty outside CHANGELOG history + artefacts |
+| [x] | 2.1 | Add `--git-row-matches-motive` + `--git-row-in-window` helpers | pure functions; discovered file-equal-p trap (non-existent paths) |
+| [x] | 2.2 | Add `--predicate-git-commit-observed`; replace in registry; remove P2 | DR-008 §4.3; string-equal on expanded paths |
+| [x] | 2.3 | Update tank git line: render `:git_commits` count + newest, drop `:head_short`/`:dirty` | DR-008 §4.4 |
+| [x] | 2.4 | Update `docs/satan/attributes/outcome-semantics.md` | replace predicate vocabulary |
+| [x] | 2.5 | Update `CHANGELOG.md` | DE-008 entry |
+| [x] | 2.6 | Update `docs/satan/perceptual-design.md` | git feed 24h + :git_commit_observed |
+| [x] | 2.7 | Tests: VT-commit-observed + VT-p2-retired in `dl-satan-observer-test.el` | 6 new P2 tests + 4 integration fixture updates |
+| [x] | 2.8 | Final removal-surface audit: `rg ':git_head_changed\|git-head-changed'` | empty outside CHANGELOG history + artefacts |
 | [ ] | 2.9 | VA-live-tick: throwaway commit + forced tick | verify in percept.json |
 
 ## 6. Verification
