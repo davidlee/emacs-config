@@ -16,6 +16,7 @@ metadata:
 - [architecture](architecture.md) — invocation / broker / adapter / model / tool / output / state
 - [protocol](protocol.md) — JSONL wire protocol (message types, fixtures)
 - [perceptual-design](perceptual-design.md) — v0 percept capsule, auto-resonance, motive file, outcome observer, sensor alerts, cooldown floor (Phases 0–6 shipped 2026-05-22→23; see doc §1.5)
+- [epistemics-roadmap](epistemics-roadmap.md) — gap analysis: scientist loop (hypothesis/probe/patterns) vs built; sequencing patterns→probe→hypothesis (DE-009 = step 1)
 
 ## Attribute layer
 - [attributes.brief](attributes.brief.md) — brief: Brooding + mechanical Shame, 8 attrs, update inputs, deltas, persistence, capsule render
