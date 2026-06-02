@@ -33,25 +33,63 @@
              (end_line . ,(line-number-at-pos)))))
       (error nil))))
 
-(defun agent-parens--open-stack ()
-  "Return currently open parens at EOF, innermost first if available."
+(defun agent-parens--open-stack (&optional bound)
+  "Return parens still open at BOUND (default point-max), innermost first.
+
+Each entry is the unclosed opener that is on the parser stack at BOUND.
+For a missing-closer error this is the smoking gun: the innermost entry
+is the opener whose `)' was never written."
   (save-excursion
-    (goto-char (point-min))
-    (let* ((state (parse-partial-sexp (point-min) (point-max)))
-            ;; In modern Emacs parser state, slot 9 is the stack of open paren positions.
+    (let* ((bound (or bound (point-max)))
+            (state (parse-partial-sexp (point-min) bound))
+            ;; Parser state slot 9 is the stack of open paren positions.
             ;; Slot 1 is the innermost containing list, used as a fallback.
             (positions (or (nth 9 state)
                          (when (nth 1 state)
                            (list (nth 1 state))))))
-
       ;; Most useful for repair is the innermost opener first.
       (mapcar #'agent-parens--pos-info (reverse positions)))))
 
+(defun agent-parens--diagnose (err-pos)
+  "Classify a paren error at ERR-POS.
+
+`check-parens' leaves point either ON a stray closer (parser depth is
+already 0 there) or ON an opener whose closer is missing.  Returns a
+plist: :kind, :hint, :stack — where :stack is the open-paren stack at
+the bound that is most useful for THIS kind of repair."
+  (let* ((before (condition-case nil
+                   (agent-parens--open-stack err-pos)
+                   (error nil)))
+          (char (save-excursion
+                  (goto-char err-pos)
+                  (unless (eobp) (char-after))))
+          (closer (memq char '(?\) ?\] ?\}))))
+    (if (and closer (null before))
+      ;; Depth already 0 at this closer: it is extra, OR a closer earlier
+      ;; in this top-level form is missing. Stack BEFORE the closer shows
+      ;; the (empty here) enclosing context; the defun bounds the repair.
+      (list :kind "unmatched-closing-delimiter"
+        :hint (concat "Extra closing delimiter here, or a missing closer "
+                "earlier in this top-level form. Restrict repairs to "
+                "toplevel.start_line..toplevel.end_line.")
+        :stack before)
+      ;; ERR-POS is the opener that never closed. Parse THROUGH it so the
+      ;; opener itself is the innermost open_stack entry.
+      (list :kind "unclosed-opener"
+        :hint (concat "Delimiter opened here is never closed. The "
+                "innermost open_stack entry is the offending opener; "
+                "add its closer (often at the end of this top-level form).")
+        :stack (condition-case nil
+                 (agent-parens--open-stack (min (point-max) (1+ err-pos)))
+                 (error nil))))))
+
 (defun agent-parens--report ()
   (emacs-lisp-mode)
+  ;; NB: no `save-excursion' around `check-parens' — on error it leaves point
+  ;; ON the offending delimiter, and we need that point in the handler.
+  (goto-char (point-min))
   (condition-case err
-    (save-excursion
-      (goto-char (point-min))
+    (progn
       (check-parens)
       (let ((stack (agent-parens--open-stack)))
         (if stack
@@ -61,14 +99,14 @@
              (open_stack . ,(vconcat stack)))
           `((ok . t)))))
     (error
-      `((ok . :json-false)
-         (kind . "check-parens")
-         (message . ,(error-message-string err))
-         (error . ,(agent-parens--pos-info (point)))
-         (open_stack . ,(vconcat
-                          (condition-case nil
-                            (agent-parens--open-stack)
-                            (error nil))))))))
+      (let* ((err-pos (point))
+              (diag (agent-parens--diagnose err-pos)))
+        `((ok . :json-false)
+           (kind . ,(plist-get diag :kind))
+           (message . ,(error-message-string err))
+           (hint . ,(plist-get diag :hint))
+           (error . ,(agent-parens--pos-info err-pos))
+           (open_stack . ,(vconcat (plist-get diag :stack))))))))
 
 (defun agent-parens-check-file (file)
   (with-temp-buffer
