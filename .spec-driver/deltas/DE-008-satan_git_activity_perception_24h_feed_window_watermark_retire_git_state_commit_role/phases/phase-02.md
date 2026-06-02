@@ -29,16 +29,16 @@ Replace `:git_head_changed` (P2) with `:git_commit_observed` (repo-scoped, windo
 
 ## 4. Exit Criteria / Done When
 
-- [ ] `:git_head_changed` / `--predicate-git-head-changed` fully removed from `dl-satan-observer-classify.el`
-- [ ] `:git_commit_observed` predicate registered in the same slot; fires once for in-scope commit, holds for out-of-scope / no-project_cwd
-- [ ] Tank git line renders `:git_commits` summary (count + newest); `:git_state` head/dirty not surfaced
-- [ ] `docs/satan/attributes/outcome-semantics.md` updated
-- [ ] `CHANGELOG.md` updated
-- [ ] `docs/satan/perceptual-design.md` updated
-- [ ] `rg ':git_head_changed|git-head-changed'` returns empty (outside historical CHANGELOG context and DR-008/artefacts)
-- [ ] VT-commit-observed + VT-p2-retired green
-- [ ] `just check` green
-- [ ] VA-live-tick: throwaway commit + forced tick → appears in `percept.json` git_commits
+- [x] `:git_head_changed` / `--predicate-git-head-changed` fully removed from `dl-satan-observer-classify.el`
+- [x] `:git_commit_observed` predicate registered in the same slot; fires once for in-scope commit, holds for out-of-scope / no-project_cwd
+- [x] Tank git line renders `:git_commits` summary (count + newest); `:git_state` head/dirty not surfaced
+- [x] `docs/satan/attributes/outcome-semantics.md` updated
+- [x] `CHANGELOG.md` updated
+- [x] `docs/satan/perceptual-design.md` updated
+- [x] `rg ':git_head_changed|git-head-changed'` returns empty (outside historical CHANGELOG context and DR-008/artefacts)
+- [x] VT-commit-observed + VT-p2-retired green
+- [x] `just check` green
+- [x] VA-live-tick: throwaway commit + forced tick → appears in `percept.json` git_commits
 
 ## 5. Tasks & Progress
 
@@ -52,7 +52,7 @@ Replace `:git_head_changed` (P2) with `:git_commit_observed` (repo-scoped, windo
 | [x] | 2.6 | Update `docs/satan/perceptual-design.md` | git feed 24h + :git_commit_observed |
 | [x] | 2.7 | Tests: VT-commit-observed + VT-p2-retired in `dl-satan-observer-test.el` | 6 new P2 tests + 4 integration fixture updates |
 | [x] | 2.8 | Final removal-surface audit: `rg ':git_head_changed\|git-head-changed'` | empty outside CHANGELOG history + artefacts |
-| [ ] | 2.9 | VA-live-tick: throwaway commit + forced tick | verify in percept.json |
+| [x] | 2.9 | VA-live-tick: throwaway commit + forced tick | 7 commits, sensor_status.git=ok, git_window_start_at distinct |
 
 ## 6. Verification
 
