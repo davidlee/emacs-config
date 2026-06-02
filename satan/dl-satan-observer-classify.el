@@ -169,20 +169,53 @@ written before phase 5.4-pan)."
                   (string-prefix-p prefix path))))
          (plist-get after :focus_segments))))))
 
-(defun dl-satan-observer--predicate-git-head-changed
-    (baseline after _motive _intervention)
-  "§S5 P2 — fires when BASELINE and AFTER report different
-`:head_short' values AND the same `:remote' (cheap repo-identity
-check; differing remote means the two probes saw different repos
-and the comparison is meaningless).  Both sides must report a
-head (a non-repo probe returns nil → P2 doesn't fire)."
-  (let* ((bg (plist-get baseline :git_state))
-         (ag (plist-get after :git_state))
-         (b-head (plist-get bg :head_short))
-         (a-head (plist-get ag :head_short)))
-    (and (stringp b-head) (stringp a-head)
-         (equal (plist-get bg :remote) (plist-get ag :remote))
-         (not (equal b-head a-head)))))
+(defun dl-satan-observer--git-row-matches-motive (row motive)
+  "Return non-nil when git commit ROW belongs to MOTIVE's repo.
+Matches when `:repo' normalised equals MOTIVE's `:project_cwd'
+normalised, or when ROW's `:slug' is a `project:' cue token in
+MOTIVE."
+  (let ((cwd (plist-get motive :project_cwd)))
+    (and cwd
+         (or (let ((norm-repo (directory-file-name
+                               (expand-file-name (plist-get row :repo))))
+                    (norm-cwd (directory-file-name
+                               (expand-file-name cwd))))
+               (string-equal norm-repo norm-cwd))
+             (let ((slug (plist-get row :slug)))
+               (and (stringp slug)
+                    (cl-some (lambda (h)
+                               (and (string-prefix-p "project:" h)
+                                    (equal slug
+                                           (substring h (length "project:")))))
+                             (plist-get motive :cue))))))))
+
+(defun dl-satan-observer--git-row-in-window (row intervention)
+  "Return non-nil when git commit ROW's :end_ts lies in the attribution
+window: strictly after `:intervention_emitted_at' and not after the
+30-min window close."
+  (let* ((emitted (plist-get intervention :intervention_emitted_at))
+         (end (dl-satan-observer--window-end-iso intervention))
+         (ts (plist-get row :end_ts)))
+    (and (stringp ts) (stringp emitted) (stringp end)
+         (string< emitted ts)
+         (not (string< end ts)))))
+
+(defun dl-satan-observer--predicate-git-commit-observed
+    (_baseline after motive intervention)
+  "§S5 P2 — fires when AFTER perceives a commit in MOTIVE's repo during
+the attribution window.  Scoped (like P1/P3) to MOTIVE's `:project_cwd';
+no project_cwd → no fire.  A row matches when its `:repo' is MOTIVE's
+project root (path-normalised) or its `:slug' matches a `project:' cue
+token, AND its `:end_ts' lies in (`:intervention_emitted_at',
+window-end].  No baseline needed — the attribution window is the
+anchor, so stale/pre-deploy baselines cannot misfire."
+  (let ((cwd (plist-get motive :project_cwd)))
+    (and cwd
+         (cl-some (lambda (row)
+                    (and (dl-satan-observer--git-row-matches-motive row motive)
+                         (dl-satan-observer--git-row-in-window
+                          row intervention)))
+                  (plist-get after :git_commits)))))
 
 (defun dl-satan-observer--abs-recent (fs-state)
   "Return absolute paths for FS-STATE's `:recent_files'.
@@ -405,8 +438,8 @@ Per outcome-semantics §3 + §6.2:
 (defconst dl-satan-observer--predicates
   '((:editor_edit_in_window
      . dl-satan-observer--predicate-editor-edit-in-window)
-    (:git_head_changed
-     . dl-satan-observer--predicate-git-head-changed)
+    (:git_commit_observed
+     . dl-satan-observer--predicate-git-commit-observed)
     (:fs_recent_delta
      . dl-satan-observer--predicate-fs-recent-delta)
     (:bough_event_match

@@ -180,7 +180,7 @@ outside an active SATAN run.  Default is 30 minutes."
             (focus (plist-get state :focus_segments))
             (browser (plist-get state :browser_segments))
             (active (plist-get state :bough_active))
-            (git (plist-get state :git_state))
+            (gc (plist-get state :git_commits))
             (fs (plist-get state :fs_state))
             (truncated (plist-get state :truncated_at))
             (app (and cw (or (plist-get cw :app_id) (plist-get cw :app))))
@@ -197,11 +197,10 @@ outside an active SATAN run.  Default is 30 minutes."
         (format "browser:       %d segments\n" (length browser))
         (format "bough_active:  %d nodes\n" (length active))
         (dl-satan-tank--render-bough-active active 4)
-        (if git
-            (format "git:           %s%s\n"
-                    (or (plist-get git :head_short) "?")
-                    (if (plist-get git :dirty) " · dirty" ""))
-          "git:           (not a repo)\n")
+        (format "git:           %d commit(s) since %s%s\n"
+                (length gc)
+                (or (plist-get state :git_window_start_at) "?")
+                (if gc (format " · newest %s" (plist-get (car (last gc)) :sha)) ""))
         (format "cwd:           %s\n" (or (and fs (plist-get fs :cwd)) "?"))
         (if truncated
             (format "truncated_at:  %s\n"

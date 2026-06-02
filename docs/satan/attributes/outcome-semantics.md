@@ -143,7 +143,7 @@ The `:evidence` slot holds a plist whose shape varies by classification. Every s
 
 ```elisp
 (:source-events (...)
- :predicates    (:editor_edit_in_window :git_head_changed ...)   ; which S5 P1–P4 fired
+ :predicates    (:editor_edit_in_window :git_commit_observed ...)   ; which S5 P1–P4 fired
  :motive-id     "morning.kanban-cleanup"
  :handle-overlap 3)                                              ; |motive.cue ∩ percept.handles|
 ```

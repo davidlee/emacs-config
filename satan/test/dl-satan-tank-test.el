@@ -84,7 +84,10 @@
             :bough_active
             ((:status "wip" :title "memory tank" :nanoid "abc12345")
              (:status "todo" :title "renormalize cli" :nanoid "def67890"))
-            :git_state (:head_short "4bd198f6" :dirty t)
+            :git_commits
+            ((:repo "/tmp/r" :slug "r" :sha "4bd198f6"
+              :end_ts "2026-05-20T08:15:00+10:00"))
+            :git_window_start_at "2026-05-19T08:30:00+10:00"
             :fs_state (:cwd "/home/david/.emacs.d")
             :truncated_at ("focus_segments_middle")))
          (out (dl-satan-tank--render-evidence state)))
@@ -96,7 +99,8 @@
     (should (string-match-p "bough_active:  2 nodes" out))
     (should (string-match-p "memory tank" out))
     (should (string-match-p "abc12345" out))
-    (should (string-match-p "4bd198f6 · dirty" out))
+    (should (string-match-p "git:           1 commit(s)" out))
+    (should (string-match-p "newest 4bd198f6" out))
     (should (string-match-p "/home/david/.emacs.d" out))
     (should (string-match-p "truncated_at:  focus_segments_middle" out))))
 

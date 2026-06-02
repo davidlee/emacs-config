@@ -2,6 +2,30 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-06-02 — DE-008: SATAN git-activity perception 24h feed window (Phase 01)
+
+SATAN's git-activity feed was starved by the 10-minute attention window
+shared with focus/browser signals. Commits are bursty; every tick returned
+`git_commits={}`, `sensor_status:git="missing"`. The misleading "last commit"
+line was live `git log` from the broker's incidental cwd (`git_state`).
+
+### Changes
+
+- `dl-satan-memory-evidence-git-window-minutes` defcustom (default 1440 = 24h)
+- Git feed gets its own window: `[git-start, end]` computed from
+  `end - git-window-minutes`, un-clamped by `run_started`. Focus/browser
+  unchanged.
+- `:git_window_start_at` exposed in the evidence plist, distinct from
+  `:window_start_at`.
+- `--git-feed-paths` rewritten to calendar-day enumeration via calendar
+  arithmetic (DST-immune); was endpoint-only, silently dropping intermediate
+  days at 24h+ horizons.
+- `--git-commits-status`: sort by `:end_ts` before `(last filt limit)` so the
+  newest entry is genuinely the last; per-file JSONL parse tolerance so one
+  bad day-file doesn't blank good rows from siblings.
+- 7 new ERT tests (git window, multi-day paths, DST, sort, malformed tolerance,
+  window field).
+
 ## 2026-06-01 — DE-007: SATAN interactive pi.dev MCP harness (Phase 3)
 
 SATAN can now be driven interactively from a `pi.dev` session instead of only
@@ -662,9 +686,12 @@ Four predicate primitives, all pure, all signature
   suffix is a defcustom (`dl-satan-observer-emacs-title-suffix-re')
   so users tweaking `frame-title-format' can keep parsing without
   editing code.
-- P2 `--predicate-git-head-changed' — `:head_short' differs AND
-  `:remote' matches (same-repo identity check).  Different remote
-  means the probes saw different repos; comparison meaningless.
+- P2 `--predicate-git-commit-observed' — repo-scoped (motive
+  `:project_cwd' + `project:' cue), window-anchored scan of
+  `after.git_commits' over the git feed (24h horizon since
+  2026-06-02).  No baseline comparison — attribution window is
+  the anchor.  Replaced `:git_head_changed' (live `git log` in
+  broker cwd) which was starved by the 10-min attention window.
 - P3 `--predicate-fs-recent-delta' — new entry under
   `:project_cwd' in AFTER's `:recent_files' absent from BASELINE's.
   Compares absolute paths (`--abs-recent') so baseline/after cwd

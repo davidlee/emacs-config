@@ -346,9 +346,11 @@ evidence — the observer reads history, not live state.
 
 **Intervention-time baseline + after-state diff.** The current evidence
 substrate exposes most signals as *state*, not as *deltas*: focus
-segments are derived later, `git_state` is HEAD + dirty flag, fs
-evidence is `recentf-list`. To detect "an edit happened during the
-window" the observer must compare two snapshots, one at
+segments are derived later, `git_state` is HEAD + dirty flag (dirty
+deferred; commit history moved to the 24h git-activity feed),
+fs evidence is `recentf-list`. The P2 predicate (`:git_commit_observed`)
+scans the `:git_commits` feed rows directly (window-anchored, no
+baseline comparison needed). Other predicates compare two snapshots: one at
 `intervention_emitted_at` (the baseline, read from the
 `evidence_window` already stored in `bundle.json`'s percept evidence
 or `metadata_json` of any memory trace recorded at that run) and one

@@ -197,12 +197,12 @@ non-user-facing branch (`:neutral') override KIND."
 
 (defun dl-satan-observer-test--positive-verdict (&optional predicate confidence)
   "Build a T1.5b §2-shape `:worked' verdict for persist tests.
-PREDICATE defaults to `:git_head_changed' (the §S5 P2 firer).
+PREDICATE defaults to `:git_commit_observed' (the §S5 P2 firer).
 CONFIDENCE defaults to `:medium' (single-fire); pass `:high' to
 simulate a multi-predicate firing."
   (list :classification :worked
         :confidence (or confidence :medium)
-        :predicates (list (or predicate :git_head_changed))
+        :predicates (list (or predicate :git_commit_observed))
         :reason nil))
 
 (defun dl-satan-observer-test--negative-verdict (&optional reason)
@@ -399,38 +399,92 @@ last_title that resolves under `:project_cwd'."
     (should-not (dl-satan-observer--predicate-editor-edit-in-window
                  nil after motive iv))))
 
-;; --- P2 git HEAD changed ----------------------------------------------
+;; --- P2 git commit observed ------------------------------------------
 
-(ert-deftest dl-satan-observer/p2-git-head-changed-fires ()
-  (let ((baseline (list :git_state (list :head_short "aaaaaaa"
-                                         :remote "github.com/u/r")))
-        (after (list :git_state (list :head_short "bbbbbbb"
-                                      :remote "github.com/u/r"))))
-    (should (dl-satan-observer--predicate-git-head-changed
-             baseline after nil nil))))
+(defconst dl-satan-observer-test--p2-emitted "2026-05-22T10:00:00+1000")
+(defconst dl-satan-observer-test--p2-window-end "2026-05-22T10:30:00+1000")
 
-(ert-deftest dl-satan-observer/p2-git-head-stable-does-not-fire ()
-  (let ((baseline (list :git_state (list :head_short "aaaaaaa"
-                                         :remote "github.com/u/r")))
-        (after (list :git_state (list :head_short "aaaaaaa"
-                                      :remote "github.com/u/r"))))
-    (should-not (dl-satan-observer--predicate-git-head-changed
-                 baseline after nil nil))))
+(defun dl-satan-observer-test--p2-commit-row (&rest overrides)
+  "Build a git commit row plist for P2 predicate tests."
+  (let ((base (list :repo "/tmp/satan-obs-proj"
+                    :slug "satan-obs-proj"
+                    :sha "abcdef12"
+                    :end_ts "2026-05-22T10:15:00+1000")))
+    (while overrides
+      (setq base (plist-put base (pop overrides) (pop overrides))))
+    base))
 
-(ert-deftest dl-satan-observer/p2-different-remotes-do-not-fire ()
-  "A12 corollary — baseline and after probed different repos."
-  (let ((baseline (list :git_state (list :head_short "aaaaaaa"
-                                         :remote "github.com/u/r1")))
-        (after (list :git_state (list :head_short "bbbbbbb"
-                                      :remote "github.com/u/r2"))))
-    (should-not (dl-satan-observer--predicate-git-head-changed
-                 baseline after nil nil))))
+(defun dl-satan-observer-test--p2-after (&rest rows)
+  "Build an after-state plist carrying `:git_commits' for P2 tests."
+  (list :git_commits (or rows '())))
 
-(ert-deftest dl-satan-observer/p2-missing-head-on-either-side-skips ()
-  (let ((baseline (list :git_state (list :head_short nil :remote nil)))
-        (after (list :git_state (list :head_short "bbbbbbb" :remote nil))))
-    (should-not (dl-satan-observer--predicate-git-head-changed
-                 baseline after nil nil))))
+(defun dl-satan-observer-test--p2-intervention (&rest overrides)
+  "Build an intervention plist for P2 predicate tests.
+Defaults: emitted at 2026-05-22T10:00, 30-min window."
+  (let ((base (list :intervention_emitted_at dl-satan-observer-test--p2-emitted
+                    :outcome_window_minutes 30)))
+    (while overrides
+      (setq base (plist-put base (pop overrides) (pop overrides))))
+    base))
+
+(ert-deftest dl-satan-observer/p2-commit-observed-fires-in-window ()
+  "VT-commit-observed: fires for a matching commit whose :end_ts falls
+in the attribution window."
+  (let* ((motive (dl-satan-observer-test--motive))
+         (after (dl-satan-observer-test--p2-after
+                 (dl-satan-observer-test--p2-commit-row)))
+         (iv (dl-satan-observer-test--p2-intervention)))
+    (should (dl-satan-observer--predicate-git-commit-observed
+             nil after motive iv))))
+
+(ert-deftest dl-satan-observer/p2-commit-observed-no-project-cwd ()
+  "No fire when motive lacks `:project_cwd'."
+  (let* ((motive (list :cue (list "project:satan-obs-proj")))
+         (after (dl-satan-observer-test--p2-after
+                 (dl-satan-observer-test--p2-commit-row)))
+         (iv (dl-satan-observer-test--p2-intervention)))
+    (should-not (dl-satan-observer--predicate-git-commit-observed
+                 nil after motive iv))))
+
+(ert-deftest dl-satan-observer/p2-commit-observed-wrong-repo ()
+  "No fire when the commit row's repo doesn't match the motive's repo."
+  (let* ((motive (dl-satan-observer-test--motive))
+         (after (dl-satan-observer-test--p2-after
+                 (dl-satan-observer-test--p2-commit-row
+                  :repo "/tmp/unrelated" :slug "unrelated")))
+         (iv (dl-satan-observer-test--p2-intervention)))
+    (should-not (dl-satan-observer--predicate-git-commit-observed
+                 nil after motive iv))))
+
+(ert-deftest dl-satan-observer/p2-commit-observed-matches-by-cue-slug ()
+  "Fires when `:slug' matches a `project:' token in motive's `:cue',
+even when `:repo' path doesn't match."
+  (let* ((motive (dl-satan-observer-test--motive
+                  :project_cwd "/tmp/unrelated"
+                  :cue (list "project:satan-obs-proj")))
+         (after (dl-satan-observer-test--p2-after
+                 (dl-satan-observer-test--p2-commit-row)))
+         (iv (dl-satan-observer-test--p2-intervention)))
+    (should (dl-satan-observer--predicate-git-commit-observed
+             nil after motive iv))))
+
+(ert-deftest dl-satan-observer/p2-commit-outside-window-does-not-fire ()
+  "No fire when commit :end_ts is before the intervention emit time."
+  (let* ((motive (dl-satan-observer-test--motive))
+         (after (dl-satan-observer-test--p2-after
+                 (dl-satan-observer-test--p2-commit-row
+                  :end_ts "2026-05-22T09:45:00+1000")))
+         (iv (dl-satan-observer-test--p2-intervention)))
+    (should-not (dl-satan-observer--predicate-git-commit-observed
+                 nil after motive iv))))
+
+(ert-deftest dl-satan-observer/p2-no-commits-no-fire ()
+  "No fire when `:git_commits' is empty."
+  (let* ((motive (dl-satan-observer-test--motive))
+         (after (dl-satan-observer-test--p2-after))
+         (iv (dl-satan-observer-test--p2-intervention)))
+    (should-not (dl-satan-observer--predicate-git-commit-observed
+                 nil after motive iv))))
 
 ;; --- P3 recent_files delta --------------------------------------------
 
@@ -553,14 +607,15 @@ last_title that resolves under `:project_cwd'."
    (lambda (root)
      (let* ((dir (expand-file-name "20260522T100000-tick-aaa" root))
             (baseline-ev
-             (list :git_state (list :head_short "aaaaaaa"
-                                    :remote "github.com/u/r")
-                   :fs_state (list :cwd dl-satan-observer-test--cwd
+             (list :fs_state (list :cwd dl-satan-observer-test--cwd
                                    :recent_files nil)
                    :focus_segments nil :bough_recent nil))
             (after-ev
-             (list :git_state (list :head_short "bbbbbbb"
-                                    :remote "github.com/u/r")
+             (list :git_commits
+                   (list (list :repo dl-satan-observer-test--cwd
+                               :slug "satan-obs-proj"
+                               :sha "bbbbbbb"
+                               :end_ts "2026-05-22T10:15:00+1000"))
                    :fs_state (list :cwd dl-satan-observer-test--cwd
                                    :recent_files nil)
                    :focus_segments nil :bough_recent nil))
@@ -573,13 +628,13 @@ last_title that resolves under `:project_cwd'."
          (let ((out (dl-satan-observer-classify iv motive)))
            (should (eq :worked (plist-get out :classification)))
            (should (eq :medium (plist-get out :confidence)))
-           (should (equal '(:git_head_changed)
+           (should (equal '(:git_commit_observed)
                           (plist-get out :predicates)))
            (should (null (plist-get out :reason)))))))))
 
 (ert-deftest dl-satan-observer/classify-multi-fire-yields-high-confidence ()
   "T1.5b PR 1 §4 — `:confidence :high' when ≥2 predicates fire.
-Here P2 (git head) and P3 (fs recent delta) both fire on the
+Here P2 (git commit observed) and P3 (fs recent delta) both fire on the
 same scan."
   (dl-satan-observer-test--in-tmp
    (lambda (root)
@@ -590,7 +645,11 @@ same scan."
                    :fs_state (list :cwd cwd :recent_files (list "old.el"))
                    :focus_segments nil :bough_recent nil))
             (after-ev
-             (list :git_state (list :head_short "bbbbbbb" :remote "r")
+             (list :git_commits
+                   (list (list :repo cwd
+                               :slug "satan-obs-proj"
+                               :sha "bbbbbbb"
+                               :end_ts "2026-05-22T10:15:00+1000"))
                    :fs_state (list :cwd cwd
                                    :recent_files (list "old.el" "new.el"))
                    :focus_segments nil :bough_recent nil))
@@ -604,7 +663,7 @@ same scan."
            (should (eq :worked (plist-get out :classification)))
            (should (eq :high (plist-get out :confidence)))
            ;; predicates order mirrors `dl-satan-observer--predicates'.
-           (should (equal '(:git_head_changed :fs_recent_delta)
+           (should (equal '(:git_commit_observed :fs_recent_delta)
                           (plist-get out :predicates)))))))))
 
 (ert-deftest dl-satan-observer/classify-no-fire-user-facing-yields-ignored ()
@@ -845,18 +904,23 @@ is now `:ignored', not `:unknown'."
             (motives
              (list (list :id "weak" :cue (list "app:firefox"))
                    (list :id "strong"
+                         :project_cwd "/x"
                          :cue (list "app:firefox"
                                     "domain_kind:docs"
                                     "topic:satan")))))
        (dl-satan-observer-test--with-stubbed-after-state
-           (list :git_state (list :head_short "bbbbbbb" :remote "r")
+           (list :git_commits
+                 (list (list :repo "/x"
+                             :slug "x"
+                             :sha "bbbbbbb"
+                             :end_ts "2026-05-22T10:15:00+1000"))
                  :fs_state (list :cwd "/x" :recent_files nil)
                  :focus_segments nil :bough_recent nil)
          (let ((out (dl-satan-observer-classify-for-motives iv motives)))
            (should (equal "strong" (plist-get out :motive_id)))
            (should (eq :worked (plist-get out :classification)))
            (should (eq :medium (plist-get out :confidence)))
-           (should (equal '(:git_head_changed)
+           (should (equal '(:git_commit_observed)
                           (plist-get out :predicates)))))))))
 
 (ert-deftest dl-satan-observer/classify-for-motives-tie-file-order ()
@@ -972,7 +1036,7 @@ with classification=worked and confidence=medium (single-predicate)."
                   (motive (dl-satan-observer-test--full-motive
                            :worked_count 0))
                   (verdict (dl-satan-observer-test--positive-verdict
-                            :git_head_changed))
+                            :git_commit_observed))
                   (out (dl-satan-observer-persist-verdict
                         iv motive verdict "2026-05-23T12:00:00+1000"
                         (list :ctx ctx
@@ -992,7 +1056,7 @@ with classification=worked and confidence=medium (single-predicate)."
                  (should (equal run-id (plist-get md :run_id)))
                  (should (equal "docs-after-error"
                                 (plist-get md :motive_id)))
-                 (should (equal '(:git_head_changed)
+                 (should (equal '(:git_commit_observed)
                                 (plist-get md :predicates)))
                  (should (eq :worked (plist-get md :classification)))
                  (should (eq :medium (plist-get md :confidence)))))
@@ -1360,7 +1424,7 @@ and git head changed; motive footer bumps, projection holds worked."
                                 (plist-get v :motive_id)))
                  (should (eq :worked (plist-get v :classification)))
                  (should (eq :medium (plist-get v :confidence)))
-                 (should (equal '(:git_head_changed)
+                 (should (equal '(:git_commit_observed)
                                 (plist-get v :predicates))))
                ;; Trace written.
                (should (= 1 (length captured)))
@@ -1512,12 +1576,15 @@ skips persist (auto re-pass forbidden, §6.3)."
    (lambda (root)
      (let* ((dir (expand-file-name "20260523T100000-tick-aaa" root))
             (baseline-ev
-             (list :git_state (list :head_short "aaaaaaa" :remote "r")
-                   :fs_state (list :cwd dl-satan-observer-test--cwd
+             (list :fs_state (list :cwd dl-satan-observer-test--cwd
                                    :recent_files nil)
                    :focus_segments nil :bough_recent nil))
             (after-ev
-             (list :git_state (list :head_short "bbbbbbb" :remote "r")
+             (list :git_commits
+                   (list (list :repo dl-satan-observer-test--cwd
+                               :slug "satan-obs-proj"
+                               :sha "bbbbbbb"
+                               :end_ts "2026-05-23T10:15:00+1000"))
                    :fs_state (list :cwd dl-satan-observer-test--cwd
                                    :recent_files nil)
                    :focus_segments nil :bough_recent nil))
