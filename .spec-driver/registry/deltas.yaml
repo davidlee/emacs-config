@@ -333,10 +333,10 @@ deltas:
       - plan: IP-006
         delta: DE-006
         phase: IP-006-P03
-        status: in-progress
+        status: completed
   DE-007:
     kind: delta
-    status: draft
+    status: in-progress
     name: Delta - SATAN interactive pi.dev MCP harness
     slug: satan_interactive_pi_dev_mcp_harness
     updated: '2026-05-31'
@@ -358,6 +358,49 @@ deltas:
           dependencies: []
         phases:
         - id: IP-007-P01
+        - id: IP-007-P02
       phases:
-      - id: IP-007-P01
+      - plan: IP-007
+        delta: DE-007
         phase: IP-007-P01
+        status: completed
+      - plan: IP-007
+        delta: DE-007
+        phase: IP-007-P02
+        status: completed
+  DE-008:
+    kind: delta
+    status: completed
+    name: 'Delta - SATAN git-activity perception: 24h feed window + watermark, retire
+      git_state commit role'
+    slug: satan_git_activity_perception_24h_feed_window_watermark_retire_git_state_commit_role
+    updated: '2026-06-02'
+    path: .spec-driver/deltas/DE-008-satan_git_activity_perception_24h_feed_window_watermark_retire_git_state_commit_role/DE-008.md
+    plan:
+      id: IP-008
+      overview:
+        schema: supekku.plan.overview
+        version: 1
+        plan: IP-008
+        delta: DE-008
+        revision_links:
+          aligns_with:
+          - DR-008
+        specs:
+          primary: []
+          collaborators: []
+        requirements:
+          targets: []
+          dependencies: []
+        phases:
+        - id: IP-008-P01
+        - id: IP-008-P02
+      phases:
+      - plan: IP-008
+        delta: DE-008
+        phase: IP-008-P01
+        status: draft
+      - plan: IP-008
+        delta: DE-008
+        phase: IP-008-P02
+        status: draft

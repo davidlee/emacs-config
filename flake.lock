@@ -320,11 +320,11 @@
     },
     "jail-nix": {
       "locked": {
-        "lastModified": 1770418571,
-        "narHash": "sha256-EzQUbe1gwW/xpJoMuMeblWcjAEF+F92cz/enz0Mz/qo=",
+        "lastModified": 1772137954,
+        "narHash": "sha256-h4MGNbOo7L3RHi4uNFmsg5g17/DHXEfnv/xiG6BrNFQ=",
         "owner": "~alexdavid",
         "repo": "jail.nix",
-        "rev": "c141cf8cc68617625b4a28a7d8ce0a35904815d5",
+        "rev": "42b355c38ca63dab4904acc5c0d95f17954a8c9b",
         "type": "sourcehut"
       },
       "original": {
@@ -599,8 +599,8 @@
         ]
       },
       "locked": {
-        "lastModified": 1780187435,
-        "narHash": "sha256-GfTVb2FeXvNLqXAwvXLW+cgQ2M3QU7UQ0Ih9xKhKXL8=",
+        "lastModified": 1780405095,
+        "narHash": "sha256-kwVPseBaeUI2Zc/fvh7aYzLMwqUQmx9wRWxusX3HRCs=",
         "path": "/home/david/flakes/pub",
         "type": "path"
       },
@@ -653,11 +653,11 @@
         "pub": "pub_2"
       },
       "locked": {
-        "lastModified": 1780108016,
-        "narHash": "sha256-WNn41AirQMrkYHTcPMf+fSe6sK2QPk3L0C2hAUx2j+0=",
+        "lastModified": 1780245002,
+        "narHash": "sha256-yisiGOXs54qEgEZ82CssXsTm4qW7+M79JNA96znFcoY=",
         "owner": "davidlee",
         "repo": "spec-driver",
-        "rev": "efdfc16bdebc40070407cc36446982f217173ae0",
+        "rev": "73a0cb178c5bd603ffd303e653d4d144de159313",
         "type": "github"
       },
       "original": {

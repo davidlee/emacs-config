@@ -78,6 +78,7 @@
 
         apiKeyJailOptions = with jailLib.combinators; [
           (try-fwd-env "OPENROUTER_API_KEY")
+          (ro-bind "/usr/bin/env" "/usr/bin/env")
         ];
 
         supabaseJailOptions = with jailLib.combinators; [
@@ -243,12 +244,12 @@
             extraOptions = jailEnvOptions;
             inherit workspaceDeps;
           };
-          jailed-zero = jailLib.makeJailedZerostack {
-            profile = "specDev";
-            extraPkgs = projectPkgs;
-            extraOptions = jailEnvOptions;
-            inherit workspaceDeps;
-          };
+          # jailed-zero = jailLib.makeJailedZerostack {
+          #   profile = "specDev";
+          #   extraPkgs = projectPkgs;
+          #   extraOptions = jailEnvOptions;
+          #   inherit workspaceDeps;
+          # };
           SATAN-jailed-fake-harness = jailLib.makeJailedAgent {
             name = "satan-fake-harness";
             agent = satanFakeHarness;
