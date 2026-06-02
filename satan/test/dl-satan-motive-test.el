@@ -38,6 +38,31 @@
 "
   "Minimal valid motives.org fixture: 2 active motives + 2 ruminations.")
 
+(defconst dl-satan-motive-test--well-formed-cwd
+  "* test: docs-after-error
+  Docs after terminal error often substitute orientation for contact.
+  :cue: project:emacs.d surface_transition:terminal->browser domain_kind:docs
+  :cooldown_s: 1800
+  :worked_count: 0
+  :last_intervention_at: 2026-05-21T14:02Z
+  :project_cwd: ~/.emacs.d
+
+* test: bough-status-drift
+  When bough status changes accumulate without user attention.
+  :cue: bough_event:status_changed app:firefox
+  :cooldown_s: 3600
+  :worked_count: 4
+
+* ruminations
+  - 2026-05-22  docs-after-error often artifactless when project is emacs.d
+  - 2026-05-19  patch jobs accepted more when directive cites file path
+"
+  "Like `dl-satan-motive-test--well-formed', but docs-after-error carries
+a `:project_cwd:' footer.  The §S5 P2 `:git_commit_observed' predicate
+is repo-scoped and refuses to fire without a motive `:project_cwd', so
+end-to-end observer tests that expect a positive git verdict use this
+variant.")
+
 (defconst dl-satan-motive-test--ceiling
   "* test: pestered
   This motive uses the forbidden v0 ceiling field.

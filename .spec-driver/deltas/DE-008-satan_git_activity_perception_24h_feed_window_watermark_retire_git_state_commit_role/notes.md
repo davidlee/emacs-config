@@ -46,3 +46,32 @@ Commit: `5de4dc6`
 - VA-live-tick pending
 - `:crosses_midnight` guard (Q3) still not addressed
 - `:dirty` retargeting deferred to follow-up delta
+
+## Audit AUD-005 (2026-06-03)
+
+Conformance audit found one **blocking** finding (F-001) the jail run missed.
+
+### F-001 — stale e2e observer fixtures (FIXED)
+
+Two `--with-db`-gated end-to-end tests
+(`dl-satan-observer/process-{positive-bumps-motive-and-projects,error-on-one-iv-does-not-abort}`)
+were **skipped** in the DB-less jail, so "0 new failures" was never tested with
+the DB up. Their assertions were migrated to `:git_commit_observed` but their
+setup still fed the retired `:git_head_changed` signal: stubbed after-state had
+only `:git_state` head-change (no `:git_commits`), and the `well-formed` motive
+has no `:project_cwd`. The new predicate scans `after :git_commits` and refuses
+to fire without `:project_cwd` → `:positive` 0 → not `:worked`.
+
+Fix: added motive fixture `dl-satan-motive-test--well-formed-cwd` (docs-after-error
+with `:project_cwd: ~/.emacs.d`) and stubbed both after-states with a `:git_commits`
+row (`:slug emacs.d` matching the `project:` cue, `:end_ts 11:15` inside the
+11:00->11:30 window). Both green; `just check` with test DB up: **944/947, 0
+unexpected, 3 skipped**. New IP-008 coverage entry `VT-process-e2e` tracks this
+path so it cannot regress invisibly again.
+
+### Other findings
+
+- F-002: IP-008 coverage entries advanced planned->verified.
+- F-003: lifecycle frontmatter advance deferred to `/close-change`.
+- F-004: deferred `:dirty`/canon retarget + Q3 midnight-guard filed to backlog.
+- F-006: the 4 DB-down "failures" (bough + db-probe) are environmental; green with DB up.

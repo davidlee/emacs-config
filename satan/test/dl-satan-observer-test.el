@@ -1400,10 +1400,13 @@ and git head changed; motive footer bumps, projection holds worked."
                              "domain_kind:docs")
                        :evidence_window baseline-ev))))
         (dl-satan-motive-test--with-tmp-file
-         mpath dl-satan-motive-test--well-formed
+         mpath dl-satan-motive-test--well-formed-cwd
          (dl-satan-observer-test--capture-mark captured
            (dl-satan-observer-test--with-stubbed-after-state
-               (list :git_state (list :head_short "bbbbbbb" :remote "r")
+               (list :git_commits
+                     (list (list :repo "/x" :slug "emacs.d"
+                                 :sha "deadbeef"
+                                 :end_ts "2026-05-23T11:15:00+1000"))
                      :fs_state (list :cwd "/x" :recent_files nil)
                      :focus_segments nil :bough_recent nil)
              (let* ((curr-id "20260523T120000-morning-cccccc")
@@ -1472,7 +1475,7 @@ and continues with the next."
                "surface_transition:terminal->browser"
                "domain_kind:docs"))
         (dl-satan-motive-test--with-tmp-file
-         mpath dl-satan-motive-test--well-formed
+         mpath dl-satan-motive-test--well-formed-cwd
          (let* ((call-count 0)
                 (failing-touch
                  (lambda (&rest _args)
@@ -1482,7 +1485,10 @@ and continues with the next."
                      t)))
                 (mark-fn (lambda (&rest _args) (cons 'ok "tid"))))
            (dl-satan-observer-test--with-stubbed-after-state
-               (list :git_state (list :head_short "bbbbbbb" :remote "r")
+               (list :git_commits
+                     (list (list :repo "/x" :slug "emacs.d"
+                                 :sha "deadbeef"
+                                 :end_ts "2026-05-23T11:15:00+1000"))
                      :fs_state (list :cwd "/x" :recent_files nil)
                      :focus_segments nil :bough_recent nil)
              (let* ((curr-id "20260523T120000-morning-cccccc")
