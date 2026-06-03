@@ -1,5 +1,76 @@
 # Notes for DE-007
 
+## Phase 4 — IN PROGRESS (2026-06-03)
+
+### Completed (tasks 4.1–4.6)
+
+- **4.1 DEC-8 guard**: `dl-satan-broker--spawn-running` now set/cleared around
+  `broker--spawn` (unwind-protect + sentinel).  `dl-satan-mcp--session-active`
+  flag set on session mint / cleared on close.  `dl-satan-broker-run` refuses
+  to spawn while session is active.  3 DEC-8 tests pass.
+- **4.2 R10 extraction**: `dl-satan-run-assemble-context` extracted into
+  `dl-satan-context.el` (DR-007 F4).  Builds percept/resonance/motive/
+  sensor_status and threads into prepare.  Observer-independent subset.
+  967 tests regression-proven.
+- **4.3 context-fn**: `dl-satan-context-interactive` registered on interactive
+  mode-spec.  Builds orientation capsule at build-depth β with assembled=""
+  (persona already in SYSTEM.md).  Fresh current-time stamp (F3).
+- **4.4 satan_boot_context tool**: globally registered read tool.  Handler
+  `dl-satan-mcp-tool/boot-context` with per-session capsule cache + refresh
+  arg + graceful degrade.  Loads dl-satan-context at runtime to avoid
+  compile-time dependency.
+- **4.5 description file**: `satan_boot_context.md` at
+  `dl-satan-tools-descriptions-dir` (R7 fail-fast).
+- **4.6 SYSTEM.md instruction**: `interactive.txt` updated with first-turn
+  boot context instruction.
+
+### Known issue — "unsupported arg type: nil" on connection
+
+After Emacs restart, the MCP server starts successfully but `mint-session`
+fails when a client connects, with:
+
+    SATAN: unsupported arg type: nil
+
+The accept-filter catches this, logs "rejecting connection", and deletes
+the client process.  Pi sees an immediate connection close.
+
+**Instrumentation added** (commit `2fff82f`): `mint-session` now wraps each
+`dl-satan-tool-json-schema` call in `condition-case` and reports the failing
+tool name.  But the new code needs to actually reach the live Emacs daemon —
+the user must either restart Emacs or run `emacsclient --eval '(load-file …)'`
+from the **host** (emacsclient is not available inside the pi jail).
+
+**Diagnosis steps for next agent:**
+1. Ensure Emacs daemon has picked up the new `.el` files (restart or delete
+   stale `.elc` files and `eval-buffer`).
+2. Start MCP server: `emacsclient --eval '(my/hello-satan)'`
+3. Connect from pi — the error will now say which tool's schema generation
+   is producing the nil type.
+4. Possible root causes:
+   - A tool with a dynamic `:args-schema` (e.g. `sway_border_set` uses
+     `classes-shape`) evaluates to nil at runtime.
+   - Stale `.elc` byte-compiled files from before the changes.
+   - Description file not found on host (`~/notes/satan/tools/satan_boot_context.md`
+     was copied from `/workspace/notes/` but verify it exists).
+
+### Remaining tasks (4.7–4.9)
+
+- **4.7 Tests**: boot-context ert tests require `dl-satan-context.el` which
+  can't load in batch mode (needs `dl-denote-journal`).  Write as integration
+  tests or test manually in live daemon.
+- **4.8 VH-mcp-boot-live**: live pi session calling `satan_boot_context`
+  unprompted.  Requires MCP connection working (blocked by nil-type bug).
+- **4.9 CHANGELOG + commit**.
+
+### Commits
+
+- `66f3b07` — DEC-8 guard (task 4.1)
+- `3ff23c8` — extract assemble-context (task 4.2)
+- `c8c9f3d` — context-fn + boot_context tool (tasks 4.3–4.4)
+- `5d4f7f4` — fix mode re-registration
+- `2fff82f` — instrument mint-session for debugging
+- Notes repo `0bd5733` — description file + interactive.txt
+
 ## Phase 1 — COMPLETE (2026-05-31)
 
 All five spike questions validated in live pi↔Emacs test. DEC-12 approach (TS
