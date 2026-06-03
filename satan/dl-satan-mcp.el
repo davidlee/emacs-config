@@ -170,21 +170,14 @@ Signals if a scheduled run is live (DEC-8 mutual exclusion)."
           (time-now (format-time-string dl-satan-run--iso-time-format start-time))
           (run-dir (dl-satan-run-dir-for-id run-id))
           (manifest
-            (condition-case err
-                (let ((tools-list nil))
-                  (dolist (name (dl-satan-mcp--interactive-tools))
-                    (let ((spec (dl-satan-tool-lookup name)))
-                      (when spec
-                        (condition-case inner-err
-                            (push (dl-satan-tool-json-schema spec) tools-list)
-                          (error
-                           (error "SATAN MCP: schema failed for tool %s: %s"
-                                  name (error-message-string inner-err)))))))
-                  (list :mode "interactive"
-                        :run_id run-id
-                        :tools (vconcat (nreverse tools-list))))
-              (error
-               (error "SATAN MCP: manifest build failed — %s" (error-message-string err)))))
+            (let ((tools-list nil))
+              (dolist (name (dl-satan-mcp--interactive-tools))
+                (let ((spec (dl-satan-tool-lookup name)))
+                  (when spec
+                    (push (dl-satan-tool-json-schema spec) tools-list))))
+              (list :mode "interactive"
+                    :run_id run-id
+                    :tools (vconcat (nreverse tools-list)))))
           (bundle (list :run_id run-id
                     :mode "interactive"
                     :prompt "interactive MCP session (DEC-6: no satan_final in A)"
@@ -276,27 +269,18 @@ SESSION is the dl-satan-mcp-session."
           proc
           (dl-satan-mcp--result id (list :pong t))))
       ("tools/list"
-        (let ((tools
-                (condition-case err
-                    (let ((acc nil))
-                      (dolist (name (dl-satan-mcp--interactive-tools))
-                        (let ((spec (dl-satan-tool-lookup name)))
-                          (when spec
-                            (condition-case inner-err
-                                (let* ((openai (dl-satan-tool-json-schema spec))
-                                       (fn (plist-get openai :function)))
-                                  (push (list :name (plist-get fn :name)
-                                              :description (plist-get fn :description)
-                                              :inputSchema (plist-get fn :parameters))
-                                        acc))
-                              (error
-                               (error "SATAN MCP: tools/list schema failed for tool %s: %s"
-                                      name (error-message-string inner-err)))))))
-                      (vconcat (nreverse acc)))
-                  (error
-                   (error "SATAN MCP: tools/list build failed — %s"
-                          (error-message-string err))))))
-          (dl-satan-mcp--send proc (dl-satan-mcp--result id (list :tools tools)))))
+        (let ((acc nil))
+          (dolist (name (dl-satan-mcp--interactive-tools))
+            (let ((spec (dl-satan-tool-lookup name)))
+              (when spec
+                (let* ((openai (dl-satan-tool-json-schema spec))
+                       (fn (plist-get openai :function)))
+                  (push (list :name (plist-get fn :name)
+                              :description (plist-get fn :description)
+                              :inputSchema (plist-get fn :parameters))
+                        acc)))))
+          (let ((tools (vconcat (nreverse acc))))
+            (dl-satan-mcp--send proc (dl-satan-mcp--result id (list :tools tools))))))
       ("tools/call"
         (dl-satan-mcp--tools-call params id session proc))
       (_
@@ -532,7 +516,7 @@ Calls `my/satan-mcp-start' and reports the socket path."
 (dl-satan-tool-register
  (list :name "satan_boot_context"
        :risk 'read
-       :args-schema '((refresh (:type boolean :required nil)))
+       :args-schema '(refresh (:type boolean :required nil))
        :handler 'dl-satan-mcp-tool/boot-context))
 
 (provide 'dl-satan-mcp)
