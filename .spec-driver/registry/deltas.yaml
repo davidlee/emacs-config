@@ -238,10 +238,10 @@ deltas:
         phase: IP-004-P04
   DE-005:
     kind: delta
-    status: in-progress
+    status: completed
     name: Delta - SATAN content percept + content_read tool
     slug: satan_content_percept_content_read_tool
-    updated: '2026-05-31'
+    updated: '2026-06-03'
     path: .spec-driver/deltas/DE-005-satan_content_percept_content_read_tool/DE-005.md
     relations:
     - type: relates_to
@@ -275,7 +275,7 @@ deltas:
           status: completed
         - id: IP-005-P04
           goal: 'Integration: home-manager switch, full suite, CHANGELOG'
-          status: pending
+          status: completed
       phases:
       - plan: IP-005
         delta: DE-005
@@ -289,10 +289,10 @@ deltas:
         delta: DE-005
         phase: IP-005-P03
         status: completed
-      - id: IP-005-P04
-        goal: 'Integration: home-manager switch, full suite, CHANGELOG'
-        status: pending
+      - plan: IP-005
+        delta: DE-005
         phase: IP-005-P04
+        status: completed
   DE-006:
     kind: delta
     status: completed
