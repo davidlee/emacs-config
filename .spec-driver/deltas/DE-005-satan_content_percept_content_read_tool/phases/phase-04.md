@@ -4,7 +4,7 @@ slug: "005-satan_content_percept_content_read_tool-phase-04"
 name: IP-005 Phase 04
 created: "2026-06-03"
 updated: "2026-06-03"
-status: in-progress  # one of: completed | deferred | draft | in-progress | pending
+status: completed  # one of: completed | deferred | draft | in-progress | pending
 kind: phase  # one of: audit | delta | design_revision | issue | memory | phase | plan | policy | problem | prod | requirement | risk | spec | standard | task | verification
 plan: IP-005
 delta: DE-005
@@ -35,8 +35,8 @@ delta is ready for `/audit-change`. No new feature code — integration only.
 - [x] Full `just check` green (0 unexpected; pre-existing DB-gated skips only)
 - [x] `~/notes/satan/tools/content_read.md` present (R7 hard-error guard satisfied)
 - [x] CHANGELOG updated for DE-005 (per-phase entries: P01 tool, P02 sensor, P03 percept rule)
-- [ ] **VH**: `home-manager switch` on Sleipnir — new `(require)` forms load, server starts clean, `content_read` dispatches end-to-end (user-run; sandbox cannot reproduce live host)
-- [ ] Ready for `/audit-change`
+- [x] **VH**: `home-manager switch` on Sleipnir — new `(require)` forms load, server starts clean, `content_read` dispatches end-to-end (user attested 2026-06-03: switch clean, 20 captures returned spanning June 2–3)
+- [x] Ready for `/audit-change`
 
 ## 5. Verification
 
@@ -57,7 +57,7 @@ _(Status: `[ ]` todo, `[WIP]`, `[x]` done, `[blocked]`)_
 | [x] | 4.1 | git add + commit new tracked `.el` (tool/sensor + tests) | [ ] | done in P01–P03 feat commits |
 | [x] | 4.2 | Full `just check` green | [ ] | 961/970, 0 unexpected (2026-06-03) |
 | [x] | 4.3 | CHANGELOG DE-005 entries | [ ] | per-phase P01/P02/P03 entries present |
-| [ ] | 4.4 | **VH** `home-manager switch` on Sleipnir + live `content_read` dispatch | [ ] | user-run; gates close |
+| [x] | 4.4 | **VH** `home-manager switch` on Sleipnir + live `content_read` dispatch | [ ] | user attested: clean switch, 20 captures (Jun 2–3) |
 
 ### Task Details
 
@@ -80,6 +80,11 @@ _(Status: `[ ]` todo, `[WIP]`, `[x]` done, `[blocked]`)_
 - `2026-06-03` — P04 full-suite gate was blocked by unrelated DE-009 WIP; chose to
   pause rather than entangle deltas (user decision). DE-009 then completed; suite
   green on re-measure. `home-manager switch` assigned to user as VH (live host).
+- `2026-06-03` — VH switch attested: clean `home-manager switch` on Sleipnir;
+  live `content_read` returned 20 captures spanning Jun 2–3 (paginated metadata,
+  no bodies unless fetched by hash). New requires loaded, server clean, R7
+  description-file guard exercised (tool dispatched without crash). P04 done →
+  DE-005 ready for `/audit-change`.
 
 ## 10. Findings / Research Notes
 
@@ -90,7 +95,7 @@ _(Status: `[ ]` todo, `[WIP]`, `[x]` done, `[blocked]`)_
 
 ## 11. Wrap-up Checklist
 
-- [x] Exit criteria satisfied (except VH switch 4.4)
-- [x] Verification evidence stored (suite run in §5)
-- [ ] Spec/Delta/Plan updated with lessons (IP progress flipped on 4.4 close)
-- [ ] Hand-off: after VH switch, run `/audit-change` (AUD for DE-005)
+- [x] Exit criteria satisfied (VH switch 4.4 attested 2026-06-03)
+- [x] Verification evidence stored (suite run §5; live dispatch §9)
+- [x] Spec/Delta/Plan updated with lessons (IP progress flipped on 4.4 close)
+- [x] Hand-off: run `/audit-change` (AUD for DE-005)
