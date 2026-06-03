@@ -170,12 +170,19 @@ Signals if a scheduled run is live (DEC-8 mutual exclusion)."
           (time-now (format-time-string dl-satan-run--iso-time-format start-time))
           (run-dir (dl-satan-run-dir-for-id run-id))
           (manifest
-            (list :mode "interactive"
-              :run_id run-id
-              :tools (cl-loop for name in (dl-satan-mcp--interactive-tools)
-                       for spec = (dl-satan-tool-lookup name)
-                       when spec
-                       collect (dl-satan-tool-json-schema spec))))
+            (condition-case err
+                (list :mode "interactive"
+                  :run_id run-id
+                  :tools (cl-loop for name in (dl-satan-mcp--interactive-tools)
+                           for spec = (dl-satan-tool-lookup name)
+                           when spec
+                           collect (condition-case inner-err
+                                       (dl-satan-tool-json-schema spec)
+                                     (error
+                                      (error "SATAN MCP: schema failed for tool %s: %s"
+                                             name (error-message-string inner-err))))))
+              (error
+               (error "SATAN MCP: manifest build failed — %s" (error-message-string err)))))
           (bundle (list :run_id run-id
                     :mode "interactive"
                     :prompt "interactive MCP session (DEC-6: no satan_final in A)"
