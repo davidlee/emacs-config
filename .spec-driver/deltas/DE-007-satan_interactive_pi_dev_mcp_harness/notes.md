@@ -276,3 +276,125 @@ correct, audit integration thorough, POL-001 trust boundary respected.
 - **F10 Sentinel `broken` event** — matched in regex but `make-network-process`
   doesn't emit it (pipe-only). Harmless dead code; the `deleted` branch covers
   network disconnection.
+
+---
+
+## Phase 4 — DESIGNED, not yet planned (2026-06-03)
+
+### What this phase is
+
+Interactive **boot context**: feed pi the per-session orientation capsule
+(now / attributes / percept / attention / resonance / motive / sensors) that
+batch runs get via `bundle.json`, which the interactive session currently
+lacks. `.pi/SYSTEM.md` is static persona only (built by the `~/notes` justfile
+`build-system-prompt`: `cat scaffold.txt + interactive.txt`).
+
+### Design decisions (DR-007 §3a + DEC-13) — locked with user
+
+- **Delivery**: MCP read tool `satan_boot_context`; SYSTEM.md instructs pi to
+  call it on first turn. Rejected: cat-ing live percept into SYSTEM.md at launch
+  (freezes orientation, couples justfile to Emacs state).
+- **Content**: full rendered parity — all 7 blocks.
+- **Build-depth β**: build the 7 rendered blocks fresh, but SKIP autonomous
+  telemetry (`observer-process`, `sensor-alerts-check` notifications,
+  curiosity/content/wpm probes). A human boot fires no desktop notifications.
+- **Assembly (Option 1 — DRY)**: extract `dl-satan-run-assemble-context`
+  (percept-build+persist, resonance-derive, motive-read, sensor_status) shared
+  by `broker--spawn` and a new `dl-satan-context-interactive` context-fn.
+  Renders via existing `dl-satan-context--render-prompt` with `assembled=""`.
+
+### Codex (gpt-5.5) external review — 8 findings, ALL integrated into DR/DE
+
+- **F1** (was a real DR error): `memory_resonate` is **read-only v1** (no state
+  mutation — `dl-satan-memory-store.el:14`, design §6.4). Boot records NO
+  activation write. The earlier "accepted write / pure-derive split" framing is
+  deleted/moot.
+- **F4**: assembler must NOT go in `dl-satan-run.el` — that module is
+  deliberately zero-heavy-deps (`cl-lib`/`subr-x` only). Put it in
+  `dl-satan-context.el` or new `dl-satan-context-assemble.el`.
+- **F3**: `mint-session` freezes `:time_now` at connect (`dl-satan-mcp.el:149`);
+  boot build must stamp a **fresh `current-time`**, not reuse session time_now.
+- **F2**: instruction-only delivery is fail-open → per-session capsule **cache**
+  + explicit `refresh` arg; re-call must not silently rebuild/overwrite
+  `percept.json`.
+- **F5**: add `VT-broker-spawn-integration` (call-order + final prepare keys +
+  artifacts) — the real regression net for the extraction.
+- **F7**: build runs in the USER'S live Emacs → graceful-degrade (postgres-down
+  → resonance block self-suppresses, capsule still renders, no errored call).
+- **F8**: fixed §5 doc contradiction (missing-description = fatal, not skipped).
+- **F6 — LATENT DEFECT surfaced**: the DEC-8 mutual-exclusion guard is
+  **vacuous**. `dl-satan-broker--spawn-running` is only ever READ
+  (`dl-satan-mcp.el:146,376`), **never set** by `broker--spawn`. So the session
+  never actually refuses while a scheduled run is live, and nothing stops the
+  scheduler spawning mid-session. **Phase 4 must actually implement DEC-8**
+  (R11) — DEC-13 reentrancy safety depends on it.
+
+### Phase 4 scope (carry into plan-phases)
+
+1. **R11 / DEC-8 (prerequisite)**: set/clear `dl-satan-broker--spawn-running`
+   around `broker--spawn` (unwind-protect/sentinel) + a session-active flag the
+   scheduler checks; test exclusion both directions.
+2. **R10**: extract `assemble-context` behaviour-preservingly; pin the exact
+   return contract (which keys it threads vs the caller threads).
+3. `dl-satan-context-interactive` context-fn + register on interactive mode-spec.
+4. `satan_boot_context` tool (read) + handler + capsule cache/refresh +
+   fresh-timestamp build + `satan_boot_context.md` description file (R7).
+5. SYSTEM.md instruction (`~/notes/satan/prompts/interactive.txt`) to call it.
+6. Tests: VT-run-assemble-context, VT-broker-spawn-integration,
+   VT-mcp-boot-context-{render,suppress,sideeffects,degraded}, VH-mcp-boot-live.
+
+### Open questions (DR-007 §8)
+
+- Register `satan_boot_context` globally (inert in batch — leaning yes) vs
+  interactive-only.
+- pi MCP `protocolVersion` negotiation (carried from Phase 3).
+
+### Commit state
+
+- DR-007 + DE-007 revision committed: `8eeffc6`. Worktree clean for DE-007.
+- (Unrelated untracked file present: DE-005 phase-04.md — not this delta.)
+
+---
+
+## New Agent Instructions
+
+- **Task card**: DE-007 (`.spec-driver/deltas/DE-007-satan_interactive_pi_dev_mcp_harness/`).
+  Parent delta + this `notes.md` are the onboarding pair.
+- **Required reading** (in order):
+  - This `notes.md` "Phase 4" + "New Agent Instructions" sections.
+  - `DR-007.md` §3a + DEC-13 + DEC-8/DEC-9 + §5 (verification) + §8 (open Qs)
+    + §9 (rollout: boot latency).
+  - `DE-007.md` O6, risks R9/R10/R11.
+- **Key files** (code, to read before implementing):
+  - `satan/dl-satan-broker.el` ~675–790 (`--spawn` prepare-sequence — extraction source)
+  - `satan/dl-satan-context.el` ~300–420 (`--render-prompt` / context-fn pattern)
+  - `satan/dl-satan-percept.el` ~45–101 (`percept-build` — reads only run_id/time_now)
+  - `satan/dl-satan-resonance.el` (derive — READ-ONLY, stub-injectable)
+  - `satan/dl-satan-mcp.el` (interactive mode reg, `mint-session` :time_now freeze, dispatch)
+  - `satan/dl-satan-run.el` (zero-dep — do NOT put the assembler here)
+  - `~/notes/justfile` (`build-system-prompt`, `hello-satan`), `~/notes/.pi/SYSTEM.md`
+- **Relevant doctrine**: POL-001 (trust boundary stays in Emacs — satisfied:
+  assembly broker-side, tool returns text). DRY / no-parallel-implementation
+  (CLAUDE.md) — drives the Option-1 extraction.
+- **Relevant memory**: `feedback_subagent_worktree_pinning` (pin absolute repo
+  paths in any dispatch subagent prompt).
+- **User decisions (do not relitigate)**: tool-delivery (not SYSTEM.md compose);
+  full-parity content; build-depth β; Option-1 shared extraction; external
+  review via codex MCP (separate billing — ask before re-tapping).
+- **Cross-repo note**: elisp lives in `~/.emacs.d`; prompts/justfile/extension
+  live in `~/notes` (separate repo). Phase 3 already spans both. New `.el` files
+  are invisible to the Nix flake parser until `git add` + `home-manager switch`
+  (AGENTS.md trap 1).
+- **Loose ends / tensions for the next agent to assess (don't skip)**:
+  - R11 (vacuous DEC-8 guard) is a real pre-existing bug, now a Phase-4
+    prerequisite — confirm scope appetite before coding (it may warrant its own
+    backlog issue if the user wants boot-context shipped without it).
+  - R10 extraction contract is the riskiest mechanical step — pin keys first.
+  - Global-vs-interactive-only tool registration still open.
+
+### Next step
+
+Invoke `/using-spec-driver` → route to `/plan-phases` for DE-007 to create the
+Phase 4 IP objectives/gates + `phases/phase-04.md` (note: there is currently no
+phase-03.md; Phase 3 was tracked inline in this notes file). Carry R10/R11 as
+explicit phase gates, not afterthoughts.
