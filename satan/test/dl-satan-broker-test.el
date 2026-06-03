@@ -708,5 +708,85 @@ entirely so untouched runs keep the original four-partition shape."
               (should (equal (plist-get p :tool_calls_done) 7)))))
       (delete-directory dir t))))
 
+;; ── DEC-8 mutual exclusion: producer side (AUD-008 F-001) ──────────────────
+
+(ert-deftest dl-satan-broker/dec8-spawn-running-persists-until-sentinel ()
+  "AUD-008 F-001: `dl-satan-broker--spawn-running' stays t across the live
+async run and is cleared ONLY by the child sentinel — never at the
+synchronous launch return (the original unwind-protect bug)."
+  (let ((dir (make-temp-file "satan-spawn-flag-" t))
+        (dl-satan-broker--spawn-running nil)
+        (dl-satan-hippocampus-dir (make-temp-file "satan-hippo-" t)))
+    (unwind-protect
+        (cl-letf (((symbol-function 'dl-satan-broker--build-manifest)
+                   (lambda (&rest _) '(:manifest t)))
+                  ((symbol-function 'dl-satan-audit-open)
+                   (lambda (&rest _) '(:audit t)))
+                  ((symbol-function 'dl-satan-audit-attach-bundle)
+                   (lambda (&rest _) nil))
+                  ((symbol-function 'dl-satan-audit-record)
+                   (lambda (&rest _) nil))
+                  ((symbol-function 'dl-satan-observer-process)
+                   (lambda (&rest _) nil))
+                  ((symbol-function 'dl-satan-run-assemble-context)
+                   (lambda (prepare &rest _) prepare))
+                  ((symbol-function 'dl-satan-sensor-alerts-check)
+                   (lambda (&rest _) nil))
+                  ((symbol-function 'dl-satan-sensor-curiosity-probe)
+                   (lambda (&rest _) nil))
+                  ((symbol-function 'dl-satan-sensor-content-probe)
+                   (lambda (&rest _) nil))
+                  ((symbol-function 'dl-satan-sensor-wpm-probe)
+                   (lambda (&rest _) nil))
+                  ((symbol-function 'my/scrub-op-refs-env)
+                   (lambda (env) env))
+                  ((symbol-function 'dl-satan-broker--direnv-env)
+                   (lambda (&rest _) nil))
+                  ((symbol-function 'dl-satan-broker--exec-path-from-env)
+                   (lambda (&rest _) exec-path))
+                  ((symbol-function 'dl-satan-broker--update-most-recent)
+                   (lambda (&rest _) nil))
+                  ((symbol-function 'dl-satan-broker--finalize)
+                   (lambda (&rest _) nil)))
+          (let* ((prepare (list :run_id "rid-flag"
+                                :time_now "2026-06-03T00:00:00Z"
+                                :start_time (current-time)))
+                 ;; A real but long-lived child so the run is genuinely "live"
+                 ;; after spawn returns; no :timeout-seconds so no timer.
+                 (mode '(:name "test" :harness (:cmd "sleep" :args ("30"))))
+                 (run-id (dl-satan-broker--spawn mode prepare dir)))
+            (should (equal run-id "rid-flag"))
+            ;; Child still running → flag MUST still be set.  The bug cleared
+            ;; it here, at synchronous return.
+            (should dl-satan-broker--spawn-running)
+            (let ((proc (get-process "satan-rid-flag")))
+              (should (process-live-p proc))
+              ;; Kill it: "killed" event → sentinel finalises + clears flag
+              ;; (regex now matches "killed", AUD-008 F-001).
+              (delete-process proc)
+              (accept-process-output nil 0.3)
+              (sleep-for 0.1)
+              (should-not dl-satan-broker--spawn-running))))
+      (delete-directory dir t)
+      (when (file-directory-p dl-satan-hippocampus-dir)
+        (delete-directory dl-satan-hippocampus-dir t)))))
+
+(ert-deftest dl-satan-broker/dec8-sentinel-clears-flag-on-exit-events ()
+  "AUD-008 F-001: the child sentinel clears `--spawn-running' on every
+terminal event — including \"killed\" (timeout/`delete-process'), which the
+old regex missed."
+  (dolist (event '("finished\n" "exited abnormally with code 1\n"
+                   "killed\n" "broken pipe\n"))
+    (let* ((dl-satan-broker--spawn-running t)
+           (run-ctx (make-dl-satan-run
+                     :id "rid" :mode '(:name "test")
+                     :start-time (current-time) :dir "/tmp"
+                     :status 'running :audit '(:audit t)))
+           (sentinel (dl-satan-broker--make-sentinel run-ctx)))
+      (cl-letf (((symbol-function 'dl-satan-audit-record) (lambda (&rest _) nil))
+                ((symbol-function 'dl-satan-broker--finalize) (lambda (&rest _) nil)))
+        (funcall sentinel nil event))
+      (should-not dl-satan-broker--spawn-running))))
+
 (provide 'dl-satan-broker-test)
 ;;; dl-satan-broker-test.el ends here

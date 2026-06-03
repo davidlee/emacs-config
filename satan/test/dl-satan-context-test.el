@@ -623,5 +623,38 @@ rest under :dropped-files."
        (should (< i-now i-today))
        (should (< i-today i-source))))))
 
+;; ── interactive boot capsule (DEC-13, AUD-008 F-003/F-004/F-005) ───────────
+
+(ert-deftest dl-satan-context/interactive-does-not-mutate-run-ctx ()
+  "AUD-008 F-004: `dl-satan-context-interactive' must not clobber the
+caller's session-frozen `:time_now' (or inject assembly keys into it)."
+  (let ((run-ctx (list :run_id "rid" :time_now "FROZEN-SESSION-TIME")))
+    (cl-letf (((symbol-function 'dl-satan-run-dir-for-id) (lambda (_) "/tmp"))
+              ((symbol-function 'dl-satan-run-assemble-context)
+               (lambda (prepare &rest _) prepare))
+              ((symbol-function 'dl-satan-attribute-snapshot) (lambda (&rest _) nil)))
+      (dl-satan-context-interactive '(:name "interactive") run-ctx)
+      (should (equal (plist-get run-ctx :time_now) "FROZEN-SESSION-TIME"))
+      ;; assembly keys must not have leaked onto the caller's plist
+      (should-not (plist-member run-ctx :percept))
+      (should-not (plist-member run-ctx :resonance)))))
+
+(ert-deftest dl-satan-context/interactive-degrades-on-assembly-failure ()
+  "AUD-008 F-003/F-005: an assembly backend failure yields a partial capsule
+string rather than erroring the session."
+  (let ((run-ctx (list :run_id "rid" :time_now "FROZEN")))
+    (cl-letf (((symbol-function 'dl-satan-run-dir-for-id) (lambda (_) "/tmp"))
+              ((symbol-function 'dl-satan-run-assemble-context)
+               (lambda (&rest _) (error "backend unreachable")))
+              ((symbol-function 'dl-satan-attribute-snapshot) (lambda (&rest _) nil)))
+      (let ((bundle (dl-satan-context-interactive '(:name "interactive") run-ctx)))
+        ;; Did not error; produced a rendered prompt string.
+        (should (stringp (plist-get bundle :prompt)))
+        ;; Degraded resonance recorded.
+        (should (eq 'memory-unreachable
+                    (plist-get (plist-get bundle :resonance) :status)))
+        ;; Session-frozen time preserved (F-004 holds on the degraded path too).
+        (should (equal (plist-get run-ctx :time_now) "FROZEN"))))))
+
 (provide 'dl-satan-context-test)
 ;;; dl-satan-context-test.el ends here

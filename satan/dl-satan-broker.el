@@ -552,7 +552,7 @@ log line and notification body."
 
 (defun dl-satan-broker--make-sentinel (run-ctx)
   (lambda (_proc event)
-    (when (string-match-p "\\(finished\\|exited\\|signal\\|broken\\)" event)
+    (when (string-match-p "\\(finished\\|exited\\|signal\\|broken\\|killed\\|deleted\\)" event)
       (let ((tt (dl-satan-run-timeout-timer run-ctx)))
         (when tt (cancel-timer tt)))
       (dl-satan-audit-record (dl-satan-run-audit run-ctx) 'broker 'child-exit
@@ -698,11 +698,11 @@ PREPARE is the run_ctx plist returned by `dl-satan-broker--prepare'
 (carries the frozen run_id + time_now and v0 placeholder slots).
 Returns the run-id."
   ;; DEC-8: set the mutual-exclusion flag so the MCP server refuses new
-  ;; sessions while this scheduled run is live.  Cleared via unwind-protect
-  ;; on the synchronous path and also by the process sentinel on async
-  ;; completion/error so a crashed run does not permanently block sessions.
+  ;; sessions while this scheduled run is live.  Cleared by the child
+  ;; sentinel on exit (`dl-satan-broker--make-sentinel') and by this
+  ;; function's error handler if the synchronous launch itself throws.
   (setq dl-satan-broker--spawn-running t)
-  (unwind-protect
+  (condition-case err
       (let* ((run-id (plist-get prepare :run_id))
          (bundle-path (expand-file-name "bundle.json" dir))
          (stdout-log (expand-file-name "stdout.log" dir))
@@ -874,11 +874,15 @@ Returns the run-id."
              (funcall existing p e)
              (when (buffer-live-p stderr-buf) (kill-buffer stderr-buf)))))
         run-id))))
-    ;; DEC-8 unwind-protect cleanup: clear the mutual-exclusion flag
-    ;; on the synchronous path.  The sentinel also clears it for the
-    ;; async completion path so a crashed process does not leave the
-    ;; flag set permanently.
-    (setq dl-satan-broker--spawn-running nil)))
+    ;; DEC-8 (AUD-008 F-001): the flag must persist for the *live* run, not
+    ;; just the synchronous launch window.  make-process is async, so the only
+    ;; correct clear points are the child sentinel (normal/abnormal/killed
+    ;; exit — see `dl-satan-broker--make-sentinel') and this error handler,
+    ;; which fires only if the synchronous launch throws before a sentinel is
+    ;; attached, so a failed launch cannot leave the flag stuck.
+    (error
+     (setq dl-satan-broker--spawn-running nil)
+     (signal (car err) (cdr err)))))
 
 (provide 'dl-satan-broker)
 ;;; dl-satan-broker.el ends here

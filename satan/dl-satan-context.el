@@ -16,6 +16,9 @@
 (require 'dl-satan-attribute-render)
 
 (defvar dl-satan-runs-dir)              ; defined in dl-satan-broker.el
+(defvar dl-satan-run--iso-time-format)  ; defconst in dl-satan-run.el
+(declare-function dl-satan-run-dir-for-id "dl-satan-run"
+                  (run-id &optional runs-dir))
 
 ;; ── Shared assembly core (DEC-13, Phase 4) ─────────────────────────────────
 
@@ -575,25 +578,43 @@ and (e.g.) recommend a narrower mode or a targeted read."
   "Context-fn for the interactive MCP mode (DEC-13, Phase 4).
 Builds the dynamic orientation capsule at build-depth β:
 percept/resonance/motive/sensor_status/attributes rendered via
-`dl-satan-context--render-prompt' with `assembled=""' (no persona
-scaffold — the system prompt is already in pi's SYSTEM.md).
+`dl-satan-context--render-prompt' with an empty assembled string (no
+persona scaffold — the system prompt is already in pi's SYSTEM.md).
 
 RUN-CTX is the session's prepare plist (carries run_id, time_now).
 The `# Now' block is stamped with a fresh `current-time', not the
 frozen session time_now (F3).  Percept is built onto the run-dir
 from the session prepare.
 
+RUN-CTX is NOT mutated (AUD-008 F-004): a copy carries the fresh
+time_now and the assembly keys, so the caller's session-frozen
+time_now is preserved.
+
+Gracefully degrades (AUD-008 F-003): if assembly fails (e.g. backend
+unreachable), renders a partial capsule with `:percept' nil and a
+`memory-unreachable' resonance rather than erroring the session.  This
+is the single source of the interactive boot capsule — the MCP
+boot-context tool delegates here.
+
 Returns the bundle plist with `:prompt' set to the rendered text."
   (let* ((now-time (current-time))
          (run-id (plist-get run-ctx :run_id))
-         ;; Build with fresh time for the # Now block (F3)
-         (prepare (plist-put run-ctx :time_now
-                             (format-time-string
-                              dl-satan-run--iso-time-format now-time)))
          ;; Resolve the session run directory from run-id
          (dir (dl-satan-run-dir-for-id run-id))
-         ;; Build the dynamic blocks (percept/resonance/motive/sensor_status)
-         (prepare (dl-satan-run-assemble-context prepare mode-spec dir))
+         ;; Copy before mutating: fresh time for the # Now block (F3) must
+         ;; not clobber the session's frozen time_now (AUD-008 F-004).
+         (prepare (plist-put (copy-sequence run-ctx) :time_now
+                             (format-time-string
+                              dl-satan-run--iso-time-format now-time)))
+         ;; Build the dynamic blocks (percept/resonance/motive/sensor_status),
+         ;; degrading to a partial capsule on backend failure.
+         (prepare (condition-case _err
+                      (dl-satan-run-assemble-context prepare mode-spec dir)
+                    (error
+                     (plist-put
+                      (plist-put prepare :percept nil)
+                      :resonance (list :status 'memory-unreachable
+                                       :cue nil :matches nil)))))
          (bundle (list :prompt     ""
                        :mode       (plist-get mode-spec :name)
                        :now        (dl-satan-context-now now-time))))

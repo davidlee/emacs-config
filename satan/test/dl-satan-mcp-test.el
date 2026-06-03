@@ -509,5 +509,33 @@ client process."
      (should-not dl-satan-mcp--session-active)
      (dl-satan-mcp-test--stop))))
 
+(ert-deftest dl-satan-mcp/boot-context-caches-per-session ()
+  "AUD-008 F-002/F-003: boot-context serves the per-session cache on a second
+call and delegates capsule building to `dl-satan-context-interactive'.
+`:refresh' forces a rebuild."
+  (let* ((calls 0)
+         (session (make-dl-satan-mcp-session
+                   :run-id "rid" :run-dir "/tmp"
+                   :prepare '(:run_id "rid") :boot-cache nil))
+         (dl-satan-mcp--current-session session))
+    (cl-letf (((symbol-function 'dl-satan-mode-resolve)
+               (lambda (&rest _) '(:name "interactive")))
+              ((symbol-function 'dl-satan-context-interactive)
+               (lambda (&rest _)
+                 (setq calls (1+ calls))
+                 (list :prompt (format "capsule-%d" calls)))))
+      ;; First call builds.
+      (should (equal (dl-satan-mcp-tool/boot-context nil nil)
+                     '(ok . "capsule-1")))
+      (should (= calls 1))
+      ;; Second call without :refresh → served from cache, no rebuild.
+      (should (equal (dl-satan-mcp-tool/boot-context nil nil)
+                     '(ok . "capsule-1")))
+      (should (= calls 1))
+      ;; :refresh forces a rebuild.
+      (should (equal (dl-satan-mcp-tool/boot-context '(:refresh t) nil)
+                     '(ok . "capsule-2")))
+      (should (= calls 2)))))
+
 (provide 'dl-satan-mcp-test)
 ;;; dl-satan-mcp-test.el ends here

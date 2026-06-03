@@ -355,34 +355,21 @@ does not error the session)."
   (let* ((session dl-satan-mcp--current-session)
          (refresh (plist-get args :refresh))
          (cached (dl-satan-mcp-session-boot-cache session)))
-    (when (and cached (not refresh))
-      (cons 'ok cached))
-    ;; Load dl-satan-context at runtime (heavy deps)
-    (require 'dl-satan-context)
-    (let* ((mode (dl-satan-mode-resolve "interactive"))
-           (prepare (dl-satan-mcp-session-prepare session))
-           (now-time (current-time))
-           (run-id (dl-satan-mcp-session-run-id session))
-           (dir (dl-satan-mcp-session-run-dir session))
-           (prepare (plist-put prepare :time_now
-                               (format-time-string
-                                dl-satan-run--iso-time-format now-time)))
-           (prepare (condition-case _err
-                        (dl-satan-run-assemble-context prepare mode dir)
-                      (error
-                       (plist-put
-                        (plist-put prepare :percept nil)
-                        :resonance (list :status 'memory-unreachable
-                                         :cue nil :matches nil)))))
-           (bundle (list :prompt ""
-                         :mode "interactive"
-                         :now (dl-satan-context-now now-time)))
-           (text (dl-satan-context--finalize-prompt
-                  (dl-satan-context--with-prepare bundle prepare)
-                  ""))
-           (text (plist-get text :prompt)))
-      (setf (dl-satan-mcp-session-boot-cache session) text)
-      (cons 'ok text))))
+    (if (and cached (not refresh))
+        ;; Serve the per-session cache (AUD-008 F-002: real early return).
+        (cons 'ok cached)
+      ;; Load dl-satan-context at runtime (heavy deps).
+      (require 'dl-satan-context)
+      ;; Delegate to the single capsule builder (AUD-008 F-003) — it copies
+      ;; the session prepare (F-004) and gracefully degrades on backend
+      ;; failure.
+      (let* ((mode (dl-satan-mode-resolve "interactive"))
+             (prepare (dl-satan-mcp-session-prepare session))
+             (bundle (dl-satan-context-interactive mode prepare))
+             (text (plist-get bundle :prompt)))
+        (setf (dl-satan-mcp-session-boot-cache session) text)
+        (cons 'ok text)))))
+
 (defun dl-satan-mcp--filter (proc chunk)
   "Accumulate CHUNK, dispatch each complete newline-delimited JSON-RPC line."
   (let* ((session (process-get proc 'dl-satan-mcp-session))
