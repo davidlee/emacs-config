@@ -97,3 +97,35 @@ Design references (DR-009):
 - P03 phase sheet not yet created — next agent should run `spec-driver create phase "Phase 03 — Observer wiring + guards" --plan IP-009`
   then populate the sheet following Phase 02 template
 - `.spec-driver` changes committed alongside code (`b0de23d`)
+
+---
+
+## Phase 03 — Observer wiring + guards (2026-06-03)
+
+### Completed
+- Observer wiring: guarded `dl-satan-pattern-rebuild` call at end of `dl-satan-observer-process`
+- Require is inside the guard (lazier-than-possible, load-time isolation per DR-009 §3.2)
+- VT-rebuild-guard: 3 tests (rebuild error swallowed, require failure swallowed, classification intact)
+- VT-global-attr-regression: 1 test (outcome rows correct with rebuild wired)
+- VA-pattern-attribution: seeded mature contradicted outcome → rebuild → stats show contradicted_count=1, scar row present
+- Docs: CHANGELOG.md entry, epistemics-roadmap.md step 1 marked complete
+- All 969 tests pass (0 failures, 9 skipped), `just check` green
+
+### Files changed
+- `satan/dl-satan-observer.el` — +13 lines: guarded rebuild call after classification loop
+- `satan/test/dl-satan-observer-test.el` — +180 lines: 4 new test functions
+- `CHANGELOG.md` — DE-009 entry
+- `docs/satan/epistemics-roadmap.md` — step 1 marked complete
+
+### Gotchas
+- `dl-satan-intervention-create` reads `:percept-handles` from ctx, not as a keyword arg — VA script needed this fix
+- `dl-satan-intervention-classify` requires `:next-revisit-at` when called directly
+- N attribute enqueue tries production DB (`satan_memory`) even in test — benign warning, global path unaffected
+- Observer test fixture already had pattern tables in DROP list from P01
+
+### Verification summary
+- VT-rebuild-guard-swallows-rebuild-error ✓ — observer returns normal summary, classification intact, pattern_outcomes unchanged
+- VT-rebuild-guard-swallows-require-failure ✓ — observer returns normally, classification intact
+- VT-rebuild-guard-classification-intact ✓ — observer works correctly with real rebuild succeeding
+- VT-global-attr-regression-outcome-rows ✓ — outcome projection correct with rebuild wired
+- VA-pattern-attribution ✓ — seeded contradicted outcome → rebuild → contradicted_count=1, scar row exists

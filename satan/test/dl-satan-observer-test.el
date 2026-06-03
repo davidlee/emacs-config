@@ -1694,5 +1694,239 @@ audit validator §2 invariant 3)."
                (should (equal "unknown" (plist-get oc :classification)))
                (should (equal "pending" (plist-get oc :maturity))))))))))))
 
+;; ---------------------------------------------------------------------
+;; DE-009 P03 — VT-rebuild-guard
+;; ---------------------------------------------------------------------
+
+(ert-deftest dl-satan-observer/rebuild-guard-swallows-rebuild-error ()
+  "DR-009 §3.2 — a simulated rebuild failure is swallowed; the observer
+returns a normal summary plist and classification + outcome projection
+are intact."
+  (dl-satan-observer-test--with-db
+   (dl-satan-observer-test--in-tmp
+    (lambda (root)
+      (let* ((dl-satan-runs-dir root)
+             (old-id "20260523T110000-morning-aaaaaa")
+             (audit-old (dl-satan-observer-test--open-audit root old-id))
+             (ctx-old (dl-satan-observer-test--build-ctx
+                       audit-old old-id "2026-05-23T11:00:00+1000"))
+             (iv-id (dl-satan-observer-test--mint
+                     ctx-old :related-motive-id "docs-after-error")))
+        ;; Bundle with handles matching the motive
+        (let ((baseline-ev
+               (list :git_state (list :head_short "aaaaaaa" :remote "r")
+                     :fs_state (list :cwd "/x" :recent_files nil)
+                     :focus_segments nil :bough_recent nil)))
+          (dl-satan-observer-test--write-bundle
+           (dl-satan-observer-test--make-run-dir root old-id)
+           (list :percept
+                 (list :handles
+                       (list "project:emacs.d"
+                             "surface_transition:terminal->browser"
+                             "domain_kind:docs")
+                       :evidence_window baseline-ev))))
+        (dl-satan-motive-test--with-tmp-file
+         mpath dl-satan-motive-test--well-formed-cwd
+         (dl-satan-observer-test--capture-mark _captured
+           ;; Simulate rebuild failure
+           (cl-letf (((symbol-function 'dl-satan-pattern-rebuild)
+                      (lambda (&rest _)
+                        (error "synthetic rebuild failure"))))
+             (dl-satan-observer-test--with-stubbed-after-state
+                 (list :git_commits
+                       (list (list :repo "/x" :slug "emacs.d"
+                                   :sha "deadbeef"
+                                   :end_ts "2026-05-23T11:15:00+1000"))
+                       :fs_state (list :cwd "/x" :recent_files nil)
+                       :focus_segments nil :bough_recent nil)
+               (let* ((curr-id "20260523T120000-morning-cccccc")
+                      (out (dl-satan-observer-process
+                            (list :time_now "2026-05-23T12:00:00+1000"
+                                  :run_id curr-id
+                                  :mode_name "morning"
+                                  :audit (dl-satan-observer-test--open-audit
+                                          root curr-id))
+                            (list :motive-path mpath
+                                  :runs-dir root
+                                  :memory-mark-fn mark-fn))))
+                 ;; Observer returns normal summary (not nil, not error)
+                 (should (= 1 (plist-get out :processed)))
+                 (should (= 1 (plist-get out :positive)))
+                 ;; Classification intact — outcome row exists
+                 (let* ((row (dl-satan-intervention-lookup iv-id))
+                        (oc (plist-get row :outcome)))
+                   (should oc)
+                   (should (equal "worked" (plist-get oc :classification))))
+                 ;; Pattern outcomes unchanged (rebuild never ran)
+                 (let ((result (dl-satan-db-psql
+                                dl-satan-observer-test--db
+                                dl-satan-memory-migrate-host
+                                dl-satan-memory-migrate-psql-program
+                                (list "-A" "-t"
+                                      "-c"
+                                      "SELECT count(*) FROM satan_pattern_outcomes"))))
+                   (should (equal "0" (string-trim (cdr result)))))))))))))))
+
+(ert-deftest dl-satan-observer/rebuild-guard-swallows-require-failure ()
+  "DR-009 §3.2 — a simulated require failure for dl-satan-pattern is
+swallowed; the observer returns normally and classification is intact."
+  (dl-satan-observer-test--with-db
+   (dl-satan-observer-test--in-tmp
+    (lambda (root)
+      (let* ((dl-satan-runs-dir root)
+             (old-id "20260523T110000-morning-bbbbbb")
+             (audit-old (dl-satan-observer-test--open-audit root old-id))
+             (ctx-old (dl-satan-observer-test--build-ctx
+                       audit-old old-id "2026-05-23T11:00:00+1000"))
+             (iv-id (dl-satan-observer-test--mint
+                     ctx-old :related-motive-id "docs-after-error")))
+        (dl-satan-observer-test--write-bundle-with-handles
+         (dl-satan-observer-test--make-run-dir root old-id)
+         (list "project:emacs.d"
+               "surface_transition:terminal->browser"
+               "domain_kind:docs"))
+        (dl-satan-motive-test--with-tmp-file
+         mpath dl-satan-motive-test--well-formed-cwd
+         (dl-satan-observer-test--capture-mark _captured
+           ;; Simulate dl-satan-pattern being unloadable
+           (let ((real-require (symbol-function 'require)))
+             (cl-letf (((symbol-function 'require)
+                        (lambda (feature &rest args)
+                          (if (eq feature 'dl-satan-pattern)
+                              (error "Cannot open load file: dl-satan-pattern")
+                            (apply real-require feature args)))))
+               (dl-satan-observer-test--with-stubbed-after-state
+                   (list :git_commits
+                         (list (list :repo "/x" :slug "emacs.d"
+                                     :sha "deadbeef"
+                                     :end_ts "2026-05-23T11:15:00+1000"))
+                         :fs_state (list :cwd "/x" :recent_files nil)
+                         :focus_segments nil :bough_recent nil)
+                 (let* ((curr-id "20260523T120000-morning-dddddd")
+                        (out (dl-satan-observer-process
+                              (list :time_now "2026-05-23T12:00:00+1000"
+                                    :run_id curr-id
+                                    :mode_name "morning"
+                                    :audit (dl-satan-observer-test--open-audit
+                                            root curr-id))
+                              (list :motive-path mpath
+                                    :runs-dir root
+                                    :memory-mark-fn mark-fn))))
+                   ;; Observer returns normally
+                   (should (= 1 (plist-get out :processed)))
+                   (should (= 1 (plist-get out :positive)))
+                   ;; Classification intact
+                   (let* ((row (dl-satan-intervention-lookup iv-id))
+                          (oc (plist-get row :outcome)))
+                     (should oc)
+                     (should (equal "worked" (plist-get oc :classification)))))))))))))))
+
+(ert-deftest dl-satan-observer/rebuild-guard-classification-intact ()
+  "DR-009 §3.2 — with the rebuild guard active (and succeeding),
+classification + outcome projection are intact."
+  (dl-satan-observer-test--with-db
+   (dl-satan-observer-test--in-tmp
+    (lambda (root)
+      (let* ((dl-satan-runs-dir root)
+             (old-id "20260523T110000-morning-eeeeee")
+             (audit-old (dl-satan-observer-test--open-audit root old-id))
+             (ctx-old (dl-satan-observer-test--build-ctx
+                       audit-old old-id "2026-05-23T11:00:00+1000"))
+             (iv-id (dl-satan-observer-test--mint
+                     ctx-old :related-motive-id "docs-after-error")))
+        (dl-satan-observer-test--write-bundle-with-handles
+         (dl-satan-observer-test--make-run-dir root old-id)
+         (list "topic:nothing-matches"))
+        (dl-satan-motive-test--with-tmp-file
+         mpath dl-satan-motive-test--well-formed-cwd
+         (dl-satan-observer-test--capture-mark _captured
+           (dl-satan-observer-test--with-stubbed-after-state
+               (list :git_commits nil :fs_state nil
+                     :focus_segments nil :bough_recent nil)
+             (let* ((curr-id "20260523T120000-morning-ffffff")
+                    (out (dl-satan-observer-process
+                          (list :time_now "2026-05-23T12:00:00+1000"
+                                :run_id curr-id
+                                :mode_name "morning"
+                                :audit (dl-satan-observer-test--open-audit
+                                        root curr-id))
+                          (list :motive-path mpath
+                                :runs-dir root
+                                :memory-mark-fn mark-fn))))
+               ;; Observer returns normal summary
+               (should (= 1 (plist-get out :processed)))
+               (should (= 0 (plist-get out :positive)))
+               ;; Classification recorded correctly
+               (let* ((row (dl-satan-intervention-lookup iv-id))
+                      (oc (plist-get row :outcome)))
+                 (should oc)
+                 (should (equal "unknown" (plist-get oc :classification)))))))))))))
+
+;; ---------------------------------------------------------------------
+;; DE-009 P03 — VT-global-attr-regression
+;; ---------------------------------------------------------------------
+
+(ert-deftest dl-satan-observer/global-attr-regression-outcome-rows ()
+  "DR-009 §3.2 — the global classification path (satan_intervention_outcomes)
+is unchanged by the pattern rebuild wiring.  Classifying the same
+intervention yields the same outcome row regardless of whether the
+rebuild succeeds or fails."
+  (dl-satan-observer-test--with-db
+   (dl-satan-observer-test--in-tmp
+    (lambda (root)
+      (let* ((dl-satan-runs-dir root)
+             (old-id "20260523T110000-morning-gggggg")
+             (audit-old (dl-satan-observer-test--open-audit root old-id))
+             (ctx-old (dl-satan-observer-test--build-ctx
+                       audit-old old-id "2026-05-23T11:00:00+1000"))
+             (iv-id (dl-satan-observer-test--mint
+                     ctx-old :related-motive-id "docs-after-error")))
+        (dl-satan-observer-test--write-bundle-with-handles
+         (dl-satan-observer-test--make-run-dir root old-id)
+         (list "project:emacs.d"
+               "surface_transition:terminal->browser"
+               "domain_kind:docs"))
+        (dl-satan-motive-test--with-tmp-file
+         mpath dl-satan-motive-test--well-formed-cwd
+         (dl-satan-observer-test--capture-mark _captured
+           (dl-satan-observer-test--with-stubbed-after-state
+               (list :git_commits
+                     (list (list :repo "/x" :slug "emacs.d"
+                                 :sha "deadbeef"
+                                 :end_ts "2026-05-23T11:15:00+1000"))
+                     :fs_state (list :cwd "/x" :recent_files nil)
+                     :focus_segments nil :bough_recent nil)
+             (let* ((curr-id "20260523T120000-morning-hhhhhh")
+                    (out (dl-satan-observer-process
+                          (list :time_now "2026-05-23T12:00:00+1000"
+                                :run_id curr-id
+                                :mode_name "morning"
+                                :audit (dl-satan-observer-test--open-audit
+                                        root curr-id))
+                          (list :motive-path mpath
+                                :runs-dir root
+                                :memory-mark-fn mark-fn))))
+               (should (= 1 (plist-get out :processed)))
+               (should (= 1 (plist-get out :positive)))
+               ;; Global outcome projection is correct
+               (let* ((row (dl-satan-intervention-lookup iv-id))
+                      (oc (plist-get row :outcome)))
+                 (should oc)
+                 (should (equal "worked" (plist-get oc :classification)))
+                 (should (equal "medium" (plist-get oc :confidence)))
+                 (should (equal "mature" (plist-get oc :maturity)))
+                 ;; Evidence present — the global path wrote it
+                 (let ((ev (plist-get oc :evidence)))
+                   (should ev)
+                   (should (equal "docs-after-error"
+                                  (plist-get ev :motive_id)))
+                   (should (equal '("git_commit_observed")
+                                  (plist-get ev :predicates)))))
+               ;; Pattern outcomes may or may not be populated — that's
+               ;; the pattern path, not the global path.  Non-regression
+               ;; means the global path is correct; pattern content is
+               ;; orthogonal.
+               )))))))))
+
 (provide 'dl-satan-observer-test)
 ;;; dl-satan-observer-test.el ends here

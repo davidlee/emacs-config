@@ -448,6 +448,20 @@ Returns a summary plist for audit visibility:
                      :run_id (plist-get iv :run_id)
                      :error (error-message-string err))
                verdicts))))
+    ;; Pattern rebuild — guarded, isolated from the classification path.
+    ;; Runs AFTER all verdicts are classified and persisted (including the
+    ;; global-attribute enqueue inside `dl-satan-intervention-classify').
+    ;; DR-009 §3.2: a broken pattern subsystem degrades to stale pattern
+    ;; stats; it cannot abort the tick or block classification.  The
+    ;; `require' is inside the guard so a load-time error never propagates
+    ;; into the observer's classification path.
+    (condition-case err
+        (progn
+          (require 'dl-satan-pattern)
+          (dl-satan-pattern-rebuild db))
+      (error
+       (message "dl-satan-observer: pattern rebuild failed: %s"
+                (error-message-string err))))
     (list :processed (length pending)
           :positive positive
           :verdicts (nreverse verdicts))))

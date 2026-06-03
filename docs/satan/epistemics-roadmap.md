@@ -89,5 +89,12 @@ render state without testing anything (§15 dashboard death).
 
 ## Tracking
 
-- DE-009 — pattern records + scars (step 1).
-- Steps 2–3 (probe, hypothesis) — not yet scoped; file as deltas when step 1 lands.
+- [x] DE-009 — pattern records + scars (step 1). **Complete 2026-06-03.**
+  - Pattern definitions in `satan/patterns.eld` (3 seed patterns, grammar-validated sync)
+  - Immutable percept-handle snapshots stamped on every intervention
+  - Containment-based rebuild projection (`satan_pattern_outcomes` + `satan_pattern_stats` view)
+  - Guarded/isolated rebuild at observer tick end (structural non-regression of global path)
+  - Delivered in 3 phases: P01 schema+snapshot, P02 definitions+rebuild, P03 observer wiring+guards
+- Steps 2–3 (probe, hypothesis) — not yet scoped; file as deltas now that step 1 has landed.
+  - Probe record can ride `inbox_append` with recognizable format initially
+  - Hypothesis board needs pattern handles + probe outcomes; DE-009 unblocks both

@@ -2,6 +2,44 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-06-03 — DE-009: SATAN pattern records and scars — outcome-linked pattern-local learning
+
+SATAN's outcome observer now accrues counters and scars against curated
+*pattern* definitions — the missing epistemic half of outcome learning.
+Each intervention carries an immutable snapshot of the percept handles
+present when it fired; at tick end, a guarded SQL projection rebuild
+attributes every mature outcome to the patterns whose cue-shape was
+contained in that snapshot.
+
+### Changes
+
+- `satan/memory/migrations/0007_patterns.sql` — `satan_patterns` (curated
+definitions), `satan_pattern_outcomes` (rebuildable projection),
+`satan_pattern_stats` view; `satan_interventions.percept_handles_json`
+column with GIN index for JSONB containment matching
+- `satan/patterns.eld` — 3 seed pattern definitions, grammar-validated
+- `satan/dl-satan-pattern.el` — parse/sync (idempotent, grammar-validated),
+containment-join rebuild (single tx + advisory lock, mature/non-unknown
+only, head-only), read accessors (`stats`, `list`, `scars`)
+- `satan/dl-satan-intervention.el` — stamps `percept_handles_json` from
+tool-ctx at `intervention.created`
+- `satan/dl-satan-broker.el`, `satan/dl-satan-run.el` — threads
+`:percept-handles` into tool-ctx
+- `satan/dl-satan-observer.el` — guarded/isolated `dl-satan-pattern-rebuild`
+at tick end (condition-case swallows all errors including require/migration
+failures; pattern subsystem degradation cannot abort the tick or block
+classification)
+- 19 new ERT tests (percept snapshot, containment match, grammar-validated
+sync, rebuild projection, rebuild guard, global-attr regression)
+- `docs/satan/epistemics-roadmap.md` — step 1 marked complete
+
+### Design decisions
+
+- Projection/rebuild over live listener (derive-don't-push)
+- JSONB containment subset match over immutable percept snapshot
+- Definitions in checked-in `patterns.eld`, grammar-validated sync
+- Structural non-regression of global-attribute path via guard + isolation
+
 ## 2026-06-02 — DE-008: SATAN git-activity perception 24h feed window (Phase 01)
 
 SATAN's git-activity feed was starved by the 10-minute attention window
