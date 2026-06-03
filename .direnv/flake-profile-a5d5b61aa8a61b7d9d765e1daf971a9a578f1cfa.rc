@@ -1,0 +1,53 @@
+unset shellHook
+PATH=${PATH:-}
+nix_saved_PATH="$PATH"
+XDG_DATA_DIRS=${XDG_DATA_DIRS:-}
+nix_saved_XDG_DATA_DIRS="$XDG_DATA_DIRS"
+BASH='/noshell'
+HOSTTYPE='x86_64'
+IFS=' '$'\x09'''$'\x0a'''
+IN_NIX_SHELL='impure'
+export IN_NIX_SHELL
+LINENO='101'
+MACHTYPE='x86_64-pc-linux-gnu'
+NIX_BUILD_CORES='12'
+export NIX_BUILD_CORES
+NIX_STORE='/nix/store'
+export NIX_STORE
+OLDPWD=''
+export OLDPWD
+OPTERR='1'
+OSTYPE='linux-gnu'
+PATH='/path-not-set'
+export PATH
+PS4='+ '
+SHELL='/noshell'
+builder='/nix/store/cgjr3kj3hs7ngznyws5qfg16c8scpys0-bash-interactive-5.3p9/bin/bash'
+export builder
+dontAddDisableDepTrack='1'
+export dontAddDisableDepTrack
+name='devshell-env'
+export name
+out='/home/david/.emacs.d/outputs/out'
+export out
+outputs='out'
+shellHook='# Remove all the unnecessary noise that is set by the build env'$'\x0a''unset NIX_BUILD_TOP NIX_BUILD_CORES NIX_STORE'$'\x0a''unset TEMP TEMPDIR TMP TMPDIR'$'\x0a''# $name variable is preserved to keep it compatible with pure shell https://github.com/sindresorhus/pure/blob/47c0c881f0e7cfdb5eaccd335f52ad17b897c060/pure.zsh#L235'$'\x0a''unset builder out shellHook stdenv system'$'\x0a''# Flakes stuff'$'\x0a''unset dontAddDisableDepTrack outputs'$'\x0a'''$'\x0a''# For `nix develop`. We get /noshell on Linux and /sbin/nologin on macOS.'$'\x0a''if [[ "$SHELL" == "/noshell" || "$SHELL" == "/sbin/nologin" ]]; then'$'\x0a''  export SHELL=/nix/store/cgjr3kj3hs7ngznyws5qfg16c8scpys0-bash-interactive-5.3p9/bin/bash'$'\x0a''fi'$'\x0a'''$'\x0a''# Load the environment'$'\x0a''source "/nix/store/qckcqib4am5l3yanq1vs0pnj4g2ljzp1-devshell-dir/env.bash"'$'\x0a'''
+export shellHook
+stdenv='/nix/store/h38i8afbli4w1rclraflg51ypm9rb2pm-naked-stdenv'
+export stdenv
+system='x86_64-linux'
+export system
+runHook ()
+{
+ 
+    eval "$shellHook";
+    unset runHook
+}
+PATH="$PATH${nix_saved_PATH:+:$nix_saved_PATH}"
+XDG_DATA_DIRS="$XDG_DATA_DIRS${nix_saved_XDG_DATA_DIRS:+:$nix_saved_XDG_DATA_DIRS}"
+export NIX_BUILD_TOP="$(mktemp -d -t nix-shell.XXXXXX)"
+export TMP="$NIX_BUILD_TOP"
+export TMPDIR="$NIX_BUILD_TOP"
+export TEMP="$NIX_BUILD_TOP"
+export TEMPDIR="$NIX_BUILD_TOP"
+eval "${shellHook:-}"

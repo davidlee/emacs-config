@@ -750,12 +750,10 @@ Returns the run-id."
                          (dl-satan-observer-process prepare)
                        (error nil)))
            (prepare (plist-put prepare :observer observer))
-           (percept (dl-satan-percept-build prepare mode))
-           (_persisted (dl-satan-percept-persist dir percept))
-           (resonance (dl-satan-resonance-derive percept))
-           (motive (dl-satan-motive-read dl-satan-motive-file))
-           (evidence (plist-get percept :evidence_window))
-           (sensor-status (plist-get evidence :sensor_status))
+           ;; DEC-13: shared assembly core — percept/resonance/motive/sensor_status.
+           ;; The observer-independent subset previously inline here.
+           (prepare (dl-satan-run-assemble-context prepare mode dir))
+           (sensor-status (plist-get prepare :sensor_status))
            ;; §S6 — sensor_alerts.check runs in the pre-spawn window
            ;; alongside the rest of evidence assembly.  Returns the
            ;; per-cause pre_spawn entries (fired or suppressed); Phase
@@ -785,17 +783,7 @@ Returns the run-id."
                  :run-id run-id
                  :ts (plist-get prepare :time_now))
               (error nil)))
-           (prepare (plist-put
-                     (plist-put
-                      (plist-put
-                       (plist-put
-                        (plist-put
-                         (plist-put prepare :evidence evidence)
-                         :percept percept)
-                        :resonance resonance)
-                       :motive motive)
-                      :sensor_status sensor-status)
-                     :pre_spawn pre-spawn)))
+           (prepare (plist-put prepare :pre_spawn pre-spawn)))
     (let* ((bundle (funcall (or (plist-get mode :context-fn) #'ignore)
                             mode prepare))
            (_attached (dl-satan-audit-attach-bundle audit bundle))

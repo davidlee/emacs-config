@@ -17,6 +17,44 @@
 
 (defvar dl-satan-runs-dir)              ; defined in dl-satan-broker.el
 
+;; ── Shared assembly core (DEC-13, Phase 4) ─────────────────────────────────
+
+(defun dl-satan-run-assemble-context (prepare mode dir)
+  "Build percept/resonance/motive/sensor_status and thread into PREPARE.
+Persists percept.json under DIR.  Returns the augmented PREPARE plist.
+
+This is the observer-independent assembly core shared by both
+`broker--spawn' (batch) and `dl-satan-context-interactive' (MCP boot).
+Callers that need observer-process + probes/alerts run them around
+this function.
+
+Threaded keys (set by this function on PREPARE):
+  :evidence       — evidence_window from percept.
+  :percept        — plist from dl-satan-percept-build.
+  :resonance      — plist from dl-satan-resonance-derive.
+  :motive         — plist from dl-satan-motive-read.
+  :sensor_status  — sensor_status from evidence_window.
+
+Caller-threaded keys (NOT set by this function):
+  :audit          — set by broker before calling.
+  :observer       — set by broker before calling.
+  :pre_spawn      — set by broker after calling."
+  (let* ((percept (dl-satan-percept-build prepare mode))
+         (_persisted (dl-satan-percept-persist dir percept))
+         (resonance (dl-satan-resonance-derive percept))
+         (motive (dl-satan-motive-read dl-satan-motive-file))
+         (evidence (plist-get percept :evidence_window))
+         (sensor-status (plist-get evidence :sensor_status)))
+    (plist-put
+     (plist-put
+      (plist-put
+       (plist-put
+        (plist-put prepare :evidence evidence)
+        :percept percept)
+       :resonance resonance)
+      :motive motive)
+     :sensor_status sensor-status)))
+
 (defcustom dl-satan-system-scaffold-file
   (expand-file-name "satan/system/scaffold.txt" dl-notes-root)
   "Shared system-prompt scaffold prepended to every mode prompt.
