@@ -452,9 +452,9 @@ or if socket hardening checks fail (DEC-10)."
   (when (and dl-satan-mcp--server-process
           (process-live-p dl-satan-mcp--server-process))
     (user-error "SATAN MCP: already running"))
-  ;; Ensure interactive mode is registered
-  (unless (assoc "interactive" dl-satan-modes)
-    (dl-satan-mcp-register-interactive-mode))
+  ;; Always re-register interactive mode — picks up newly-registered tools
+  ;; (dl-satan-mode-register replaces existing entries by name).
+  (dl-satan-mcp-register-interactive-mode)
   ;; R7 fail-fast precondition: refuse if any tool lacks a description
   (dl-satan-mcp--check-tool-descriptions)
   (dl-satan-mcp--check-socket-dir)
