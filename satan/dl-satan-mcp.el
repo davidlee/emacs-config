@@ -22,6 +22,14 @@
 ;; Declared in dl-satan-run.el; re-declared for byte-compiler reference.
 (defvar dl-satan-memory-store--current-run-id)
 
+;; Declared in dl-satan-broker.el — used for DEC-8 mutual exclusion.
+(defvar dl-satan-broker--spawn-running nil)
+
+;; DEC-8: mutual-exclusion flag — truthy while an interactive MCP
+;; session is open.  The broker's scheduler reads this to refuse
+;; spawning scheduled runs while a session is active.
+(defvar dl-satan-mcp--session-active nil)
+
 ;; ── Configuration ───────────────────────────────────────────────────────────
 
 (defcustom dl-satan-mcp-enabled nil
@@ -143,7 +151,7 @@ Enforces 0700 permissions."
 (defun dl-satan-mcp--mint-session (proc)
   "Create run directory, open audit with synthetic bundle, return session.
 Signals if a scheduled run is live (DEC-8 mutual exclusion)."
-  (when (bound-and-true-p dl-satan-broker--spawn-running)
+  (when dl-satan-broker--spawn-running
     (error "SATAN MCP: scheduled run in progress — refuse session (DEC-8)"))
   (let* ((mode (dl-satan-mode-resolve "interactive"))
           (start-time (current-time))
@@ -183,6 +191,8 @@ Signals if a scheduled run is live (DEC-8 mutual exclusion)."
               :status 'running))
           (tool-ctx (dl-satan-run-tool-ctx run-struct))
           (bufs (make-hash-table :test 'eq)))
+    ;; DEC-8: mark broker busy while this session lives.
+    (setq dl-satan-mcp--session-active t)
     (make-dl-satan-mcp-session
       :proc proc
       :run-id run-id
@@ -199,6 +209,9 @@ Without a synthetic final, audit-close writes :status \"invalid\"."
     (list :summary "interactive session" :status "completed")
     (list :applied [] :staged [] :rejected [] :failed [])
     'completed)
+  ;; DEC-8: clear the mutual-exclusion flag so the scheduler can
+  ;; spawn runs again.
+  (setq dl-satan-mcp--session-active nil)
   ;; Clear the bufs hash
   (clrhash (dl-satan-mcp-session-bufs session)))
 
@@ -356,6 +369,9 @@ SESSION carries the tool-ctx and audit handle."
       (message "dl-satan-mcp: session %s connected"
         (dl-satan-mcp-session-run-id session)))
     (error
+      ;; DEC-8: if the session was minted but wiring failed, clear the
+      ;; mutual-exclusion flag so the scheduler is not permanently blocked.
+      (setq dl-satan-mcp--session-active nil)
       (message "dl-satan-mcp: rejecting connection — %s" (error-message-string err))
       (delete-process client-proc))))
 
@@ -373,7 +389,7 @@ or if socket hardening checks fail (DEC-10)."
   (interactive)
   (unless dl-satan-mcp-enabled
     (user-error "SATAN MCP: disabled (set `dl-satan-mcp-enabled' non-nil)"))
-  (when (bound-and-true-p dl-satan-broker--spawn-running)
+  (when dl-satan-broker--spawn-running
     (user-error "SATAN MCP: scheduled run in progress — refuse to start (DEC-8)"))
   (when (and dl-satan-mcp--server-process
           (process-live-p dl-satan-mcp--server-process))

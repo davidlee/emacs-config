@@ -458,5 +458,56 @@ Uses a unique id.  Blocks until one response line is received."
    (setq dl-satan-mcp-enabled nil)
    (dl-satan-mcp-test--stop)))
 
+(ert-deftest dl-satan-mcp/dec8-session-refuses-when-spawn-running ()
+  "DEC-8: connection is rejected when dl-satan-broker--spawn-running is t.
+The accept-filter catches the error from mint-session and deletes the
+client process."
+  (dl-satan-mcp-test--with-tmp-env
+   (dl-satan-mcp-test--write-desc "stub.a" "desc")
+   (dl-satan-mcp-test--register-stub "stub.a")
+   ;; Start server without the spawn flag first, then set flag
+   (let ((sock (dl-satan-mcp-test--start)))
+     (setq dl-satan-broker--spawn-running t)
+     (let ((proc (dl-satan-mcp-test--connect sock)))
+       ;; Let the accept-filter callback fire in batch mode
+       (accept-process-output nil 0.5)
+       ;; accept-filter catches the error and deletes the client proc
+       (should-not (process-live-p proc)))
+     ;; Session-active flag should NOT be set (mint-session errored before reaching setq)
+     (should-not dl-satan-mcp--session-active)
+     (setq dl-satan-broker--spawn-running nil)
+     (dl-satan-mcp-test--stop))))
+
+(ert-deftest dl-satan-mcp/dec8-startup-refuses-when-spawn-running ()
+  "DEC-8: startup refuses when dl-satan-broker--spawn-running is t."
+  (dl-satan-mcp-test--with-tmp-env
+   (dl-satan-mcp-test--write-desc "stub.a" "desc")
+   (dl-satan-mcp-test--register-stub "stub.a")
+   (setq dl-satan-mcp-enabled t)
+   (setq dl-satan-broker--spawn-running t)
+   (should-error (my/satan-mcp-start) :type 'user-error)
+   (setq dl-satan-broker--spawn-running nil)
+   (setq dl-satan-mcp-enabled nil)))
+
+(ert-deftest dl-satan-mcp/dec8-flag-cleared-on-disconnect ()
+  "DEC-8: session-active flag is set on connect and cleared on disconnect."
+  (dl-satan-mcp-test--with-tmp-env
+   (dl-satan-mcp-test--write-desc "stub.a" "desc")
+   (dl-satan-mcp-test--register-stub "stub.a")
+   (let* ((sock (dl-satan-mcp-test--start))
+          (proc (dl-satan-mcp-test--connect sock))
+          (_init (dl-satan-mcp-test--request proc "initialize"
+                                             (list :protocolVersion "2025-06-18"
+                                                   :capabilities (make-hash-table)
+                                                   :clientInfo (list :name "test" :version "0")))))
+     ;; Flag should be set while session is active
+     (should dl-satan-mcp--session-active)
+     ;; Close the connection — need to pump events for sentinel in batch mode
+     (delete-process proc)
+     (accept-process-output nil 0.5)
+     ;; Flag should be cleared after close-session runs in sentinel
+     (should-not dl-satan-mcp--session-active)
+     (dl-satan-mcp-test--stop))))
+
 (provide 'dl-satan-mcp-test)
 ;;; dl-satan-mcp-test.el ends here

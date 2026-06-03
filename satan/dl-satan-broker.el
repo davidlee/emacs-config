@@ -33,6 +33,11 @@
 
 (defvar dl-satan-memory-store--current-run-id)
 
+;; DEC-8: mutual-exclusion flag — truthy while broker--spawn is live.
+;; MCP server reads this to refuse new sessions while a scheduled run
+;; is in progress.
+(defvar dl-satan-broker--spawn-running nil)
+
 (defcustom dl-satan-runs-dir
   (expand-file-name "satan/runs" (or (bound-and-true-p dl-notes-root)
                                      (expand-file-name "~/notes")))
@@ -552,7 +557,10 @@ log line and notification body."
         (when tt (cancel-timer tt)))
       (dl-satan-audit-record (dl-satan-run-audit run-ctx) 'broker 'child-exit
                              (list :event (string-trim event)))
-      (dl-satan-broker--finalize run-ctx))))
+      (dl-satan-broker--finalize run-ctx)
+      ;; DEC-8: clear the mutual-exclusion flag on async completion so
+      ;; a crashed/killed process does not permanently block MCP sessions.
+      (setq dl-satan-broker--spawn-running nil))))
 
 (defun dl-satan-broker--build-manifest (mode run-id)
   "Return the manifest plist for MODE and RUN-ID.
@@ -656,28 +664,46 @@ Single allocation site for `run_id' + `time_now': calls
 returned run_ctx plist is threaded into context assembly, tool
 dispatch, and audit.
 
-If today's spend has met or exceeded `dl-satan-budget-daily-tokens',
-the broker refuses to spawn: writes a minimal audit bundle with
-`status=budget-exceeded' under
-`dl-satan-runs-dir/<YYYY-MM-DD>/<run-id>/' and returns the run-id
+Refuses to spawn when an interactive MCP session is open (DEC-8
+mutual exclusion), or when today's spend has met or exceeded
+`dl-satan-budget-daily-tokens'.  In both cases writes a minimal
+audit bundle with the appropriate status and returns the run-id
 without launching the child."
   (let* ((mode (dl-satan-mode-resolve name))
          (prepare (dl-satan-broker--prepare mode))
          (run-id (plist-get prepare :run_id))
          (dir (dl-satan-broker-run-dir-for-id run-id)))
-    (if (dl-satan-budget-exceeded-p dl-satan-runs-dir)
+    (cond
+     ;; DEC-8: refuse to spawn while an interactive session is open
+     ((and (boundp 'dl-satan-mcp--session-active)
+           dl-satan-mcp--session-active)
+      (message "SATAN broker: interactive session active — refusing scheduled run (DEC-8)")
+      (unless (file-directory-p dir) (make-directory dir t))
+      (let ((status-obj (list :status "session-blocked"
+                              :summary "Scheduled run blocked by active interactive session (DEC-8)")))
+        (with-temp-file (expand-file-name "final.json" dir)
+          (insert (json-serialize status-obj :null-object :null :false-object :false))))
+      run-id)
+     ((dl-satan-budget-exceeded-p dl-satan-runs-dir)
         (let ((spent (dl-satan-budget-today-total dl-satan-runs-dir)))
           (dl-satan-broker--write-budget-denied-run
            mode prepare dir spent dl-satan-budget-daily-tokens)
-          run-id)
-      (dl-satan-broker--spawn mode prepare dir))))
+          run-id))
+     (t
+      (dl-satan-broker--spawn mode prepare dir)))))
 
 (defun dl-satan-broker--spawn (mode prepare dir)
   "Spawn the jailed harness for MODE under DIR.
 PREPARE is the run_ctx plist returned by `dl-satan-broker--prepare'
 (carries the frozen run_id + time_now and v0 placeholder slots).
 Returns the run-id."
-  (let* ((run-id (plist-get prepare :run_id))
+  ;; DEC-8: set the mutual-exclusion flag so the MCP server refuses new
+  ;; sessions while this scheduled run is live.  Cleared via unwind-protect
+  ;; on the synchronous path and also by the process sentinel on async
+  ;; completion/error so a crashed run does not permanently block sessions.
+  (setq dl-satan-broker--spawn-running t)
+  (unwind-protect
+      (let* ((run-id (plist-get prepare :run_id))
          (bundle-path (expand-file-name "bundle.json" dir))
          (stdout-log (expand-file-name "stdout.log" dir))
          (stderr-buf (generate-new-buffer
@@ -859,7 +885,12 @@ Returns the run-id."
                                nil 'silent)))
              (funcall existing p e)
              (when (buffer-live-p stderr-buf) (kill-buffer stderr-buf)))))
-        run-id)))))
+        run-id))))
+    ;; DEC-8 unwind-protect cleanup: clear the mutual-exclusion flag
+    ;; on the synchronous path.  The sentinel also clears it for the
+    ;; async completion path so a crashed process does not leave the
+    ;; flag set permanently.
+    (setq dl-satan-broker--spawn-running nil)))
 
 (provide 'dl-satan-broker)
 ;;; dl-satan-broker.el ends here
