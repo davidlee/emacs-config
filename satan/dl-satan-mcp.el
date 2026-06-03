@@ -171,16 +171,18 @@ Signals if a scheduled run is live (DEC-8 mutual exclusion)."
           (run-dir (dl-satan-run-dir-for-id run-id))
           (manifest
             (condition-case err
-                (list :mode "interactive"
-                  :run_id run-id
-                  :tools (cl-loop for name in (dl-satan-mcp--interactive-tools)
-                           for spec = (dl-satan-tool-lookup name)
-                           when spec
-                           collect (condition-case inner-err
-                                       (dl-satan-tool-json-schema spec)
-                                     (error
-                                      (error "SATAN MCP: schema failed for tool %s: %s"
-                                             name (error-message-string inner-err))))))
+                (let ((tools-list nil))
+                  (dolist (name (dl-satan-mcp--interactive-tools))
+                    (let ((spec (dl-satan-tool-lookup name)))
+                      (when spec
+                        (condition-case inner-err
+                            (push (dl-satan-tool-json-schema spec) tools-list)
+                          (error
+                           (error "SATAN MCP: schema failed for tool %s: %s"
+                                  name (error-message-string inner-err)))))))
+                  (list :mode "interactive"
+                        :run_id run-id
+                        :tools (vconcat (nreverse tools-list))))
               (error
                (error "SATAN MCP: manifest build failed — %s" (error-message-string err)))))
           (bundle (list :run_id run-id
@@ -275,16 +277,25 @@ SESSION is the dl-satan-mcp-session."
           (dl-satan-mcp--result id (list :pong t))))
       ("tools/list"
         (let ((tools
-                (vconcat
-                  (cl-loop for name in (dl-satan-mcp--interactive-tools)
-                    for spec = (dl-satan-tool-lookup name)
-                    when spec
-                    collect
-                    (let* ((openai (dl-satan-tool-json-schema spec))
-                            (fn (plist-get openai :function)))
-                      (list :name (plist-get fn :name)
-                        :description (plist-get fn :description)
-                        :inputSchema (plist-get fn :parameters)))))))
+                (condition-case err
+                    (let ((acc nil))
+                      (dolist (name (dl-satan-mcp--interactive-tools))
+                        (let ((spec (dl-satan-tool-lookup name)))
+                          (when spec
+                            (condition-case inner-err
+                                (let* ((openai (dl-satan-tool-json-schema spec))
+                                       (fn (plist-get openai :function)))
+                                  (push (list :name (plist-get fn :name)
+                                              :description (plist-get fn :description)
+                                              :inputSchema (plist-get fn :parameters))
+                                        acc))
+                              (error
+                               (error "SATAN MCP: tools/list schema failed for tool %s: %s"
+                                      name (error-message-string inner-err)))))))
+                      (vconcat (nreverse acc)))
+                  (error
+                   (error "SATAN MCP: tools/list build failed — %s"
+                          (error-message-string err))))))
           (dl-satan-mcp--send proc (dl-satan-mcp--result id (list :tools tools)))))
       ("tools/call"
         (dl-satan-mcp--tools-call params id session proc))
