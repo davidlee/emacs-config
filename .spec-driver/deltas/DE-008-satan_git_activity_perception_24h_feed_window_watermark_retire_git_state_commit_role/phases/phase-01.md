@@ -4,7 +4,7 @@ slug: "008-satan_git_activity_perception_24h_feed_window_watermark_retire_git_st
 name: IP-008 Phase 01
 created: "2026-06-02"
 updated: "2026-06-02"
-status: draft  # one of: completed | deferred | draft | in-progress | pending
+status: completed  # one of: completed | deferred | draft | in-progress | pending
 kind: phase  # one of: audit | delta | design_revision | issue | memory | phase | plan | policy | problem | prod | requirement | risk | spec | standard | task | verification
 plan: IP-008
 delta: DE-008
