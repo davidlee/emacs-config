@@ -2,6 +2,37 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-06-03 — DE-007: adversarial review of Phase-4 boot context (AUD-008) + fixes
+
+Adversarial review of the DE-007 Phase-4 commits (interactive pi MCP boot
+context) surfaced six findings (AUD-008), all reconciled in-delta.
+
+### Fixes
+
+- **DEC-8 mutual exclusion (F-001)**: `dl-satan-broker--spawn-running` was
+cleared by an `unwind-protect` at the *synchronous* launch of the async
+`make-process`, so the flag was nil for the entire live run — the
+scheduled-run→refuse-session guard was vacuous (the very R11 bug Phase 4 was
+meant to fix). Replaced with a `condition-case` that clears only on sync spawn
+failure; the child sentinel clears on exit. Broadened the sentinel regex to
+match `killed`/`deleted` (`delete-process` emits `"killed\n"`), which it
+previously missed — so timeout/kill paths now finalise *and* clear the flag.
+- **boot-context cache (F-002)**: the cache fast-path was a `when` whose value
+was discarded, so every `satan_boot_context` call rebuilt the capsule.
+Restructured to a real `if`/early-return.
+- **DRY (F-003)**: `boot-context` reimplemented `dl-satan-context-interactive`
+inline; now delegates to it as the single capsule source.
+- **Session mutation (F-004)**: `dl-satan-context-interactive` destructively
+`plist-put` the session-frozen `time_now`; now copies run-ctx first.
+- **Tests (F-005)**: +5 tests — producer flag-lifecycle, sentinel exit events,
+per-session cache, context-interactive non-mutation + graceful-degrade. Suite
+976→981, zero regressions.
+- **Repo hygiene (F-006)**: 48 build artefacts (`result`, `.direnv/`,
+`.cache/`, `.envrc`) were committed by a dispatch worker's `git add -A` in a
+worktree that didn't honour `~/.gitignore_global`. Untracked (`git rm
+--cached`), kept on disk. Remaining `just check` red is ISSUE-005 (stale
+`bough` binary missing the `read` subcommand — separate subsystem).
+
 ## 2026-06-03 — DE-009: SATAN pattern records and scars — outcome-linked pattern-local learning
 
 SATAN's outcome observer now accrues counters and scars against curated
