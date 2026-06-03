@@ -571,5 +571,35 @@ and (e.g.) recommend a narrower mode or a targeted read."
     (dl-satan-context--finalize-prompt
      (dl-satan-context--with-prepare bundle run-ctx) assembled)))
 
+(defun dl-satan-context-interactive (mode-spec &optional run-ctx)
+  "Context-fn for the interactive MCP mode (DEC-13, Phase 4).
+Builds the dynamic orientation capsule at build-depth β:
+percept/resonance/motive/sensor_status/attributes rendered via
+`dl-satan-context--render-prompt' with `assembled=""' (no persona
+scaffold — the system prompt is already in pi's SYSTEM.md).
+
+RUN-CTX is the session's prepare plist (carries run_id, time_now).
+The `# Now' block is stamped with a fresh `current-time', not the
+frozen session time_now (F3).  Percept is built onto the run-dir
+from the session prepare.
+
+Returns the bundle plist with `:prompt' set to the rendered text."
+  (let* ((now-time (current-time))
+         (run-id (plist-get run-ctx :run_id))
+         ;; Build with fresh time for the # Now block (F3)
+         (prepare (plist-put run-ctx :time_now
+                             (format-time-string
+                              dl-satan-run--iso-time-format now-time)))
+         ;; Resolve the session run directory from run-id
+         (dir (dl-satan-run-dir-for-id run-id))
+         ;; Build the dynamic blocks (percept/resonance/motive/sensor_status)
+         (prepare (dl-satan-run-assemble-context prepare mode-spec dir))
+         (bundle (list :prompt     ""
+                       :mode       (plist-get mode-spec :name)
+                       :now        (dl-satan-context-now now-time))))
+    (dl-satan-context--finalize-prompt
+     (dl-satan-context--with-prepare bundle prepare)
+     "")))  ;; assembled="" — no persona, blocks only
+
 (provide 'dl-satan-context)
 ;;; dl-satan-context.el ends here

@@ -149,10 +149,10 @@ _(Status: `[ ]` todo, `[WIP]`, `[x]` done, `[blocked]`)_
 | ------ | --- | ----------- | --------- | ----- |
 | [x] | 4.1 | R11/DEC-8: make the mutual-exclusion guard real (both directions) | [ ] | prerequisite — DEC-13 reentrancy depends on it |
 | [x] | 4.2 | R10: pin contract + `VT-broker-spawn-integration`, then extract `dl-satan-run-assemble-context` into `dl-satan-context.el` | [ ] | characterization test BEFORE extraction |
-| [WIP] | 4.3 | `dl-satan-context-interactive` context-fn + register `:context-fn` on interactive mode-spec | [ ] | depends on 4.2 |
-| [ ] | 4.4 | `satan_boot_context` tool (global reg, `refresh` arg) + handler + capsule cache + fresh-timestamp build + graceful degrade | [ ] | depends on 4.3 |
-| [ ] | 4.5 | `satan_boot_context.md` description file (R7) | [P] | independent of code once tool name fixed |
-| [ ] | 4.6 | SYSTEM.md instruction in `~/notes/satan/prompts/interactive.txt` | [P] | cross-repo (`~/notes`) |
+| [x] | 4.3 | `dl-satan-context-interactive` context-fn + register `:context-fn` on interactive mode-spec | [ ] | depends on 4.2 |
+| [x] | 4.4 | `satan_boot_context` tool (global reg, `refresh` arg) + handler + capsule cache + fresh-timestamp build + graceful degrade | [ ] | depends on 4.3 |
+| [WIP] | 4.5 | `satan_boot_context.md` description file (R7) | [P] | independent of code once tool name fixed |
+| [WIP] | 4.6 | SYSTEM.md instruction in `~/notes/satan/prompts/interactive.txt` | [P] | cross-repo (`~/notes`) |
 | [ ] | 4.7 | ert: VT-run-assemble-context + VT-mcp-boot-context-{render,suppress,sideeffects,degraded} | [ ] | DEC-8 + VT-broker-spawn-integration land in 4.1/4.2 |
 | [ ] | 4.8 | VH-mcp-boot-live (live pi unprompted boot call) | [ ] | needs 4.4–4.6 + possibly `home-manager switch` if new file |
 | [ ] | 4.9 | CHANGELOG + commit | [ ] | |

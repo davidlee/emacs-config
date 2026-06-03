@@ -30,6 +30,14 @@
 ;; spawning scheduled runs while a session is active.
 (defvar dl-satan-mcp--session-active nil)
 
+;; Dynamically bound during tools/call dispatch so handlers can
+;; access the current session (e.g. boot-context needs the prepare plist).
+(defvar dl-satan-mcp--current-session nil)
+
+;; Declared in dl-satan-context.el — used for DEC-13 boot context.
+(declare-function dl-satan-context-interactive "dl-satan-context"
+                  (mode-spec &optional run-ctx))
+
 ;; ── Configuration ───────────────────────────────────────────────────────────
 
 (defcustom dl-satan-mcp-enabled nil
@@ -82,13 +90,14 @@ Excludes internal test stubs (names prefixed `test.')."
 (defun dl-satan-mcp-register-interactive-mode ()
   "Register the `interactive' mode-spec (DEC-9).
 :harness nil — never spawned; pi connects via MCP.
-:tools = union of all registered tools.  C later adds :context-fn,
-:output-handler, :budget-*, satan_final."
+:tools = union of all registered tools.
+:context-fn = dl-satan-context-interactive (DEC-13, Phase 4)."
   (dl-satan-mode-register
     (list :name "interactive"
       :harness nil
       :tools (dl-satan-mcp--interactive-tools)
-      :capabilities (dl-satan-mcp--interactive-capabilities))))
+      :capabilities (dl-satan-mcp--interactive-capabilities)
+      :context-fn #'dl-satan-context-interactive)))
 
 ;; ── Session state ───────────────────────────────────────────────────────────
 
@@ -99,7 +108,9 @@ Excludes internal test stubs (names prefixed `test.')."
   run-dir       ; absolute run directory
   audit         ; dl-satan-audit-handle
   tool-ctx      ; plist passed to dl-satan-tool-dispatch
+  prepare       ; the run_ctx prepare plist (for boot context)
   bufs          ; hash table of per-conn line buffers (keyed by proc)
+  boot-cache    ; cached boot-context text, or nil (DEC-13)
   ;; DEC-8 mutual exclusion: mark the broker busy while this session lives.
   )
 
@@ -199,7 +210,9 @@ Signals if a scheduled run is live (DEC-8 mutual exclusion)."
       :run-dir run-dir
       :audit audit
       :tool-ctx tool-ctx
-      :bufs bufs)))
+      :prepare prepare
+      :bufs bufs
+      :boot-cache nil)))
 
 (defun dl-satan-mcp--close-session (session)
   "Close the session's audit with a synthetic final (DEC-5: status completed).
@@ -288,7 +301,8 @@ SESSION carries the tool-ctx and audit handle."
           (audit (dl-satan-mcp-session-audit session))
           (run-id (dl-satan-mcp-session-run-id session)))
     ;; DEC-7: bind current-run-id around dispatch for memory-write attribution
-    (let ((dl-satan-memory-store--current-run-id run-id))
+    (let ((dl-satan-memory-store--current-run-id run-id)
+          (dl-satan-mcp--current-session session))
       ;; Audit the inbound tool_call (mimics membrane :dir in)
       (dl-satan-audit-record audit 'in 'tool-call call)
       (let ((res (dl-satan-tool-dispatch
@@ -323,6 +337,50 @@ SESSION carries the tool-ctx and audit handle."
 
 ;; ── Connection filter & sentinel ─────────────────────────────────────────────
 
+
+;; ── satan_boot_context tool handler (DEC-13, Phase 4) ──────────────────────
+
+(defun dl-satan-mcp-tool/boot-context (args _ctx)
+  "Read tool: return the per-session orientation capsule.
+ARGS may include :refresh to force rebuild (cache bypass).
+_CTX is the tool-ctx (unused — we read session from dynamic var).
+
+Build-depth β: builds percept/resonance/motive/sensor_status/attributes
+fresh but skips observer-process + sensor-alerts-check + probes.
+Caches the result per-session; `refresh' forces rebuild.
+Gracefully degrades on backend failure (returns partial capsule,
+does not error the session)."
+  (let* ((session dl-satan-mcp--current-session)
+         (refresh (plist-get args :refresh))
+         (cached (dl-satan-mcp-session-boot-cache session)))
+    (when (and cached (not refresh))
+      (cons 'ok cached))
+    ;; Load dl-satan-context at runtime (heavy deps)
+    (require 'dl-satan-context)
+    (let* ((mode (dl-satan-mode-resolve "interactive"))
+           (prepare (dl-satan-mcp-session-prepare session))
+           (now-time (current-time))
+           (run-id (dl-satan-mcp-session-run-id session))
+           (dir (dl-satan-mcp-session-run-dir session))
+           (prepare (plist-put prepare :time_now
+                               (format-time-string
+                                dl-satan-run--iso-time-format now-time)))
+           (prepare (condition-case _err
+                        (dl-satan-run-assemble-context prepare mode dir)
+                      (error
+                       (plist-put
+                        (plist-put prepare :percept nil)
+                        :resonance (list :status 'memory-unreachable
+                                         :cue nil :matches nil)))))
+           (bundle (list :prompt ""
+                         :mode "interactive"
+                         :now (dl-satan-context-now now-time)))
+           (text (dl-satan-context--finalize-prompt
+                  (dl-satan-context--with-prepare bundle prepare)
+                  ""))
+           (text (plist-get text :prompt)))
+      (setf (dl-satan-mcp-session-boot-cache session) text)
+      (cons 'ok text))))
 (defun dl-satan-mcp--filter (proc chunk)
   "Accumulate CHUNK, dispatch each complete newline-delimited JSON-RPC line."
   (let* ((session (process-get proc 'dl-satan-mcp-session))
@@ -450,6 +508,14 @@ Calls `my/satan-mcp-start' and reports the socket path."
   (interactive)
   (set 'dl-satan-mcp-enabled t)
   (or dl-satan-mcp--server-process (my/satan-mcp-start)))
+
+;; ── Global tool registration (DEC-13) ──────────────────────────────────────
+
+(dl-satan-tool-register
+ (list :name "satan_boot_context"
+       :risk 'read
+       :args-schema '((refresh (:type boolean :required nil)))
+       :handler 'dl-satan-mcp-tool/boot-context))
 
 (provide 'dl-satan-mcp)
 ;;; dl-satan-mcp.el ends here
