@@ -72,3 +72,20 @@ Active phase sheet: `phases/phase-03.md` (needs creation).
 - `satan/dl-satan-memory-canon.el` — defrule pattern
 - `satan/dl-satan-memory-evidence.el` — evidence window builder, browser-probe precedent
 - `satan/dl-satan-resonance.el` — §S2 admission gate"
+
+## 2026-06-03 P04 (Integration & close-prep)
+
+- Phase sheet `phases/phase-04.md` created + populated.
+- **Blocker (resolved)**: initial full `just check` was red — 15 failures, ALL
+  `dl-satan-audit-iv/*` + `dl-satan-intervention/*`, from uncommitted DE-009
+  `:percept_handles` WIP in the shared tree (NOT DE-005). User paused P04 rather
+  than entangle deltas. DE-009 then completed (`335e210`); re-measure clean.
+- **Suite**: `just check` → 961/970 passed, 0 unexpected, 9 skipped (DB-gated:
+  bough / integration / memory-grammar-db-sync / patch-*). DE-005 content/sensor/
+  rule tests all green.
+- **Env note**: `just check` runs fine here now (P01–P03 recorded it unavailable).
+- **git add**: new tracked `.el` already committed in P01–P03 feat commits.
+- **CHANGELOG**: per-phase DE-005 entries (P01/P02/P03) present.
+- **Outstanding (VH)**: `home-manager switch` on Sleipnir + one live `content_read`
+  dispatch — user-run; sandbox can't reproduce the live host. This is the last
+  gate before `/audit-change`.
