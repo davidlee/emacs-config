@@ -95,8 +95,9 @@ Bounds I/O for the unbounded index (see DE-005 R6 / DR-005 DEC-6)."
                          :false-object :false))))
 
 (cl-defun dl-satan-tools-content--read-articles-jsonl (&key skip-malformed)
-  "Read `articles.jsonl' into a list of plists, newest first (file order).
-nil if unreadable.  Uses a lenient parser that drops malformed lines
+  "Read `articles.jsonl' into a list of plists, in file (oldest-first) order.
+nil if unreadable.  Callers that want newest-first (e.g. `recent') reverse
+the tail themselves.  Uses a lenient parser that drops malformed lines
 (see DE-005 R6 / O-1) — the skip-malformed flag is accepted for
 symmetry but currently always uses lenient mode."
   (let ((path (dl-satan-tools-content--articles-path)))
@@ -199,7 +200,8 @@ Returns paginated text_content per DR-005 DEC-4."
 ;; --- filter ---------------------------------------------------
 
 (defun dl-satan-tools-content--scope-filter (args)
-  "Handle `filter' scope.  ARGS: (:domain STRING? :url STRING?)."
+  "Handle `filter' scope.  ARGS: (:domain STRING? :url STRING?).
+At least one of :domain / :url is required (DR-005 §4.1)."
   (let* ((domain (plist-get args :domain))
          (url    (plist-get args :url))
          (limit  (dl-satan-tools-content--clamp-limit
@@ -209,6 +211,8 @@ Returns paginated text_content per DR-005 DEC-4."
          (all (dl-satan-tools-content--read-articles-jsonl :skip-malformed t))
          (articles (or all '()))
          matched)
+    (if (and (null domain) (null url))
+        (cons 'error "filter requires at least one of: domain, url")
     (dolist (a articles)
       (when (and (or (null domain)
                      (string= domain (plist-get a :domain)))
@@ -233,7 +237,7 @@ Returns paginated text_content per DR-005 DEC-4."
                       :domain domain
                       :url url
                       :limit limit
-                      :captures (cl-subseq result 0 (min limit (length result))))))))
+                      :captures (cl-subseq result 0 (min limit (length result)))))))))
 
 ;; --- search ---------------------------------------------------
 

@@ -326,6 +326,17 @@ With scan-max=2 and 5 articles, only the last 2 are returned even with limit=5."
       (should (eq (car res) 'ok))
       (should (equal (plist-get p :captures) '())))))
 
+(ert-deftest dl-satan-content/filter-requires-domain-or-url ()
+  "Filter with neither domain nor url errors (DR-005 §4.1), not match-all."
+  (dl-satan-tools-content-test--with-store
+    (dl-satan-tools-content-test--make-store
+     `(("a000000000000000000000000000000000000000000000000000000000000001"
+        "https://example.com/p" "example.com" "P1"
+        "2026-05-31T01:00:00.000Z" "B1.")))
+    (let ((res (dl-satan-tool/content-read '(:scope "filter") nil)))
+      (should (eq (car res) 'error))
+      (should (string-match-p "requires at least one" (cdr res))))))
+
 ;; --- search tests ---------------------------------------------
 
 (ert-deftest dl-satan-content/search-finds-matches ()
@@ -423,6 +434,37 @@ With scan-max=2 and 5 articles, only the last 2 are returned even with limit=5."
       (should (eq (car res) 'ok))
       ;; Should have exactly 1 match (deduped by hash), not 5
       (should (equal (length matches) 1)))))
+
+(ert-deftest dl-satan-content/search-sorts-by-recency-desc ()
+  "Search matches are ordered by captured_at DESC (F-2), not file/append order."
+  (dl-satan-tools-content-test--with-store
+    ;; Append order (1,2,3) deliberately differs from recency: 2 newest, 1 oldest.
+    (dl-satan-tools-content-test--make-store
+     `(("a000000000000000000000000000000000000000000000000000000000000001"
+        "https://example.com/1" "example.com" "T1"
+        "2026-05-31T01:00:00.000Z" "shared term one")
+       ("a000000000000000000000000000000000000000000000000000000000000002"
+        "https://example.com/2" "example.com" "T2"
+        "2026-05-31T03:00:00.000Z" "shared term two")
+       ("a000000000000000000000000000000000000000000000000000000000000003"
+        "https://example.com/3" "example.com" "T3"
+        "2026-05-31T02:00:00.000Z" "shared term three")))
+    (cl-loop for i from 1 to 3
+             do (let* ((hash (format "a%063d" i))
+                       (dir (dl-satan-tools-content-test--shard-dir hash)))
+                  (make-directory dir t)
+                  (with-temp-file (expand-file-name (concat hash ".md") dir)
+                    (insert (format "---\nurl: https://example.com/%d\n---\n\nshared term %d\n" i i)))))
+    (let* ((res (dl-satan-tool/content-read '(:scope "search" :query "shared") nil))
+           (matches (plist-get (cdr res) :matches))
+           (hashes (mapcar (lambda (m) (plist-get m :hash)) matches)))
+      (should (eq (car res) 'ok))
+      (should (equal (length hashes) 3))
+      ;; Newest captured_at first (…02 @03:00), then …03 @02:00, then …01 @01:00.
+      (should (equal hashes
+                     (list "a000000000000000000000000000000000000000000000000000000000000002"
+                           "a000000000000000000000000000000000000000000000000000000000000003"
+                           "a000000000000000000000000000000000000000000000000000000000000001"))))))
 
 ;; --- malformed line handling ----------------------------------
 

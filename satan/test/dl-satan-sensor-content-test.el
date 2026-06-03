@@ -220,5 +220,25 @@
                          :ts "2026-05-31T06:30:00+10:00")))
             (should-not result)))))))
 
+(ert-deftest dl-satan-sensor-content/soft-fails-on-error ()
+  "An error inside the probe is caught: returns nil, never propagates (DR-005 §5)."
+  (dl-satan-sensor-content-test--with-temp-state state-path
+    (dl-satan-tools-content-test--with-store
+      (let ((article (dl-satan-tools-content-test--article-plist
+                      "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4"
+                      "https://example.com/1" "example.com"
+                      "Article One" "2026-05-31T05:25:45.968Z")))
+        (dl-satan-tools-content-test--write-article-jsonl (list article))
+        (dl-satan-sensor-content-test--seed-state state-path "")
+        (let ((dl-satan-sensor-content-state-file state-path)
+              (dl-satan-sensor-content-enabled t)
+              (dl-satan-attribute-updates-enabled t))
+          (cl-letf (((symbol-function 'dl-satan-sensor-content--count-uninspected)
+                     (lambda (&rest _) (error "boom"))))
+            ;; Must not signal; soft-fails to nil.
+            (should-not (dl-satan-sensor-content-probe
+                         :run-id "test-run-soft-fail"
+                         :ts "2026-05-31T06:30:00+10:00"))))))))
+
 (provide 'dl-satan-sensor-content-test)
 ;;; dl-satan-sensor-content-test.el ends here
