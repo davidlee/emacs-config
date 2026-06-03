@@ -406,7 +406,7 @@ deltas:
         status: draft
   DE-009:
     kind: delta
-    status: in-progress
+    status: completed
     name: Delta - SATAN pattern records and scars - outcome-linked pattern-local learning
     slug: satan_pattern_records_and_scars_outcome_linked_pattern_local_learning
     updated: '2026-06-03'
@@ -434,8 +434,12 @@ deltas:
       - plan: IP-009
         delta: DE-009
         phase: IP-009-P01
-        status: draft
-      - id: IP-009-P02
+        status: completed
+      - plan: IP-009
+        delta: DE-009
         phase: IP-009-P02
-      - id: IP-009-P03
+        status: completed
+      - plan: IP-009
+        delta: DE-009
         phase: IP-009-P03
+        status: completed
