@@ -582,5 +582,27 @@
            (should (equal rows1 rows2)))
        (delete-directory root t)))))
 
+;; ============================================================================
+;; Real patterns.eld parses to every curated seed (no DB)
+;; ============================================================================
+
+(ert-deftest dl-satan-pattern/real-eld-parses-all-seeds ()
+  "The checked-in `satan/patterns.eld' must parse to all of its seed entries.
+Guards against the multi-top-level-form footgun: a `read'-once parser
+silently drops every form after the first, so a file written as N separate
+`((..))' forms only yields its first pattern."
+  (let* ((file (expand-file-name
+                "satan/patterns.eld"
+                (or (and (boundp 'user-emacs-directory) user-emacs-directory)
+                    default-directory)))
+         (defs (dl-satan-pattern--read-file file))
+         (ids (mapcar (lambda (e) (plist-get e :id)) defs)))
+    (should (member "docs-after-error" ids))
+    (should (member "terminal-coding" ids))
+    (should (member "editor-commit" ids))
+    ;; every entry must validate (id + label + grammatical cue_handles)
+    (dolist (e defs)
+      (should (dl-satan-pattern--validate-definition e)))))
+
 (provide 'dl-satan-pattern-test)
 ;;; dl-satan-pattern-test.el ends here

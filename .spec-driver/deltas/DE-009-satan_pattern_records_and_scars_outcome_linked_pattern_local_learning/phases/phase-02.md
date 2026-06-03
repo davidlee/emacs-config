@@ -4,7 +4,7 @@ slug: "009-satan_pattern_records_and_scars_outcome_linked_pattern_local_learning
 name: IP-009 Phase 02
 created: "2026-06-03"
 updated: "2026-06-03"
-status: draft  # one of: completed | deferred | draft | in-progress | pending
+status: completed  # one of: completed | deferred | draft | in-progress | pending
 kind: phase  # one of: audit | delta | design_revision | issue | memory | phase | plan | policy | problem | prod | requirement | risk | spec | standard | task | verification
 plan: IP-009
 delta: DE-009
@@ -35,21 +35,22 @@ definitions and makes the rebuild work.
 ## 3. Entrance Criteria
 
 - [x] Phase 01 complete: schema exists, percept_handles_json populated
-- [ ] No unresolved design questions in DR-009 (DR §8 open questions are follow-ups, not blocking)
+- [x] No unresolved design questions in DR-009 (DR §8 open questions are follow-ups, not blocking)
 
 ## 4. Exit Criteria / Done When
 
-- [ ] `patterns.eld` committed with initial seed definitions (at least 2 patterns)
-- [ ] `satan-pattern-sync` parses `patterns.eld`, validates cue_handles against canon grammar,
+- [x] `patterns.eld` committed with initial seed definitions (3 patterns; AUD-006 F-001
+      fixed the multi-form parse so all three load)
+- [x] `satan-pattern-sync` parses `patterns.eld`, validates cue_handles against canon grammar,
       upserts definitions idempotently, soft-retires absent patterns (enabled=false)
-- [ ] `satan-pattern-rebuild` runs the containment join (TRUNCATE+INSERT, advisory lock,
+- [x] `satan-pattern-rebuild` runs the containment join (TRUNCATE+INSERT, advisory lock,
       mature/non-unknown only), idempotent, head-only
-- [ ] Read accessors: `satan-pattern-stats` returns the stats view
-- [ ] `VT-pattern-containment` green: JSONB @> subset, empty, superset, disjoint
-- [ ] `VT-pattern-sync` green: parse + sync + reject ungrammatical handle
-- [ ] `VT-pattern-rebuild` green: seeded data → expected projection + stats; disabled
+- [x] Read accessors: `satan-pattern-stats` returns the stats view
+- [x] `VT-pattern-containment` green: JSONB @> subset, empty, superset, disjoint
+- [x] `VT-pattern-sync` green: parse + sync + reject ungrammatical handle
+- [x] `VT-pattern-rebuild` green: seeded data → expected projection + stats; disabled
       still attributed; immature/unknown excluded; revised-away drops
-- [ ] `just check` green; paren-check clean on every `.el`
+- [x] `just check` green; paren-check clean on every `.el`
 
 ## 5. Verification
 
@@ -82,13 +83,13 @@ _(Status: `[ ]` todo, `[WIP]`, `[x]` done, `[blocked]`)_
 
 | Status | ID  | Description                                     | Parallel? | Notes |
 | ------ | --- | ----------------------------------------------- | --------- | ----- |
-| [ ]    | 2.1 | Create `patterns.eld` with seed definitions     | [P]       | 2–3 patterns; data file, no elisp |
-| [ ]    | 2.2 | `dl-satan-pattern.el` — parse + sync            | [ ]       | grammar-validated, idempotent upsert |
-| [ ]    | 2.3 | `dl-satan-pattern.el` — rebuild projection      | [ ]       | depends on 2.2; containment join |
-| [ ]    | 2.4 | `dl-satan-pattern.el` — read accessors          | [ ]       | stats view, pattern listing |
-| [ ]    | 2.5 | `VT-pattern-containment` + `VT-pattern-sync`    | [ ]       | depends on 2.2 |
-| [ ]    | 2.6 | `VT-pattern-rebuild`                            | [ ]       | depends on 2.3 |
-| [ ]    | 2.7 | Gate: `just check` + paren-check                | [ ]       | depends on 2.5, 2.6 |
+| [x]    | 2.1 | Create `patterns.eld` with seed definitions     | [P]       | 3 patterns; data file, no elisp |
+| [x]    | 2.2 | `dl-satan-pattern.el` — parse + sync            | [ ]       | grammar-validated, idempotent upsert |
+| [x]    | 2.3 | `dl-satan-pattern.el` — rebuild projection      | [ ]       | depends on 2.2; containment join |
+| [x]    | 2.4 | `dl-satan-pattern.el` — read accessors          | [ ]       | stats view, pattern listing |
+| [x]    | 2.5 | `VT-pattern-containment` + `VT-pattern-sync`    | [ ]       | depends on 2.2 |
+| [x]    | 2.6 | `VT-pattern-rebuild`                            | [ ]       | depends on 2.3 |
+| [x]    | 2.7 | Gate: `just check` + paren-check                | [ ]       | depends on 2.5, 2.6 |
 
 ### Task Details
 
@@ -152,7 +153,7 @@ _(Status: `[ ]` todo, `[WIP]`, `[x]` done, `[blocked]`)_
 
 ## 11. Wrap-up Checklist
 
-- [ ] Exit criteria satisfied
-- [ ] Verification evidence stored (test run output in notes.md)
-- [ ] DE/DR/IP updated if anything shifted
-- [ ] Hand-off note to Phase 03 (observer wiring + guards)
+- [x] Exit criteria satisfied
+- [x] Verification evidence stored (test run output in notes.md)
+- [x] DE/DR/IP updated if anything shifted
+- [x] Hand-off note to Phase 03 (observer wiring + guards)

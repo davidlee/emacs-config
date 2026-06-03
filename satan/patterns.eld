@@ -25,9 +25,9 @@
   :intrusion_ceiling "inbox"
   :priority 5
   :enabled t
-  :notes "User hits a command error, then opens browser documentation — likely solving a problem.  Low-friction ask-extract is appropriate."))
+  :notes "User hits a command error, then opens browser documentation — likely solving a problem.  Low-friction ask-extract is appropriate.")
 
-((:id "terminal-coding"
+ (:id "terminal-coding"
   :label "Active terminal coding session"
   :cue_handles ("surface:terminal"
                 "event:command_ok"
@@ -36,9 +36,9 @@
   :intrusion_ceiling "visible_sign"
   :priority 3
   :enabled t
-  :notes "User is actively running commands in the terminal and they're succeeding — deep flow state.  High ceiling: avoid interrupting unless genuinely urgent."))
+  :notes "User is actively running commands in the terminal and they're succeeding — deep flow state.  High ceiling: avoid interrupting unless genuinely urgent.")
 
-((:id "editor-commit"
+ (:id "editor-commit"
   :label "Editing led to a commit"
   :cue_handles ("surface:editor"
                 "artifact:commit"

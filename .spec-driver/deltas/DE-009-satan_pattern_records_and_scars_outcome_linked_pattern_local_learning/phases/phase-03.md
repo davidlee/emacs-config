@@ -35,7 +35,7 @@ failure tests. Verify end-to-end attribution with a seeded mature outcome + real
 
 - [x] Phase 02 complete: `dl-satan-pattern.el` module + all P02 VTs green
 - [x] `satan/patterns.eld` committed with seed definitions
-- [ ] `satan-pattern-rebuild` callable and idempotent
+- [x] `satan-pattern-rebuild` callable and idempotent
 
 ## 4. Exit Criteria / Done When
 
@@ -229,4 +229,4 @@ _(Status: `[ ]` todo, `[WIP]`, `[x]` done, `[blocked]`)_
 - [x] Exit criteria satisfied
 - [x] Verification evidence stored (test run output in notes.md)
 - [x] DE/DR/IP updated with lessons
-- [ ] Hand-off note to next phase: `audit-change` for AUD-009
+- [x] Hand-off note to next phase: `audit-change` → AUD-006 (completed)

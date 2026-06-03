@@ -109,12 +109,20 @@ layer."
 ;; ── sync ────────────────────────────────────────────────────────────────────
 
 (defun dl-satan-pattern--read-file (path)
-  "Read PATTERNS-FILE as a list of plists; signal on parse failure."
+  "Read PATH as pattern definitions (a flat list of plists); signal on failure.
+Reads *every* top-level form and appends them, so the file may be one
+`((..) (..))' list or several such forms — nothing is silently dropped.
+A `read'-once parser discards every form after the first, which would
+quietly retire all but the first pattern in a multi-form file."
   (with-temp-buffer
     (insert-file-contents path)
     (goto-char (point-min))
     (condition-case err
-        (read (current-buffer))
+        (let ((forms '()))
+          (condition-case nil
+              (while t (push (read (current-buffer)) forms))
+            (end-of-file nil))
+          (apply #'append (nreverse forms)))
       (error
        (user-error "dl-satan-pattern: failed to parse %s: %s" path
                    (error-message-string err))))))

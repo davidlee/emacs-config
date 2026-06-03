@@ -129,3 +129,35 @@ Design references (DR-009):
 - VT-rebuild-guard-classification-intact ✓ — observer works correctly with real rebuild succeeding
 - VT-global-attr-regression-outcome-rows ✓ — outcome projection correct with rebuild wired
 - VA-pattern-attribution ✓ — seeded contradicted outcome → rebuild → contradicted_count=1, scar row exists
+
+---
+
+## Audit — AUD-006 (2026-06-03)
+
+### BLOCKER found + fixed in-delta (F-001)
+- `satan/patterns.eld` was authored as **three separate top-level `((..))` forms**,
+  one per pattern. `dl-satan-pattern--read-file` used a single `(read (current-buffer))`,
+  which consumes only the FIRST form. Net effect: `dl-satan-pattern-sync` silently
+  upserted only `docs-after-error`; `terminal-coding` + `editor-commit` never reached
+  the DB. Two-thirds of the seed set was dead, with no error.
+- Why the green suite missed it (F-002): every pattern test builds its fixture via
+  `prin1` of a single elisp list → always one well-formed form. No test ever loaded the
+  real checked-in file.
+
+### Fix
+- `patterns.eld` → one canonical `((..) (..) (..))` list (matches DR-009 §4.2).
+- `dl-satan-pattern--read-file` hardened: reads **every** top-level form and `append`s
+  them → silent truncation footgun eliminated permanently.
+- New DB-free regression `dl-satan-pattern/real-eld-parses-all-seeds`: parses the real
+  file, asserts all 3 ids + per-entry validation. RED before fix, GREEN after.
+- `just check` (SATAN_DB_HOST=127.0.0.1): **970 tests, 0 unexpected, 9 skipped, PASS**.
+
+### F-003 — artefact lifecycle reconciled
+- DR-009 draft→accepted; IP-009 draft→completed (+ coverage entries verified, gates box,
+  AUD ref); phase-02 draft→completed (+ exit/task/wrap-up boxes); phase-03 entrance +
+  wrap-up boxes checked. DE-009 left in-progress for `/close-change`.
+
+### Core feature verdict
+- Snapshot stamp, audited GIN-indexed containment join (cue ⊆ snapshot, DEC-4), and the
+  guarded/isolated observer rebuild (§3.2) all match design. Defect was confined to the
+  data file + its reader, not the SQL.
