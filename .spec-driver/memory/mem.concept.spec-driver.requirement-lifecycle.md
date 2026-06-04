@@ -15,7 +15,9 @@ scope:
     - supekku/scripts/lib/requirements/lifecycle.py
     - supekku/scripts/lib/blocks/verification.py
     - supekku/scripts/lib/changes/lifecycle.py
-  commands: [uv run spec-driver sync, uv run spec-driver validate workspace]
+  commands:
+    - uv run spec-driver sync
+    - uv run spec-driver validate workspace
 provenance:
   sources:
     - kind: doc
@@ -28,6 +30,9 @@ provenance:
       ref: supekku/scripts/lib/blocks/verification.py
     - kind: code
       ref: supekku/scripts/lib/changes/lifecycle.py
+links:
+  missing:
+    - raw: PROB-002
 ---
 
 # Requirement Lifecycle Guidance
