@@ -114,11 +114,13 @@ Capture: [[IMPR-012]]. Builds on [[ADR-001]] / [[DE-010]].
 
 ## Open questions (block acceptance)
 
-- Written self-manipulation analysis (containment argument).
-- DE-010 **D2** (pure replayer vs hybrid) — settles whether the gate is the only
-  clock or coexists with a thin reflex touch.
+- Written self-manipulation analysis (containment argument). **— OPEN**
+- ~~DE-010 **D2** (pure replayer vs hybrid)~~ **— RESOLVED hybrid (2026-06-09).**
+  The gate is the system's only periodic clock and carries the cheap
+  latency-reflex itself (one mechanism, not two). So this ADR's gate *is* the
+  reflex host — no separate reflex subsystem to design.
 - Doctrine amendment text for `governance.md` core thesis + `architecture.md`
-  Invocation layer.
+  Invocation layer. **— OPEN**
 
 ## Verification
 

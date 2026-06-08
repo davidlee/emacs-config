@@ -77,7 +77,7 @@ just re-derives the same boundary → idempotent for free. **Do not window on
 wall-clock.** (Under D1=B there is no perception timer at all in this delta, but
 the same offset-keying protects the consumer's ingest cursor.)
 
-## 5. D2 — the one open fork (replayer vs hybrid)
+## 5. D2 — RESOLVED hybrid (2026-06-09)
 
 - **Pure replayer.** Clean, fully decoupled, deterministic. But loses all
   real-time reflex → then you *must* build a separate cheap reflex path (could be
@@ -87,10 +87,11 @@ the same offset-keying protects the consumer's ingest cursor.)
 
 Under D1=B (perception is a function, no perception timer), the **only** periodic
 clock left in the system is the gate — which is exactly where a thin cheap
-latency-touch would live. That makes hybrid the natural shape: the gate both
-decides discretionary arrival *and* carries the cheap reflex. So D2 leans hybrid,
-but it is unforced and is also an **acceptance gate for ADR-002** — settle it
-before fleshing DR-010 / IP.
+latency-touch lives. **Decision (2026-06-09): hybrid.** The gate both decides
+discretionary arrival *and* carries the cheap reflex — one mechanism, not two.
+The pure-replayer alternative would force a separate reflex path for the same
+job. This also satisfies **ADR-002 acceptance gate #2**. DR-010 / IP can now
+proceed on this shape.
 
 Latency floor either way: worst-case intervention ≈ perception-eval + gate +
 spawn ≈ ~10–12 min. SATAN was never sub-minute; **document the floor, accept it.**
@@ -118,8 +119,13 @@ unless a need appears.
 
 ## Open threads for the next agent
 
-1. **Settle D2** (replayer vs hybrid) — unblocks DR-010, IP, and ADR-002.
+D1 + D2 both resolved → architectural shape is locked (perception = pure
+function, lazy-materialize; consumer = hybrid, gate carries the cheap reflex).
+
+1. **Flesh DR-010** — current-vs-target now that the shape is locked.
 2. Decide spec authority: the perception loop is doc-canon, not a SPEC. Does
    authority move into a SPEC as part of this delta, or stay in
    `docs/satan/perceptual-design.md`?
-3. DR-010 is an empty stub — needs current-vs-target once D2 lands.
+3. Then `plan-phases` for an IP.
+4. (Separately) ADR-002's other two gates — self-manipulation analysis +
+   doctrine amendment — remain before the arrival gate can be accepted.
