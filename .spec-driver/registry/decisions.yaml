@@ -1,1 +1,23 @@
-decisions: {}
+decisions:
+  ADR-001:
+    id: ADR-001
+    title: 'ADR-001: Decouple SATAN perception from cognition'
+    status: accepted
+    path: .spec-driver/decisions/ADR-001-decouple_satan_perception_from_cognition.md
+    summary: ''
+    created: '2026-06-08'
+    updated: '2026-06-08'
+    reviewed: '2026-06-08'
+    authors:
+    - name: David Lee
+  ADR-002:
+    id: ADR-002
+    title: 'ADR-002: SATAN arrival via metabolic stochastic gating'
+    status: proposed
+    path: .spec-driver/decisions/ADR-002-satan_arrival_via_metabolic_stochastic_gating.md
+    summary: ''
+    created: '2026-06-08'
+    updated: '2026-06-08'
+    reviewed: '2026-06-08'
+    authors:
+    - name: David Lee
