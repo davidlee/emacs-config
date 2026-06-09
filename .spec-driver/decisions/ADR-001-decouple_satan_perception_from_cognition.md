@@ -3,8 +3,8 @@ id: ADR-001
 title: 'ADR-001: Decouple SATAN perception from cognition'
 status: accepted
 created: '2026-06-08'
-updated: '2026-06-08'
-reviewed: '2026-06-08'
+updated: '2026-06-09'
+reviewed: '2026-06-09'
 authors:
 - name: David Lee
 owners: []
@@ -108,9 +108,39 @@ Implementation: [[DE-010]].
   (segment-offset keying).
 - Consumer drains backlog and advances the cursor without mutating parcels.
 
+## Amendment (2026-06-09, DR-010 design pass)
+
+DR-010 drafting exposed two corrections to this ADR's framing. They refine, not
+reverse, the decision.
+
+1. **The premise was aspirational, not factual.** "A pure deterministic function
+   of `segments[cursor..head]` over the already-durable panopticon segment log"
+   was false at decision time. The percept is a fan-in over three sequencing
+   mechanisms: panopticon segment series (replayable, class A), bough (a separate
+   note/graph store, its own cursor), and **present-tense live reads** (class B:
+   `current_window`, `git_state`, `fs_state`, `bough_active`) that have no
+   historical position and cannot be replayed from a watermark. Making the
+   premise true is itself work — DE-010 **promotes class B → class A**
+   (`current_window`→focus-series head; drop `fs_state`; deprecate bough;
+   `git_state` promotion deferred to an ISSUE-006-extended panopticon producer,
+   leaving one documented residual). The seam already existed in code as
+   `:cue_only`.
+
+2. **"Zero side effects" is reinterpreted.** Read literally it was already
+   violated — perception persists `percept.json`. The operative rule is:
+   perception forbids **acting** (interventions, user-visible effects) and
+   **cognition** (tokens/LLM); it permits **deterministic, append-only
+   recordings** (`percept.json`, attribute charges). This keeps the
+   attribute-charging probes on the perceive side, preserving [[ADR-002]]'s
+   "sensors charge attributes every tick" continuous-integration premise.
+
+3. **bough deprecated** from the active percept path (denote/org displaced it;
+   its only live contribution was a "not using bough" nag). Query code kept
+   dormant; reversible.
+
 ## References
 
-- [[DE-010]] — implementing delta (shaping; D2 consumer-shape open).
+- [[DE-010]] — implementing delta (shaped; DR-010 drafted 2026-06-09).
 - `ISSUE-001` — budget-denied runs skip `percept.json`.
 - `docs/satan/perceptual-design.md` §S1 — `broker--prepare` sequence.
 - `docs/satan/architecture.md` — Invocation / Broker / State layers.
