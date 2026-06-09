@@ -129,3 +129,100 @@ function, lazy-materialize; consumer = hybrid, gate carries the cheap reflex).
 3. Then `plan-phases` for an IP.
 4. (Separately) ADR-002's other two gates — self-manipulation analysis +
    doctrine amendment — remain before the arrival gate can be accepted.
+
+DR-010 accepted, IP-010 + phase-01 authored. Items 1–3 above are DONE.
+
+---
+
+# New Agent Instructions (2026-06-09 — drive IP-010 Phase 1 via /dispatch)
+
+**Task card:** `.spec-driver/deltas/DE-010-decouple_satan_perception_from_agent_run/`
+DE-010 in-progress · DR-010 accepted · IP-010 planned · **phase-01 in-progress**.
+
+**Your job:** execute IP-010 Phase 1 (perceive/consume seam) with **/dispatch in
+serial** (user instruction — do NOT implement inline, do NOT parallelize; the
+seam at 1.1/1.2 is serial-dependent). Route via `/using-spec-driver` first, then
+`/dispatch` on DE-010. Preflight is already done (this handoff) — you do not need
+to re-run it; verify the assumptions hold if you touch a file, but do not
+re-explore from scratch.
+
+## Required reading (in order)
+- `phases/phase-01.md` — tasks 1.1–1.6, exit criteria, **§10 Findings** (verified
+  assumptions, probe shapes, audit-verifier constraints, caller census, session-
+  blocked decision). READ §10 — it is the distilled preflight.
+- `DR-010.md` §3 (target control flow, perceive/consume boundary table, side-
+  effect def, snapshot-shape note), §4 (code-impact table), §7 (DEC-perceive-
+  boundary, DEC-probes-read-commit-split, DEC-budget-denied-mirror-percept).
+- `docs/satan/perceptual-design.md` §S1 (broker pre-spawn sequence).
+
+## Locked design decisions (do not re-litigate)
+- **session-blocked terminal handling (user, 2026-06-09):** unify all three
+  no-child paths through a shared `dl-satan-broker--write-no-child-run STATUS
+  REASON …` helper. session-blocked → status **`failed`**, reason
+  **`session_blocked`**, writes audit bundle + percept.json + bundle.json:percept
+  (verify-clean), **NO `.FAILED` rename, NO failure notification** (intentional
+  DEC-8 deferral, not a failure — must not pollute the failure-streak counter or
+  pop desktop alerts). **budget-denied keeps** status `budget-exceeded` + .FAILED
+  + announce (unchanged). **perceive-failed** → status `failed` reason
+  `perceive_failed` + .FAILED + announce.
+- **Keep `assemble-context = enrich∘perceive`** (composition, not a parallel
+  builder) and **`-probe = commit∘read`** wrappers — preserves DRY, the single
+  percept builder invariant, byte-stability, and existing test stubs.
+- **curiosity probe carries a latent bug DR §3 mandates fixing:** today it
+  advances its watermark to wall-clock `ts` (out-of-order `end_ts` rows skipped).
+  The read/commit split must make `--count-uninspected` return `(count .
+  high-water-end_ts)` (mirror content's shape) and commit must advance to that
+  high-water, NOT `ts`. content already does this (DEC-5); wpm snapshot = state+prev.
+
+## Build order (dependency order — NOT the sheet's 1.1→1.6 numbering)
+1. **1.3** split `dl-satan-run-assemble-context` (context.el:25) →
+   `dl-satan-run-perceive` (percept-build + persist + evidence + sensor_status)
+   and `dl-satan-run-enrich` (resonance + motive; reads `:percept` from prepare);
+   keep `assemble-context` as the `enrich∘perceive` composition.
+2. **1.1 + 1.2** rewrite `dl-satan-broker-run` (broker.el:658): mkdir run-dir →
+   `perceive` UNCONDITIONALLY before the session/budget gates (ISSUE-001 fix);
+   factor `--write-no-child-run` (replaces `--write-budget-denied-run` body,
+   broker.el:622) per the locked decision; mirror `:percept` into all denial
+   bundles. `--spawn` (consume, broker.el:695) drops percept-build, calls
+   `enrich` instead of assemble-context at :755; probes stay in consume for now.
+   **Update the dec8 test stubs (broker-test.el:731)** — it stubs assemble-context
+   + `-probe`; restub for enrich + new read/commit fns.
+3. **1.4** probe read/commit split across `dl-satan-sensor-{curiosity,content,
+   wpm}.el`: perceive does pure read-snapshots → frozen onto prepare; consume
+   commits (charge + advance watermark to snapshot high-water). Apply the
+   curiosity bugfix above.
+4. **1.5** confirm `context-interactive` (context.el:577) byte-stable — it calls
+   assemble-context (= enrich∘perceive), so it should be unchanged; pin with
+   VT-mcp-bundle.
+5. **1.6** author VTs (VT-budget-denied-perceives, VT-perceive-pure,
+   VT-probe-split; regressions VT-percept-golden, VT-mcp-bundle); `just check`.
+
+## Key files
+- `satan/dl-satan-broker.el` — `broker-run` (658), `--spawn` (695),
+  `--write-budget-denied-run` (622), `--announce-failure` (531), `--prepare` (128).
+- `satan/dl-satan-context.el` — `assemble-context` (25), `context-interactive` (577).
+- `satan/dl-satan-percept.el` — `percept-build` (45), `percept-persist` (102).
+- `satan/dl-satan-sensor-{curiosity,content,wpm}.el` — probes (99/95/128).
+- `satan/dl-satan-audit.el` — `audit-open` (49, writes bundle.json),
+  `verify-run` (694), `status-terminal` (685).
+- Tests: `satan/test/dl-satan-broker-test.el` (budget test 426, dec8 731),
+  `dl-satan-context-test.el`, `dl-satan-sensor-content-test.el`, `dl-satan-percept-test.el`.
+
+## Relevant memory
+- `mem.signpost.satan.orientation` — SATAN architecture/file map (verified
+  2026-05-31, scope `satan/**`; treat as advisory, commits since).
+
+## Doctrine / guardrails
+- **Elisp gate (AGENTS.md):** after EVERY `.el` edit run
+  `bin/elisp-locate-paren-error FILE` until `{"ok":true}` BEFORE byte-compile/tests.
+- POL-001 — perception stays in `.emacs.d` (editor-substrate sensing).
+- "no parallel implementation" — exactly ONE percept builder must remain.
+- Commit policy: frequent small `.spec-driver/**` commits; code + spec-driver may
+  commit together or separately, whichever keeps the worktree clean first.
+
+## Commit state / loose ends
+- Phase sheet (status in-progress + §10 findings) **already committed** (1edcd30).
+- **No code written yet** — clean worktree for code (modulo pre-existing untracked
+  `.cache/ .direnv/ .envrc result` and `M .agents/spec-driver-boot.md`, unrelated).
+- Task list (#1–#6) was created for an inline plan; /dispatch will own its own
+  task tracking — ignore or reset.
