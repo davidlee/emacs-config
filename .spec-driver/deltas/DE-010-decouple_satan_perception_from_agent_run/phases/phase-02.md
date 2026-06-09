@@ -4,7 +4,7 @@ slug: "010-decouple_satan_perception_from_agent_run-phase-02"
 name: IP-010 Phase 02
 created: "2026-06-10"
 updated: "2026-06-10"
-status: in-progress  # one of: completed | deferred | draft | in-progress | pending
+status: completed  # one of: completed | deferred | draft | in-progress | pending
 kind: phase  # one of: audit | delta | design_revision | issue | memory | phase | plan | policy | problem | prod | requirement | risk | spec | standard | task | verification
 plan: IP-010
 delta: DE-010
@@ -119,8 +119,8 @@ instruction 2026-06-10. Build order top-to-bottom; later tasks depend on the
 | ------ | --- | ------------------------------------------------------- | --------- | ----- |
 | [x]    | 2.1 | New per-source ingest-cursor store (read/write/head)    | [ ]       | `dl-satan-ingest-cursor.el` (B1, opus). focus/browser parsed-instant, content string< |
 | [x]    | 2.2 | `consume` advances cursors on successful run only       | [ ]       | broker `--spawn:859`, after probe commits, soft-fail; denial/perceive skip confirmed |
-| [ ]    | 2.3 | Backlog-depth read fn (`head − cursor`) + waybar assess | [ ]       | emacsclient-callable; assess only, no flakes edit |
-| [ ]    | 2.4 | VT-cursor-advance + extend VT-perceive-pure spy; gate   | [ ]       | flip coverage planned→verified; `just check` |
+| [x]    | 2.3 | Backlog-depth read fn (`head − cursor`) + waybar assess | [ ]       | `-backlog-depth` → `(:focus N :browser N :content N :total N)`; assess-only (B2) |
+| [x]    | 2.4 | VT-cursor-advance + extend VT-perceive-pure spy; gate   | [ ]       | 8 VTs in `dl-satan-ingest-cursor-test.el`; perceive-pure spies cursor writer; coverage verified; 990/999 |
 
 ### Task Details
 
@@ -234,10 +234,23 @@ Investigation 2026-06-10 (read-only, `satan/`):
 
 ## 11. Wrap-up Checklist
 
-- [ ] Exit criteria satisfied
-- [ ] Verification evidence stored (`just check` result, VT names)
-- [ ] Spec/Delta/Plan updated (flip VT-cursor-advance `planned → verified`; tick
-      IP §9 "Phase 2 complete"; gate-check row 4)
+- [x] Exit criteria satisfied (cursor store + advance + backlog-depth fn;
+      perceive never advances — spied; VT-cursor-advance green)
+- [x] Verification evidence stored — `just check` 990/999 (+8 VTs vs P01 982/991,
+      0 unexpected, 9 pre-existing skips); VTs:
+      `dl-satan-ingest-cursor/{advance-writes-head-per-source,advance-idempotent,
+      advance-does-not-regress-on-older-row,advance-mixed-offset-focus-uses-parsed-instant,
+      advance-missing-cursor-initialises-to-head,backlog-depth-known-cursor,
+      backlog-depth-cursor-at-head-is-zero,backlog-depth-missing-cursor-full-count}`;
+      VT-perceive-pure spy extended (`-advance`/`--write`)
+- [x] Spec/Delta/Plan updated — VT-cursor-advance coverage flipped `verified`
+      (B2); IP §9 + gate-check row 4 ticked at delta level
+- [x] Waybar wiring assessed (surface-only, user decision): widget would call
+      `emacsclient --eval '(dl-satan-ingest-cursor-backlog-depth)'` →
+      `(:focus N :browser N :content N :total N)`; config lives in `~/flakes`
+      (`~/.config/waybar`); needs `home-manager switch`. Read fn stays in
+      `.emacs.d` (POL-001). **Not built this delta** — follow-up if wanted.
 - [ ] Hand-off notes (close-out follow-ups: ADR-001 amendment +
-      perceptual-design.md §S1 via `/audit-change`; then
-      `mem.fact.satan.perceive-consume-seam`; then `/close-change`)
+      perceptual-design.md §S1 via `/audit-change`; then reconcile/author
+      `mem.fact.satan.perceive-consume-seam` + the worker-created
+      `mem.pattern.satan.ingest-cursor-backlog-depth`; then `/close-change`)

@@ -642,12 +642,14 @@ pop a desktop alert).  The bundle is verify-clean."
   "`dl-satan-run-perceive' performs no cognition / effects / consumption-mutation.
 It may persist `percept.json' and take pure probe READS, but must NOT:
 spawn a process (`make-process'), dispatch a tool (`dl-satan-tool-dispatch'),
-enqueue an attribute (`dl-satan-attribute-enqueue'), or advance any probe
-watermark (the three `mark-inspected' / `--write-state' writers).  Each
-forbidden fn is spied to fail the test if called.  Read-only local
-subprocess probes (git/bough via `call-process') are ALLOWED and not
-spied.  `dl-satan-percept-build' is stubbed to a fixture percept — the
-purity subject is the perceive orchestration, not the builder internals."
+enqueue an attribute (`dl-satan-attribute-enqueue'), advance any probe
+watermark (the three `mark-inspected' / `--write-state' writers), OR advance
+the ingest cursor (`dl-satan-ingest-cursor-advance' /
+`dl-satan-ingest-cursor--write').  Each forbidden fn is spied to fail the
+test if called.  Read-only local subprocess probes (git/bough via
+`call-process') are ALLOWED and not spied.  `dl-satan-percept-build' is
+stubbed to a fixture percept — the purity subject is the perceive
+orchestration, not the builder internals."
   (let* ((dir (make-temp-file "satan-perceive-pure-" t))
          (prepare (list :run_id "20260609T100000-morning-aaaaaa"
                         :time_now "2026-06-09T10:00:00+10:00"
@@ -671,7 +673,12 @@ purity subject is the perceive orchestration, not the builder internals."
                    ((symbol-function 'dl-satan-sensor-content-mark-inspected)
                     (lambda (&rest _) (ert-fail "perceive advanced content watermark")))
                    ((symbol-function 'dl-satan-sensor-wpm--write-state)
-                    (lambda (&rest _) (ert-fail "perceive advanced wpm state"))))
+                    (lambda (&rest _) (ert-fail "perceive advanced wpm state")))
+                   ;; DE-010 P02 — ingest-cursor advance is consume-side only
+                   ((symbol-function 'dl-satan-ingest-cursor-advance)
+                    (lambda (&rest _) (ert-fail "perceive called ingest-cursor-advance")))
+                   ((symbol-function 'dl-satan-ingest-cursor--write)
+                    (lambda (&rest _) (ert-fail "perceive wrote ingest cursor state"))))
            (let ((out (dl-satan-run-perceive prepare '(:name "morning") dir)))
              ;; percept.json was persisted …
              (should (file-readable-p (expand-file-name "percept.json" dir)))

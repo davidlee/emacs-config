@@ -180,5 +180,55 @@ written plist.  Call ONLY on a successful consume run."
     (dl-satan-ingest-cursor--write state)
     state))
 
+;; --- Backlog depth ---------------------------------------------
+;;
+;; Returns the count of segments/captures that are newer than the
+;; persisted cursor per source.  cursor == head ⇒ 0; missing cursor ⇒
+;; full count (from-head).  Emacsclient-callable via the public fn.
+
+(defun dl-satan-ingest-cursor--segment-count-after (kind cursor-ts)
+  "Count rows in today's KIND segment JSONL with `:end_ts' newer than CURSOR-TS.
+KIND is \"focus\" or \"browser\".  Uses parsed-instant compare (mirrors
+`dl-satan-ingest-cursor--instant-less-p').  nil CURSOR-TS ⇒ count all rows."
+  (let ((path (expand-file-name
+               (format "segments/%s-%s.jsonl"
+                       kind (dl-satan-tools-activity--today))
+               dl-satan-tools-activity-dir)))
+    (if (not (file-readable-p path))
+        0
+      (condition-case nil
+          (let ((rows (dl-satan-jsonl-read-file path))
+                (count 0))
+            (dolist (row rows)
+              (let ((ts (plist-get row :end_ts)))
+                (when (dl-satan-ingest-cursor--instant-less-p cursor-ts ts)
+                  (cl-incf count))))
+            count)
+        (error 0)))))
+
+(defun dl-satan-ingest-cursor--content-count-after (cursor-ts)
+  "Count articles.jsonl rows with `:captured_at' newer than CURSOR-TS.
+Reuses `dl-satan-sensor-content--count-uninspected': nil CURSOR-TS ⇒ `\"\"'
+watermark ⇒ counts all rows."
+  (require 'dl-satan-sensor-content)
+  (condition-case nil
+      (car (dl-satan-sensor-content--count-uninspected
+            (or cursor-ts "")))
+    (error 0)))
+
+(defun dl-satan-ingest-cursor-backlog-depth ()
+  "Return per-source backlog depth plist `(:focus N :browser N :content N :total N)'.
+Depth per source = count of evidence records newer than the persisted cursor.
+cursor == head ⇒ 0.  Missing cursor ⇒ full count (consume from head).
+Suitable for `emacsclient -e' polling (returns a readable plist)."
+  (let* ((state   (dl-satan-ingest-cursor-read))
+         (fc      (dl-satan-ingest-cursor--segment-count-after
+                   "focus"   (and state (plist-get state :focus))))
+         (bc      (dl-satan-ingest-cursor--segment-count-after
+                   "browser" (and state (plist-get state :browser))))
+         (cc      (dl-satan-ingest-cursor--content-count-after
+                   (and state (plist-get state :content)))))
+    (list :focus fc :browser bc :content cc :total (+ fc bc cc))))
+
 (provide 'dl-satan-ingest-cursor)
 ;;; dl-satan-ingest-cursor.el ends here
