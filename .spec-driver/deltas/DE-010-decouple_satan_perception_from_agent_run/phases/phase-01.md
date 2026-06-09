@@ -4,7 +4,7 @@ slug: "010-decouple_satan_perception_from_agent_run-phase-01"
 name: IP-010 Phase 01
 created: "2026-06-09"
 updated: "2026-06-09"
-status: in-progress  # one of: completed | deferred | draft | in-progress | pending
+status: completed  # one of: completed | deferred | draft | in-progress | pending
 kind: phase  # one of: audit | delta | design_revision | issue | memory | phase | plan | policy | problem | prod | requirement | risk | spec | standard | task | verification
 plan: IP-010
 delta: DE-010
@@ -178,7 +178,7 @@ _(Status: `[ ]` todo, `[WIP]`, `[x]` done, `[blocked]`)_
 
 ## 11. Wrap-up Checklist
 
-- [ ] Exit criteria satisfied
-- [ ] Verification evidence stored
-- [ ] Spec/Delta/Plan updated with lessons
-- [ ] Hand-off notes to Phase 2 (cursor)
+- [x] Exit criteria satisfied (`just check` 982/991, 0 unexpected)
+- [x] Verification evidence stored (IP-010 coverage block: 5 P01 VTs verified)
+- [x] Spec/Delta/Plan updated with lessons (notes.md "Phase 1 Execution Notes")
+- [x] Hand-off notes to Phase 2 (cursor) — notes.md "Next agent"; ADR-001/perceptual-design.md §S1 doc reconciliation flagged for audit-change

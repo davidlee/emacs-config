@@ -1,0 +1,2 @@
+{"v":1,"ts":"2026-06-09T13:21:31.381301+00:00","session":"db046fc6-99cd-457e-b0c3-1ef9cf104f09","cmd":"artifact.read","argv":["artifact.read","notes.md"],"artifacts":["DE-010"],"exit_code":0,"status":"ok","artifact_type":"delta"}
+{"v":1,"ts":"2026-06-09T13:22:12.190066+00:00","session":"db046fc6-99cd-457e-b0c3-1ef9cf104f09","cmd":"artifact.edit","argv":["artifact.edit","notes.md"],"artifacts":["DE-010"],"exit_code":0,"status":"ok","artifact_type":"delta"}

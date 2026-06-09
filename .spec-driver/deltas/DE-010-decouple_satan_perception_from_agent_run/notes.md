@@ -226,3 +226,91 @@ re-explore from scratch.
   `.cache/ .direnv/ .envrc result` and `M .agents/spec-driver-boot.md`, unrelated).
 - Task list (#1–#6) was created for an inline plan; /dispatch will own its own
   task tracking — ignore or reset.
+
+---
+
+# Phase 1 EXECUTION NOTES (2026-06-09 — driven via /dispatch, serial)
+
+**Done.** All Phase 1 exit criteria met; `just check` green (982/991, 9
+pre-existing DB/integration skips, 0 unexpected; +10 new VTs). Structural cut
+complete; **cursor deferred to Phase 2** (not started). Executed as 4 serial
+dispatch batches, each committed separately with the phase sheet:
+
+| Batch | Tasks | Commit | What |
+|---|---|---|---|
+| B1 | 1.3 | `4c4df41` | split `assemble-context` → `run-perceive` + `run-enrich`; `assemble-context = enrich∘perceive` |
+| B2 | 1.1,1.2 | `3c8e333` | `broker-run` perceives unconditionally before gates (ISSUE-001); `--write-no-child-run` helper; mirror `:percept` into bundle.json |
+| B3 | 1.4 | `71f8f68` | probe read/commit split (curiosity/content/wpm); curiosity high-water bugfix |
+| B4 | 1.5,1.6 | `32c7dc9` | author VTs + verification gate |
+
+`.spec-driver/**` committed promptly **with** the code of each batch (per repo
+doctrine; keeps worktree clean).
+
+## What shipped (architecture as built)
+- `dl-satan-run-perceive (prepare mode dir)` — percept-build + persist + probe
+  **read-snapshots** threaded onto `prepare :probe_snapshots` (internal, never
+  serialized → bundle byte-stable); pure (no enqueue / no watermark write / no
+  spawn). `dl-satan-run-enrich (prepare)` — resonance + motive, reads `:percept`.
+  `assemble-context` retained as the exact `enrich∘perceive` composition.
+- `broker-run`: mkdir → `run-perceive` (UNCONDITIONAL) → session gate → budget
+  gate → `--spawn`(consume). perceive error → `--write-no-child-run` status
+  `failed` reason `perceive_failed` (+.FAILED/announce).
+- `--write-no-child-run` shared helper. Callers: budget-denied (`budget-exceeded`,
+  +.FAILED+announce), **session-blocked** (`failed`/`session_blocked`, **NO
+  .FAILED, NO announce** — verify-clean bundle; was previously a `final.json`-only
+  write with no audit bundle), perceive-failed. All mirror `:percept` into
+  `bundle.json` (consumers read it there, not the sidecar — A2).
+- Probes: `-probe-read` (pure snapshot + native high-water) / `-probe-commit`
+  (enqueue + advance watermark to that high-water) / `-probe` = `commit∘read`
+  wrapper (preserved for existing tests). Curiosity bugfix: `--count-uninspected`
+  now returns `(count . high-water)`; commit advances to high-water, not
+  wall-clock `ts` (mirrors content DEC-5; out-of-order `end_ts` no longer skipped).
+
+## Surprises / adaptations
+- **Budget test** (`refuses-spawn-when-budget-exceeded`) now exercises perceive
+  (runs before the gate). Real `percept-build` reads sensors/git/bough → out of
+  scope for a gate test, so it stubs `run-perceive` with a minimal-percept that
+  still persists `percept.json` + threads `:percept`. Gate assertions unchanged.
+  Same minimal-perceive stub reused by the new budget/session VTs (lifted to a
+  shared helper). The **real** perceive-on-denial path is covered structurally;
+  consider one integration-grade VT exercising the real builder on a denied tick
+  if confidence warrants (low priority).
+- **MCP interactive boot now takes pure probe reads on every boot** (perceive is
+  on its path). Harmless (no commit), negligible cost, but new behaviour on the
+  interactive path — noted in case it ever matters.
+- **wpm probe-split VT skipped** (worker decision): wpm's "high-water" is a
+  state-transition, not a timestamp watermark, so the out-of-order fixture
+  doesn't map; its writer (`wpm--write-state`) is already a forbidden-call spy in
+  VT-perceive-pure. Acceptable; flag if Phase 2 wants symmetric coverage.
+
+## Rough edges / follow-ups
+- Redundant `mkdir`: `broker-run` mkdirs the run-dir, and `--write-no-child-run`/
+  `--spawn` also `(unless (file-directory-p dir) (make-directory …))`. Idempotent,
+  harmless; left as-is.
+- `--write-no-child-run` grew `:event`/`:event-payload`/`:announce-reason` keys
+  beyond the minimal design to preserve the budget path's exact audit-event name
+  + notification text. Justified (behaviour preservation) but worth a glance if
+  the helper gets more callers.
+- ADR-001 amendment + `docs/satan/perceptual-design.md` §S1 update (perceive/
+  consume control flow) are listed in DR-010 §4 code-impact but were **NOT** part
+  of the Phase 1 code tasks (1.1–1.6). **Follow-up: doc/ADR reconciliation**
+  before close (audit-change should catch this).
+
+## Verification
+- `just check` green after last edit (982/991, 0 unexpected). Elisp paren gate
+  `{"ok":true}` confirmed after every `.el` edit across all batches.
+
+## Memory candidates (not yet written)
+- Perceive/enrich/consume seam + `--write-no-child-run` semantics (esp.
+  session-blocked = `failed`/`session_blocked`, no .FAILED/announce). Workers
+  deferred memory creation until the broker rework settled — it has now. Worth a
+  `mem.fact.satan.perceive-consume-seam` once Phase 1 closes / docs reconcile.
+  Existing `mem.pattern.satan.sensor-watermark-format` already covers the probe
+  watermark = native-source-timestamp rule (curiosity now conforms).
+
+## Next agent
+- Phase 1 closed at user instruction ("exit on just check green"). **Phase 2 =
+  the per-source ingest cursor** (DR-010 §3 Cursor/watermark, VT-cursor-advance) —
+  NOT planned yet. Run `/plan-phases` when resuming.
+- Before delta close: `/audit-change` should reconcile the ADR-001 amendment +
+  perceptual-design.md §S1 doc update (DR §4) that Phase 1 did not touch.
