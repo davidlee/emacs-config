@@ -1,0 +1,1 @@
+../ADR-001-decouple_satan_perception_from_cognition.md
