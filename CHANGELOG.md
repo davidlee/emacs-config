@@ -2,6 +2,41 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-06-10 — DE-010: decouple SATAN perception from the agent run
+
+The SATAN tick is cut into **perceive** (deterministic sensing, runs
+unconditionally before the session/budget gates) and **consume** (the gated LLM
+run carrying all effects, attribute charges, and consumption state). Perception
+is now budget-independent and effect-separated — fixing ISSUE-001 (budget-denied
+ticks no longer skip `percept.json`). Replayability is *not* delivered here
+(→ IMPR-013).
+
+### Phase 1 — perceive/consume seam
+
+- `dl-satan-run-perceive` (percept-build + persist + probe **read-snapshot**) is
+lifted out of `dl-satan-broker--spawn` to **before** the gates in `broker-run`.
+`assemble-context` retained as the exact `enrich∘perceive` composition.
+- Probes split read/commit: perceive takes a pure snapshot (native high-water);
+consume charges + advances the watermark to that high-water, not wall-clock `ts`
+(curiosity out-of-order bugfix; mirrors content). `-probe = commit∘read`.
+- Shared `--write-no-child-run STATUS REASON` helper. **session-blocked** →
+`failed`/`session_blocked`, **no `.FAILED`, no announce** (verify-clean bundle);
+budget-denied + perceive-failed keep `.FAILED`+announce. All denial paths mirror
+`:percept` into `bundle.json`.
+
+### Phase 2 — per-source intra-day ingest cursor
+
+- **NEW `satan/dl-satan-ingest-cursor.el`** — the evidence-assembly frontier
+(distinct from per-sensor probe watermarks), per source `(:focus :browser
+:content)` keyed on native ts (`end_ts` / `captured_at`); **git excluded**;
+intra-day. Advance = `max(current, head)`, idempotent, verbatim native ts.
+`consume` advances on success only; perceive + denial paths never do.
+- Additive / low-risk: missing or zero cursor ⇒ consume-from-head.
+- `dl-satan-ingest-cursor-backlog-depth` (`head − cursor`, emacsclient-callable)
+surfaces backlog depth for a waybar widget (read fn built; widget wiring in
+`~/flakes` assessed, not built).
+- +18 VTs across both phases; `just check` 982/991 → 990/999, zero regressions.
+
 ## 2026-06-03 — DE-007: adversarial review of Phase-4 boot context (AUD-008) + fixes
 
 Adversarial review of the DE-007 Phase-4 commits (interactive pi MCP boot

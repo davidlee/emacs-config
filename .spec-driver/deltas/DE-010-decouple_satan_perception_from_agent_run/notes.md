@@ -456,3 +456,78 @@ surface are fairly disjoint), but confirm before assuming.
   spec-driver may go together or separately, whichever keeps the worktree clean
   first. Phase 1 committed each batch's code WITH its phase-sheet tick — continue
   that cadence for Phase 2.
+
+---
+
+# Phase 2 EXECUTION NOTES (2026-06-10 — driven via /dispatch, serial)
+
+**Done.** All Phase 2 exit criteria met; `just check` green (990/999, +8 new VTs
+over the P01 982/991 baseline, 0 unexpected, 9 pre-existing skips). The
+per-source ingest cursor is **additive / low-risk** (missing cursor =
+consume-from-head). Executed as 2 serial dispatch batches (user chose serial),
+each committed with its phase-sheet ticks:
+
+| Batch | Tasks | Model | Commit | What |
+|---|---|---|---|---|
+| B1 | 2.1,2.2 | opus | `13127cc` | NEW `dl-satan-ingest-cursor.el` store + `consume` (broker `--spawn`) advance |
+| B2 | 2.3,2.4 | sonnet | `5f63d69` | `-backlog-depth` fn (waybar surface, assess-only) + 8 VTs + perceive-pure spy + coverage flip |
+
+## What shipped (architecture as built)
+- **NEW `satan/dl-satan-ingest-cursor.el`** — the per-source evidence-assembly
+  frontier, **distinct** from the per-sensor private probe watermarks. Sources
+  `(:focus :browser :content)`; **git excluded**. State file
+  `~/.local/state/satan/ingest-cursor.json` (JSON-plist, follows the sensor
+  `*-state.json` idiom). API: `-read` / `-get SOURCE` / `-head SOURCE` /
+  `-advance` / `-backlog-depth`.
+- **Advance = `max(current, head)` per source**, idempotent, stores the source's
+  **native timestamp verbatim** (mem.pattern.satan.sensor-watermark-format).
+  **Comparator asymmetry (intentional):** content uses `string<` (single
+  UTC-millis-Z format); focus/browser use parsed-instant `time-less-p` (mixed
+  local-offset day-files — matches `--newest-segment-end`). Do NOT collapse to one
+  comparator — VT `advance-mixed-offset-focus-uses-parsed-instant` locks it.
+- **`consume` advances cursors** in `dl-satan-broker--spawn` (broker.el:859),
+  after the probe commits, soft-fail `condition-case`, **success-only**. Perceive
+  + all `--write-no-child-run` denial callers (budget/session/perceive-failed)
+  `return` before `--spawn` → never advance. Spied by the extended VT-perceive-pure.
+- **`dl-satan-ingest-cursor-backlog-depth`** → `(:focus N :browser N :content N
+  :total N)`, emacsclient-callable. `cursor==head` ⇒ 0; missing ⇒ full count.
+  Reuses `--count-uninspected` for content (no duplicate scan).
+
+## Surprises / adaptations
+- **Open decision resolved as planned (advance + surface only).** DR §3 "negative
+  guarantee only, no positive per-segment replay pass" → the cursor is NOT wired
+  as the `assemble-with-bounds` read `start` this delta. No STOP triggered.
+- **Worker (B1) flagged a real DRY opportunity**: `--read`/`--write` reproduce the
+  `json-parse-buffer :object-type 'plist` + `make-directory` + `json-serialize`
+  idiom now in **4 places** (curiosity, content, wpm, ingest-cursor). A
+  `dl-satan-json-state` helper would DRY all four but touches 3 existing sensor
+  files — out of scope (breaks "additive"). **Follow-up improvement candidate.**
+- **Test-fixture gotcha** (for future cursor tests): must let-bind
+  `dl-satan-tools-activity-dir` (segments), `dl-satan-tools-content-dir` (content),
+  AND `dl-satan-ingest-cursor-state-file` to temps; `dl-satan-tools-content` schema
+  code also needs `dl-satan-tools-descriptions-dir` bound (mirrors
+  `dl-satan-tools-content-test--with-store`).
+
+## Rough edges / follow-ups
+- **`-backlog-depth` reads each segment file per call** (2 file reads for
+  focus+browser). Fine for waybar polling cadence; note if ever called hot.
+- **Worker B2 created a memory** (`mem.pattern.satan.ingest-cursor-backlog-depth`)
+  despite the "propose don't create" instruction (workers are not artefact
+  writers). Left in place; **reconcile during close-out** against the planned
+  `mem.fact.satan.perceive-consume-seam` (dedup / merge or keep both with links).
+- **Orchestrator fixed a typo** post-B2: test helper `dl-saturn-cursor-test--…`
+  → `dl-satan-ingest-cursor-test--…` (saturn→satan); re-ran `just check` green.
+
+## Verification
+- `just check` green (990/999) after the last edit (the typo-fix rerun). Elisp
+  paren gate `{"ok":true}` confirmed after every `.el` edit across both batches.
+
+## Close-out follow-ups (STILL OPEN — handoff Step 2)
+1. **Doc/ADR reconciliation (DR-010 §4, never done — Phase 1 or 2):** ADR-001
+   side-effect amendment + `docs/satan/perceptual-design.md` §S1 perceive/consume
+   control flow. Route `/audit-change`.
+2. **Memory:** author `mem.fact.satan.perceive-consume-seam`; reconcile the
+   worker-created `mem.pattern.satan.ingest-cursor-backlog-depth`; consider
+   extending `mem.pattern.satan.sensor-watermark-format` to name the ingest cursor
+   as a second consumer (with the parsed-instant focus/browser nuance).
+3. `/close-change` when coverage gates + lifecycle support it.
