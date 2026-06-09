@@ -824,23 +824,27 @@ Returns the run-id."
                            :time-now (plist-get prepare :time_now)
                            :run-dir dir)
                         (error nil)))
+           ;; DR-010 §3 — consume-side probe COMMIT.  The pure read-
+           ;; snapshots were taken upstream by `dl-satan-run-perceive'
+           ;; (unconditionally, before the gates) and threaded onto
+           ;; PREPARE under `:probe_snapshots'.  Committing only here
+           ;; means a budget-denied / session-blocked tick perceives but
+           ;; never advances any watermark — no sensor signal is lost.
+           (_probe-snapshots (plist-get prepare :probe_snapshots))
            (_curiosity-signal
             (condition-case _err
-                (dl-satan-sensor-curiosity-probe
-                 :run-id run-id
-                 :ts (plist-get prepare :time_now))
+                (dl-satan-sensor-curiosity-probe-commit
+                 (plist-get _probe-snapshots :curiosity))
               (error nil)))
            (_content-signal
             (condition-case _err
-                (dl-satan-sensor-content-probe
-                 :run-id run-id
-                 :ts (plist-get prepare :time_now))
+                (dl-satan-sensor-content-probe-commit
+                 (plist-get _probe-snapshots :content))
               (error nil)))
            (_wpm-signal
             (condition-case _err
-                (dl-satan-sensor-wpm-probe
-                 :run-id run-id
-                 :ts (plist-get prepare :time_now))
+                (dl-satan-sensor-wpm-probe-commit
+                 (plist-get _probe-snapshots :wpm))
               (error nil)))
            (prepare (plist-put prepare :pre_spawn pre-spawn)))
     (let* ((bundle (funcall (or (plist-get mode :context-fn) #'ignore)

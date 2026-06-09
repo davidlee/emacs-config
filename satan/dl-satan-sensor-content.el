@@ -90,13 +90,20 @@ Uses the lenient JSONL reader (skips malformed lines per O-1)."
             (cl-incf count)))))
     (cons count high-water)))
 
-;; --- Probe -----------------------------------------------------
+;; --- Probe (read/commit split — DR-010 §3) ---------------------
 
-(cl-defun dl-satan-sensor-content-probe (&key run-id ts)
-  "Check for uninspected panopticon content captures and emit signal if any.
-Returns non-nil if a signal was emitted.
+(cl-defun dl-satan-sensor-content-probe-read (&key run-id ts)
+  "Pure read-snapshot for the content-backlog probe (perceive-side).
+Reads the watermark, counts uninspected captures, computes the native
+high-water captured_at, and builds (but does NOT enqueue) the would-be
+attribute payload.  Zero mutation: no enqueue, no watermark advance, no
+state write.
+
 TS is the broker's `time_now' — used ONLY in the attribute payload, NOT
-for the watermark (DEC-5: broker ts format ≠ captured_at format)."
+for the watermark (DEC-5: broker ts format ≠ captured_at format).
+
+Returns a snapshot plist: (:emit t :payload PAYLOAD :high-water HW) when
+a signal is warranted, else (:emit nil)."
   (condition-case err
       (when (and run-id
                  dl-satan-sensor-content-enabled
@@ -108,20 +115,40 @@ for the watermark (DEC-5: broker ts format ≠ captured_at format)."
                (high-water (cdr count-high)))
           (when (> count 0)
             (require 'dl-satan-attribute)
-            (let ((payload (dl-satan-attribute-build-sensor-payload
+            (list :emit t
+                  :high-water high-water
+                  :payload (dl-satan-attribute-build-sensor-payload
                             :run-id run-id
                             :ts (or ts (format-time-string "%Y-%m-%dT%T%:z"))
                             :reason "content_backlog"
                             :sensor-type "panopticon_content_backlog"
                             :metric-value count
-                            :metric-unit "uninspected_captures")))
-              (dl-satan-attribute-enqueue payload)
-              ;; DEC-5: advance watermark to max captured_at, NOT ts
-              (dl-satan-sensor-content-mark-inspected high-water)
-              t))))
+                            :metric-unit "uninspected_captures")))))
     (error
-     (message "[satan-sensor-content] probe soft-failed: %S" err)
+     (message "[satan-sensor-content] probe-read soft-failed: %S" err)
      nil)))
+
+(defun dl-satan-sensor-content-probe-commit (snapshot)
+  "Commit SNAPSHOT from `dl-satan-sensor-content-probe-read' (consume-side).
+When (:emit SNAPSHOT) is non-nil, enqueue the payload and advance the
+watermark to the snapshot's high-water (DEC-5: max captured_at, NOT ts).
+Returns non-nil iff a signal was emitted."
+  (condition-case err
+      (when (plist-get snapshot :emit)
+        (require 'dl-satan-attribute)
+        (dl-satan-attribute-enqueue (plist-get snapshot :payload))
+        (dl-satan-sensor-content-mark-inspected (plist-get snapshot :high-water))
+        t)
+    (error
+     (message "[satan-sensor-content] probe-commit soft-failed: %S" err)
+     nil)))
+
+(cl-defun dl-satan-sensor-content-probe (&key run-id ts)
+  "Check for uninspected panopticon content captures and emit signal if any.
+Preserved wrapper: read-snapshot then commit.  Returns non-nil if a
+signal was emitted."
+  (dl-satan-sensor-content-probe-commit
+   (dl-satan-sensor-content-probe-read :run-id run-id :ts ts)))
 
 (provide 'dl-satan-sensor-content)
 ;;; dl-satan-sensor-content.el ends here

@@ -125,9 +125,17 @@ Returns \"active\", \"idle\", or nil (ambiguous)."
 ;; probe
 ;; -----------------------------------------------------------------
 
-(cl-defun dl-satan-sensor-wpm-probe (&key run-id ts)
-  "Check WPM activity state and emit signal on state transition.
-Returns non-nil if a signal was emitted."
+(cl-defun dl-satan-sensor-wpm-probe-read (&key run-id ts)
+  "Pure read-snapshot for the WPM activity probe (perceive-side).
+Classifies the recent window (pure `--classify'), reads the previous
+emitted state, and builds (but does NOT enqueue) the would-be attribute
+payload on a state transition.  Zero mutation: no enqueue, no state write.
+
+For WPM the \"high-water\" is the classified state itself; the snapshot
+carries `:state' (the new state to record) and `:emitted-at'.
+
+Returns (:emit t :payload PAYLOAD :state STATE :emitted-at TS) when the
+state changed, else (:emit nil)."
   (condition-case err
       (when (and run-id (bound-and-true-p dl-satan-attribute-updates-enabled))
         (let* ((state (dl-satan-sensor-wpm--classify))
@@ -140,21 +148,44 @@ Returns non-nil if a signal was emitted."
                                dl-satan-sensor-wpm-active-threshold
                              dl-satan-sensor-wpm-idle-threshold))
                    (unit (if (equal state "active") "active_seconds" "idle_seconds"))
-                   (payload (dl-satan-attribute-build-sensor-payload
-                             :run-id run-id
-                             :ts (or ts (format-time-string "%Y-%m-%dT%T%:z"))
-                             :reason reason
-                             :sensor-type "wpm_activity"
-                             :metric-value metric
-                             :metric-unit unit)))
-              (dl-satan-attribute-enqueue payload)
-              (dl-satan-sensor-wpm--write-state
-               (list :last_state state
-                     :last_emitted_at (or ts (format-time-string "%Y-%m-%dT%T%:z"))))
-              t))))
+                   (emitted-at (or ts (format-time-string "%Y-%m-%dT%T%:z"))))
+              (list :emit t
+                    :state state
+                    :emitted-at emitted-at
+                    :payload (dl-satan-attribute-build-sensor-payload
+                              :run-id run-id
+                              :ts emitted-at
+                              :reason reason
+                              :sensor-type "wpm_activity"
+                              :metric-value metric
+                              :metric-unit unit))))))
     (error
-     (message "[satan-sensor-wpm] probe soft-failed: %S" err)
+     (message "[satan-sensor-wpm] probe-read soft-failed: %S" err)
      nil)))
+
+(defun dl-satan-sensor-wpm-probe-commit (snapshot)
+  "Commit SNAPSHOT from `dl-satan-sensor-wpm-probe-read' (consume-side).
+When (:emit SNAPSHOT) is non-nil, enqueue the payload and advance the
+state file to the snapshot's classified `:state'/`:emitted-at'.
+Returns non-nil iff a signal was emitted."
+  (condition-case err
+      (when (plist-get snapshot :emit)
+        (require 'dl-satan-attribute)
+        (dl-satan-attribute-enqueue (plist-get snapshot :payload))
+        (dl-satan-sensor-wpm--write-state
+         (list :last_state (plist-get snapshot :state)
+               :last_emitted_at (plist-get snapshot :emitted-at)))
+        t)
+    (error
+     (message "[satan-sensor-wpm] probe-commit soft-failed: %S" err)
+     nil)))
+
+(cl-defun dl-satan-sensor-wpm-probe (&key run-id ts)
+  "Check WPM activity state and emit signal on state transition.
+Preserved wrapper: read-snapshot then commit.  Returns non-nil if a
+signal was emitted."
+  (dl-satan-sensor-wpm-probe-commit
+   (dl-satan-sensor-wpm-probe-read :run-id run-id :ts ts)))
 
 (provide 'dl-satan-sensor-wpm)
 ;;; dl-satan-sensor-wpm.el ends here

@@ -749,11 +749,13 @@ synchronous launch return (the original unwind-protect bug)."
                    (lambda (prepare &rest _) prepare))
                   ((symbol-function 'dl-satan-sensor-alerts-check)
                    (lambda (&rest _) nil))
-                  ((symbol-function 'dl-satan-sensor-curiosity-probe)
+                  ;; DR-010 §3: --spawn now calls the consume-side
+                  ;; -probe-commit variants (perceive took the reads).
+                  ((symbol-function 'dl-satan-sensor-curiosity-probe-commit)
                    (lambda (&rest _) nil))
-                  ((symbol-function 'dl-satan-sensor-content-probe)
+                  ((symbol-function 'dl-satan-sensor-content-probe-commit)
                    (lambda (&rest _) nil))
-                  ((symbol-function 'dl-satan-sensor-wpm-probe)
+                  ((symbol-function 'dl-satan-sensor-wpm-probe-commit)
                    (lambda (&rest _) nil))
                   ((symbol-function 'my/scrub-op-refs-env)
                    (lambda (env) env))

@@ -13,6 +13,9 @@
 (require 'dl-satan-resonance)
 (require 'dl-satan-motive)
 (require 'dl-satan-sensor-alerts)
+(require 'dl-satan-sensor-curiosity)
+(require 'dl-satan-sensor-content)
+(require 'dl-satan-sensor-wpm)
 (require 'dl-satan-attribute-render)
 
 (defvar dl-satan-runs-dir)              ; defined in dl-satan-broker.el
@@ -31,19 +34,38 @@ sensing keys onto PREPARE.  No resonance/motive — those are consume-side
 concerns (see `dl-satan-run-enrich') that only matter once a model runs.
 Pure apart from the `percept.json' write under DIR.
 
+Also takes the three probe read-snapshots (DR-010 §3 read/commit split):
+pure reads only — no enqueue, no watermark advance, no state write.  The
+snapshots are threaded onto PREPARE under `:probe_snapshots' for the
+consume-side commit in `dl-satan-broker--spawn'.  This is internal
+plumbing only — the context-fn never serializes it, so `bundle.json'
+stays byte-stable (the MCP boot path takes harmless pure reads).
+
 Threaded keys (set by this function on PREPARE):
-  :evidence       — evidence_window from percept.
-  :percept        — plist from dl-satan-percept-build.
-  :sensor_status  — sensor_status from evidence_window."
+  :evidence         — evidence_window from percept.
+  :percept          — plist from dl-satan-percept-build.
+  :sensor_status    — sensor_status from evidence_window.
+  :probe_snapshots  — (:curiosity SNAP :content SNAP :wpm SNAP)."
   (let* ((percept (dl-satan-percept-build prepare mode))
          (_persisted (dl-satan-percept-persist dir percept))
          (evidence (plist-get percept :evidence_window))
-         (sensor-status (plist-get evidence :sensor_status)))
+         (sensor-status (plist-get evidence :sensor_status))
+         (run-id (plist-get prepare :run_id))
+         (ts (plist-get prepare :time_now))
+         (snapshots
+          (list :curiosity (dl-satan-sensor-curiosity-probe-read
+                            :run-id run-id :ts ts)
+                :content (dl-satan-sensor-content-probe-read
+                          :run-id run-id :ts ts)
+                :wpm (dl-satan-sensor-wpm-probe-read
+                      :run-id run-id :ts ts))))
     (plist-put
      (plist-put
-      (plist-put prepare :evidence evidence)
-      :percept percept)
-     :sensor_status sensor-status)))
+      (plist-put
+       (plist-put prepare :evidence evidence)
+       :percept percept)
+      :sensor_status sensor-status)
+     :probe_snapshots snapshots)))
 
 (defun dl-satan-run-enrich (prepare)
   "Derive resonance + motive from PREPARE's percept; thread them onto PREPARE.
