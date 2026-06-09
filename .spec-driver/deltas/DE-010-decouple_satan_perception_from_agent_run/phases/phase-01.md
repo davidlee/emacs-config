@@ -4,7 +4,7 @@ slug: "010-decouple_satan_perception_from_agent_run-phase-01"
 name: IP-010 Phase 01
 created: "2026-06-09"
 updated: "2026-06-09"
-status: draft  # one of: completed | deferred | draft | in-progress | pending
+status: in-progress  # one of: completed | deferred | draft | in-progress | pending
 kind: phase  # one of: audit | delta | design_revision | issue | memory | phase | plan | policy | problem | prod | requirement | risk | spec | standard | task | verification
 plan: IP-010
 delta: DE-010
@@ -143,7 +143,38 @@ _(Status: `[ ]` todo, `[WIP]`, `[x]` done, `[blocked]`)_
 
 ## 10. Findings / Research Notes
 
-- (populate during execution — `broker-run` gate ordering, probe call sites)
+- **Assumptions verified (preflight, 2026-06-09):**
+  - A1 sole builder: `dl-satan-percept-build` (percept.el:45) has one prod
+    caller — `dl-satan-run-assemble-context` (context.el:45). No parallel builder.
+  - A2 consumers read bundle.json:percept: observer-classify.el:37,58 + broker.el:285.
+    Zero `percept.json` reads ⇒ task 1.2 mirror is required, not cosmetic.
+  - A3 percept ⊥ observer: percept-build reads evidence assembler (sensors/git/
+    bough) + pure canon; never `:observer`. Lifting percept above observer is safe.
+    (It is *motive*, consume-side, that needs observer-first — broker.el:733.)
+  - A4 interactive: context-interactive (context.el:577) calls assemble-context,
+    NOT observer-process; degrades to :percept nil on error.
+- **Gate ordering:** broker-run:658 → session gate 678 → budget gate 687 →
+  spawn 693. --spawn:695 builds percept at assemble (755); probes charge 770/776/782.
+- **Probe shapes:** content already returns `(count . high-water)` + advances to
+  high-water verbatim (DEC-5) — the target pattern. curiosity returns count only +
+  advances to wall-clock `ts` (out-of-order end_ts rows skipped — DR §3 bug to fix:
+  track max end_ts, advance to it). wpm snapshot = classified state + prev.
+- **Audit verifier:** `dl-satan-audit-verify-run` (audit.el:694) requires
+  has-bundle + status-terminal ∈ {done,failed,timed-out,invalid-protocol,
+  budget-exceeded}. session-blocked NOT terminal ⇒ reuse `failed`.
+- **DECISION (session-blocked, user 2026-06-09):** unify via shared
+  `broker--write-no-child-run`; session-blocked → status `failed` reason
+  `session_blocked`, bundle+percept.json+bundle.json:percept (verify-clean), but
+  **NO .FAILED rename, NO failure notification** (intentional deferral, not a
+  failure — avoids desktop-alert noise + failure-streak pollution). budget-denied
+  + perceive-failed keep .FAILED+announce.
+- **Caller census:** assemble-context prod = broker.el:755 + context.el:612; 3
+  test stubs. probes prod = broker.el:770/776/782; content-test (9×) + broker-test
+  stub. ⇒ keep `assemble-context = enrich∘perceive` + `-probe = commit∘read`
+  wrappers for DRY + test continuity.
+- **Build order (deps, not sheet numbering):** 1.3 → 1.1+1.2 → 1.4 → 1.5 → 1.6.
+  dec8 test (broker-test.el:731) stubs assemble-context + -probe; restub when
+  consume internals change.
 
 ## 11. Wrap-up Checklist
 
