@@ -100,31 +100,52 @@ exists so a future reader doesn't mistake design language for plan.
 
 **Run-lifecycle slot — depends on Phase 0 broker refactor.**
 Percept build happens in `dl-satan-broker--prepare`, a new function
-introduced in Phase 0 (§7). The broker today (`dl-satan-broker.el`,
-~line 573) builds `bundle.json` before any run-context object exists
-and `dl-satan-broker--tool-ctx` calls `format-time-string` on demand
-(~line 222). v0 first establishes a single prepare phase that
-allocates `run_id`, freezes one `time_now`, builds the evidence
-window, runs the canon, persists `percept.json`, runs auto-resonance
-and motive read, and threads a `run_ctx` plist through context-fn,
-tool dispatch, and audit. The same `time_now` and evidence-window
-snapshot back both `bundle.json` and `percept.json` — they must
-derive from the same frozen tuple or the run is invalid (acceptance
-criterion A7).
+introduced in Phase 0 (§7), which allocates `run_id` and freezes one
+`time_now`. The same `time_now` and evidence-window snapshot back both
+`bundle.json` and `percept.json` — they must derive from the same
+frozen tuple or the run is invalid (acceptance criterion A7).
 
-Sequence (after Phase 0 lands):
+**Perceive / consume split (DE-010, landed 2026-06-10).** The tick is
+cut into **perceive** (deterministic sensing) and **consume** (the
+gated LLM run carrying all effects). Crucially, perceive runs
+**unconditionally before the session/budget gates** — sensing no
+longer depends on whether the system can afford to think (ISSUE-001
+fixed at root; see [[ADR-001]]). Perceive's only write is the
+perception-of-record (`percept.json`, mirrored as `:percept` in the
+bundle even on budget-denied/blocked runs). All consumption-state
+mutation (probe high-water marks, the per-source ingest cursor) and
+all effects (interventions, tokens, DB outcome writes) are
+consume-side. The attribute-charging probes are split read/commit: a
+pure read-snapshot at perceive, the charge + watermark advance at
+consume.
+
+> **Signal model unchanged here.** DE-010 lands the structural cut
+> only. Perception still reads present-tense live state
+> (`current_window`, `git_state`, `fs_state`, bough) — it is **not yet
+> replayable** from a watermark; that promotion is [[IMPR-013]].
+
+Sequence (perceive/consume, as built):
 
 ```text
-broker--prepare
-  ↳ allocate run_id, freeze time_now, build run_ctx plist
-  ↳ observer.scan_prior_interventions(run_ctx)
-  ↳ evidence.assemble(time_now)        → evidence_window + sensor_status
-  ↳ sensor_alerts.check(sensor_status) → maybe dispatch (via S6 tool path)
-  ↳ percept.build(evidence, ctx)       → handles + handle_sources (canon)
-  ↳ percept.persist(percept.json)
-  ↳ memory.resonate(cue_handles)       → top 0–3 matches (per S2 gate)
-  ↳ motive.read                        → motive_text
-  ↳ context-fn assembles bundle.json (capsule includes all of the above)
+broker-run
+  ↳ broker--prepare        → allocate run_id, freeze time_now, run_ctx plist
+  ↳ mkdir run-dir
+  ↳ PERCEIVE (unconditional, no LLM, no effects, no consumption-state mutation):
+      ↳ percept.build(evidence, ctx)   → handles + handle_sources (canon)
+      ↳ percept.persist(percept.json)  → perception-of-record (only perceive write)
+      ↳ probe read-snapshot (curiosity/content/wpm) → native high-water, frozen onto prepare
+      ↳ on error → no-child terminal close (shared --write-no-child-run), return
+  ↳ if session-active  → write blocked bundle (MIRRORS :percept), return
+  ↳ if budget-exceeded → write-denied bundle (MIRRORS :percept), return   ← ISSUE-001 fixed
+  ↳ else CONSUME (effects + tokens):
+      ↳ observer.process(run_ctx)          → outcome accrual, DB writes
+      ↳ probe commit                       → charge + advance watermark to snapshot high-water
+      ↳ memory.resonate(cue_handles)       → top 0–3 matches (per S2 gate)
+      ↳ motive.read                        → motive_text
+      ↳ sensor_alerts.check                → maybe dispatch notify (via S6 tool path)
+      ↳ ingest-cursor.advance              → per-source frontier, success-only
+      ↳ context-fn assembles bundle.json (capsule = perceive ∘ enrich)
+      ↳ make-process (harness LLM)
 ```
 
 The canonicalizer already emits the right shapes
