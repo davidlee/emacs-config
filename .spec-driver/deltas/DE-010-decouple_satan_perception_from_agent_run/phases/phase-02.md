@@ -47,24 +47,24 @@ Additive / low-risk: missing or zero cursor ⇒ "consume from head".
 
 ## 4. Exit Criteria / Done When
 
-- [ ] Per-source ingest-cursor store persists frontiers for focus (`end_ts`),
+- [x] Per-source ingest-cursor store persists frontiers for focus (`end_ts`),
       browser (`end_ts`), content (`captured_at`); git excluded
-- [ ] `consume` advances each source's cursor to that source's head **after a
+- [x] `consume` advances each source's cursor to that source's head **after a
       successful run only**; `perceive` never writes the cursor (spy in
       VT-perceive-pure extended to the cursor writer)
-- [ ] Cursor advance is **intra-day**: `(cursor, head]` confined to one day-file;
+- [x] Cursor advance is **intra-day**: `(cursor, head]` confined to one day-file;
       cross-midnight not attempted (documented deferral)
-- [ ] Doubled / late invocation is idempotent within a day (advance to head is a
+- [x] Doubled / late invocation is idempotent within a day (advance to head is a
       max, not an increment)
-- [ ] Missing / zero / unparseable cursor ⇒ "consume from head" (additive
+- [x] Missing / zero / unparseable cursor ⇒ "consume from head" (additive
       fallback, no error)
-- [ ] Backlog depth (`head − cursor`) exposed as an `emacsclient`-callable read fn
+- [x] Backlog depth (`head − cursor`) exposed as an `emacsclient`-callable read fn
       per source; waybar-config wiring **assessed** and written down (NOT built)
-- [ ] VT-cursor-advance green (flip coverage entry `planned → verified`)
-- [ ] exactly one cursor store remains (no parallel implementation); probe
+- [x] VT-cursor-advance green (flip coverage entry `planned → verified`)
+- [x] exactly one cursor store remains (no parallel implementation); probe
       watermarks untouched
-- [ ] `bin/elisp-locate-paren-error` `{"ok":true}` after every `.el` edit
-- [ ] `just check` green (no regressions vs 982/991 baseline)
+- [x] `bin/elisp-locate-paren-error` `{"ok":true}` after every `.el` edit
+- [x] `just check` green (no regressions vs 982/991 baseline)
 
 ## 5. Verification
 

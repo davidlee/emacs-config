@@ -359,6 +359,7 @@ deltas:
         phases:
         - id: IP-007-P01
         - id: IP-007-P02
+        - id: IP-007-P03
       phases:
       - plan: IP-007
         delta: DE-007
@@ -368,6 +369,10 @@ deltas:
         delta: DE-007
         phase: IP-007-P02
         status: completed
+      - plan: IP-007
+        delta: DE-007
+        phase: IP-007-P03
+        status: in-progress
   DE-008:
     kind: delta
     status: completed
@@ -399,11 +404,11 @@ deltas:
       - plan: IP-008
         delta: DE-008
         phase: IP-008-P01
-        status: draft
+        status: completed
       - plan: IP-008
         delta: DE-008
         phase: IP-008-P02
-        status: draft
+        status: completed
   DE-009:
     kind: delta
     status: completed
@@ -442,4 +447,39 @@ deltas:
       - plan: IP-009
         delta: DE-009
         phase: IP-009-P03
+        status: completed
+  DE-010:
+    kind: delta
+    status: completed
+    name: Delta - Decouple SATAN perception from agent run
+    slug: decouple_satan_perception_from_agent_run
+    updated: '2026-06-10'
+    path: .spec-driver/deltas/DE-010-decouple_satan_perception_from_agent_run/DE-010.md
+    plan:
+      id: IP-010
+      overview:
+        schema: supekku.plan.overview
+        version: 1
+        plan: IP-010
+        delta: DE-010
+        revision_links:
+          aligns_with:
+          - DR-010
+        specs:
+          primary: []
+          collaborators: []
+        requirements:
+          targets: []
+          dependencies: []
+        phases:
+        - id: IP-010-P01
+        - id: IP-010-P02
+      phases:
+      - plan: IP-010
+        delta: DE-010
+        phase: IP-010-P01
+        status: completed
+      - plan: IP-010
+        delta: DE-010
+        phase: IP-010-P02
         status: completed
