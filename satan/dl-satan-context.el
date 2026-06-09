@@ -22,9 +22,55 @@
 
 ;; ── Shared assembly core (DEC-13, Phase 4) ─────────────────────────────────
 
+(defun dl-satan-run-perceive (prepare mode dir)
+  "Sense the world and thread the percept onto PREPARE; persist percept.json.
+The deterministic perceive half of context assembly: build the
+percept (single builder invariant — `dl-satan-percept-build' is the
+only percept constructor), persist it under DIR, and thread the
+sensing keys onto PREPARE.  No resonance/motive — those are consume-side
+concerns (see `dl-satan-run-enrich') that only matter once a model runs.
+Pure apart from the `percept.json' write under DIR.
+
+Threaded keys (set by this function on PREPARE):
+  :evidence       — evidence_window from percept.
+  :percept        — plist from dl-satan-percept-build.
+  :sensor_status  — sensor_status from evidence_window."
+  (let* ((percept (dl-satan-percept-build prepare mode))
+         (_persisted (dl-satan-percept-persist dir percept))
+         (evidence (plist-get percept :evidence_window))
+         (sensor-status (plist-get evidence :sensor_status)))
+    (plist-put
+     (plist-put
+      (plist-put prepare :evidence evidence)
+      :percept percept)
+     :sensor_status sensor-status)))
+
+(defun dl-satan-run-enrich (prepare)
+  "Derive resonance + motive from PREPARE's percept; thread them onto PREPARE.
+The consume-side enrich half of context assembly: reads `:percept'
+already on PREPARE (does NOT rebuild it — single builder invariant)
+and derives the model-facing enrichment that only matters when a model
+runs.  Takes only PREPARE — it neither senses nor persists.
+
+Threaded keys (set by this function on PREPARE):
+  :resonance      — plist from dl-satan-resonance-derive over the percept.
+  :motive         — plist from dl-satan-motive-read."
+  (let* ((percept (plist-get prepare :percept))
+         (resonance (dl-satan-resonance-derive percept))
+         (motive (dl-satan-motive-read dl-satan-motive-file)))
+    (plist-put
+     (plist-put prepare :resonance resonance)
+     :motive motive)))
+
 (defun dl-satan-run-assemble-context (prepare mode dir)
   "Build percept/resonance/motive/sensor_status and thread into PREPARE.
 Persists percept.json under DIR.  Returns the augmented PREPARE plist.
+
+Composition of the perceive + enrich halves
+\(`dl-satan-run-perceive' then `dl-satan-run-enrich'): perceive senses
+and persists the percept; enrich derives resonance + motive over it.
+Keeping this as the exact composition preserves the single-percept-builder
+invariant and byte-stable output for existing callers.
 
 This is the observer-independent assembly core shared by both
 `broker--spawn' (batch) and `dl-satan-context-interactive' (MCP boot).
@@ -32,31 +78,17 @@ Callers that need observer-process + probes/alerts run them around
 this function.
 
 Threaded keys (set by this function on PREPARE):
-  :evidence       — evidence_window from percept.
-  :percept        — plist from dl-satan-percept-build.
-  :resonance      — plist from dl-satan-resonance-derive.
-  :motive         — plist from dl-satan-motive-read.
-  :sensor_status  — sensor_status from evidence_window.
+  :evidence       — evidence_window from percept (via perceive).
+  :percept        — plist from dl-satan-percept-build (via perceive).
+  :sensor_status  — sensor_status from evidence_window (via perceive).
+  :resonance      — plist from dl-satan-resonance-derive (via enrich).
+  :motive         — plist from dl-satan-motive-read (via enrich).
 
 Caller-threaded keys (NOT set by this function):
   :audit          — set by broker before calling.
   :observer       — set by broker before calling.
   :pre_spawn      — set by broker after calling."
-  (let* ((percept (dl-satan-percept-build prepare mode))
-         (_persisted (dl-satan-percept-persist dir percept))
-         (resonance (dl-satan-resonance-derive percept))
-         (motive (dl-satan-motive-read dl-satan-motive-file))
-         (evidence (plist-get percept :evidence_window))
-         (sensor-status (plist-get evidence :sensor_status)))
-    (plist-put
-     (plist-put
-      (plist-put
-       (plist-put
-        (plist-put prepare :evidence evidence)
-        :percept percept)
-       :resonance resonance)
-      :motive motive)
-     :sensor_status sensor-status)))
+  (dl-satan-run-enrich (dl-satan-run-perceive prepare mode dir)))
 
 (defcustom dl-satan-system-scaffold-file
   (expand-file-name "satan/system/scaffold.txt" dl-notes-root)
