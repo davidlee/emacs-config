@@ -81,8 +81,8 @@ _(Status: `[ ]` todo, `[WIP]`, `[x]` done, `[blocked]`)_
 
 | Status | ID  | Description                                                        | Parallel? | Notes |
 | ------ | --- | ----------------------------------------------------------------- | --------- | ----- |
-| [ ]    | 1.1 | Lift perceive before the gates in `broker-run`; mkdir run-dir first | [ ]     | ISSUE-001 root |
-| [ ]    | 1.2 | Mirror `:percept` into `bundle.json` on budget-denied + session-blocked | [ ] | DEC-budget-denied-mirror-percept |
+| [x]    | 1.1 | Lift perceive before the gates in `broker-run`; mkdir run-dir first | [ ]     | done — `--write-no-child-run`; perceive-first; perceive-failed path |
+| [x]    | 1.2 | Mirror `:percept` into `bundle.json` on budget-denied + session-blocked | [ ] | done — session-blocked now writes full bundle, no rename/announce |
 | [x]    | 1.3 | Split `assemble-context` → perceive + consume-side enrichment      | [P]       | done — `run-perceive`/`run-enrich`; `assemble-context = enrich∘perceive` |
 | [ ]    | 1.4 | Probe read/commit split across sensor-{curiosity,content,wpm}      | [P]       | preserves ADR-002 cadence |
 | [ ]    | 1.5 | MCP interactive-boot: call perceive + enrichment in order          | [ ]       | VT-mcp-bundle |

@@ -619,32 +619,41 @@ relative so the runs dir stays portable."
         (delete-file link))
       (make-symbolic-link target link t))))
 
-(defun dl-satan-broker--write-budget-denied-run (mode prepare dir spent ceiling)
-  "Write a slim audit bundle marking the run in PREPARE as budget-exceeded.
-No child is spawned; the run terminates with status `budget-exceeded'
-and a synthetic final summarising the gate decision.  PREPARE is the
-prepare-phase run_ctx plist allocated by `dl-satan-broker--prepare'
-(carries the frozen run_id + time_now)."
+(cl-defun dl-satan-broker--write-no-child-run
+    (mode prepare dir status reason
+          &key event event-payload bundle-extra final rename-announce
+          announce-reason)
+  "Write a slim terminal audit bundle for a run that spawned no child.
+PREPARE is the prepare-phase run_ctx plist (carries the frozen run_id +
+time_now and — post-perceive — the `:percept' the gate ran against).
+
+Opens then closes an audit bundle, mirroring PREPARE's `:percept' into
+`bundle.json' (DEC-budget-denied-mirror-percept: A2-verified consumers
+read `bundle.json -> :percept', not the sidecar — without the mirror the
+ISSUE-001 perceive-first fix would be cosmetic).  BUNDLE-EXTRA, when
+supplied, is appended to the bundle plist.  Records a `broker' EVENT
+\(defaulting to STATUS) with EVENT-PAYLOAD (defaulting to `(:reason
+REASON)'), then closes with terminal STATUS and the synthetic FINAL plist.
+
+When RENAME-ANNOUNCE is non-nil: `.FAILED'-renames the run dir, repoints
+`most-recent', and dispatches `dl-satan-broker--announce-failure' with
+ANNOUNCE-REASON (defaulting to REASON).  Otherwise the dir is left in
+place and the run stays silent (no rename, no notification — so a
+session-blocked tick does not pollute the failure-streak counter or pop a
+desktop alert; DEC-8 deferral)."
   (unless (file-directory-p dir) (make-directory dir t))
-  (let ((run-id (plist-get prepare :run_id)))
+  (let* ((run-id (plist-get prepare :run_id))
+         (manifest (dl-satan-broker--build-manifest mode run-id))
+         (bundle (append (list :percept (plist-get prepare :percept))
+                         bundle-extra))
+         (audit (dl-satan-audit-open dir manifest bundle prepare)))
     (dl-satan-broker--update-most-recent run-id)
-    (let* ((manifest (dl-satan-broker--build-manifest mode run-id))
-           (bundle (list :budget-denied t
-                         :tokens_spent spent
-                         :tokens_ceiling ceiling))
-           (audit (dl-satan-audit-open dir manifest bundle prepare))
-           (final (list :summary (format "budget-exceeded: %d/%d tokens spent today"
-                                         spent ceiling)
-                        :actions []
-                        :reason "budget_daily_tokens"
-                        :tokens_spent spent
-                        :tokens_ceiling ceiling)))
-      (dl-satan-audit-record audit 'broker 'budget-denied
-                             (list :tokens_spent spent
-                                   :tokens_ceiling ceiling))
-      (dl-satan-audit-close audit final
-                            (list :applied [] :staged [] :rejected [] :failed [])
-                            'budget-exceeded)
+    (dl-satan-audit-record audit 'broker (or event status)
+                           (or event-payload (list :reason reason)))
+    (dl-satan-audit-close audit final
+                          (list :applied [] :staged [] :rejected [] :failed [])
+                          status)
+    (when rename-announce
       (let ((new-dir (concat dir dl-satan-broker--failed-suffix)))
         (when (and (file-directory-p dir)
                    (not (file-exists-p new-dir)))
@@ -652,8 +661,31 @@ prepare-phase run_ctx plist allocated by `dl-satan-broker--prepare'
           (dl-satan-broker--update-most-recent
            run-id dl-satan-broker--failed-suffix)
           (dl-satan-broker--announce-failure
-           run-id (plist-get mode :name) 'budget-exceeded
-           (format "%d/%d tokens" spent ceiling)))))))
+           run-id (plist-get mode :name) status
+           (or announce-reason reason)))))))
+
+(defun dl-satan-broker--write-budget-denied-run (mode prepare dir spent ceiling)
+  "Write a slim audit bundle marking the run in PREPARE as budget-exceeded.
+No child is spawned; the run terminates with status `budget-exceeded'
+and a synthetic final summarising the gate decision.  PREPARE is the
+prepare-phase run_ctx plist allocated by `dl-satan-broker--prepare'
+(carries the frozen run_id + time_now and the perceived `:percept').
+Thin caller of `dl-satan-broker--write-no-child-run' (rename + announce)."
+  (dl-satan-broker--write-no-child-run
+   mode prepare dir 'budget-exceeded "budget_daily_tokens"
+   :event 'budget-denied
+   :event-payload (list :tokens_spent spent :tokens_ceiling ceiling)
+   :bundle-extra (list :budget-denied t
+                       :tokens_spent spent
+                       :tokens_ceiling ceiling)
+   :final (list :summary (format "budget-exceeded: %d/%d tokens spent today"
+                                 spent ceiling)
+                :actions []
+                :reason "budget_daily_tokens"
+                :tokens_spent spent
+                :tokens_ceiling ceiling)
+   :announce-reason (format "%d/%d tokens" spent ceiling)
+   :rename-announce t))
 
 (defun dl-satan-broker-run (name)
   "Resolve MODE-NAME, spawn jailed harness, drive it to completion.
@@ -673,24 +705,48 @@ without launching the child."
          (prepare (dl-satan-broker--prepare mode))
          (run-id (plist-get prepare :run_id))
          (dir (dl-satan-broker-run-dir-for-id run-id)))
-    (cond
-     ;; DEC-8: refuse to spawn while an interactive session is open
-     ((and (boundp 'dl-satan-mcp--session-active)
-           dl-satan-mcp--session-active)
-      (message "SATAN broker: interactive session active — refusing scheduled run (DEC-8)")
-      (unless (file-directory-p dir) (make-directory dir t))
-      (let ((status-obj (list :status "session-blocked"
-                              :summary "Scheduled run blocked by active interactive session (DEC-8)")))
-        (with-temp-file (expand-file-name "final.json" dir)
-          (insert (json-serialize status-obj :null-object :null :false-object :false))))
-      run-id)
-     ((dl-satan-budget-exceeded-p dl-satan-runs-dir)
+    ;; ISSUE-001 (DR-010 §3): perceive runs UNCONDITIONALLY before both
+    ;; gates so a session-blocked / budget-denied tick still senses the
+    ;; world and persists `percept.json'.  The run dir must exist before
+    ;; perceive (it writes `percept.json' there).  Perceive's only write
+    ;; is `percept.json'; any error routes through the no-child path with
+    ;; status `failed' + reason "perceive_failed" (a terminal status the
+    ;; audit verifier already knows — not a new accepted status).
+    (unless (file-directory-p dir) (make-directory dir t))
+    (let ((perceive-error nil))
+      (condition-case err
+          (setq prepare (dl-satan-run-perceive prepare mode dir))
+        (error (setq perceive-error err)))
+      (cond
+       (perceive-error
+        (dl-satan-broker--write-no-child-run
+         mode prepare dir 'failed "perceive_failed"
+         :final (list :summary (format "perceive failed: %s"
+                                       (error-message-string perceive-error))
+                      :actions []
+                      :reason "perceive_failed")
+         :rename-announce t)
+        run-id)
+       ;; DEC-8: refuse to spawn while an interactive session is open.
+       ;; ISSUE-001: now perceives first.  No rename, no announce — the
+       ;; deferral must not pollute the failure-streak counter or alert.
+       ((and (boundp 'dl-satan-mcp--session-active)
+             dl-satan-mcp--session-active)
+        (message "SATAN broker: interactive session active — refusing scheduled run (DEC-8)")
+        (dl-satan-broker--write-no-child-run
+         mode prepare dir 'failed "session_blocked"
+         :final (list :summary "Scheduled run blocked by active interactive session (DEC-8)"
+                      :actions []
+                      :reason "session_blocked")
+         :rename-announce nil)
+        run-id)
+       ((dl-satan-budget-exceeded-p dl-satan-runs-dir)
         (let ((spent (dl-satan-budget-today-total dl-satan-runs-dir)))
           (dl-satan-broker--write-budget-denied-run
            mode prepare dir spent dl-satan-budget-daily-tokens)
           run-id))
-     (t
-      (dl-satan-broker--spawn mode prepare dir)))))
+       (t
+        (dl-satan-broker--spawn mode prepare dir))))))
 
 (defun dl-satan-broker--spawn (mode prepare dir)
   "Spawn the jailed harness for MODE under DIR.
@@ -713,22 +769,24 @@ Returns the run-id."
     (setq dl-satan-memory-store--current-run-id run-id)
     (unless (file-directory-p dl-satan-hippocampus-dir)
       (make-directory dl-satan-hippocampus-dir t))
-    ;; Phase 1.1+1.2 — percept builder + persist.  §S1's pre-bundle
-    ;; sequence: evidence.assemble → percept.build → percept.persist,
-    ;; then context-fn assembles bundle.json with the percept block
-    ;; rendered in.  Threaded into PREPARE so the context-fn can read
-    ;; `:percept' instead of re-deriving it.
+    ;; DR-010 §3 — consume-only spawn.  Perceive (percept.build +
+    ;; percept.persist, threading `:percept'/`:evidence'/`:sensor_status'
+    ;; onto PREPARE) ran UNCONDITIONALLY upstream in `dl-satan-broker-run'
+    ;; before the session/budget gates.  This path runs only on consume,
+    ;; so it derives the model-facing enrichment (resonance + motive) via
+    ;; `dl-satan-run-enrich' over the already-built percept rather than
+    ;; rebuilding it (single percept-builder invariant).
     ;;
     ;; Phase 2.1+2.2 — auto-resonance.  Derive a cue from the percept,
-    ;; apply the §S2 gate, call `memory_resonate' when admitted.
-    ;; Result attaches to PREPARE :resonance for the context-fn (A4).
-    ;; Memory errors return a `memory-unreachable' status; the run
+    ;; apply the §S2 gate, call `memory_resonate' when admitted (via
+    ;; enrich).  Result attaches to PREPARE :resonance for the context-fn
+    ;; (A4).  Memory errors return a `memory-unreachable' status; the run
     ;; proceeds without resonance rather than failing the tick.
     ;;
-    ;; Phase 3.3 — motive file read.  Pure parse of motives.org; result
-    ;; attaches to PREPARE :motive.  Missing file is a valid state —
-    ;; `dl-satan-motive-read' returns an empty parse and the capsule
-    ;; renderer self-suppresses the block (§S3 silent omission).
+    ;; Phase 3.3 — motive file read (via enrich).  Pure parse of
+    ;; motives.org; result attaches to PREPARE :motive.  Missing file is a
+    ;; valid state — `dl-satan-motive-read' returns an empty parse and the
+    ;; capsule renderer self-suppresses the block (§S3 silent omission).
     ;;
     ;; Phase 5.8 / T7 PR 5 — observer.process must run BEFORE the motive
     ;; read so the in-tick motive snapshot sees freshly-incremented
@@ -750,9 +808,10 @@ Returns the run-id."
                          (dl-satan-observer-process prepare)
                        (error nil)))
            (prepare (plist-put prepare :observer observer))
-           ;; DEC-13: shared assembly core — percept/resonance/motive/sensor_status.
-           ;; The observer-independent subset previously inline here.
-           (prepare (dl-satan-run-assemble-context prepare mode dir))
+           ;; DR-010 §3: percept already built upstream by perceive; enrich
+           ;; derives resonance + motive over PREPARE's `:percept' (consume-
+           ;; only).  `:percept'/`:evidence'/`:sensor_status' are already set.
+           (prepare (dl-satan-run-enrich prepare))
            (sensor-status (plist-get prepare :sensor_status))
            ;; §S6 — sensor_alerts.check runs in the pre-spawn window
            ;; alongside the rest of evidence assembly.  Returns the

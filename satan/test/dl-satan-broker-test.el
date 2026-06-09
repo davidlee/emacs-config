@@ -464,7 +464,24 @@ Secondary subject: dl-satan-budget (gating policy)."
             (dl-satan-runs-dir root)
             (dl-satan-budget-daily-tokens 400000))
        (unwind-protect
-           (progn
+           ;; DR-010 §3: perceive now runs UNCONDITIONALLY before the budget
+           ;; gate.  This test's subject is the gate, not perception, so stub
+           ;; `dl-satan-run-perceive' to thread a minimal `:percept' (the real
+           ;; evidence assembler reads sensors/git/bough — out of scope here).
+           ;; The stub still persists `percept.json' and threads `:percept' so
+           ;; the gate path and the new bundle `:percept' mirror stay exercised;
+           ;; the budget assertions below are untouched.
+           (cl-letf (((symbol-function 'dl-satan-run-perceive)
+                      (lambda (prepare _mode pdir)
+                        (let ((percept (list :run_id (plist-get prepare :run_id)
+                                             :time_now (plist-get prepare :time_now)
+                                             :handles nil
+                                             :evidence_window nil)))
+                          (dl-satan-percept-persist pdir percept)
+                          (thread-first prepare
+                                        (plist-put :percept percept)
+                                        (plist-put :evidence nil)
+                                        (plist-put :sensor_status nil))))))
              (dl-satan-broker-test--write-transcript
               existing (list (dl-satan-broker-test--usage-record 500000)))
              (let* ((run-id (dl-satan-broker-run "morning"))
@@ -728,7 +745,7 @@ synchronous launch return (the original unwind-protect bug)."
                    (lambda (&rest _) nil))
                   ((symbol-function 'dl-satan-observer-process)
                    (lambda (&rest _) nil))
-                  ((symbol-function 'dl-satan-run-assemble-context)
+                  ((symbol-function 'dl-satan-run-enrich)
                    (lambda (prepare &rest _) prepare))
                   ((symbol-function 'dl-satan-sensor-alerts-check)
                    (lambda (&rest _) nil))
