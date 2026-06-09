@@ -134,7 +134,14 @@ DR-010 accepted, IP-010 + phase-01 authored. Items 1–3 above are DONE.
 
 ---
 
-# New Agent Instructions (2026-06-09 — drive IP-010 Phase 1 via /dispatch)
+# ~~New Agent Instructions (drive IP-010 Phase 1 via /dispatch)~~ — SUPERSEDED
+
+> **Phase 1 is DONE** (2026-06-09). This block is the historical Phase-1 brief;
+> the execution record is "Phase 1 EXECUTION NOTES" below, and the live handoff
+> is "New Agent Instructions (Phase 2 + follow-ups)" at the END of this file.
+> Kept for provenance only.
+
+<details><summary>archived Phase-1 brief</summary>
 
 **Task card:** `.spec-driver/deltas/DE-010-decouple_satan_perception_from_agent_run/`
 DE-010 in-progress · DR-010 accepted · IP-010 planned · **phase-01 in-progress**.
@@ -227,6 +234,8 @@ re-explore from scratch.
 - Task list (#1–#6) was created for an inline plan; /dispatch will own its own
   task tracking — ignore or reset.
 
+</details>
+
 ---
 
 # Phase 1 EXECUTION NOTES (2026-06-09 — driven via /dispatch, serial)
@@ -314,3 +323,136 @@ doctrine; keeps worktree clean).
   NOT planned yet. Run `/plan-phases` when resuming.
 - Before delta close: `/audit-change` should reconcile the ADR-001 amendment +
   perceptual-design.md §S1 doc update (DR §4) that Phase 1 did not touch.
+
+---
+
+# New Agent Instructions (Phase 2 + follow-ups) — 2026-06-09
+
+**Task card:** `.spec-driver/deltas/DE-010-decouple_satan_perception_from_agent_run/`
+**Parent delta:** DE-010 (in-progress). DR-010 accepted · IP-010 in-progress ·
+**phase-01 COMPLETE** · **phase-02 NOT YET PLANNED**.
+
+**Your job (in order):**
+1. **Plan + /dispatch Phase 2** — the per-source intra-day ingest cursor.
+2. **Then handle the two close-out follow-ups** (doc/ADR reconciliation; memory).
+
+No `workflow/state.yaml` exists for this delta — phases are tracked via sheet
+frontmatter (`status:`) + IP §9 checkboxes, NOT the workflow CLI. `spec-driver
+phase complete` errors ("No workflow state"); do not use it. Mark phase status in
+frontmatter and tick IP §9, as Phase 1 did.
+
+## Step 1 — Phase 2: per-source intra-day ingest cursor
+
+**Route:** `/using-spec-driver` → `/plan-phases` (author `phases/phase-02.md`;
+the IP §4 Phase-2 row already sketches objective/exit) → `/dispatch DE-010`.
+**Serial or parallel?** Ask the user; Phase-1 was serial by explicit instruction.
+Phase 2 is more parallelizable (a new cursor store + read-only backlog-depth
+surface are fairly disjoint), but confirm before assuming.
+
+**Scope (DR-010 §3 "Cursor / watermark", §4, §7 DEC-cursor-per-source-intra-day):**
+- **NEW per-source ingest-cursor store** — frontiers keyed on each source's native
+  field: focus/browser on `end_ts`, content on `captured_at`. **Git EXCLUDED**
+  (rows key on backdatable `%cI`; git keeps its self-contained 24h re-scan window).
+- `consume` advances cursors after a successful run; **`perceive` NEVER touches
+  them** (extend VT-perceive-pure's spy set to the cursor writer).
+- **Intra-day only** this delta — `(cursor, head]` cannot cross midnight (evidence
+  assembler reads one day-file from END; observer already punts cross-midnight).
+  Cross-midnight is a tracked open question (DR §8), deferred.
+- Surface **backlog depth (`head − cursor`)** for the waybar widget + the future
+  ADR-002 gate. "Assess waybar widget" is in the IP exit — scope it, don't
+  necessarily build the widget.
+- Store is **additive / low-risk**: missing/zero cursor = "consume from head"
+  (DR §9 rollback note). No positive per-segment replay pass — completeness
+  guarantee is **negative** (nothing newer-than-cursor silently skipped, intra-day).
+- **VT-cursor-advance** (IP coverage block, currently `status: planned`): consume
+  advances per-source cursors; perceive never does; doubled/late invocation
+  idempotent within a day. Flip to `verified` on landing.
+
+**Build hints (verify, don't re-explore from scratch):**
+- The cursor is the consume-side analogue of the probe watermarks shipped in
+  Phase 1 — but a *separate* store (probe watermarks are per-sensor private marks;
+  the ingest cursor is the evidence-assembly frontier). Do not conflate; check
+  whether an existing per-source store can be adapted before adding a new one
+  (CLAUDE.md "no parallel implementation").
+- Evidence assembler: `satan/dl-satan-memory-evidence.el` (`assemble-with-bounds`,
+  `:cue_only`, day-file selection) — DR §10 names it as the cursor's read boundary.
+- `consume` = `dl-satan-broker--spawn` (broker.el); advance cursors after a
+  successful run (alongside the probe commits already there).
+
+## Step 2 — close-out follow-ups (after Phase 2 green)
+
+1. **Doc/ADR reconciliation (DR-010 §4, NOT done in Phase 1):**
+   - **ADR-001 amendment** — precise side-effect definition (perceive's only write
+     is `percept.json`; per-invocation perception-of-record; the class-B
+     replayability premise-gap stays deferred to IMPR-013). DR-010 §3 "Side-effect
+     definition (ADR-001 amendment)" has the exact wording.
+   - **`docs/satan/perceptual-design.md` §S1** — update from "perceive-in-spawn" to
+     the perceive/consume control flow (signal model unchanged here; note IMPR-013).
+   - Route via `/audit-change` — it should catch the spec-vs-impl divergence.
+2. **Memory:** write `mem.fact.satan.perceive-consume-seam` (broker control flow:
+   perceive-before-gates; `--write-no-child-run` callers + session-blocked =
+   `failed`/`session_blocked` with **no .FAILED/announce**; probe read/commit
+   split; bundle.json:percept mirror). Use `/capturing-memory`. Link
+   `[[mem.pattern.satan.sensor-watermark-format]]` (already covers native-timestamp
+   watermark; curiosity now conforms). Defer until docs reconcile so the memory
+   matches a settled reality (`/maintaining-memory` rule).
+3. Then `/close-change` when coverage gates + lifecycle support it.
+
+## Locked Phase-1 facts the next agent must not re-litigate
+- perceive runs UNCONDITIONALLY after `mkdir`, before both gates (ISSUE-001 root).
+- session-blocked → `--write-no-child-run` status `failed` reason `session_blocked`,
+  **NO .FAILED rename, NO announce** (intentional DEC-8 deferral; must not pollute
+  failure-streak or pop desktop alerts). budget-denied + perceive-failed keep
+  .FAILED+announce.
+- `assemble-context = enrich∘perceive`; `-probe = commit∘read`. Single percept
+  builder (`dl-satan-percept-build` via `dl-satan-run-perceive`).
+- probe watermark advances to snapshot **native high-water**, not wall-clock `ts`
+  (curiosity bugfix landed; mirrors content DEC-5).
+- `:probe_snapshots` on prepare is internal — must NOT enter rendered `bundle.json`
+  (byte-stability; VT-mcp-bundle pins it).
+
+## Required reading
+- `notes.md` "Phase 1 EXECUTION NOTES" (above) + this section.
+- `IP-010.md` §4 (Phase-2 row), §6 (test plan), coverage block (VT-cursor-advance).
+- `DR-010.md` §3 "Cursor / watermark", §4 (code-impact rows: cursor store,
+  evidence.el), §7 DEC-cursor-per-source-intra-day, §8 (open questions), §9
+  (rollback: missing cursor = consume-from-head).
+
+## Key files
+- `satan/dl-satan-broker.el` — `broker-run`, `--spawn`(consume), `--write-no-child-run`.
+- `satan/dl-satan-context.el` — `run-perceive` / `run-enrich` / `assemble-context`.
+- `satan/dl-satan-memory-evidence.el` — `assemble-with-bounds`, day-file selection.
+- `satan/dl-satan-sensor-{curiosity,content,wpm}.el` — probe read/commit (Phase 1).
+- Tests: `satan/test/dl-satan-broker-test.el` (gate VTs + `--minimal-perceive`/
+  `--read-bundle` helpers), `dl-satan-sensor-{curiosity,content}-test.el`,
+  `dl-satan-context-test.el`, `dl-satan-percept-test.el`.
+- `docs/satan/perceptual-design.md` §S1; `.spec-driver/decisions/ADR-001-*.md`.
+
+## Relevant memories
+- `mem.pattern.satan.sensor-watermark-format` — watermark = native source timestamp
+  (curiosity now conforms after the bugfix).
+- `mem.fact.satan.batch-ert-redefined-double-load` — new test files must
+  `(provide 'basename)`; new curiosity test file follows this.
+- `mem.signpost.satan.orientation` — SATAN file map (advisory; verified 2026-05-31,
+  commits since).
+
+## Doctrine / guardrails
+- **Elisp gate (AGENTS.md):** after EVERY `.el` edit run
+  `bin/elisp-locate-paren-error FILE` until `{"ok":true}` BEFORE compile/tests.
+- POL-001 — perception stays in `.emacs.d` (editor-substrate sensing).
+- "no parallel implementation" — check for an adaptable store before adding the
+  cursor store.
+- Verification: `just check` (full ERT suite; green iff output has PASS). Phase-1
+  baseline = 982/991 (9 pre-existing DB/integration skips, 0 unexpected).
+
+## Commit-state guidance
+- **Worktree is clean for DE-010 work** — all Phase-1 code + `.spec-driver`
+  committed (`4c4df41`, `3c8e333`, `71f8f68`, `32c7dc9`, + the phase-close docs
+  commit). Pre-existing untracked noise unrelated: `.cache/ .direnv/ .envrc result`,
+  `M .agents/spec-driver-boot.md`, and a stray
+  `.spec-driver/deltas/DE-010.../​.spec-driver/run/events.jsonl` (misplaced
+  telemetry, harmless, left in place).
+- Per repo doctrine: commit `.spec-driver/**` promptly, small + frequent; code +
+  spec-driver may go together or separately, whichever keeps the worktree clean
+  first. Phase 1 committed each batch's code WITH its phase-sheet tick — continue
+  that cadence for Phase 2.
