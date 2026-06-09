@@ -86,11 +86,13 @@ Implementation: [[DE-010]].
 
 ### Negative
 
-- **No per-tick perception-of-record.** Lazy materialization drops the "what did
-  SATAN see at 10:00" artifact. Mitigated: memory/outcome accrual reads the
-  durable segment log via the ingest cursor, so nothing is lost there; an
-  optional slow archival materialization can be added if an explicit
-  perception-of-record is ever wanted (DE-010 §7 D1a, deferred).
+- ~~**No per-tick perception-of-record.**~~ **Superseded by the 2026-06-09
+  amendment (D1a resolved affirmatively).** DR-010 has `perceive` persist
+  `percept.json` on every `broker-run` invocation (the perception-of-record),
+  and mirror `:percept` into the bundle on budget-denied/blocked runs. This is
+  not the write-amplification D1=A feared: no perception *timer* is added, so
+  invocation cardinality is unchanged. The *backlog parcel* remains a lazily
+  materialized view (D1=B); only the per-invocation audit artifact is eager.
 
 ### Neutral
 
@@ -108,39 +110,42 @@ Implementation: [[DE-010]].
   (segment-offset keying).
 - Consumer drains backlog and advances the cursor without mutating parcels.
 
-## Amendment (2026-06-09, DR-010 design pass)
+## Amendment (2026-06-09, DR-010 + adversarial review)
 
-DR-010 drafting exposed two corrections to this ADR's framing. They refine, not
-reverse, the decision.
+DR-010 drafting and an adversarial review (gpt-5.5) exposed corrections to this
+ADR's framing. The first refines the decision; the second flags that a premise
+is aspirational and points to where it is actually made true.
 
-1. **The premise was aspirational, not factual.** "A pure deterministic function
-   of `segments[cursor..head]` over the already-durable panopticon segment log"
-   was false at decision time. The percept is a fan-in over three sequencing
-   mechanisms: panopticon segment series (replayable, class A), bough (a separate
-   note/graph store, its own cursor), and **present-tense live reads** (class B:
-   `current_window`, `git_state`, `fs_state`, `bough_active`) that have no
-   historical position and cannot be replayed from a watermark. Making the
-   premise true is itself work — DE-010 **promotes class B → class A**
-   (`current_window`→focus-series head; drop `fs_state`; deprecate bough;
-   `git_state` promotion deferred to an ISSUE-006-extended panopticon producer,
-   leaving one documented residual). The seam already existed in code as
-   `:cue_only`.
+1. **"Zero side effects" is made precise.** Read literally it was already
+   violated — perception persists `percept.json`. The operative rule:
+   `perceive` may write **only** the perception-of-record artifact
+   (`percept.json`, mirrored as `:percept` in the bundle); **all
+   consumption-state mutation** (probe high-water marks, the ingest cursor) and
+   **all effects** (interventions, tokens, DB outcome writes) are consume-side.
+   Concretely, the attribute-charging probes are **split**: a pure read-snapshot
+   at perceive, the charge + watermark advance at consume — so a budget-denied
+   tick does not consume sensor backlog. (An earlier draft put probes wholly on
+   the perceive side; the review showed that mutates consumption state and was
+   rejected.) ADR-002's "charge attributes every tick" premise is preserved: the
+   charge still reflects the perceive-time snapshot.
 
-2. **"Zero side effects" is reinterpreted.** Read literally it was already
-   violated — perception persists `percept.json`. The operative rule is:
-   perception forbids **acting** (interventions, user-visible effects) and
-   **cognition** (tokens/LLM); it permits **deterministic, append-only
-   recordings** (`percept.json`, attribute charges). This keeps the
-   attribute-charging probes on the perceive side, preserving [[ADR-002]]'s
-   "sensors charge attributes every tick" continuous-integration premise.
-
-3. **bough deprecated** from the active percept path (denote/org displaced it;
-   its only live contribution was a "not using bough" nag). Query code kept
-   dormant; reversible.
+2. **The "durable segment log" premise was aspirational, not factual.** "A pure
+   deterministic function of `segments[cursor..head]` over the already-durable
+   panopticon segment log" was false at decision time. The percept fuses
+   replayable segment series with **present-tense live reads** (`current_window`,
+   `git_state`, `fs_state`) and a separate store (bough) that have no historical
+   position and cannot be replayed from a watermark. **DE-010 does not fix this**
+   — it lands the structural cut (budget independence, effect separation,
+   consumption cursor) but leaves perception's inputs as-is. Making the premise
+   true (promoting the live reads into replayable series, with the consequent
+   fan-out into canon/observer/motives/alerts) is split out to **[[IMPR-013]]**.
+   Until IMPR-013 lands, decoupled late consumption (once [[ADR-002]]'s gate
+   exists) remains semantically lossy.
 
 ## References
 
-- [[DE-010]] — implementing delta (shaped; DR-010 drafted 2026-06-09).
+- [[DE-010]] — structural-cut delta (shaped; DR-010 drafted + reviewed 2026-06-09).
+- [[IMPR-013]] — signal-model promotion that makes premise (2) true.
 - `ISSUE-001` — budget-denied runs skip `percept.json`.
 - `docs/satan/perceptual-design.md` §S1 — `broker--prepare` sequence.
 - `docs/satan/architecture.md` — Invocation / Broker / State layers.
