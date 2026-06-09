@@ -30,6 +30,7 @@
 (require 'dl-satan-sensor-curiosity)
 (require 'dl-satan-sensor-content)
 (require 'dl-satan-sensor-wpm)
+(require 'dl-satan-ingest-cursor)
 
 (defvar dl-satan-memory-store--current-run-id)
 
@@ -845,6 +846,17 @@ Returns the run-id."
             (condition-case _err
                 (dl-satan-sensor-wpm-probe-commit
                  (plist-get _probe-snapshots :wpm))
+              (error nil)))
+           ;; DR-010 §3 (DEC-cursor-per-source-intra-day) — consume-side
+           ;; ingest-cursor advance.  Reached only on a SUCCESSFUL spawn:
+           ;; the perceive path and every `--write-no-child-run' denial
+           ;; caller (budget-denied, session-blocked, perceive-failed)
+           ;; return upstream in `dl-satan-broker-run' and never enter
+           ;; `--spawn', so no denied tick advances any frontier.  Soft-
+           ;; fails so a cursor write error cannot fail the tick.
+           (_ingest-cursor
+            (condition-case _err
+                (dl-satan-ingest-cursor-advance)
               (error nil)))
            (prepare (plist-put prepare :pre_spawn pre-spawn)))
     (let* ((bundle (funcall (or (plist-get mode :context-fn) #'ignore)

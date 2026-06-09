@@ -4,7 +4,7 @@ slug: "010-decouple_satan_perception_from_agent_run-phase-02"
 name: IP-010 Phase 02
 created: "2026-06-10"
 updated: "2026-06-10"
-status: draft  # one of: completed | deferred | draft | in-progress | pending
+status: in-progress  # one of: completed | deferred | draft | in-progress | pending
 kind: phase  # one of: audit | delta | design_revision | issue | memory | phase | plan | policy | problem | prod | requirement | risk | spec | standard | task | verification
 plan: IP-010
 delta: DE-010
@@ -117,8 +117,8 @@ instruction 2026-06-10. Build order top-to-bottom; later tasks depend on the
 
 | Status | ID  | Description                                              | Parallel? | Notes |
 | ------ | --- | ------------------------------------------------------- | --------- | ----- |
-| [ ]    | 2.1 | New per-source ingest-cursor store (read/write/head)    | [ ]       | additive; mirror sensor state-file idiom |
-| [ ]    | 2.2 | `consume` advances cursors on successful run only       | [ ]       | broker `--spawn`; alongside probe commits |
+| [x]    | 2.1 | New per-source ingest-cursor store (read/write/head)    | [ ]       | `dl-satan-ingest-cursor.el` (B1, opus). focus/browser parsed-instant, content string< |
+| [x]    | 2.2 | `consume` advances cursors on successful run only       | [ ]       | broker `--spawn:859`, after probe commits, soft-fail; denial/perceive skip confirmed |
 | [ ]    | 2.3 | Backlog-depth read fn (`head − cursor`) + waybar assess | [ ]       | emacsclient-callable; assess only, no flakes edit |
 | [ ]    | 2.4 | VT-cursor-advance + extend VT-perceive-pure spy; gate   | [ ]       | flip coverage planned→verified; `just check` |
 
