@@ -19,7 +19,7 @@ audits: []
 related_decisions: [ADR-002]
 related_policies: []
 tags: [satan, perception, architecture]
-summary: 'SATAN perception is a budget-independent deterministic view over the durable segment log, separate from the effecting LLM run; the parcel is materialized lazily on consume.'
+summary: 'SATAN perception is decoupled from the effecting LLM run: a deterministic sensing pass (budget-independent, perceive-side) vs a gated consumer. Per-invocation perception-of-record; full replayability over the segment log is deferred to IMPR-013 (see 2026-06-09 amendment).'
 ---
 
 # ADR-001: Decouple SATAN perception from cognition
@@ -51,11 +51,13 @@ explicitly, not drifting.
 
 **Split perception from cognition.**
 
-- **Perception** is a **pure, deterministic function** of `segments[cursor..head]`
-  over the already-durable panopticon segment log — extracted from
-  `broker--prepare`. Zero side effects, zero tokens, never gated by budget.
-  There is **exactly one** percept builder (an extraction, not a parallel
-  implementation).
+- **Perception** is a **deterministic sensing pass** — extracted from
+  `broker--prepare`. Token-free, never gated by budget; its only write is the
+  perception-of-record (`percept.json`). There is **exactly one** percept
+  builder (an extraction, not a parallel implementation). *(Amended 2026-06-09:
+  the "pure function over `segments[cursor..head]` / the already-durable segment
+  log / zero side effects" framing was aspirational — see Amendment §1–§2. Full
+  replayability over the segment log is [[IMPR-013]], not this decision.)*
 - **Cognition** is the LLM run — now a separate **consumer** that drains the
   segment backlog at its own (slacker) cadence and carries all effects + budget.
 - **D1 — lazy materialization (resolved 2026-06-08).** The parcel is a *view*,
