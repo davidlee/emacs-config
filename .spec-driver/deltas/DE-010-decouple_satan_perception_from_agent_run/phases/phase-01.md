@@ -39,18 +39,18 @@ byte-stable. No cursor yet (Phase 2).
 
 ## 4. Exit Criteria / Done When
 
-- [ ] perceive runs after run-dir creation, **before** the session/budget gates
-- [ ] budget-denied AND session-blocked ticks write `percept.json`
-- [ ] both denial paths mirror `:percept` into `bundle.json`
-- [ ] each probe is split: read-snapshot at perceive (no mutation), charge +
+- [x] perceive runs after run-dir creation, **before** the session/budget gates
+- [x] budget-denied AND session-blocked ticks write `percept.json`
+- [x] both denial paths mirror `:percept` into `bundle.json`
+- [x] each probe is split: read-snapshot at perceive (no mutation), charge +
       watermark-advance at consume
-- [ ] `assemble-context` split into perceive (percept/sensor_status/probe-read)
+- [x] `assemble-context` split into perceive (percept/sensor_status/probe-read)
       and consume-side resonance/motive enrichment; MCP interactive-boot calls
       both in order
-- [ ] VT-budget-denied-perceives, VT-perceive-pure, VT-probe-split green
-- [ ] VT-percept-golden, VT-mcp-bundle (regression) green
-- [ ] exactly one percept builder remains (no parallel implementation)
-- [ ] `just check` green
+- [x] VT-budget-denied-perceives, VT-perceive-pure, VT-probe-split green
+- [x] VT-percept-golden, VT-mcp-bundle (regression) green
+- [x] exactly one percept builder remains (no parallel implementation)
+- [x] `just check` green
 
 ## 5. Verification
 
@@ -85,8 +85,8 @@ _(Status: `[ ]` todo, `[WIP]`, `[x]` done, `[blocked]`)_
 | [x]    | 1.2 | Mirror `:percept` into `bundle.json` on budget-denied + session-blocked | [ ] | done — session-blocked now writes full bundle, no rename/announce |
 | [x]    | 1.3 | Split `assemble-context` → perceive + consume-side enrichment      | [P]       | done — `run-perceive`/`run-enrich`; `assemble-context = enrich∘perceive` |
 | [x]    | 1.4 | Probe read/commit split across sensor-{curiosity,content,wpm}      | [P]       | done — read∘commit wrappers; curiosity high-water bugfix; perceive threads :probe_snapshots |
-| [ ]    | 1.5 | MCP interactive-boot: call perceive + enrichment in order          | [ ]       | VT-mcp-bundle |
-| [ ]    | 1.6 | Verification: author/run VTs; `just check`                        | [ ]       | exit gate |
+| [x]    | 1.5 | MCP interactive-boot: call perceive + enrichment in order          | [ ]       | done — byte-stable; new VT-mcp-bundle pins interactive boot |
+| [x]    | 1.6 | Verification: author/run VTs; `just check`                        | [ ]       | done — 982/991, +10 VTs, 0 unexpected |
 
 ### Task Details
 

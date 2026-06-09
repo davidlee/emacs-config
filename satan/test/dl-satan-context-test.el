@@ -8,6 +8,7 @@
 
 (require 'ert)
 (require 'cl-lib)
+(require 'subr-x)                        ; thread-first (byte-stable VT)
 (require 'dl-satan-broker)               ; defines `dl-satan-runs-dir' defcustom
 (require 'dl-satan-context)
 (require 'dl-satan-mode)                 ; self-edit-mech / self-edit-mind specs
@@ -655,6 +656,38 @@ string rather than erroring the session."
                     (plist-get (plist-get bundle :resonance) :status)))
         ;; Session-frozen time preserved (F-004 holds on the degraded path too).
         (should (equal (plist-get run-ctx :time_now) "FROZEN"))))))
+
+(ert-deftest dl-satan-context/interactive-bundle-byte-stable-on-frozen-inputs ()
+  "VT-mcp-bundle (DR-010 §5, Task 1.5): the interactive-boot bundle is
+byte-stable across two builds on frozen inputs.  ISSUE-001's perceive-
+first change adds harmless pure probe reads on boot; this pins that the
+interactive capsule the MCP server emits is unchanged build-to-build.
+
+`current-time' is frozen (the only otherwise-fresh input — F3 stamps
+`:now'/`:time_now' from it), assembly is stubbed to a deterministic
+prepare, and the attribute snapshot is pinned.  Both builds must produce
+`equal' bundles and byte-identical `:prompt' strings."
+  (let ((run-ctx (list :run_id "20260609T100000-interactive-aaaaaa"
+                       :time_now "FROZEN-SESSION-TIME"))
+        (frozen (encode-time '(0 0 10 9 6 2026 nil nil 36000))))
+    (cl-letf (((symbol-function 'current-time) (lambda () frozen))
+              ((symbol-function 'dl-satan-run-dir-for-id) (lambda (_) "/tmp"))
+              ((symbol-function 'dl-satan-attribute-snapshot) (lambda (&rest _) nil))
+              ;; Deterministic assembly — a fixed percept/resonance/motive.
+              ((symbol-function 'dl-satan-run-assemble-context)
+               (lambda (prepare &rest _)
+                 (thread-first prepare
+                               (plist-put :percept (list :handles '("app:firefox")))
+                               (plist-put :resonance (list :status 'ok :matches nil))
+                               (plist-put :motive nil)
+                               (plist-put :sensor_status nil)))))
+      (let ((one (dl-satan-context-interactive '(:name "interactive") run-ctx))
+            (two (dl-satan-context-interactive '(:name "interactive") run-ctx)))
+        ;; Whole-bundle identity …
+        (should (equal one two))
+        ;; … and the harness-consumed prompt is byte-for-byte identical.
+        (should (stringp (plist-get one :prompt)))
+        (should (string= (plist-get one :prompt) (plist-get two :prompt)))))))
 
 (provide 'dl-satan-context-test)
 ;;; dl-satan-context-test.el ends here

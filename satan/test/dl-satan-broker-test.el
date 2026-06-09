@@ -31,6 +31,7 @@
 (require 'dl-satan-tools-motive)
 (require 'dl-satan-tools-bough)
 (require 'dl-satan-tools-vcs)            ; morning/tick modes reference vcs_log
+(require 'dl-satan-mcp)                   ; dl-satan-mcp--session-active (session gate)
 
 ;; Cross-cutter: assertion subject is broker (action-failed audit
 ;; emission); secondary subject is the tools dispatcher's
@@ -334,6 +335,40 @@ read from the prepare-phase run_ctx plist."
 
 ;; ---------- dl-satan-broker manifest assembly ----------
 
+(defconst dl-satan-broker-test--morning-tool-descriptions
+  '(("org_read_context"       . "Read.")
+    ("org_update_owned_block" . "Write owned.")
+    ("proposal_stage"         . "Stage.")
+    ("notify_send"            . "Notify.")
+    ("hippocampus_list"       . "List hippo.")
+    ("hippocampus_read"       . "Read hippo.")
+    ("hippocampus_write"      . "Write hippo.")
+    ("hippocampus_overwrite"  . "Overwrite hippo.")
+    ("hippocampus_delete"     . "Delete hippo.")
+    ("hippocampus_grep"       . "Search hippo.")
+    ("hippocampus_rename"     . "Rename hippo.")
+    ("inbox_append"           . "Append inbox.")
+    ("agenda_read"            . "Read agenda.")
+    ("activity_read"          . "Read activity.")
+    ("notes_recent"           . "List recent notes.")
+    ("notes_at_satan_scan"    . "Scan @satan directives.")
+    ("sway_border_set"        . "Retint sway borders.")
+    ("sway_border_reset"      . "Restore sway borders.")
+    ("bough_read"             . "Read bough.")
+    ("memory_mark"            . "Mark.")
+    ("memory_resonate"        . "Resonate.")
+    ("memory_show_trace"      . "Show.")
+    ("docs_list"              . "List docs.")
+    ("docs_search"            . "Search docs.")
+    ("docs_read"              . "Read doc.")
+    ("motive_read"            . "Read motives.")
+    ("motive_replace"         . "Replace motive.")
+    ("vcs_log"                . "Read commit log.")
+    ("satan_final"            . "Terminate."))
+  "Tool descriptions sufficient to build the `morning' mode manifest.
+Shared by every broker gate VT that drives `dl-satan-broker-run' (the
+manifest build looks up a description per allowed tool).")
+
 (defun dl-satan-broker-test--with-tool-descriptions (alist body-fn)
   "Run BODY-FN with `dl-satan-tools-descriptions-dir' bound to a tmp dir
 populated from ALIST `((NAME . CONTENT) …)'."
@@ -423,39 +458,44 @@ populated from ALIST `((NAME . CONTENT) …)'."
                        :tokens_in 0 :tokens_out 0
                        :tokens_total tokens-total)))
 
+(defun dl-satan-broker-test--minimal-perceive (prepare _mode pdir)
+  "Minimal `dl-satan-run-perceive' stub for gate-path tests (DR-010 §3).
+Threads a minimal non-nil `:percept' onto PREPARE and persists
+`percept.json' under PDIR, exactly as the real perceive does for the
+identity/mirror invariants — but without the live evidence assembler
+(which reads sensors/git/bough, out of scope for gate tests).  Also
+threads empty `:probe_snapshots' so the consume-side commit (only
+reached on the spawn path) has the key to read.  Reuse this in any
+broker gate VT that asserts the percept/bundle artifacts."
+  (let ((percept (list :run_id (plist-get prepare :run_id)
+                       :time_now (plist-get prepare :time_now)
+                       :handles nil
+                       :evidence_window nil)))
+    (dl-satan-percept-persist pdir percept)
+    (thread-first prepare
+                  (plist-put :percept percept)
+                  (plist-put :evidence nil)
+                  (plist-put :sensor_status nil)
+                  (plist-put :probe_snapshots
+                             (list :curiosity nil :content nil :wpm nil)))))
+
+(defun dl-satan-broker-test--read-bundle (dir)
+  "Parse `bundle.json' under DIR into a plist (or nil if absent)."
+  (let ((path (expand-file-name "bundle.json" dir)))
+    (when (file-readable-p path)
+      (with-temp-buffer
+        (insert-file-contents path)
+        (goto-char (point-min))
+        (json-parse-buffer :object-type 'plist
+                           :array-type 'list
+                           :null-object :null
+                           :false-object :false)))))
+
 (ert-deftest dl-satan-broker/refuses-spawn-when-budget-exceeded ()
   "Pre-spawn gate writes status=budget-exceeded; no child spawned.
 Secondary subject: dl-satan-budget (gating policy)."
   (dl-satan-broker-test--with-tool-descriptions
-   '(("org_read_context"       . "Read.")
-     ("org_update_owned_block" . "Write owned.")
-     ("proposal_stage"         . "Stage.")
-     ("notify_send"            . "Notify.")
-     ("hippocampus_list"       . "List hippo.")
-     ("hippocampus_read"       . "Read hippo.")
-     ("hippocampus_write"      . "Write hippo.")
-     ("hippocampus_overwrite"  . "Overwrite hippo.")
-     ("hippocampus_delete"     . "Delete hippo.")
-     ("hippocampus_grep"       . "Search hippo.")
-     ("hippocampus_rename"     . "Rename hippo.")
-     ("inbox_append"           . "Append inbox.")
-     ("agenda_read"            . "Read agenda.")
-     ("activity_read"          . "Read activity.")
-     ("notes_recent"           . "List recent notes.")
-     ("notes_at_satan_scan"    . "Scan @satan directives.")
-     ("sway_border_set"        . "Retint sway borders.")
-     ("sway_border_reset"      . "Restore sway borders.")
-     ("bough_read"             . "Read bough.")
-     ("memory_mark"            . "Mark.")
-     ("memory_resonate"        . "Resonate.")
-     ("memory_show_trace"      . "Show.")
-     ("docs_list"              . "List docs.")
-     ("docs_search"            . "Search docs.")
-     ("docs_read"              . "Read doc.")
-     ("motive_read"            . "Read motives.")
-     ("motive_replace"         . "Replace motive.")
-     ("vcs_log"                . "Read commit log.")
-     ("satan_final"            . "Terminate."))
+   dl-satan-broker-test--morning-tool-descriptions
    (lambda ()
      (let* ((root (make-temp-file "satan-bud-broker-" t))
             (now (current-time))
@@ -472,16 +512,7 @@ Secondary subject: dl-satan-budget (gating policy)."
            ;; the gate path and the new bundle `:percept' mirror stay exercised;
            ;; the budget assertions below are untouched.
            (cl-letf (((symbol-function 'dl-satan-run-perceive)
-                      (lambda (prepare _mode pdir)
-                        (let ((percept (list :run_id (plist-get prepare :run_id)
-                                             :time_now (plist-get prepare :time_now)
-                                             :handles nil
-                                             :evidence_window nil)))
-                          (dl-satan-percept-persist pdir percept)
-                          (thread-first prepare
-                                        (plist-put :percept percept)
-                                        (plist-put :evidence nil)
-                                        (plist-put :sensor_status nil))))))
+                      #'dl-satan-broker-test--minimal-perceive))
              (dl-satan-broker-test--write-transcript
               existing (list (dl-satan-broker-test--usage-record 500000)))
              (let* ((run-id (dl-satan-broker-run "morning"))
@@ -510,6 +541,144 @@ Secondary subject: dl-satan-budget (gating policy)."
                  (should (equal (plist-get final :reason)
                                 "budget_daily_tokens")))))
          (delete-directory root t))))))
+
+;; ---------- VT-budget-denied-perceives (DR-010 §5, ISSUE-001) ----------
+
+(ert-deftest dl-satan-broker/budget-denied-still-perceives ()
+  "ISSUE-001 regression: a budget-denied tick perceives FIRST.
+`percept.json' is written under the run-dir AND `bundle.json' carries a
+non-nil `:percept' (consumers read the bundle, not the sidecar).  Status
+is `budget-exceeded'.  Mirrors the gate test's fixture (over-ceiling
+existing transcript) but asserts the perceive artifacts, not the gate."
+  (dl-satan-broker-test--with-tool-descriptions
+   dl-satan-broker-test--morning-tool-descriptions
+   (lambda ()
+     (let* ((root (make-temp-file "satan-bud-perceive-" t))
+            (now (current-time))
+            (today (format-time-string "%Y%m%dT" now))
+            (existing (expand-file-name (concat today "080000-x-eeeeee") root))
+            (dl-satan-runs-dir root)
+            (dl-satan-budget-daily-tokens 400000))
+       (unwind-protect
+           (cl-letf (((symbol-function 'dl-satan-run-perceive)
+                      #'dl-satan-broker-test--minimal-perceive))
+             (dl-satan-broker-test--write-transcript
+              existing (list (dl-satan-broker-test--usage-record 500000)))
+             (let* ((run-id (dl-satan-broker-run "morning"))
+                    (dir (dl-satan-broker-locate-run-dir run-id root))
+                    (status-path (expand-file-name "status" dir))
+                    (percept-path (expand-file-name "percept.json" dir))
+                    (bundle (dl-satan-broker-test--read-bundle dir)))
+               ;; Perceive ran before the budget gate: the sidecar exists …
+               (should (file-readable-p percept-path))
+               ;; … and the bundle carries the percept consumers actually read.
+               (should bundle)
+               (should (plist-get bundle :percept))
+               (should (equal (plist-get (plist-get bundle :percept) :run_id)
+                              run-id))
+               ;; Gate decision still stands.
+               (should (equal (string-trim
+                               (with-temp-buffer
+                                 (insert-file-contents status-path)
+                                 (buffer-string)))
+                              "budget-exceeded"))))
+         (delete-directory root t))))))
+
+(ert-deftest dl-satan-broker/session-blocked-still-perceives ()
+  "ISSUE-001 regression: a session-blocked tick perceives FIRST and stays silent.
+With an interactive session active and budget UNDER ceiling,
+`dl-satan-broker-run' still writes `percept.json' + a `:percept'-bearing
+`bundle.json'; status is `failed' with reason \"session_blocked\".  The
+run dir is NOT `.FAILED'-renamed and `dl-satan-broker--announce-failure'
+is NOT called (DEC-8: the deferral must not pollute the failure streak or
+pop a desktop alert).  The bundle is verify-clean."
+  (dl-satan-broker-test--with-tool-descriptions
+   dl-satan-broker-test--morning-tool-descriptions
+   (lambda ()
+     (let* ((root (make-temp-file "satan-session-perceive-" t))
+            (dl-satan-runs-dir root)
+            (dl-satan-budget-daily-tokens 2500000) ; under ceiling: no spend
+            (dl-satan-mcp--session-active t)        ; interactive session open
+            (announced nil))
+       (unwind-protect
+           (cl-letf (((symbol-function 'dl-satan-run-perceive)
+                      #'dl-satan-broker-test--minimal-perceive)
+                     ((symbol-function 'dl-satan-broker--announce-failure)
+                      (lambda (&rest _) (setq announced t))))
+             (let* ((run-id (dl-satan-broker-run "morning"))
+                    (dir (dl-satan-broker-locate-run-dir run-id root))
+                    (status-path (expand-file-name "status" dir))
+                    (percept-path (expand-file-name "percept.json" dir))
+                    (bundle (dl-satan-broker-test--read-bundle dir)))
+               ;; Perceived before the session gate fired.
+               (should (file-readable-p percept-path))
+               (should bundle)
+               (should (plist-get bundle :percept))
+               ;; Terminal status + reason.
+               (should (equal (string-trim
+                               (with-temp-buffer
+                                 (insert-file-contents status-path)
+                                 (buffer-string)))
+                              "failed"))
+               (let* ((final-path (expand-file-name "final.json" dir))
+                      (final (with-temp-buffer
+                               (insert-file-contents final-path)
+                               (goto-char (point-min))
+                               (json-parse-buffer :object-type 'plist
+                                                  :array-type 'list
+                                                  :null-object :null
+                                                  :false-object :false))))
+                 (should (equal (plist-get final :reason) "session_blocked")))
+               ;; DEC-8: no rename, no announce — silent deferral.
+               (should-not (string-suffix-p ".FAILED" dir))
+               (should-not announced)
+               ;; Bundle remains verify-clean.
+               (should (eq (dl-satan-audit-verify-run dir) t))))
+         (delete-directory root t))))))
+
+;; ---------- VT-perceive-pure (DR-010 §5) ----------
+
+(ert-deftest dl-satan-broker/perceive-is-pure ()
+  "`dl-satan-run-perceive' performs no cognition / effects / consumption-mutation.
+It may persist `percept.json' and take pure probe READS, but must NOT:
+spawn a process (`make-process'), dispatch a tool (`dl-satan-tool-dispatch'),
+enqueue an attribute (`dl-satan-attribute-enqueue'), or advance any probe
+watermark (the three `mark-inspected' / `--write-state' writers).  Each
+forbidden fn is spied to fail the test if called.  Read-only local
+subprocess probes (git/bough via `call-process') are ALLOWED and not
+spied.  `dl-satan-percept-build' is stubbed to a fixture percept — the
+purity subject is the perceive orchestration, not the builder internals."
+  (let* ((dir (make-temp-file "satan-perceive-pure-" t))
+         (prepare (list :run_id "20260609T100000-morning-aaaaaa"
+                        :time_now "2026-06-09T10:00:00+10:00"
+                        :percept nil :evidence nil :sensor_status nil))
+         (fixture-percept (list :run_id (plist-get prepare :run_id)
+                                :time_now (plist-get prepare :time_now)
+                                :handles nil
+                                :evidence_window nil))
+         (dl-satan-attribute-updates-enabled t))
+     (unwind-protect
+         (cl-letf (((symbol-function 'dl-satan-percept-build)
+                    (lambda (&rest _) fixture-percept))
+                   ((symbol-function 'make-process)
+                    (lambda (&rest _) (ert-fail "perceive spawned a process")))
+                   ((symbol-function 'dl-satan-tool-dispatch)
+                    (lambda (&rest _) (ert-fail "perceive dispatched a tool")))
+                   ((symbol-function 'dl-satan-attribute-enqueue)
+                    (lambda (&rest _) (ert-fail "perceive enqueued an attribute")))
+                   ((symbol-function 'dl-satan-sensor-curiosity-mark-inspected)
+                    (lambda (&rest _) (ert-fail "perceive advanced curiosity watermark")))
+                   ((symbol-function 'dl-satan-sensor-content-mark-inspected)
+                    (lambda (&rest _) (ert-fail "perceive advanced content watermark")))
+                   ((symbol-function 'dl-satan-sensor-wpm--write-state)
+                    (lambda (&rest _) (ert-fail "perceive advanced wpm state"))))
+           (let ((out (dl-satan-run-perceive prepare '(:name "morning") dir)))
+             ;; percept.json was persisted …
+             (should (file-readable-p (expand-file-name "percept.json" dir)))
+             ;; … and the pure probe read-snapshots were threaded.
+             (should (plist-member out :probe_snapshots))
+             (should (plist-get out :percept))))
+       (delete-directory dir t))))
 
 ;; ---------- pre_spawn threading (Phase 4.4) ----------
 
