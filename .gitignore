@@ -61,3 +61,12 @@ oauth2-auto.plist
 /bookmarks
 .spec-driver/run/
 .pi/APPEND_SYSTEM.md
+.doctrine/state/
+.doctrine/slice/*/phases
+.doctrine/**/handover.md
+.doctrine/slice/*/inquisition.md
+.doctrine/memory/index/*
+.doctrine/memory/embeddings/*
+.doctrine/memory/state/*
+.doctrine/memory/shipped/
+.doctrine/skills/*
