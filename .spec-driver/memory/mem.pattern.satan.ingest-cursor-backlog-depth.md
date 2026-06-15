@@ -37,7 +37,9 @@ Test recipe for the ingest cursor ([[mem.fact.satan.ingest-cursor-store]]).
 
 `(dl-satan-ingest-cursor-backlog-depth)` → `(:focus N :browser N :content N
 :total N)`, emacsclient-callable (waybar surface). `cursor==head` ⇒ 0; missing
-cursor ⇒ full count (from-head). Pure read.
+cursor ⇒ full count (from-head). Pure read. **Not auto-loaded — external
+callers must `(require 'dl-satan-ingest-cursor)` first**
+([[mem.fact.satan.ingest-cursor-require]]).
 
 ## Test fixture (let-bind ALL of these to temps)
 

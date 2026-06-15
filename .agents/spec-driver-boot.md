@@ -142,7 +142,7 @@ clarification.
 
 ## Accepted ADRs
 
-ADR-001	accepted	ADR-001: Decouple SATAN perception from cognition	2026-06-08
+ADR-001	accepted	ADR-001: Decouple SATAN perception from cognition	2026-06-09
 
 ## Required Policies
 

@@ -2,6 +2,29 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-06-10 — SATAN backlog waybar widget (DE-010 follow-up)
+
+New `custom/satan-backlog` waybar module showing ingest backlog depth (`head −
+cursor` = unconsumed evidence) from `dl-satan-ingest-cursor-backlog-depth`.
+Mirrors `custom/satan-inbox`: hidden when zero, degrades silently when the emacs
+server is down (non-numeric / empty output → `empty` class).
+
+- `~/.config/waybar/scripts/satan-backlog.sh` — new; emits waybar JSON
+  `{text,class}`. The read fn returns a **plist**, and its feature is **not
+  auto-loaded** in a running emacs, so the eval form does
+  `(require 'dl-satan-ingest-cursor)` then `(plist-get … :total)` — returning a
+  bare integer keeps the bash guard identical to satan-inbox.
+- `~/.config/waybar/config.jsonc` — module declared (60s interval), placed in
+  `modules-right` next to `custom/satan-inbox`.
+- `~/.config/waybar/style.css` — `#custom-satan-backlog` added to the muted-pill
+  group; shares satan-inbox's `.empty` collapse rule.
+- No click action (read-only; manual consume trigger tracked as IMPR-012).
+
+**Deploy correction:** the DE-010 phase-02 note claimed this config lives in
+`~/flakes` / needs `home-manager switch`. Verified false — `~/.config/waybar/`
+is a plain editable dotfile (tracked only by the home repo). Edit in place +
+`systemctl --user reload waybar`. The 2026-05-19 satan-inbox entry was right.
+
 ## 2026-06-10 — DE-010: decouple SATAN perception from the agent run
 
 The SATAN tick is cut into **perceive** (deterministic sensing, runs
