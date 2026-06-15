@@ -13,6 +13,12 @@ oauth2.*
 /.spec-driver/run/events.jsonl
 /supabase/*
 
+.spec-driver
+
+
+_claude
+
+
 .emacs.desktop
 .emacs.desktop.lock
 /auto-save
@@ -70,3 +76,5 @@ oauth2-auto.plist
 .doctrine/memory/state/*
 .doctrine/memory/shipped/
 .doctrine/skills/*
+.doctrine/agents/*
+!.doctrine/agents/AGENTS.md
