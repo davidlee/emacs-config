@@ -1,0 +1,11 @@
+id    = 1
+slug  = "satan_attrd_test_db_leak_de_002_conformance"
+title = "satan-attrd test DB leak — DE-002 conformance audit"
+
+[review]
+facet     = "implementation"
+raiser    = "agent"
+responder = "agent"
+
+[target]
+ref   = "SL-002"

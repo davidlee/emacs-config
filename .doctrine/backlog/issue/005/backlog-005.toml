@@ -1,0 +1,17 @@
+schema = "doctrine.backlog"
+version = 1
+
+id = 5
+slug = "stale_bough_binary_lacks_read_subcommand_bough_tests_fail_just_check_red"
+title = "Stale bough binary lacks read subcommand — bough tests fail / just check red"
+kind = "issue"
+status = "open"
+resolution = ""
+created = "2026-05-30"
+updated = "2026-05-30"
+tags = []
+
+[relationships]
+needs    = []
+after    = []
+triggers = []

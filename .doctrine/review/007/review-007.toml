@@ -1,0 +1,11 @@
+id    = 7
+slug  = "de_005_conformance_content_percept_content_read_tool"
+title = "DE-005 content percept + content_read tool — conformance audit"
+
+[review]
+facet     = "implementation"
+raiser    = "agent"
+responder = "agent"
+
+[target]
+ref   = "SL-005"

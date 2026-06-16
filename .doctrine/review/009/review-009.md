@@ -1,0 +1,122 @@
+# Review RV-009 — reconciliation of SL-010
+
+Adversarial-review ledger (ADR-007).
+
+## Brief
+
+DE-010 doc reconciliation.
+
+## Audit Content (migrated from spec-driver)
+
+```yaml supekku:audit.findings@v1
+schema: supekku.audit.findings
+version: 1
+audit: AUD-009
+findings:
+  - id: F-001
+    description: >-
+      DOC DRIFT (perceptual-design.md §S1 stale). DR-010 §4 listed a §S1 update
+      as a code-impact row; neither Phase 1 nor Phase 2 touched it. §S1 narrated
+      the OLD fused flow — `broker--prepare` builds percept + resonance + motive
+      "and threads run_ctx ... then spawns the model as its last step" — with a
+      single prepare-phase sequence and no gate ordering. As built, perceive
+      (percept-build + persist + probe read-snapshot) runs UNCONDITIONALLY after
+      mkdir and BEFORE the session/budget gates (ISSUE-001 root fix), and
+      consume carries observer/probe-commit/resonance/motive/alerts/cursor/LLM.
+      The doc is the authority surface (DEC-spec-authority-stays-doc — no SPEC
+      graduation), so the stale narrative is the spec-vs-impl divergence.
+    outcome: drift
+    severity: medium
+    refs:
+      - docs/satan/perceptual-design.md:99
+      - satan/dl-satan-broker.el:716
+      - satan/dl-satan-context.el
+    disposition:
+      status: reconciled
+      kind: spec_patch
+    rationale: >-
+      RECONCILED in-audit (this commit). §S1 rewritten to the perceive/consume
+      control flow: perceive runs unconditionally before the gates; only write
+      is percept.json (mirrored :percept on denial); consumption-state mutation
+      (probe high-water, ingest cursor) and effects are consume-side; probes
+      split read/commit. Added an explicit "signal model unchanged — not yet
+      replayable, see IMPR-013" callout per DR §4. Authority stays doc-canon;
+      the patch is in-scope (no authority move → no revision needed).
+  - id: F-002
+    description: >-
+      ADR-001 side-effect amendment (DR-010 §4 code-impact row). DR named an
+      ADR-001 amendment — precise side-effect definition, per-invocation
+      perception-of-record, premise-gap deferred to IMPR-013 — as outstanding
+      doc work. On inspection ADR-001 ALREADY carries this as its "Amendment
+      (2026-06-09, DR-010 + adversarial review)" §1–§2, authored during DR
+      drafting. §1 (perceive writes only percept.json; consumption-state +
+      effects consume-side; probes split read/commit) and §2 (durable-segment-
+      log premise aspirational → IMPR-013) match what shipped in Phases 1–2.
+    outcome: aligned
+    severity: info
+    refs:
+      - .spec-driver/decisions/ADR-001-decouple_satan_perception_from_cognition.md:115
+      - satan/dl-satan-ingest-cursor.el
+    disposition:
+      status: reconciled
+      kind: aligned
+    rationale: >-
+      No patch needed. The ADR amendment is decision-level and conformant with
+      the built reality (perceive purity, probe read/commit split, consume-side
+      cursor). The ingest cursor it references abstractly is now concretely
+      `dl-satan-ingest-cursor.el`; the ADR need not name the file.
+  - id: F-003
+    description: >-
+      CONFORMANCE (perceive/consume impl vs DR-010 §3). Verified the built
+      broker control flow against the DR §3 boundary table and cursor spec:
+      perceive is pure (VT-perceive-pure spies make-process/tool-dispatch/attr-
+      enqueue/probe + ingest-cursor writers); both denial paths mirror :percept;
+      probes advance to native high-water not wall-clock ts; the per-source
+      ingest cursor (focus/browser end_ts, content captured_at; git excluded;
+      intra-day) advances consume-success-only, idempotent, verbatim native ts;
+      missing cursor = consume-from-head. All six coverage entries verified.
+    outcome: aligned
+    severity: info
+    refs:
+      - satan/dl-satan-broker.el:859
+      - satan/dl-satan-ingest-cursor.el
+      - satan/test/dl-satan-ingest-cursor-test.el
+    disposition:
+      status: reconciled
+      kind: aligned
+    rationale: >-
+      Implementation matches DR-010 §3 / §7 decisions. `just check` 990/999
+      (0 unexpected, 9 pre-existing skips); IP-010 coverage block all `verified`.
+      No divergence.
+```
+
+## Observations
+
+- The only genuine spec-vs-impl drift was the **doc** (perceptual-design.md
+  §S1), not the code — both phases shipped conformant to DR-010 §3, but the
+  doc-canon narrative was never refreshed (DR §4 row deferred through both
+  phases). Patched here.
+- ADR-001's amendment pre-empted its own DR §4 row — it was written during DR
+  drafting (2026-06-09), so the "outstanding" amendment was already landed.
+- **Out-of-audit-scope (noted, not a finding):** ADR-001's D1 "backlog parcel
+  lazily materialized on consume" describes a *view*, not a written
+  `packet-<n>.json`; DE-010 builds no positive per-segment replay pass (DR §3
+  negative-guarantee-only), consistent with the ADR's "structural cut only"
+  framing. No drift.
+
+## Evidence
+
+- `just check` → `Ran 999 tests, 990 results as expected, 0 unexpected, 9
+  skipped` (PASS). Baseline P01 was 982/991; +8 VTs in P02.
+- IP-010 `supekku:verification.coverage@v1`: all six entries `verified`
+  (VT-budget-denied-perceives, VT-perceive-pure, VT-probe-split, VT-percept-
+  golden, VT-mcp-bundle, VT-cursor-advance).
+- Commits: P02 `13127cc` (store + advance), `5f63d69` (backlog fn + VTs),
+  `a12ce7c` (notes + CHANGELOG); §S1 patch in this audit's commit.
+
+## Recommendations
+
+- Proceed to `/close-change` — no blocking finding remains; both non-aligned
+  doc items reconciled in-place (F-001 spec_patch, F-002 already-aligned).
+- Author `mem.fact.satan.perceive-consume-seam` + reconcile the worker-created
+  `mem.pattern.satan.ingest-cursor-backlog-depth` before close (handoff Step 2).

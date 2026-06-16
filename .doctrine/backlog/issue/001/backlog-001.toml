@@ -1,0 +1,21 @@
+schema = "doctrine.backlog"
+version = 1
+
+id = 1
+slug = "a1_every_run_writes_percept_json_budget_denied_runs_skip_it"
+title = "Every run writes percept.json (budget-denied runs skip it)"
+kind = "issue"
+status = "resolved"
+resolution = "fixed"
+created = "2026-05-30"
+updated = "2026-06-10"
+tags = ["satan", "audit"]
+
+[relationships]
+needs    = ["SL-010"]
+after    = []
+triggers = []
+
+[[relation]]
+label = "slices"
+target = "SL-010"

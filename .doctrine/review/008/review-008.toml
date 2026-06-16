@@ -1,0 +1,11 @@
+id    = 8
+slug  = "de_007_phase_4_interactive_boot_context_conformance"
+title = "DE-007 Phase 4 interactive boot context — conformance audit"
+
+[review]
+facet     = "phase-plan"
+raiser    = "agent"
+responder = "agent"
+
+[target]
+ref   = "SL-007"

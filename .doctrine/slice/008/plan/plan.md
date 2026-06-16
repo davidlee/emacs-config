@@ -1,0 +1,140 @@
+# Implementation Plan for SL-008
+
+```yaml supekku:plan.overview@v1
+schema: supekku.plan.overview
+version: 1
+plan: IP-008
+delta: DE-008
+revision_links:
+  aligns_with:
+    - DR-008
+specs:
+  primary: []
+  collaborators: []
+requirements:
+  targets: []
+  dependencies: []
+phases:
+  - id: IP-008-P01
+  - id: IP-008-P02
+```
+
+```yaml supekku:verification.coverage@v1
+schema: supekku.verification.coverage
+version: 1
+subject: IP-008
+entries:
+  - artefact: VT-git-window
+    kind: VT
+    requirement: DE-008
+    status: verified
+    notes: "Phase 1 — git-window-sees-commit-outside-10min green (AUD-005 re-run)."
+  - artefact: VT-feed-paths-multiday
+    kind: VT
+    requirement: DE-008
+    status: verified
+    notes: "Phase 1 — git-feed-paths-{multiday,dst-fallback,next-day,cross-midnight,same-day} green (AUD-005 re-run)."
+  - artefact: VT-sort-limit
+    kind: VT
+    requirement: DE-008
+    status: verified
+    notes: "Phase 1 — git-commits-sorted-by-end-ts green (AUD-005 re-run)."
+  - artefact: VT-malformed-tolerance
+    kind: VT
+    requirement: DE-008
+    status: verified
+    notes: "Phase 1 — git-commits-malformed-tolerant green (AUD-005 re-run)."
+  - artefact: VT-git-window-field
+    kind: VT
+    requirement: DE-008
+    status: verified
+    notes: "Phase 1 — git-window-field-distinct passes; :git_window_start_at present and earlier than :window_start_at."
+  - artefact: VT-commit-observed
+    kind: VT
+    requirement: DE-008
+    status: verified
+    notes: "Phase 2 — unit cases p2-commit-observed-{fires-in-window,no-project-cwd,wrong-repo,matches-by-cue-slug,outside-window} green (AUD-005 re-run)."
+  - artefact: VT-p2-retired
+    kind: VT
+    requirement: DE-008
+    status: verified
+    notes: "Phase 2 — rg ':git_head_changed|git-head-changed' empty outside CHANGELOG history (AUD-005)."
+  - artefact: VA-live-tick
+    kind: VA
+    requirement: DE-008
+    status: verified
+    notes: "Phase 2 — verified via commits 9aeaeb8 + 5c2d6bb; notes 2.9 (7 commits, sensor_status.git=ok, distinct git_window_start_at)."
+  - artefact: VT-process-e2e
+    kind: VT
+    requirement: DE-008
+    status: verified
+    notes: "AUD-005 F-001 reconciled — dl-satan-observer/process-{positive-bumps-motive-and-projects,error-on-one-iv-does-not-abort} green with test DB up. Fixtures migrated to drive :git_commit_observed (motive --well-formed-cwd + :git_commits in-window after-state)."
+```
+
+## 1. Summary
+
+- **Delta**: DE-008 — SATAN git-activity perception: 24h feed window; retire `git_state` commit role.
+- **Design**: [DR-008](./DR-008.md) (internal + external adversarial passes integrated).
+- **Specs Impacted**: none (no tech spec for this surface; design ref `docs/satan/perceptual-design.md`).
+- **Desired Outcome**: SATAN perceives commits from the global hook over a rolling 24h horizon; the outcome predicate is repo-scoped and window-anchored; `git_state` no longer masquerades as cross-repo "last commit".
+
+## 2. Context & Constraints
+
+- **Current Behaviour**: one 10-min window starves the git feed (`git_commits={}`, `sensor_status:git="missing"` every tick); `git_head_changed` P2 + tank read pwd-coupled `git_state`.
+- **Target Behaviour**: per DR-008 §4.
+- **Dependencies**: none blocking.
+- **Constraints**: stay in `.emacs.d/satan/`; live daemon; `just check` green; no regression to focus/browser/content feeds. TDD (red/green/refactor).
+
+## 3. Gate Check
+
+- [x] Backlog/driver linked (user report + investigation plan; follow-up Q3 to be filed).
+- [x] No spec to update (surface is delta-tracked); DE specifies required changes.
+- [x] Test strategy: ERT under `satan/test/` (memory-evidence + observer-classify suites) + live VA.
+- [x] Workspace/config: edits to tracked `.el` only — `eval-buffer`/daemon reload suffices; no new file, no `home-manager switch`.
+
+## 4. Phase Overview
+
+| Phase | Objective | Entrance Criteria | Exit Criteria / Done When | Phase Sheet |
+| ----- | --------- | ----------------- | ------------------------- | ----------- |
+| P01 — Feed perception | Decouple git feed to a 24h window; fix multi-day enumeration, sort-before-limit, malformed tolerance, distinct window field | DR-008 approved | A tick capsule's `evidence_window.git_commits` lists cross-repo commits over 24h; focus/browser/content unchanged; VT-git-window/feed-paths-multiday/sort-limit/malformed-tolerance/git-window-field green; `just check` green | `phases/phase-01.md` |
+| P02 — Outcome predicate + git_state demotion | Replace P2 with `:git_commit_observed` (repo-scoped, window-anchored); demote `git_state` in tank; update docs/CHANGELOG; sensor-alerts regression | P01 complete | `:git_head_changed` fully removed (rg empty); `:git_commit_observed` fires-in-scope / holds-out-of-scope; tank renders `:git_commits`; docs updated; VT-commit-observed/p2-retired + VA-live-tick green; `just check` green | `phases/phase-02.md` |
+
+P01 alone fixes the user's reported symptom and is independently shippable. P02 depends on P01 (predicate scans the sorted, populated `git_commits`).
+
+## 5. Phase Detail Snapshot
+
+- **Design Revision**: `DR-008.md` (canonical).
+- **Active Phase Sheet**: `phases/phase-01.md` (created next).
+- **Parallelisable Work**: P01 sub-tasks are mostly one file (`dl-satan-memory-evidence.el`) — limited parallelism; flag `[P]` only if splitting test authoring.
+
+## 6. Testing & Verification Plan
+
+- **Updated Suites**: `satan/test/dl-satan-memory-evidence-test.el` (window, feed-paths, sort, malformed, window-field), `satan/test/dl-satan-observer-test.el` (predicate swap + registry order), `satan/test/dl-satan-tank-test.el` (git render).
+- **New Cases**: see verification.coverage entries.
+- **Tooling/Fixtures**: build a git-segment JSONL fixture helper (multi-day, multi-repo, shuffled instants, one malformed line) if not already present.
+- **Rollback Plan**: revert the commit; feed returns to 10-min starvation (status quo ante); no data migration.
+
+## 7. Risks & Mitigations
+
+| Risk | Mitigation | Owner |
+| ---- | ---------- | ----- |
+| R4 attribution false-positive (cross-repo) | Repo-scope + window-anchor predicate; ERT covers unrelated-repo no-fire | Dev |
+| R5 DST/sort/malformed correctness | Calendar enumeration, sort-before-limit, per-file tolerance; ERT each | Dev |
+| Removal misses a `:git_head_changed` reference | Final `rg` gate in P02 exit criteria | Dev |
+
+## 8. Open Questions & Decisions
+
+- [x] Watermark unnecessary (DR-008 Q1 resolved).
+- [ ] Q2 — git capsule `seg-limit` tail sufficiency (defer; predicate unaffected).
+- [ ] Q3 — relax `:crosses_midnight` guard (separate follow-up delta).
+
+## 9. Progress Tracking
+
+- [ ] Phase 01 complete
+- [ ] Phase 02 complete
+- [ ] Verification gates passed
+
+## 10. Notes / Links
+
+- Investigation: `/home/david/.claude/plans/purring-launching-peacock.md`
+- Follow-up delta (deferred): retarget `git_state` `:dirty` + canon `cwd.project` to active-project root; relax midnight guard.

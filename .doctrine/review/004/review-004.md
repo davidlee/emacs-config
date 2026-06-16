@@ -1,0 +1,240 @@
+# Review RV-004 — implementation of SL-007
+
+Adversarial-review ledger (ADR-007).
+
+## Brief
+
+DE-007 conformance audit.
+
+## Audit Content (migrated from spec-driver)
+
+```yaml supekku:audit.findings@v1
+schema: supekku.audit.findings
+version: 1
+audit: AUD-004
+findings:
+  - id: F-001
+    description: >-
+      custom-vars.el enables MCP server by default (defcustom default is nil,
+      but tracked custom-vars.el sets dl-satan-mcp-enabled t). Appears to
+      conflict with O5 ("disable switch, default off").
+    outcome: aligned
+    severity: medium
+    disposition:
+      status: reconciled
+      kind: aligned
+    rationale: >-
+      User confirmed intentional. The defcustom gates auto-start behaviour;
+      manual my/satan-mcp-start still requires the user to invoke it.
+      enabled = t means the server may be started manually without toggling
+      the flag first. O5 semantics clarified.
+  - id: F-002
+    description: >-
+      satan/prompts/interactive.txt was created in ~/notes/ but not
+      version-controlled under ~/.emacs.d/. DR-007 code_impacts lists it
+      as satan/prompts/interactive.txt.
+    outcome: aligned
+    severity: medium
+    disposition:
+      status: reconciled
+      kind: aligned
+    rationale: File committed to repo during review.
+  - id: F-003
+    description: >-
+      Phase sheet (phase-02.md) exit criteria 3.6 (home-manager switch) and
+      3.7 (VH-mcp-live-pi) were unchecked when commit 8c4ab80 claimed
+      "end to end viable."
+    outcome: aligned
+    severity: medium
+    disposition:
+      status: reconciled
+      kind: aligned
+    rationale: >-
+      Both completed during review. home-manager switch picked up new .el
+      files + flake change. VH-mcp-live-pi confirmed: pi lists tools,
+      executes read and write operations, terminal stdio uninvolved,
+      transcript.jsonl shows calls.
+  - id: F-004
+    description: >-
+      dl-satan-mcp.el requires dl-satan-jsonl but uses
+      json-parse-string/json-serialize directly. Dead require.
+    outcome: aligned
+    severity: low
+    disposition:
+      status: reconciled
+      kind: aligned
+    rationale: Removed during review.
+  - id: F-005
+    description: >-
+      No ert test for test.* tool name filtering in
+      dl-satan-mcp--interactive-tools. Test fixture resets dl-satan-tools
+      to nil, so the string-prefix-p "test." branch is never exercised.
+    outcome: aligned
+    severity: low
+    disposition:
+      status: reconciled
+      kind: aligned
+    rationale: Test added during review.
+  - id: F-006
+    description: >-
+      dl-satan-mcp--tools-call serialises successful tool results with
+      prin1-to-string, producing Elisp repr not JSON. pi displays as text
+      (fine for Option A). Option C structured returns would need JSON.
+    outcome: drift
+    severity: low
+    disposition:
+      status: pending
+      kind: follow_up_backlog
+      refs: []
+    rationale: >-
+      Acceptable for Option A. Option C (first-class session record) should
+      emit structured JSON for programmatic consumption by pi.
+  - id: F-007
+    description: >-
+      tools/list MCP handler re-reads all tool description .md files from
+      disk via dl-satan-tool-json-schema. Manifest already built during
+      mint-session contains this data. Low impact (once per session).
+    outcome: drift
+    severity: low
+    disposition:
+      status: pending
+      kind: follow_up_backlog
+      refs: []
+    rationale: Low-impact optimisation. Not blocking.
+  - id: F-008
+    description: >-
+      TypeBox enum conversion in satan.ts casts all enum values as
+      v as string. If SATAN uses numeric enums on integer fields,
+      the TypeBox type won't match.
+    outcome: drift
+    severity: low
+    disposition:
+      status: accepted
+      kind: tolerated_drift
+      refs: []
+    rationale: >-
+      Documented in phase-02 findings. No numeric enums exist today.
+      Fix when first numeric enum appears.
+  - id: F-009
+    description: >-
+      No automated launcher. my/satan-mcp-pi-session starts the server
+      and prints a message; user must manually run jailed-pi with the
+      extension and system prompt paths.
+    outcome: drift
+    severity: low
+    disposition:
+      status: pending
+      kind: follow_up_backlog
+      refs: []
+    rationale: >-
+      Intentional for Option A (human-supervised). A my/satan-mcp-pi-launch
+      helper would be convenient but not required for closure.
+  - id: F-010
+    description: >-
+      Sentinel regex matches "broken" event but make-network-process (UDS)
+      never emits it (pipe-process only). The "deleted" branch already
+      covers network disconnection.
+    outcome: drift
+    severity: low
+    disposition:
+      status: accepted
+      kind: tolerated_drift
+      refs: []
+    rationale: >-
+      Harmless dead code. The "deleted" pattern handles the actual
+      network close events correctly.
+```
+
+## Observations
+
+Adversarial code review of commit 8c4ab80 ("feat(DE-007): end to end viable").
+
+### Architecture — ALIGNED
+
+The core design correctly implements all material design decisions from DR-007:
+
+| Decision | Implementation | Verdict |
+|----------|---------------|---------|
+| DEC-1 Topology — Emacs hosts MCP over UDS | `make-network-process :family 'local` in `dl-satan-mcp.el` | aligned |
+| DEC-2 Hand-roll MCP server | Custom JSON-RPC 2.0 handlers; no mcp-server-lib.el | aligned |
+| DEC-3 Constrained socket — MCP only, no eval | Five methods only: initialize, ping, tools/list, tools/call, notifications/initialized | aligned |
+| DEC-4 Full-toolbox human-supervised | interactive mode-spec with union of all non-test tools | aligned |
+| DEC-5 One run/audit per connection | `dl-satan-mcp--mint-session` → `dl-satan-audit-open`; `--close-session` → `dl-satan-audit-close` with synthetic completed final | aligned |
+| DEC-6 No satan_final in A | No output-handler; synthetic final in audit-close only | aligned |
+| DEC-7 current-run-id binding | `dl-satan-memory-store--current-run-id` let-bound around dispatch | aligned |
+| DEC-8 Mutual exclusion | `bound-and-true-p dl-satan-broker--spawn-running` guard in both start and mint-session | aligned |
+| DEC-9 interactive mode-spec | `dl-satan-mcp-register-interactive-mode` via `dl-satan-mode-register` | aligned |
+| DEC-10 Socket hardening | 0700 parent dir, anti-symlink, no /tmp fallback, 0600 socket file | aligned |
+| DEC-11 Socket auth — accept same-user risk | No in-protocol auth; layered mitigations (default-off, 0600, broker validation) | aligned |
+| DEC-12 TS Extension over node-net UDS | `.pi/extensions/satan.ts` — McpClient class, no socat | aligned |
+
+### Reuse — ALIGNED
+
+- `dl-satan-tool-dispatch` — shared correctly via `:args` plist bridging MCP `:arguments`
+- `dl-satan-tool-json-schema` — schema emission reused for tools/list
+- `dl-satan-audit-open` / `dl-satan-audit-close` / `dl-satan-audit-record` — audit membrane reused
+- `dl-satan-run-mint-id` / `dl-satan-run-dir-for-id` / `dl-satan-run-tool-ctx` — extracted to `dl-satan-run.el`, shared with broker
+- `dl-satan-mode-register` / `dl-satan-mode-resolve` — mode system reused
+
+### Trust boundary (POL-001) — ALIGNED
+
+- Socket speaks MCP only; no eval path
+- Every `tools/call` flows through `dl-satan-tool-dispatch` (name lookup, mode allowlist, capability guard, schema validation, handler)
+- pi extension runs untrusted in jail; holds no authority
+- Emacs validates every call server-side
+
+## Evidence
+
+### Test suite
+
+```
+just check → 932/938 passed, 0 unexpected, 6 skipped (2026-06-01)
+```
+
+6 skipped tests are unchanged integration tests (bough, morning, patch-listener, patch-runner) — no regressions.
+
+### Verification coverage
+
+```yaml supekku:verification.coverage@v1
+schema: supekku.verification.coverage
+version: 1
+audit: AUD-004
+items:
+  - id: VT-mcp-jsonrpc
+    status: verified
+    evidence: 4 ert tests (initialize, ping, unknown-method, notification) — all green
+  - id: VT-mcp-tools-list
+    status: verified
+    evidence: 2 ert tests (tools-list-shape, tools-list-multiple) — all green
+  - id: VT-mcp-tools-call
+    status: verified
+    evidence: 3 ert tests (tools-call-success, unknown-tool, arg-invalid) — all green
+  - id: VT-mcp-session-lifecycle
+    status: verified
+    evidence: 3 ert tests (session-creates-run-dir, disconnect-closes-audit, transcript-has-calls) — all green
+  - id: VT-mcp-startup
+    status: verified
+    evidence: 3 ert tests (refuses-without-xdg, refuses-on-symlink-dir, refuses-missing-description) — all green
+  - id: VH-mcp-live-pi
+    status: verified
+    evidence: Live pi session confirmed — tools listed, read+write executed, terminal uninvolved, transcript recorded
+```
+
+### Risk register reconciliation
+
+| Risk | Status |
+|------|--------|
+| R1 — pi MCP config shape unknown | RESOLVED — Extension API + node-net UDS proven in spike |
+| R2 — Option A bypasses broker run-loop | ACCEPTED — documented; seam for Option C preserved |
+| R3 — emacsclient --eval latency | RESOLVED — MCP UDS replaces emacsclient approach (DEC-3) |
+| R4 — synthetic session grants broader capability | ACCEPTED — human-supervised, DEC-4; bounded by broker validation + default-off |
+| R5 — reentrancy (current-run-id clobber) | RESOLVED — DEC-7 bind-around-dispatch + DEC-8 mutual exclusion |
+| R6 — pi can't reach MCP without intercepting stdio | RESOLVED (DEC-12) — TS Extension over node-net UDS |
+| R7 — missing description files fail tools/list | RESOLVED — fail-fast precondition; test.* tools filtered |
+| R8 — no in-protocol UDS auth | ACCEPTED — DEC-11; layered mitigations sufficient for single-user box |
+
+## Recommendations
+
+- Close DE-007. All design decisions implemented, all tests green, VH confirmed.
+- F-006, F-007, F-009 → create backlog items for Option C work (not blocking).
+- F-008, F-010 → tolerated drift; no action required.

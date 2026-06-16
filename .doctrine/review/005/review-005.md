@@ -1,0 +1,173 @@
+# Review RV-005 — implementation of SL-008
+
+Adversarial-review ledger (ADR-007).
+
+## Brief
+
+DE-008 conformance audit.
+
+## Audit Content (migrated from spec-driver)
+
+```yaml supekku:audit.findings@v1
+schema: supekku.audit.findings
+version: 1
+audit: AUD-005
+findings:
+  - id: F-001
+    description: >-
+      End-to-end observer process tests
+      dl-satan-observer/process-positive-bumps-motive-and-projects and
+      dl-satan-observer/process-error-on-one-iv-does-not-abort FAIL when the
+      test DB is present. Their assertions were migrated to expect predicate
+      :git_commit_observed, but their setup was NOT: the stubbed after-state
+      carries only :git_state (head aaaaaaa->bbbbbbb, the RETIRED
+      :git_head_changed signal) with no :git_commits rows, and the motive
+      fixture (dl-satan-motive-test--well-formed) declares no :project_cwd.
+      The new predicate scans (plist-get after :git_commits) and requires a
+      motive :project_cwd, so it cannot fire — positive=0, verdict not
+      :worked. Both tests are DB-gated (--with-db -> skip-unless); the
+      implementation agent ran in the jail with no DB, so they were SKIPPED
+      and the breakage went undetected. P02 notes' "0 new failures / just
+      check green" was measured in that DB-less environment.
+    outcome: aligned
+    severity: high
+    refs:
+      - satan/test/dl-satan-observer-test.el:1373
+      - satan/test/dl-satan-observer-test.el:1445
+      - satan/dl-satan-observer-classify.el:203
+    disposition:
+      status: reconciled
+      kind: aligned
+    rationale: >-
+      Reconciled in-delta during this audit (P02 re-opened). Added motive
+      fixture dl-satan-motive-test--well-formed-cwd (docs-after-error carries
+      :project_cwd) and stubbed both e2e after-states with a :git_commits row
+      (:slug emacs.d matching the project: cue, :end_ts 11:15 inside the
+      11:00->11:30 attribution window). Both tests now pass; full `just check`
+      with the test DB up is green (944/947, 0 unexpected, 3 skipped). New
+      IP-008 coverage entry VT-process-e2e records the previously-untracked
+      process-level path so it cannot regress invisibly again.
+  - id: F-002
+    description: >-
+      IP-008 verification.coverage entries VT-git-window,
+      VT-feed-paths-multiday, VT-sort-limit, VT-malformed-tolerance,
+      VT-commit-observed, VT-p2-retired, VA-live-tick still carry
+      status: planned despite the work being implemented and (for the unit
+      VTs) green, and VA-live-tick verified live (commits 9aeaeb8, 5c2d6bb;
+      notes 2.9). Coverage state lags reality.
+    outcome: spec_patch
+    severity: low
+    refs:
+      - .spec-driver/deltas/DE-008-satan_git_activity_perception_24h_feed_window_watermark_retire_git_state_commit_role/IP-008.md:36
+    disposition:
+      status: reconciled
+      kind: spec_patch
+    rationale: >-
+      Patched in this audit: unit VTs and VA-live-tick advanced to verified
+      (all green in the audit re-run; live tick attested by commits). IP is
+      the owning artefact; no authority move needed.
+  - id: F-003
+    description: >-
+      Lifecycle frontmatter lags: IP-008 status=draft, phase-01.md and
+      phase-02.md status=draft, P01 wrap-up checklist (section 11) and IP-008
+      section 9 progress boxes unchecked, though P02 is 12/12 and P01 tasks
+      all [x]. DE-008 remains in-progress (correct, given F-001).
+    outcome: spec_patch
+    severity: low
+    disposition:
+      status: reconciled
+      kind: spec_patch
+    rationale: >-
+      Housekeeping deferred to /close-change while F-001 was open. F-001 since
+      cleared and DE-008 completed; IP-008, phase-01, and phase-02 frontmatter
+      advanced draft->completed to match delivered state.
+  - id: F-004
+    description: >-
+      Promised follow-up work was never filed. DE-008 section 7 and risk R3
+      committed to filing a backlog issue for retargeting git_state :dirty
+      and canon cwd.project's git_state.remote source to the active-project
+      root; IP-008 section 8 / Q3 defers relaxing the :crosses_midnight
+      guard to a separate follow-up delta. No matching ISSUE/IMPR/delta
+      exists in the backlog.
+    outcome: follow_up_backlog
+    severity: medium
+    refs:
+      - ISSUE-004
+    disposition:
+      status: accepted
+      kind: follow_up_backlog
+    rationale: >-
+      Deferral is legitimate (out of DE-008 scope). Filed ISSUE-004 capturing
+      the :dirty / canon cwd.project retarget (blocked on an active-project
+      signal) and the Q3 :crosses_midnight relaxation, so the deferred work is
+      now tracked.
+  - id: F-005
+    description: >-
+      Code conformance to DR-008 verified. defcustom
+      dl-satan-memory-evidence-git-window-minutes=1440 present;
+      --git-feed-paths uses calendar-day enumeration (DST-immune);
+      --git-commits-status sorts by :end_ts before limit with per-file parse
+      tolerance; :git_window_start_at exposed and distinct from
+      :window_start_at; :git_commit_observed predicate registered in the P2
+      slot (repo-scoped via :project_cwd / project: cue, window-anchored on
+      :end_ts), :git_head_changed fully removed (rg empty outside CHANGELOG
+      history); tank renders :git_commits count + newest + window start. All
+      DE-008 unit VTs green in the audit re-run (memory-evidence git-* x13,
+      observer p2-commit-observed-* x5).
+    outcome: aligned
+    severity: info
+    disposition:
+      status: reconciled
+      kind: aligned
+    rationale: Implementation matches DR-008 §4.1–4.4 and §5a.
+  - id: F-006
+    description: >-
+      An earlier DB-DOWN audit shell showed 4 failures (3 dl-satan-bough/* +
+      dl-satan-db/test-db-available-p-probes-test-host). All are DB-coupled,
+      not DE-008 regressions — none touch DE-008's files. Confirmed
+      environmental: with the test DB up, the full suite is green (944/947,
+      0 unexpected) and these all pass.
+    outcome: aligned
+    severity: info
+    disposition:
+      status: reconciled
+      kind: aligned
+    rationale: >-
+      Out of DE-008 scope; pure DB-availability artefact of the first audit
+      shell. Distinct from F-001, whose tests failed for a stale-fixture
+      reason even with the DB up.
+```
+
+## Observations
+
+- DE-008 code changes conform to DR-008 (F-005). The git feed is decoupled to a
+  24h window, the segment read path is hardened, and `git_state`'s commit role is
+  retired in favour of the repo-scoped, window-anchored `:git_commit_observed`
+  predicate.
+- The decisive gap (F-001) is a **jail blind spot**: DB-gated end-to-end observer
+  tests were skipped during implementation, so a half-migrated fixture (assertions
+  swapped to the new predicate, setup still feeding the retired `:git_head_changed`
+  signal) shipped red. The condition is only observable with the test DB up.
+- Unit-level predicate coverage is sound (proper `:git_commits` rows + `:project_cwd`),
+  which is why VT-commit-observed passes while the process-level e2e tests do not.
+
+## Evidence
+
+- `just check` (DB down): `FAIL 4 unexpected / 947` — `dl-satan-bough/{active-scope-shape,day-not-found-becomes-ok-nil,week-scope-bounds}` + `dl-satan-db/test-db-available-p-probes-test-host` (all DB-coupled; F-006).
+- `just check` (DB up, per user): 2 unexpected — `dl-satan-observer/{process-positive-bumps-motive-and-projects,process-error-on-one-iv-does-not-abort}` (F-001).
+- All DE-008 unit VTs green: `dl-satan-memory-evidence/git-*` (13), `dl-satan-observer/p2-commit-observed-*` (5), `dl-satan-tank/*`.
+- `rg ':git_head_changed|git-head-changed'` → only `CHANGELOG.md` (history). Predicate at `dl-satan-observer-classify.el:203` scans `after :git_commits`; failing fixtures at `dl-satan-observer-test.el:1404-1408,1484-1487` stub `:git_state` only.
+- VA-live-tick verified: commits `9aeaeb8` (throwaway commit) + `5c2d6bb` (exit-criteria met); notes 2.9 (7 commits, `sensor_status.git=ok`, distinct `git_window_start_at`).
+
+## Recommendations
+
+1. **F-001 (DONE)** — re-opened P02 and reconciled in-delta: motive fixture
+   `dl-satan-motive-test--well-formed-cwd` + `:git_commits` in both e2e after-states;
+   IP-008 coverage entry `VT-process-e2e` added. `just check` green with the test DB
+   up (944/947, 0 unexpected, 3 skipped).
+2. **F-004 (open)** — file backlog item(s) for the deferred `git_state :dirty` / canon
+   `cwd.project` retarget and the `:crosses_midnight` guard relaxation (Q3) before close.
+3. **F-003 (at close)** — advance IP-008/phase frontmatter and progress boxes during
+   `/close-change`.
+4. With F-001 reconciled and F-004 the only remaining tracking gap, the delta is
+   **close-ready** once F-004's backlog item is filed.

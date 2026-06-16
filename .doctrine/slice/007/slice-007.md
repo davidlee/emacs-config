@@ -1,0 +1,259 @@
+# SL-007: SATAN interactive pi.dev MCP harness
+
+# DE-007 – SATAN interactive pi.dev MCP harness
+
+```yaml supekku:delta.relationships@v1
+schema: supekku.delta.relationships
+version: 1
+delta: DE-007
+revision_links:
+  introduces: []
+  supersedes: []
+specs:
+  primary: []
+  collaborators: []
+requirements:
+  implements: []
+  updates: []
+  verifies: []
+phases: []
+```
+
+```yaml supekku:delta.context_inputs@v1
+schema: supekku.delta.context_inputs
+version: 1
+entries:
+  - type: policy
+    ref: POL-001
+    note: SATAN module extraction — trust boundary stays in Emacs; daemons/shims are dumb transports.
+  - type: doc
+    ref: docs/satan/architecture.md
+    note: Harness-adapter layer; pi.dev listed as a valid model-running environment.
+  - type: doc
+    ref: docs/satan/protocol.md
+    note: Broker↔harness JSONL membrane (the channel pi.dev cannot reuse).
+```
+
+```yaml supekku:delta.risk_register@v1
+schema: supekku.delta.risk_register
+version: 1
+risks:
+  - id: R1
+    title: "pi.dev MCP server config shape unknown"
+    risk: pi.dev MCP stdio-server config shape unknown; design may assume a seam pi lacks.
+    likelihood: medium
+    impact: high
+    mitigation: DR-007 verifies pi.dev MCP client docs before locking the shim contract.
+  - id: R2
+    title: "Option A bypasses broker run-loop"
+    risk: Option A bypasses broker run-loop (budget tiers, final/actions, audit-membrane parity).
+    likelihood: high
+    impact: medium
+    mitigation: Accepted for A; DR-007 leaves a clean seam for the Option C session record; session run-ctx still carries an audit handle.
+  - id: R3
+    title: "emacsclient --eval latency/quoting/errors"
+    risk: emacsclient --eval per-call latency / quoting / error surfacing across the shim.
+    likelihood: medium
+    impact: medium
+    mitigation: shim passes args as a single serialized payload; dispatch returns structured tool_result; cover error mapping in tests.
+  - id: R4
+    title: "Session run-ctx over-grants capability"
+    risk: synthetic session run-ctx grants broader capability than a scheduled run.
+    likelihood: medium
+    impact: high
+    mitigation: full-toolbox is intentional (human-supervised, DEC-4); bounded by broker-side validation + default-off disable switch + 0600 socket.
+  - id: R5
+    title: "Reentrancy clobbers shared run-id"
+    risk: reentrancy — interactive session and a scheduled run clobber the shared global dl-satan-memory-store--current-run-id, mis-attributing memory-write evidence.
+    likelihood: medium
+    impact: medium
+    mitigation: DEC-7 bind-around-dispatch; phase-1 decides whether to add mutual-exclusion between the two run kinds.
+  - id: R6
+    title: "Topology assumed reachable external channel"
+    risk: topology assumed pi could reach an external MCP/tool channel without intercepting its stdio.
+    likelihood: low
+    impact: high
+    mitigation: RESOLVED (Phase 1 / DEC-12) — pi has an Extension API (registerTool) + node-net UDS; a .pi/extensions/satan.ts dials the bind-mounted UDS directly (no socat). Emacs UDS MCP server proven by batch self-test. Fallbacks documented (socat+MCP-package, HTTP/SSE).
+  - id: R7
+    title: "Missing description fails whole tools/list"
+    risk: dl-satan-tool-json-schema signals on a missing description file (existing fail-fast invariant + test); a full-union tools/list then fails entirely.
+    likelihood: medium
+    impact: low
+    mitigation: preserve fail-fast (do NOT skip-with-warning — would break dl-satan-tools/missing-description-errors); session-start precondition lists any union tool lacking a description and refuses to start. VT covers it.
+  - id: R8
+    title: "UDS no in-protocol auth (local amplification)"
+    risk: the UDS has no in-protocol auth; while up, ANY same-user local process (not just pi) can connect and drive the full tool union, including code-exec-capable patch tools (local privilege amplification).
+    likelihood: medium
+    impact: high
+    mitigation: >-
+      RESOLVED (DR-007 DEC-11) — ACCEPT same-user risk on single-user box;
+      keep full toolbox. Layered mitigations: default-off switch, server up only
+      during an active session, 0700 parent + randomized socket name,
+      anti-symlink, no /tmp fallback, broker-side validation per call.
+      Escalate to a bearer token only if a multi-user/untrusted-local threat
+      model applies.
+  - id: R9
+    title: "Boot-context build freezes the user's live Emacs"
+    risk: >-
+      satan_boot_context (DEC-13) runs percept evidence-assembly + resonance
+      postgres synchronously in the user's own Emacs daemon; a slow build freezes
+      the editor at pi boot.
+    likelihood: medium
+    impact: medium
+    mitigation: >-
+      build-depth β keeps the core lean (skips observer/probes/alerts); async
+      assembly deferred as an Option-C follow-up. VH confirms acceptable latency.
+  - id: R10
+    title: "assemble-context extraction regresses the batch path"
+    risk: >-
+      extracting dl-satan-run-assemble-context from broker--spawn must preserve the
+      exact prepare plist-threading (:evidence/:percept/:resonance/:motive/
+      :sensor_status/:pre_spawn) or batch ticks break.
+    likelihood: medium
+    impact: high
+    mitigation: >-
+      IP pins the exact return contract (assemble-context keys vs caller-threaded
+      keys); VT-broker-spawn-integration asserts call-order + final prepare keys +
+      artifacts (the real net — existing tests cover pieces, not the sequence).
+  - id: R11
+    title: "DEC-8 mutual-exclusion guard is vacuous"
+    risk: >-
+      dl-satan-broker--spawn-running is only ever read (mcp.el:146,376), never set
+      by broker--spawn — the DEC-8 session/scheduled-run mutual exclusion never
+      actually fires. DEC-13's reentrancy safety depends on it.
+    likelihood: high
+    impact: high
+    mitigation: >-
+      Phase 4 prerequisite — set/clear the flag around broker--spawn
+      (unwind-protect/sentinel) + a session-active flag the scheduler checks; test
+      exclusion both directions. (review F6)
+```
+
+## 1. Summary & Context
+
+- **Technical Spec(s)**: none registered as spec-driver entities; design canon is
+  `docs/satan/architecture.md` (harness-adapter layer), `docs/satan/protocol.md`
+  (broker↔harness membrane), and the tool registry in `satan/dl-satan-tools.el`.
+- **Implementation Plan**: [IP-007](./IP-007.md)
+- **Design Revision**: [DR-007](./DR-007.md)
+- **Change Drivers**: user goal — drive SATAN's reasoning interactively from a
+  long-lived `pi.dev` agent session, rather than only via scheduled one-shot
+  headless `python -m harness` runs against an LLM API.
+
+## 2. Motivation
+
+- Today the only reasoning path is batch: the broker spawns `satan/harness`,
+  whose **stdio *is* the JSONL membrane**. Tools, budget tiers, `final`/actions,
+  and audit live broker-side; the python harness is a stateless protocol
+  translator over an OpenRouter completion.
+- `pi.dev` is an interactive agent CLI whose stdio is the human-facing session
+  and whose tool-calling is its own mechanism (built-ins + MCP). It cannot reuse
+  "harness-stdio = membrane". To run SATAN interactively there, the broker's
+  tools must be exposed over a **separate channel** that does not intercept
+  pi's terminal stdio.
+- Desired target: a `pi.dev` session, fed the SATAN system prompt, that can call
+  broker-owned SATAN tools — with tool authority, validation, and audit still
+  enforced by the Emacs broker (POL-001: trust boundary stays in Emacs).
+
+## 3. Scope & Objectives
+
+Chosen path (confirmed with user): **Option A — pi is brain+hands, broker is
+tool authority over MCP — built as a deliberate stepping-stone to Option C**
+(a first-class session-scoped "interactive" SATAN mode). This delta delivers A.
+
+- **Primary Outcomes**:
+  - O1 — Broker exposes its tool registry (`dl-satan-tools`) as MCP tools,
+    reusing the existing `:args-schema`→JSON-Schema emitter (no parallel schema).
+  - O2 — Emacs **hosts a minimal MCP server on a unix-domain socket**
+    (`initialize`/`tools/list`/`tools/call`/`ping`); `tools/call` routes through
+    the existing `dl-satan-tool-dispatch` (reuse, not reimplement) under a
+    session-scoped run-ctx (capability profile + tool allowlist + audit handle).
+  - O3 — The UDS is bind-mounted into pi's bwrap jail; a small pi **Extension**
+    (`.pi/extensions/satan.ts`, node-`net`) dials the socket directly, speaks MCP
+    to `dl-satan-mcp`, and registers each SATAN tool into pi — leaving pi's
+    terminal stdio untouched and needing **no socat** (DR-007 DEC-12). **The socket
+    speaks MCP only — no eval path** (supersedes the earlier `emacsclient --eval`
+    idea, rejected on RCE grounds — DR-007 DEC-3).
+  - O4 — System prompt fed to pi via `--system-prompt <interactive.txt>`
+    (proven path, mirrors `dl-satan-patch-adapter-pi`).
+  - O5 — A disable switch (defcustom, default off), mirroring
+    `dl-satan-patch-runner-enabled`.
+  - O6 — (DEC-13, Phase 4) Interactive boot context: a `satan_boot_context` read
+    tool renders the per-session orientation capsule (now / attributes / percept /
+    attention / resonance / motive / sensors) at build-depth β (skips autonomous
+    telemetry), filling the `:context-fn` half of the DEC-9 C-seam. Assembly via an
+    extracted `dl-satan-run-assemble-context` shared with the batch path.
+
+- **Operational Constraints**:
+  - POL-001: trust boundary + tool authority stay in Emacs; the in-jail
+    `socat` is a dumb byte transport only.
+  - DRY: must reuse `dl-satan-tool-dispatch`, `dl-satan-tool-json-schema`,
+    `dl-satan-jsonl` (plist parse), and `dl-satan-audit-*`; no second tool
+    registry or validator.
+  - No regression to the existing batch harness path.
+
+- **Dependencies**: none blocking (independent of DE-005/006).
+
+## 4. Out of Scope
+
+- Option C proper: a first-class session-scoped "interactive" mode record with
+  full audit-transcript membrane parity, budget tiers, and `satan_final`
+  semantics. DR-007 must leave a clean seam for it; implementation is a follow-up.
+- HTTP/SSE MCP transport (multi-session concurrent attach). Deferred; stdio shim
+  first.
+- Porting budget-tier withdrawal logic to the interactive loop (pi owns its own
+  context loop in Option A).
+
+## 5. Approach Overview
+
+- **System Touchpoints**: `satan/dl-satan-tools.el` (registry + schema emitter +
+  dispatch — read/reuse), new `satan/dl-satan-mcp.el` (dispatch entrypoint +
+  session run-ctx + tool enumeration), new shim under `satan/mcp/` (transport),
+  `~/flakes/modules/home/emacs.nix` (only if new tracked `.el` needs the parser),
+  prompt rendering (reuse bundle/system-prompt assembly).
+- **Key Changes**:
+  - C1 — `dl-satan-mcp-list-tools` → MCP tool defs from `dl-satan-tools`.
+  - C2 — `dl-satan-mcp-dispatch` → validated dispatch via existing path.
+  - C3 — session run-ctx factory (capabilities/allowlist/audit).
+  - C4 — stdio-MCP shim invoking `emacsclient --eval`.
+  - C5 — disable switch + launcher/command to start a wired pi session.
+- **Migration / Rollout Notes**: guarded by disable switch; new `.el` files are
+  invisible to the Nix flake parser until `git add` + `home-manager switch`
+  (AGENTS.md trap 1).
+
+## 6. Verification Strategy
+
+- **Requirements Coverage**: ert for `dl-satan-mcp-list-tools` (schema shape
+  matches registry) and `dl-satan-mcp-dispatch` (unknown tool / not-allowed /
+  capability-denied / arg-validation / happy path — mirroring
+  `dl-satan-tool-dispatch` branch coverage), using the same stub-tool fixtures
+  as `dl-satan-tools-test`.
+- **Acceptance Criteria**:
+  - A live `pi.dev` session, started via the launcher, lists SATAN tools over
+    MCP and successfully executes at least one read tool and one owned-write
+    tool, with the call recorded in the session audit.
+  - pi's terminal stdio is demonstrably uninvolved in tool transport.
+  - Existing batch-harness ert + protocol tests still pass.
+
+## 7. Follow-ups & Tracking
+
+- **Future Phases / Deltas**: Option C interactive-mode record (remaining C-seam
+  slots `:output-handler`/`:budget-*`/`satan_final`); async boot-context assembly;
+  HTTP/SSE transport; budget/audit parity. (Resonance has no boot write — v1
+  `memory_resonate` is read-only — so no pure-derive split is needed unless read
+  idempotence is dropped.)
+- **Open Decisions / Questions** (carried to DR-007 §8):
+  - **R6 gating spike** — confirm pi.dev's MCP client accepts an arbitrary
+    stdio-server command (`socat`) before any Emacs-side build; HTTP/SSE fallback
+    otherwise. This gates phase ordering.
+  - pi.dev MCP config file syntax + location; in-jail UDS bind-mount path.
+  - Reentrancy guard (DEC-7/R5): bind-around-dispatch vs mutual-exclusion with
+    scheduled runs.
+  - `satan_final` MCP analogue resolved: **not** in A (DEC-6).
+
+## 8. Implementation Notes
+
+- Reuse targets confirmed: `dl-satan-tool-dispatch` (`satan/dl-satan-tools.el:153`),
+  JSON-Schema emitter (`satan/dl-satan-tools.el:216`–311), `dl-satan-tools`
+  registry defvar (`:34`), system-prompt path proven in
+  `dl-satan-patch-adapter-pi.el`.

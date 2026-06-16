@@ -1,0 +1,11 @@
+id    = 2
+slug  = "de_003_consolidate_satan_dry_violations_conformance_verification"
+title = "DE-003 consolidate SATAN DRY violations — conformance verification"
+
+[review]
+facet     = "implementation"
+raiser    = "agent"
+responder = "agent"
+
+[target]
+ref   = "SL-003"

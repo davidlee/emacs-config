@@ -1,0 +1,10 @@
+id = 6
+slug = "db-host-isolation-read-satan-db-host-env-var-instead-of-hardcoding-run-postgresql"
+title = "DB host isolation: read SATAN_DB_HOST env var instead of hardcoding /run/postgresql"
+status = "completed"
+created = "2026-05-31"
+updated = "2026-05-31"
+
+[relationships]
+needs = []
+after = []

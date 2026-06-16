@@ -1,0 +1,124 @@
+# SL-008: SATAN git-activity perception: 24h feed window + watermark, retire git_state commit role
+
+# DE-008 – SATAN git-activity perception: 24h feed window + watermark, retire git_state commit role
+
+```yaml supekku:delta.relationships@v1
+schema: supekku.delta.relationships
+version: 1
+delta: DE-008
+revision_links:
+  introduces: []
+  supersedes: []
+specs:
+  primary: []
+  collaborators: []
+requirements:
+  implements: []
+  updates: []
+  verifies: []
+phases: []
+```
+
+```yaml supekku:delta.context_inputs@v1
+schema: supekku.delta.context_inputs
+version: 1
+entries:
+  - type: doc
+    ref: docs/satan/perceptual-design.md
+    note: "v0 percept capsule; git-activity sensor + vcs_log shipped 2026-05-30"
+  - type: investigation
+    ref: /home/david/.claude/plans/purring-launching-peacock.md
+    note: "Root-cause investigation 2026-06-02: 10-min window starves git feed; git_state pwd-coupled"
+```
+
+```yaml supekku:delta.risk_register@v1
+schema: supekku.delta.risk_register
+version: 1
+risks:
+  - id: R1
+    title: "24h horizon re-fires outcomes each tick"
+    desc: "24h horizon re-surfaces the same commits each tick, re-firing outcomes / spamming canon emits."
+    likelihood: high
+    impact: medium
+    mitigation: "RESOLVED (external review): observer predicate is window-anchored (fires once per attribution window, not per tick). Per-tick canon project:<slug> emissions land in the per-run percept capsule, not durable store traces (memory-store-mark is an explicit agent action) — re-listing the backlog is benign. No watermark needed."
+  - id: R2
+    title: "Perception gap during P2 retirement"
+    desc: "Retiring :git_head_changed P2 removes a perception signal before the replacement predicate is wired, leaving a gap."
+    likelihood: medium
+    impact: medium
+    mitigation: "Land the repo-scoped 'commit observed' predicate in the same phase that retires P2; assert coverage with ERT before removal."
+  - id: R4
+    title: "Cross-repo attribution false-positive"
+    desc: "Cross-repo predicate credits an intervention as worked for a commit in an UNRELATED repo (attribution false-positive)."
+    likelihood: high
+    impact: high
+    mitigation: "RESOLVED: predicate scoped to motive :project_cwd (or project: cue) AND anchored to the attribution window (:intervention_emitted_at, window-end]; no project_cwd → no fire. Baseline comparison dropped, so stale/pre-deploy baselines cannot misfire."
+  - id: R5
+    title: "DST/sort/malformed feed correctness"
+    desc: "Day-file enumeration / newest-commit selection wrong under DST or unsorted append order; one malformed line blanks the whole feed."
+    likelihood: medium
+    impact: medium
+    mitigation: "Calendar-date enumeration (not +86400s); sort by :end_ts before limit; per-file parse tolerance. All covered by ERT."
+  - id: R3
+    title: ":dirty plumbing left half-wired"
+    desc: "git_state :dirty plumbing left half-wired confuses future readers."
+    likelihood: medium
+    impact: low
+    mitigation: "Explicitly mark :dirty as deferred (follow-up delta); leave a code/notes pointer; do not silently drop."
+```
+
+## 1. Summary & Context
+
+- **Governing artefacts**: No tech spec exists for SATAN perception (project tracks SATAN via deltas, cf. DE-005/DE-007). Design reference: `docs/satan/perceptual-design.md` (git-activity sensor + `vcs_log`, shipped 2026-05-30).
+- **Implementation Plan**: [IP-008](./IP-008.md)
+- **Change Drivers**: User report — SATAN's perceived "last commit" stuck ~May 28; "not seeing stuff from my global git commit hook." Root-cause investigation in plan `purring-launching-peacock.md`.
+
+## 2. Motivation
+
+SATAN ingests commits via the global `post-commit` hook → `segments/git-<day>.jsonl`. The hook, segments, and the segment **reader** all work (verified live: a full-day window returns all of today's commits). The break is the **perception window**:
+
+- `dl-satan-memory-evidence-window-minutes` = 10 sets one attention window for *all* feeds. Focus/browser are continuous so 10 min fits; commits are bursty, so they almost never land in the 10 min before a tick that fires. Result across every tick today: `git_commits = {}`, `sensor_status:git = "missing"`.
+- The legible "HEAD / last 5 commits" line is `git_state`, a live `git log` in the broker's incidental `default-directory` (a single repo — `~`/nix-config now). It is blind to the hook and reports one arbitrary repo's HEAD — the source of the misleading "May 28".
+
+## 3. Scope & Objectives
+
+- **Primary Outcomes**:
+  - Git-activity feed (`:git_commits`) reliably surfaces cross-repo commits, decoupled from the 10-min attention window (24h rolling horizon).
+  - Re-perception is idempotent: a watermark prevents the same commit re-firing outcomes / re-emitting canon `project:<slug>`.
+  - `git_state`'s commit-history role and the `:git_head_changed` (P2) predicate are retired in favour of a repo-scoped, window-anchored "commit observed" predicate over the hook feed.
+- **Operational Constraints**: Work stays in `.emacs.d/satan/`. Behaviour change to a live daemon — must keep `just check` green and not regress focus/browser/content feeds.
+- **Dependencies**: None blocking.
+
+## 4. Out of Scope
+
+- Retargeting `git_state` `:dirty` (uncommitted-work signal) from the daemon's incidental cwd to the user's **active-project root** — deferred to a follow-up delta (needs an active-project signal that does not yet exist). `:dirty` plumbing is left in place but explicitly unwired.
+- Any change to the hook script, segment format, or `vcs_log` tool contract.
+
+## 5. Approach Overview
+
+- **System Touchpoints**: `satan/dl-satan-memory-evidence.el` (window/feed-paths/watermark), `satan/dl-satan-observer-classify.el` (predicate registry), `satan/dl-satan-tank.el` (render), possibly `satan/dl-satan-memory-canon.el` (`project:<slug>` emit), tests under `satan/test/`.
+- **Key Changes**:
+  1. Add `dl-satan-memory-evidence-git-window-minutes` (default 1440 = 24h).
+  2. Compute a git-specific `[git-start, end]` in `assemble-with-bounds`; pass to the git probe only — focus/browser/content keep the 10-min window.
+  3. Fix `git-feed-paths` to enumerate **every** day in `[git-start, end]`, not just the endpoints (latent bug, becomes live at >1-day horizon).
+  4. **No new persistent state.** Dedup is handled by mechanisms already in the architecture: the observer's per-run baseline/after snapshot pair, and canon's existing `--merge` handle dedup. Verify canon merge idempotence during implementation; add a write-time guard only if the verification fails.
+  5. Replace `:git_head_changed` P2 with `:git_commit_observed` — a repo-scoped (motive `:project_cwd` / `project:` cue), window-anchored scan of `after.git_commits` (no baseline); demote `git_state` (drop reliance on its `head_short`/`commits`; leave `:dirty` deferred).
+- **Rollout**: Behaviour-only; takes effect on Emacs reload / `home-manager switch` (no new package, so reload/`eval-buffer` suffices unless a new file is added).
+
+## 6. Verification Strategy
+
+- **Acceptance Criteria**:
+  - A tick capsule's `evidence_window.git_commits` lists recent cross-repo commits and `sensor_status:git = "ok"` when commits exist in the 24h horizon.
+  - Repeated ticks over the same horizon do not re-fire the "new commit" outcome (baseline/after comparison holds) and do not create duplicate canon `project:<slug>` nodes.
+  - `:git_head_changed` removed; cross-repo predicate present and covered.
+  - `just check` green.
+- **Planned Artefacts**: ERT (VT) — git window math, multi-day `git-feed-paths`, watermark dedup, new predicate, retired P2. Live VA — throwaway commit + forced tick appears in next capsule.
+
+## 7. Follow-ups & Tracking
+
+- **Future Deltas**: Retarget `git_state` `:dirty` **and** canon `cwd.project`'s `git_state.remote` source to the active-project root (requires an active-project signal). File as backlog issue during planning.
+- **Open Decisions**: Confirm canon `--merge` is idempotent for repeated `project:<slug>` observed emissions across ticks (verify-and-guard, R1).
+
+## 8. Implementation Notes
+
+- Verify after change via `emacsclient --eval` of the assemble path (as used in investigation) and by inspecting the newest `~/notes/satan/runs/*/percept.json`.

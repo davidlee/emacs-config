@@ -1,0 +1,11 @@
+id    = 6
+slug  = "de_009_conformance_pattern_records_and_scars"
+title = "DE-009 pattern records and scars — conformance audit"
+
+[review]
+facet     = "implementation"
+raiser    = "agent"
+responder = "agent"
+
+[target]
+ref   = "SL-009"

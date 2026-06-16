@@ -1,0 +1,11 @@
+id    = 4
+slug  = "de_007_conformance_audit_satan_interactive_pi_dev_mcp_harness"
+title = "DE-007 SATAN interactive pi.dev MCP harness — conformance audit"
+
+[review]
+facet     = "implementation"
+raiser    = "agent"
+responder = "agent"
+
+[target]
+ref   = "SL-007"

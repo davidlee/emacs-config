@@ -1,0 +1,11 @@
+schema = "doctrine.plan.overview"
+version = 1
+slice   = "SL-006"
+
+[specs]
+primary       = []
+collaborators = []
+
+[requirements]
+targets      = []
+dependencies = []

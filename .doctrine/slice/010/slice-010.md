@@ -1,0 +1,234 @@
+# SL-010: Decouple SATAN perception from agent run
+
+# DE-010 – Decouple SATAN perception from agent run
+
+```yaml supekku:delta.relationships@v1
+schema: supekku.delta.relationships
+version: 1
+delta: DE-010
+revision_links:
+  introduces: []
+  supersedes: []
+specs:
+  primary: []
+  collaborators: []
+requirements:
+  implements: []
+  updates: []
+  verifies: []
+phases: []
+```
+
+```yaml supekku:delta.context_inputs@v1
+schema: supekku.delta.context_inputs
+version: 1
+entries: []
+```
+
+```yaml supekku:delta.risk_register@v1
+schema: supekku.delta.risk_register
+version: 1
+risks: []
+```
+
+> **Status: in-progress.** DR-010 accepted (gpt-5.5 red → amber; 2026-06-09).
+> Shape locked: perceive = deterministic sensing before the budget gate;
+> consume = the gated LLM run. The review split the **signal-model promotion
+> (class B → class A)** out to [[IMPR-013]] — this delta is the **structural cut
+> only** (perceive/consume split, ISSUE-001 fix, per-source intra-day cursor,
+> probe read/commit split). IP-010 planned: **P01** seam + ISSUE-001 fix
+> (sheet authored), **P02** per-source cursor (deferred). Next: execute P01.
+
+## 1. Summary & Context
+
+Split the SATAN tick into **perception** (deterministic, token-free,
+side-effect-free) and **cognition** (the LLM run that has effects and spends
+budget). Today `dl-satan-broker--prepare` already builds the percept
+deterministically (frozen `time_now`, evidence window, canon, resonance,
+motive) — then spawns the model as its last step. This delta cuts that seam:
+promote `--prepare` to a standalone, scheduled perception entrypoint that
+writes durable append-only parcels; make the spawn a separate, slacker-cadence
+**consumer** that drains the parcel backlog.
+
+- **Technical Spec(s)**: none yet — SATAN perceptual loop is doc-canon
+  (`docs/satan/perceptual-design.md`, `docs/satan/data-collection.md`,
+  `docs/satan/architecture.md`), not yet a SPEC. Spec authority may need to
+  move; revisit during scoping.
+- **Change Drivers**:
+  - `ISSUE-001` — every run writes `percept.json`; **budget-denied runs skip
+    it**. Perception is gated by LLM quota because it rides inside the spawn
+    lifecycle. This delta fixes it structurally.
+  - Coupling pain: the systemd tick timer is **disabled** in favour of a waybar
+    widget timer, *because* tick = context-prep **+** an LLM with side effects.
+    Splitting them dissolves the reason the timer was disabled.
+
+## 2. Motivation
+
+Three wins from the split:
+
+1. **Budget independence.** Perception writes regardless of whether any model
+   runs (fixes `ISSUE-001` at the root, not with a patch).
+2. **Consumption tracking.** A per-source cursor records how far cognition has
+   consumed; backlog depth (`head − cursor`) becomes a first-class signal
+   (waybar / future gate). *(Note: the recency capsule is unchanged here;
+   "perception as a complete, replayable segment-of-record" is [[IMPR-013]], not
+   this delta.)*
+3. **Inspection-as-queue.** The cursor distinguishes processed/unprocessed; the
+   consumer drains a backlog under slack limits.
+
+The waybar widget is **promoted, not lost**: from "summon the whole beast" to
+"summon the heavy consumer now" — manual override beside the auto gate. Strictly
+more control than today.
+
+## 3. Scope & Objectives
+
+Three components — name the middle one or it recollapses to two:
+
+1. **Perceive** — the deterministic sensing, lifted **before the budget gate**
+   in `broker-run` (today it runs inside `broker--spawn`, downstream of the
+   gate — the ISSUE-001 root). Builds the percept (recency-windowed capsule),
+   persists `percept.json`, takes a pure probe **read-snapshot**. No LLM, no
+   interventions, **no consumption-state mutation** — its only write is
+   `percept.json`. **Exactly one percept builder** — an *extraction*, not a
+   parallel implementation. Under D1=B there is **no perception timer in this
+   delta** — perceive is code the gates and consumer call.
+2. **Consumer** — the existing spawn, now gated cognition: probe **commit**
+   (charge + advance probe watermark), `observer-process`, resonance/motive
+   enrichment, sensor-alerts (intervention), advance the per-source ingest
+   cursors, build the bundle, spawn the model. Carries all effects.
+3. *(Gate — the arrival trigger — is tracked separately: see §7 / [[IMPR-012]].)*
+
+### Scope boundary — structural cut only (signal promotion split out)
+
+A 2026-06-09 adversarial review (gpt-5.5, red) showed the original draft
+conflated two changes: (1) a clean **structural cut** — *when/whether*
+perception runs and *who* consumes — and (2) a **signal-model promotion** —
+*what* perception reads (promoting non-replayable present-tense reads into
+replayable series). The promotion carries fan-out into canon rules, observer
+predicates, motives, and sensor-alerts, so it is split into **[[IMPR-013]]**.
+
+**This delta = the structural cut only:** perceive/consume split, ISSUE-001
+fix, per-source intra-day ingest cursor, probe read/commit split. Perception's
+*inputs are unchanged* here (live class-B reads stay). The consequence:
+perception becomes budget-independent and effect-separated, but **not yet
+replayable** — closing that gap (so decoupled late consumption isn't
+archaeology fused with wrong-era live state) is IMPR-013's job and gates with
+[[ADR-002]]'s arrival gate.
+
+- **Operational Constraints**:
+  - Segments are **immutable + append-only**; consumption tracked by a
+    **separate cursor**, never by mutating a segment (matches the architecture
+    "State: append-only artifacts" doctrine).
+  - Cursors key on each source's **native timestamp, not wall-clock**
+    (focus/browser `end_ts`, content `captured_at`); git is **excluded** (`%cI`
+    backdatable — keeps its own 24h re-scan window). Per-source, not one global
+    mark (sources arrive out of order). **Intra-day** this delta — `(cursor,
+    head]` cannot cross a day-file yet.
+  - The recency-biased **intervention** path (capsule, newest + freshness) and
+    a **completeness** path (cursor frontier) are distinct, but rich
+    order-independent backlog accrual is **not built here** — the cursor's
+    guarantee is negative (nothing newer-than-cursor silently skipped, within a
+    day). Full retention modelling is [[IMPR-013]].
+- **Dependencies**: the structural cut depends on nothing cross-repo. The
+  *signal-model promotion* ([[IMPR-013]]) depends on the panopticon segment
+  schema / git producer (`ISSUE-006`); deferred with it.
+
+## 4. Out of Scope
+
+- **Arrival gate / metabolic scheduling** — [[IMPR-012]]. The gate is the
+  *trigger* component; it depends on this split landing but is its own change
+  (and is governance-visible).
+- **Fast intervention reflex** (episode-scoped transient attributes) — deferred;
+  also tracked under [[IMPR-012]].
+- **Signal-model promotion (class B → class A)** — making perception replayable
+  (promote `current_window`/`git_state`, drop `fs_state`, retire bough, each
+  with its canon/observer/motive/alert fan-out). Split out to **[[IMPR-013]]**;
+  `git_state`'s producer half is ISSUE-006-extended (cross-repo panopticon).
+- **Cross-midnight / multi-day backlog** — the per-source cursor is intra-day
+  this delta; `(cursor, head]` cannot span day-files yet.
+- **Rich backlog accrual** — the cursor advances the consumption frontier; no
+  heavyweight "replay every backlog segment into memory" pass is built. The
+  completeness guarantee is negative: nothing newer-than-cursor silently skipped
+  (within a day).
+
+## 5. Approach Overview
+
+- **System Touchpoints**: `dl-satan-broker.el` (`--prepare`/`--spawn` seam),
+  `dl-satan-tick.el` (timer), `dl-satan-context.el`, `dl-satan-budget.el`,
+  the `runs/` artefact dir, panopticon segment log + a new cursor/watermark.
+- **Key Changes**:
+  - Lift perceive (percept-build + persist + probe **read-snapshot**) out of
+    `broker--spawn` to **before the budget gate** in `broker-run`; mkdir run-dir
+    first; perceive error → terminal status artifact (ISSUE-001 fixed at root).
+  - Budget-denied + session-blocked bundles **mirror `:percept` into
+    `bundle.json`** (consumers read it there, not the sidecar) — without this
+    the ISSUE-001 fix is cosmetic.
+  - Split `assemble-context` → `perceive` (percept/sensor_status/probe-read) and
+    a consume-side resonance/motive enrichment; MCP interactive-boot calls both.
+  - Probe **read/commit split**: perceive reads-and-snapshots (no mutation);
+    consume commits the attribute charge + advances the probe watermark.
+  - **Per-source intra-day** ingest cursors (focus/browser `end_ts`, content
+    `captured_at`; git excluded — `%cI` backdatable). Consume-side advance;
+    backlog depth = `head − cursor` (drives gate + waybar). Capsule stays
+    recency-windowed (no backlog-spanning capsule).
+- **Migration / Rollout Notes**: under D1=B, **no systemd perception timer is
+  re-enabled in this delta** — perception is on-demand; consumer trigger stays
+  manual / waybar widget until the gate ([[IMPR-012]]) lands. The 10-min cadence
+  question moves entirely into IMPR-012.
+
+## 6. Verification Strategy
+
+- **Acceptance Criteria** (draft):
+  - Perception writes a parcel on a budget-denied tick (`ISSUE-001` regression).
+  - Doubled/late timer fire produces no duplicate/corrupt parcel (offset-keyed
+    idempotency).
+  - Consumer drains backlog and advances the cursor without mutating parcels.
+
+## 7. Follow-ups & Tracking
+
+- **Backlog Items**: [[IMPR-012]] — arrival gate (depends on this split);
+  [[IMPR-013]] — signal-model promotion / replayability (split out 2026-06-09).
+- **Decisions settled 2026-06-09** (DR-010 design pass + gpt-5.5 review):
+  - **Perceive/consume boundary** — perceive = percept-build + persist + probe
+    read-snapshot; consume = probe-commit/observer/resonance/motive/alerts/
+    cursor/LLM.
+  - **Probe read/commit split** — perceive reads-and-snapshots (no mutation);
+    consume commits charge + advances probe watermark. Preserves ADR-002
+    charge cadence without budget-denied ticks consuming sensor backlog.
+  - **Cursor** — per-source, native-timestamp, intra-day; git excluded
+    (`%cI` backdatable); consume-side advance; recency capsule unchanged.
+  - **Budget-denied mirror** — denied/blocked bundles mirror `:percept` into
+    `bundle.json` (consumers read it there, not the sidecar).
+  - **Signal promotion deferred** — class B→A → [[IMPR-013]] (fan-out into
+    canon/observer/motives/alerts).
+  - **Spec authority** — perception loop **stays doc-canon**; no SPEC
+    graduation here.
+  - **ADR-001** — **amended** (honest): precise side-effect definition,
+    per-invocation perception-of-record, premise-gap fix deferred to IMPR-013.
+- **Pre-IP remaining**: `plan-phases` for an IP.
+  - **D1 — perception: process or function? → RESOLVED B (lazy-materialize)**
+    (2026-06-08, lead avenue to explore first). Perception is a pure function
+    over the already-durable segment log; the parcel is a *view*, materialized
+    lazily on consume. No perception process/timer in this delta; cadence is
+    IMPR-012's concern. Rejected A (materialize every tick): write amplification
+    + 144 mostly-empty parcels/day.
+    - *Residual D1a:* lazy materialization drops the per-tick audit artifact
+      ("what did SATAN see at 10:00"). Memory/outcome accrual is unaffected
+      (it reads the durable segment log directly via the ingest cursor). If an
+      explicit perception-of-record is wanted, add an **optional slow archival
+      materialization** (decoupled from consume) — defer unless a need appears.
+  - **D2 — consumer: pure replayer or hybrid? → RESOLVED hybrid** (2026-06-09).
+    Decoupled perception + a thin, cheap, frequent touch for latency-sensitive
+    cues; heavy reasoning drains the backlog at slack cadence. Rationale: under
+    D1=B there is no perception timer, so the arrival gate is the only periodic
+    clock — giving it the cheap latency-touch is **one mechanism, not two**. The
+    pure-replayer alternative would force a *separate* reflex path for the same
+    job. Worst-case intervention latency ≈ gate + spawn (~10–12 min); acceptable,
+    document the floor. Unblocks ADR-002 acceptance gate #2.
+
+## 8. Implementation Notes
+
+- Design source: session discussion 2026-06-08. Canon docs:
+  `docs/satan/perceptual-design.md` §S1 (`broker--prepare` sequence),
+  `docs/satan/architecture.md` (Invocation/Broker/State layers),
+  `docs/satan/data-collection.md` (§1 anatomy of a run).

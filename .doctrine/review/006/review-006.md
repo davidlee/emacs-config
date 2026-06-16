@@ -1,0 +1,126 @@
+# Review RV-006 — implementation of SL-009
+
+Adversarial-review ledger (ADR-007).
+
+## Brief
+
+DE-009 conformance audit.
+
+## Audit Content (migrated from spec-driver)
+
+```yaml supekku:audit.findings@v1
+schema: supekku.audit.findings
+version: 1
+audit: AUD-006
+findings:
+  - id: F-001
+    description: >-
+      BLOCKER (data-correctness). The curated `satan/patterns.eld` was written
+      as THREE separate top-level `((..))' forms (one per pattern), but
+      `dl-satan-pattern--read-file' parsed it with a single `(read
+      (current-buffer))'. `read' consumes only the FIRST form, so
+      `dl-satan-pattern-sync' silently upserted only `docs-after-error' and
+      never `terminal-coding' or `editor-commit'. 2 of 3 seed patterns reached
+      no DB row; no error, no warning. The whole point of DE-009 —
+      pattern-local attribution — was degraded by two-thirds for the seed set,
+      invisibly. Empirically confirmed: `read'-once on the real file returns
+      `("docs-after-error")' against 3 top-level forms in the file.
+    outcome: aligned
+    severity: high
+    refs:
+      - satan/patterns.eld:19
+      - satan/dl-satan-pattern.el:111
+    disposition:
+      status: reconciled
+      kind: aligned
+    rationale: >-
+      Reconciled in-delta during this audit. (1) `patterns.eld' canonicalised
+      to a single `((..) (..) (..))' list of plists, matching the DR-009 §4.2
+      shape exactly. (2) `dl-satan-pattern--read-file' hardened to read EVERY
+      top-level form and `append' them, so a future multi-form edit can never
+      again silently drop patterns (the footgun is eliminated, not merely
+      side-stepped). (3) New DB-free regression test
+      `dl-satan-pattern/real-eld-parses-all-seeds' parses the checked-in file
+      and asserts all three ids plus per-entry validation. Test was RED before
+      the fix (`(member "terminal-coding" ("docs-after-error"))' → nil), GREEN
+      after. Full `just check' green: 970 tests, 0 unexpected, 9 skipped.
+  - id: F-002
+    description: >-
+      MAJOR (verification gap). The green P02/P03 suite never loaded the real
+      `patterns.eld'. `VT-pattern-sync' and every other pattern test build
+      their fixture via `dl-satan-pattern-test--write-patterns', which
+      `prin1's a single elisp list to a temp file — always a well-formed
+      one-form file. That serialization shape cannot reproduce the multi-form
+      footgun in F-001, so "965/969 green" measured nothing about the shipped
+      data file. The curated artefact that the feature actually consumes in
+      production had zero test coverage.
+    outcome: aligned
+    severity: high
+    refs:
+      - satan/test/dl-satan-pattern-test.el:75
+    disposition:
+      status: reconciled
+      kind: aligned
+    rationale: >-
+      Closed by the same change: the new
+      `dl-satan-pattern/real-eld-parses-all-seeds' test exercises the real
+      checked-in file (DB-free, so it runs even in the jail), guarding both the
+      file shape and the reader against regression.
+  - id: F-003
+    description: >-
+      LOW (artefact hygiene / lifecycle drift). DE-009 execution docs lag
+      reality. DR-009 frontmatter `status: draft' while IP-009 §1 asserts the
+      design is "accepted". IP-009 frontmatter `status: draft' though §9 marks
+      all three phases complete. `phases/phase-02.md' is `status: draft' with
+      every §4 exit-criterion and the §3 entrance box unchecked despite the
+      work being delivered and green (`spec-driver show delta' renders P02 as
+      "draft, 1/14"). `phases/phase-03.md' entrance box "satan-pattern-rebuild
+      callable" and the §11 hand-off box remain unchecked (P03 "12/14"). DE-009
+      itself remains `in-progress`, which is correct.
+    outcome: aligned
+    severity: low
+    refs:
+      - .spec-driver/deltas/DE-009-satan_pattern_records_and_scars_outcome_linked_pattern_local_learning/DR-009.md:223
+      - .spec-driver/deltas/DE-009-satan_pattern_records_and_scars_outcome_linked_pattern_local_learning/IP-009.md:8
+      - .spec-driver/deltas/DE-009-satan_pattern_records_and_scars_outcome_linked_pattern_local_learning/phases/phase-02.md:8
+    disposition:
+      status: reconciled
+      kind: aligned
+    rationale: >-
+      Reconciled in this audit: DR-009 → accepted, IP-009 → completed with all
+      coverage entries advanced to verified, phase-02 → completed with exit
+      criteria checked, phase-03 entrance/wrap-up boxes checked. DE-009 left
+      in-progress for `/close-change' to advance once closure gates pass.
+```
+
+## Observations
+
+- **Core feature (snapshot → containment rebuild) is structurally sound.** The
+  percept-handle stamp (`dl-satan-intervention-create`, `[]` default), the audited
+  immutable column + GIN index, the advisory-locked single-tx TRUNCATE+INSERT
+  containment join (`i.percept_handles_json @> p.cue_handles_json`, i.e. cue ⊆
+  snapshot per DEC-4), and the guarded/isolated observer rebuild (DR-009 §3.2 — runs
+  last, `require` inside the `condition-case`) all match the design.
+- **The defect was entirely in the curated data file + its reader, not the SQL.**
+  All three seed patterns' handles are grammar-valid; only the file's top-level
+  structure was wrong. Tests passed because they never touched the real file (F-002).
+- Grammar coverage confirmed: every cue_handle in `patterns.eld`
+  (`event_transition:command_error->browser`, `domain_kind:docs`, `artifact:none`,
+  `surface:terminal`, `event:command_ok`, `surface:editor`, `artifact:commit`,
+  `surface_transition:editor->browser`) resolves against
+  `dl-satan-memory-grammar-closed-values`.
+
+## Evidence
+
+- `read`-once on real file → `("docs-after-error")`; file holds 3 top-level forms
+  (empirical, emacs batch).
+- New test RED pre-fix: `(member "terminal-coding" ("docs-after-error")) :value nil`.
+- Post-fix reader → `("docs-after-error" "terminal-coding" "editor-commit")`.
+- `dl-satan-pattern-test`: 16/16, 0 unexpected.
+- `just check` (SATAN_DB_HOST=127.0.0.1): **970 tests, 0 unexpected, 9 skipped, PASS**.
+- `bin/elisp-locate-paren-error` clean on `dl-satan-pattern.el`.
+
+## Recommendations
+
+- Land the F-001/F-002 fix (done in-delta) and the F-003 artefact reconciliation,
+  then hand to `/close-change`. No follow-up deltas or tolerated drift required.

@@ -1,0 +1,10 @@
+id = 8
+slug = "satan-git-activity-perception-24h-feed-window-watermark-retire-git-state-commit-role"
+title = "SATAN git-activity perception: 24h feed window + watermark, retire git_state commit role"
+status = "completed"
+created = "2026-06-02"
+updated = "2026-06-03"
+
+[relationships]
+needs = []
+after = []

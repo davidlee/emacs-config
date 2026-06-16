@@ -1,0 +1,135 @@
+# Review RV-001 — implementation of SL-002
+
+Adversarial-review ledger (ADR-007).
+
+## Brief
+
+DE-002 conformance verification.
+
+## Audit Content (migrated from spec-driver)
+
+```yaml supekku:audit.findings@v1
+schema: supekku.audit.findings
+version: 1
+audit: AUD-001
+findings:
+  - id: FIND-001
+    description: >-
+      Targeting defect closed. shared_pool() self-provisions a per-test
+      database satan_attrd_test_<epoch>_<uuid> from an admin connection
+      (db→postgres), and asserts current_database() == the generated name
+      before any migrate/write. Production satan_memory is never a write
+      target by construction, even when $DATABASE_URL names prod. Verified in
+      code (tests/common/mod.rs:67 with_db, :176 current_database guard) and by
+      VT-no-prod + VT-with-db.
+    outcome: aligned
+    linked_delta: DE-002
+    disposition:
+      status: reconciled
+      kind: aligned
+      refs:
+        - {kind: issue, ref: ISSUE-003}
+        - {kind: design_revision, ref: DR-002}
+      rationale: >-
+        Matches DR-002 §3/§4.1 (safety by construction + hard runtime guard).
+        ISSUE-003 root-cause "tests run against production" eliminated.
+  - id: FIND-002
+    description: >-
+      Panic-leak defect closed. The cleanup_* apparatus is fully removed (0
+      remnants of cleanup_scope/cleanup_run across tests/); per-test disposable
+      databases make orphaned rows impossible regardless of panic/assert-fail
+      site. Full suite green (42 integration + 69 unit) and prod
+      satan_attributes WHERE scope LIKE 'test:%' == 0 before and after a full
+      run against the prod socket URL.
+    outcome: aligned
+    linked_delta: DE-002
+    disposition:
+      status: reconciled
+      kind: aligned
+      refs:
+        - {kind: issue, ref: ISSUE-003}
+      rationale: >-
+        Matches DR-002 §3 ("isolation by disposal, not bookkeeping"). VT-suite-green.
+  - id: FIND-003
+    description: >-
+      Lock-free, age-filtered sweep-on-init reclaims stale test DBs and skips
+      recent/in-use ones (tests/common/mod.rs:101 sweep_stale,
+      SWEEP_MARGIN_MS=60_000, TEMPLATE template0). Verified by VT-sweep-gc.
+    outcome: aligned
+    linked_delta: DE-002
+    disposition:
+      status: reconciled
+      kind: aligned
+      refs:
+        - {kind: design_revision, ref: DR-002}
+      rationale: Matches DR-002 §4.2 / DEC-4.
+  - id: FIND-004
+    description: >-
+      DEC-5 redundant intra-test isolation deliberately RETAINED, not a gap.
+      REBUILD_LOCK (store), DECAY_TEST_LOCK + snapshot/restore (decay),
+      PROJECTION_LOCK + reset_projection (run_loop), unique_scope/unique_run_id
+      all present post-edit. Removal of the now-redundant apparatus is an
+      explicitly-scoped future delta (DR-002 §2 out-of-scope, DEC-5).
+    outcome: aligned
+    linked_delta: DE-002
+    disposition:
+      status: reconciled
+      kind: aligned
+      refs:
+        - {kind: design_revision, ref: DR-002}
+      rationale: >-
+        Smallest-correct-diff decision recorded in DR-002 DEC-5; scope boundary
+        honoured, not drift.
+  - id: FIND-005
+    description: >-
+      Bare ad-hoc hygiene DELETEs not wired to cleanup_* intentionally left
+      in place and out of scope (run_loop.rs L380 satan_audit_inbox; store.rs
+      settings-row delete in get_setting_bool_…). Documented decision in
+      phase-02 §9.
+    outcome: aligned
+    linked_delta: DE-002
+    disposition:
+      status: reconciled
+      kind: aligned
+      refs:
+        - {kind: delta, ref: DE-002}
+      rationale: >-
+        Explicit scope boundary (phase-02 §9 DEC; DR-002 §2 out-of-scope).
+        Belongs to the same future apparatus delta as DEC-5.
+```
+
+## Observations
+
+- **Mode**: conformance, owner DE-002. No tech specs in this workspace; sole
+  traceability surface is ISSUE-003 + DR-002. No spec patch / revision warranted.
+- **Both DE-002 defect angles closed**: (a) targeting — prod never a write target
+  (FIND-001); (b) panic-leak — cleanup_* gone, disposal-based isolation (FIND-002).
+- **Code verified at satan-attrd `fe18bae`** (HEAD): cleanup_* remnants = 0; guard
+  `assert_eq!(current, name, …)` present at tests/common/mod.rs; with_db /
+  sweep_stale / TEMPLATE template0 / SWEEP_MARGIN_MS=60_000 present; DEC-5 locks
+  present in store/decay/run_loop.
+- **Deliberate retentions** (FIND-004/005) recorded as `aligned` so the closure
+  story is explicit and future agents do not mis-read them as gaps.
+
+## Evidence
+
+- **VT coverage (IP-002 block, all `verified`)**: VT-with-db, VT-no-prod,
+  VT-sweep-gc (P01); VT-suite-green (P02).
+- **P02 run (flake devshell, prod socket URL = strongest leak test)**:
+  `cargo test --test '*'` → 42 passed; `cargo test --lib --bins` → 69 passed;
+  clippy `-D unwrap_used -D expect_used` → exit 0; `cargo fmt --check` clean;
+  prod `test:%` count → 0 before and after.
+- **Static re-verification (this audit)**: `rg -c 'cleanup_scope|cleanup_run' tests/`
+  → empty; guard + harness primitives confirmed present.
+
+## Recommendations
+
+- Hand off to `/close-change` — audit is conformance-complete, all findings
+  `aligned`/`reconciled`, no blocking findings, no spec/revision/follow-up debt.
+- **ISSUE-003 lifecycle caveat**: the immediate remediation flush
+  (`DELETE FROM satan_attributes WHERE scope LIKE 'test:%'`) is a destructive prod
+  write, **out of scope** (DE-002 §4), human-run out-of-band. ISSUE-003 should not
+  be marked `resolved` until that flush lands; the leak *mechanism* is fixed, the
+  existing orphaned rows are a separate manual step.
+- Future apparatus-removal delta to retire DEC-5 redundant isolation + the bare
+  out-of-scope DELETEs (FIND-004/005), once global-scope reads are confirmed clean.

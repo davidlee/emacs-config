@@ -1,0 +1,145 @@
+# Review RV-007 — implementation of SL-005
+
+Adversarial-review ledger (ADR-007).
+
+## Brief
+
+DE-005 conformance audit.
+
+## Audit Content (migrated from spec-driver)
+
+```yaml supekku:audit.findings@v1
+schema: supekku.audit.findings
+version: 1
+audit: AUD-007
+findings:
+  - id: F-001
+    description: >-
+      MAJOR (verification gap). The `search` scope sorts matches by `captured_at`
+      DESC (DR-005 §4.1 / F-2) — the explicit reason search is a two-step
+      (snippets now, body via `get` later). No test asserted the ordering: every
+      search test either matched a single hash or only checked the result cap, so
+      a regression flipping `(string< tb ta)` to `(string< ta tb)`
+      (`dl-satan-tools-content.el:308-311`) would have passed the whole suite.
+      The shipped behaviour is correct; the guard was missing.
+    outcome: aligned
+    severity: medium
+    refs:
+      - satan/dl-satan-tools-content.el:308
+      - satan/test/dl-satan-tools-content-test.el:331
+    disposition:
+      status: reconciled
+      kind: aligned
+    rationale: >-
+      Reconciled in-delta. Added `dl-satan-content/search-sorts-by-recency-desc`:
+      three articles whose append order (1,2,3) deliberately differs from recency
+      (…02 newest @03:00, …03 @02:00, …01 oldest @01:00), all matching one query;
+      asserts the returned hash order is …02,…03,…01. Fails if the comparator is
+      reversed. Green in full suite.
+  - id: F-002
+    description: >-
+      MAJOR (contract divergence). DR-005 §4.1 states `filter` requires at least
+      one of `:domain` / `:url`. The handler did not enforce it: with both nil the
+      `(or (null domain) …)` predicates were vacuously true, so `filter` silently
+      returned the whole capped index — a match-all footgun and a divergence from
+      the design contract. Low blast radius (read-only, capped), but undocumented
+      as an intentional relaxation.
+    outcome: aligned
+    severity: medium
+    refs:
+      - satan/dl-satan-tools-content.el:202
+    disposition:
+      status: reconciled
+      kind: aligned
+    rationale: >-
+      Reconciled in-delta by making code conform to the design (in-scope, no
+      authority move — spec_patch-class fix). Added a guard returning
+      `(error "filter requires at least one of: domain, url")` when both are nil,
+      and a test `dl-satan-content/filter-requires-domain-or-url` asserting the
+      error. The `recent` scope remains the intended "list everything" path.
+  - id: F-003
+    description: >-
+      MINOR (verification gap). The sensor probe wraps its body in a
+      `condition-case` that soft-fails to nil (`dl-satan-sensor-content.el:100,
+      122-124`), and DR-005 §5 lists "soft-fail on unreadable" as a VT, but no
+      test forced an error inside the probe to prove the path. Untested error
+      handling is silent until it fails in production.
+    outcome: aligned
+    severity: low
+    refs:
+      - satan/dl-satan-sensor-content.el:122
+      - satan/test/dl-satan-sensor-content-test.el:206
+    disposition:
+      status: reconciled
+      kind: aligned
+    rationale: >-
+      Reconciled in-delta. Added `dl-satan-sensor-content/soft-fails-on-error`:
+      stubs `--count-uninspected` to signal via `cl-letf`, asserts the probe
+      returns nil rather than propagating. Green in full suite.
+  - id: F-004
+    description: >-
+      LOW (doc accuracy). `dl-satan-tools-content--read-articles-jsonl` docstring
+      claimed the rows come back "newest first (file order)". File order is the
+      append/oldest-first order; `recent` reverses the tail downstream, so
+      behaviour was correct but the docstring inverted it — a trap for the next
+      reader writing a new consumer.
+    outcome: aligned
+    severity: low
+    refs:
+      - satan/dl-satan-tools-content.el:97
+    disposition:
+      status: reconciled
+      kind: aligned
+    rationale: >-
+      Reconciled in-delta: docstring corrected to "in file (oldest-first) order"
+      with a note that newest-first callers reverse the tail themselves.
+```
+
+## Observations
+
+- **Full structural conformance.** All 20 DR-005 contract invariants
+  (tool §4.1, sensor §4.2, percept rule §4.3) verify CONFORMS against the shipped
+  code, including every CRITICAL item:
+  - DEC-5 watermark is the max `captured_at` **verbatim** (`--count-uninspected`
+    tracks `high-water`, `mark-inspected high-water` — never `ts`); the broker `ts`
+    is used only in the payload.
+  - `get` is char-offset paginated, page-max-clamped, negative-offset clamped, and
+    returns **distinct** errors for unknown-hash vs missing-sidecar; body comes
+    from `.json :text_content` (not `.md` / `content_html`).
+  - `search` invokes `rg` via `call-process` arg-vector (never shell), with
+    `--fixed-strings`, `-g '*.md'`, dedupe-by-hash, result cap, and soft-fail to
+    `(ok … :matches [])` on rg absent/error/no-match.
+  - Percept rule `panopticon.content` only **emits** `content_domain:<domain>`
+    handles (deduped per domain); no memory-store write (DEC-2). rule_id is absent
+    from `dl-satan-resonance--excluded-rule-ids`, so it admits the §S2 gate.
+  - Malformed-JSONL lines are dropped per-line (lenient reader) across
+    recent/filter/search/sensor/evidence (O-1).
+  - `content_read` registration carries no inline `:description`, so it relies on
+    `dl-satan-tool--description`'s hard error (R7) — exercised live by the VH tick.
+- The four findings were all gaps in the **test/contract-enforcement surface**,
+  not defects in shipped behaviour: three missing guards over correct code, one
+  inverted docstring. None changed observable behaviour except F-002, which
+  tightened `filter` to match its own design contract.
+
+## Evidence
+
+- Conformance matrix (20/20 CONFORMS) produced by a read-only sub-audit over the
+  four code-scope files + `dl-satan-resonance.el` and the three test suites.
+- Pre-fix suite: 970 tests, 0 unexpected (DE-005 content tests green, but the four
+  gaps above unguarded).
+- Post-fix suite: **973 tests, 964 as expected, 0 unexpected, 9 skipped**
+  (`just check`, 2026-06-03 12:48). +3 new VTs:
+  `search-sorts-by-recency-desc`, `filter-requires-domain-or-url`,
+  `soft-fails-on-error`; all RED-able against the respective regressions.
+- `bin/elisp-locate-paren-error` clean on `dl-satan-tools-content.el` and both
+  edited test files.
+- VH (2026-06-03): `home-manager switch` clean on Sleipnir; live `content_read`
+  returned 20 captures end-to-end (R7 description-file guard exercised).
+
+## Recommendations
+
+- All four findings reconciled in-delta; no follow-up deltas, backlog items, or
+  tolerated drift required. Hand to `/close-change`.
+- No spec authority moved: this project tracks SATAN via deltas + `docs/satan/**`
+  with no tech spec to patch; DR-005 already describes the reconciled truth
+  (F-002 made code match it; the others are test/doc surface).

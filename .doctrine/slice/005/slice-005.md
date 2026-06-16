@@ -1,0 +1,163 @@
+# SL-005: SATAN content percept + content_read tool
+
+# DE-005 – SATAN content percept + content_read tool
+
+```yaml supekku:delta.relationships@v1
+schema: supekku.delta.relationships
+version: 1
+delta: DE-005
+revision_links:
+  introduces: []
+  supersedes: []
+specs:
+  primary: []
+  collaborators: []
+requirements:
+  implements: []
+  updates: []
+  verifies: []
+phases:
+  - id: IP-005-P01
+    goal: "content_read tool (O1) + mandatory description file"
+    status: completed
+  - id: IP-005-P02
+    goal: "content-backlog sensor (O2) with DEC-5 watermark"
+    status: completed
+  - id: IP-005-P03
+    goal: "panopticon.content percept rule + evidence probe (O3)"
+    status: completed
+  - id: IP-005-P04
+    goal: "Integration: home-manager switch, full suite, CHANGELOG"
+    status: completed
+```
+
+```yaml supekku:delta.context_inputs@v1
+schema: supekku.delta.context_inputs
+version: 1
+entries:
+  - type: reference
+    id: CI1
+    summary: "Content store at ~/.local/state/behaviour/content/ — NEW panopticon substrate. articles.jsonl append-index (content_hash,url,domain,title,extractor,captured_at,quality_score); <2-char-shard>/<sha256>.md (readability markdown + YAML frontmatter); <shard>/<sha256>.json sidecar (text_content, content_html, excerpt, byline, length, ...). Content-addressed: revisiting a page = one file, deduped by hash. Producer = panopticon firefox extension (saves on >30s dwell or right-click)."
+  - type: reference
+    id: CI2
+    summary: "satan/dl-satan-tools-activity.el — the read-only consumer pattern for behaviour/ state. Registers `activity_read` via dl-satan-tool-register {:name :risk 'read :args-schema :handler}. Existing `recent_browser` scope exposes tab SEGMENTS (url/title/duration) from behaviour/segments — NOT page bodies. content_read is the parallel module for the content store."
+  - type: reference
+    id: CI3
+    summary: "satan/dl-satan-sensor-curiosity.el — emits `segment_backlog` attribute signal for uninspected behaviour/segments (end_ts newer than last-inspected, persisted in a JSON state file; mark-inspected advances the watermark). The content-backlog percept mirrors this against articles.jsonl captured_at."
+  - type: reference
+    id: CI4
+    summary: "Attribute / resonance layer (dl-satan-attribute*.el, dl-satan-resonance.el, dl-satan-sensor-*.el). Sensors build a payload via dl-satan-attribute-build-sensor-payload + dl-satan-attribute-enqueue. Resonance recall = surfacing a relevant captured page during reasoning by topic match; mechanism to be designed in DR-005."
+  - type: policy
+    id: POL-001
+    summary: "SATAN module extraction policy. content_read is a thin-shell read-only consumer (same class as dl-satan-tools-{notify,sway,activity,...}: 'earns its seat'); content-backlog sensor parallels sensor-curiosity (explicit anti-candidate 'stays in Emacs'). No extraction trigger fires; no carve. No conflict."
+```
+
+```yaml supekku:delta.risk_register@v1
+schema: supekku.delta.risk_register
+version: 1
+risks:
+  - id: R1
+    title: "Full page bodies blow the token budget"
+    likelihood: high
+    impact: medium
+    mitigation: "RESOLVED by DR-005 DEC-4: list/search/filter return metadata + excerpt/snippet only; get is char-offset paginated (page-max 5000 chars), so every page is bounded regardless of article length. Long bodies reachable via next_offset."
+  - id: R2
+    title: "Sensitive page content leaks into agent context"
+    likelihood: medium
+    impact: high
+    mitigation: "Producer (panopticon extension) owns redaction — strips query/fragment, drops incognito. SATAN is a downstream read-only consumer (risk='read', no capability), same trust posture as activity_read. Delta adds NO new redaction; if gaps exist they are panopticon's. Flag the open thread, do not silently widen."
+  - id: R3
+    title: "Full-text search over bodies is expensive / unbounded"
+    likelihood: medium
+    impact: medium
+    mitigation: "Search walks .json sidecars (or .md). Bound by capping result count, returning snippets not bodies, and (DR-005 decision) choice of scan strategy — naive per-file scan vs ripgrep subprocess vs index. Start simplest that meets latency; record the cap and what it drops (no-silent-caps)."
+  - id: R4
+    title: "Parallel implementation vs recent_browser segments"
+    likelihood: medium
+    impact: medium
+    mitigation: "recent_browser already answers 'what did I browse' from behaviour/segments. content_read must key strictly off the CONTENT store (articles.jsonl + hash files), answering 'what was ON the pages' — bodies, not dwell. Do not re-walk segments. Keep the two tools' concerns disjoint."
+  - id: R5
+    title: "Resonance recall scope creep"
+    likelihood: medium
+    impact: medium
+    mitigation: "RESOLVED by DR-005 DEC-2: O3 is percept-SHAPING only (panopticon.content emits handles that admit §S2 resonance over existing memory traces). NO write into the memory store — that substrate is the deferred IMPR-007 carve (POL-001). True page-recall (captures-as-traces) is a named follow-up, not this delta."
+  - id: R6
+    title: "articles.jsonl unbounded growth → per-tick read latency"
+    likelihood: medium
+    impact: medium
+    mitigation: "DR-005 DEC-6 (external review F-3). Unlike daily-rotated focus-*.jsonl, the content index never rotates; recent/filter/sensor/evidence probes read it, the latter two per tick. v1 guard: dl-satan-tools-content-recent-scan-max (500). Real fix = daily rotation in panopticon (producer follow-up, out of scope)."
+  - id: R7
+    title: "Missing tool description file crashes first dispatch"
+    likelihood: high
+    impact: high
+    mitigation: "RESOLVED by DR-005 (external review F-1): dl-satan-tool--description hard-errors if ~/notes/satan/tools/content_read.md absent. File is a mandatory deliverable (§4 code-impact), shipped with the tool. NB lives in ~/notes, NOT git-tracked under .emacs.d."
+```
+
+## 1. Summary & Context
+
+- **Technical Spec(s)**: none — this project maintains no tech specs for SATAN; design authority lives in `docs/satan/**` + DR-005.
+- **Implementation Plan**: [IP-005](./IP-005.md) – draft, phases TBD after DR-005.
+- **Change Drivers**: User added a panopticon feature — any Firefox page dwelt on >30s (or right-clicked) is captured to `~/.local/state/behaviour/content/`. SATAN should be able to perceive and read these captures.
+
+## 2. Motivation
+
+Panopticon now persists the *content* of pages the user reads, not just the fact
+that a tab was focused. This is a new perceptual substrate: the organism can see
+*what the user is reading*, not merely *where attention went*. SATAN currently
+has no access to it — `activity_read`'s `recent_browser` scope sees tab segments
+(url/title/duration) but never page bodies.
+
+Two capabilities follow:
+
+1. **Tool** — `content_read`: a read-only window so an agent can list recent
+   captures, fetch a page body by hash, filter by domain/url, and search bodies.
+2. **Percept** — the captures become perceivable: a curiosity/backlog signal
+   when uninspected captures accumulate (parallel to `segment_backlog`), and
+   resonance recall that can surface a relevant captured page during reasoning.
+
+## 3. Scope & Objectives
+
+- **Primary Outcomes**:
+  - O1: `content_read` tool (new `satan/dl-satan-tools-content.el`), registered via `dl-satan-tool-register`, risk=`read`. Scopes: `recent` (list N from articles.jsonl, metadata only), `get` (body by content_hash, **char-offset paginated**, page-max 5000), `filter` (by domain and/or url substring, metadata + excerpt), `search` (rg over `.md` projection, returns matches + snippets, deduped-by-hash + capped). See DR-005 §4.1.
+  - O2: Content-backlog sensor (new `satan/dl-satan-sensor-content.el`) emitting an attribute signal when uninspected captures exist, with a `mark-inspected` advance — mirroring `dl-satan-sensor-curiosity.el`, EXCEPT the watermark stores the max `captured_at` string verbatim, not a formatted now() (DR-005 DEC-5 — format-mismatch bug).
+  - O3: `panopticon.content` percept rule (DR-005 DEC-2): evidence-window content-probe → `:content_recent`, canon defrule emits `content_domain:*` handles that admit/shape §S2 resonance. Captures shape WHICH memory traces resonate; page bodies reached via the O1 tool. True page-recall (captures-as-traces) deferred to a follow-up — NOT this delta.
+- **Canonical body** = `.json` `text_content` (plain extracted text — token-efficient, no markdown noise). `.md` and `content_html` are not returned by the tool.
+- **Operational Constraints**: read-only consumer; no new redaction; in-tree per POL-001; follow the activity/curiosity module shapes (no parallel implementation).
+- **Dependencies**: none blocking.
+
+## 4. Out of Scope
+
+- Any change to panopticon (producer) — capture, redaction, dedup, file layout.
+- Returning `.md` / `content_html` bodies (text_content is canonical).
+- Write/delete/curate operations on the content store (read-only delta).
+- Re-deriving browsing history from segments (that is `recent_browser`'s job).
+- Semantic / embedding-based recall, unless DR-005 explicitly scopes a minimal form for O3.
+
+## 5. Approach Overview
+
+- **System Touchpoints**: `satan/dl-satan-tools-content.el` (new), `satan/dl-satan-sensor-content.el` (new), `satan/dl-satan.el` (require new tool), `satan/dl-satan-memory-{canon,evidence}.el` (O3 rule + probe), sensor scheduling wiring (mirror curiosity), `~/notes/satan/tools/content_read.md` (mandatory tool behavioural text — hard error if missing). Nix: both new `.el` files must be `git add`ed; `satan/` is already a parsed `configDir`.
+- **Key Changes**:
+  - C1: content_read tool module + registration (O1).
+  - C2: content-backlog sensor module + scheduling (O2).
+  - C3: resonance recall hook (O3) — shape in DR-005.
+- **Migration / Rollout Notes**: new files only; no migration. Sensor needs a disable switch (defcustom) per the curiosity precedent.
+
+## 6. Verification Strategy
+
+- **Requirements Coverage**: ert over the content store using fixtures (sharded hash files + articles.jsonl) under `satan/test/`. Cover: recent ordering/limit-clamp, get-by-hash body + cap/truncation, filter by domain/url, search snippet + result cap, missing-hash error path, empty-store path.
+- **Sensor**: ert over watermark advance / backlog detection with a temp state file (mirror curiosity tests).
+- **Acceptance Criteria**: `just check` green; tool callable through the broker, `get` returns paginated text_content with correct `next_offset`/`total_chars`; `search` returns deduped capped matches; sensor emits only for captures newer than the watermark and advances it to the max `captured_at` seen; `panopticon.content` emits `content_domain:*` handles that admit resonance; zero lint warnings; CHANGELOG updated.
+
+## 7. Follow-ups & Tracking
+
+- **Resolved in DR-005**: search = rg over `.md` (DEC-3); `get` = paginated page-max 5000 (DEC-4); O3 = percept-shaping only (DEC-2); `recent`/`filter` read articles.jsonl (index of record), not a dir walk.
+- **Future delta (named follow-up)**: true page-recall — write captures into the memory store as traces so `memory_resonate` surfaces pages by topic. Gated by the IMPR-007 memory-substrate carve (POL-001).
+- **Future (producer / panopticon)**: daily-rotate `articles.jsonl` — the real fix for unbounded-index growth (DR-005 DEC-6). Out of scope here; DE-005 caps `recent`-scan rows as the interim guard.
+- **Implementation-time**: confirm the exact tick/probe call site for the content sensor (mirror curiosity).
+
+## 8. Implementation Notes
+
+- Reuse `dl-satan-jsonl` for articles.jsonl reads and `dl-satan-tools-activity`'s
+  `--read-json` / `--clamp-limit` shapes — extract a shared helper only if it
+  earns it; otherwise mirror, don't prematurely abstract.
+- Content store layout, formats, and the producer contract: see CI1.

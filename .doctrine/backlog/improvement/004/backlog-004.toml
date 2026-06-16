@@ -1,0 +1,17 @@
+schema = "doctrine.backlog"
+version = 1
+
+id = 4
+slug = "bough_b2_max_depth_n_on_node_subtree"
+title = "bough B2: --max-depth N on node subtree"
+kind = "improvement"
+status = "open"
+resolution = ""
+created = "2026-05-30"
+updated = "2026-05-30"
+tags = ["satan", "bough", "upstream"]
+
+[relationships]
+needs    = []
+after    = []
+triggers = []

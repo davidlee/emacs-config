@@ -1,0 +1,187 @@
+# Implementation Plan for SL-004
+
+```yaml supekku:plan.overview@v1
+schema: supekku.plan.overview
+version: 1
+plan: IP-004
+delta: DE-004
+revision_links:
+  aligns_with:
+    - DR-004
+specs:
+  primary: []
+  collaborators: []
+requirements:
+  targets:
+    - DE-004 acceptance criteria
+  dependencies:
+    - DE-003
+phases:
+  - id: IP-004-P01
+    name: Phase 01 - Readiness and Isolation Gates
+    objective: Resolve DE-004's remaining design gates before any steady-state wiring.
+    entrance_criteria:
+      - DE-004 and DR-004 exist and name the same target state.
+      - POL-001 read; no required ADRs or standards apply.
+      - No DE-004 code/Nix edits have started.
+    exit_criteria:
+      - DE-003 dependency state is known and the backup-gated bootstrap path is ready because DE-003 is currently blocked by DB access.
+      - Jail-to-Supabase reachability is proven or the DR is revised for a bind/socket fallback.
+      - Batch Emacs invocation, test DB inventory, auth/role assumptions, and migration source are recorded.
+      - pub Emacs export strategy avoids a duplicated package list and has a pin-alignment plan.
+  - id: IP-004-P02
+    name: Phase 02 - Steady-State Nix and Recipe Wiring
+    objective: Add the non-bootstrap wiring for wrapped Emacs, Supabase tooling, and batch recipes.
+    entrance_criteria:
+      - Phase 01 complete.
+      - DE-003 SATAN_DB_HOST knob available, or its absence is an explicit blocker.
+      - Any temporary host-Postgres bootstrap exposure has been removed.
+    exit_criteria:
+      - pub exports the wrapped Emacs derivation without copy-pasting the package list.
+      - .emacs.d/flake.nix equips every specDev jailed agent with Emacs, psql, Supabase CLI, docker socket access, and Supabase env.
+      - Justfile has db-start, db-init, and additive check-batch recipes; host check remains unchanged.
+      - supabase/config.toml exists with the planned local DB port.
+  - id: IP-004-P03
+    name: Phase 03 - Jailed Test Execution
+    objective: Prove the jailed batch suite runs against Supabase without relying on the host daemon or host DB socket.
+    entrance_criteria:
+      - Phase 02 complete.
+      - home-manager switch or equivalent Nix rebuild has applied the jail package changes.
+      - Supabase local stack can start.
+    exit_criteria:
+      - A jailed agent runs just db-start, just db-init, and just check-batch successfully.
+      - DB-backed tests are not skipped because Supabase is reachable.
+      - Any mechanical fixes remain within DR-004 scope; design deviations are reflected back into DR/IP.
+  - id: IP-004-P04
+    name: Phase 04 - Isolation Evidence and Close Prep
+    objective: Capture closure evidence and ensure no bootstrap exception or live DB exposure remains.
+    entrance_criteria:
+      - Phase 03 complete.
+      - All temporary bootstrap changes, if used, have an explicit teardown checklist.
+    exit_criteria:
+      - exposePostgres is false for steady-state DE-004 agents.
+      - Inside the jail, /run/postgresql is absent or psql -h /run/postgresql -l fails.
+      - VA/VH evidence is recorded and DE/IP/phase notes are reconciled for audit/close.
+```
+
+```yaml supekku:verification.coverage@v1
+schema: supekku.verification.coverage
+version: 1
+subject: IP-004
+entries:
+  - artefact: VA-DE004-P01
+    kind: VA
+    requirement: DE-004.R6
+    phase: IP-004-P01
+    status: verified
+    notes: Host `pg_isready` accepted connections at 127.0.0.1:54322; specDev bwrap-profile TCP probe returned `TCP_OK_127.0.0.1_54322`.
+  - artefact: VA-DE004-BACKUP
+    kind: VA
+    requirement: DE-004.R5
+    phase: IP-004-P01
+    status: verified
+    notes: Backup captured before any host-Postgres exposure at `/home/david/.cache/de-004-backups/pg_dumpall-20260530T234338Z.sql`, SHA-256 `83c336846fab430b73b5939cea55d955ea3ce30518018542636690dec8d904d8`, size 82598908 bytes, mode 0600.
+  - artefact: VA-DE004-P02
+    kind: VA
+    requirement: DE-004 wiring prerequisites
+    phase: IP-004-P02
+    status: verified
+    notes: Pub Emacs export eval returned `emacs-unstable-pgtk-with-packages-30.2`; jailed-pi package eval returned `jailed-pi`; Just recipe listing/dry-runs passed; host psql to 127.0.0.1:54322 returned `1`; user resynced and ran `home-manager`.
+  - artefact: VA-DE004-P03
+    kind: VA
+    requirement: DE-004.AC-001
+    phase: IP-004-P03
+    status: verified
+    notes: Verified by practice — jailed specDev agents already run `just check-batch` against Supabase-local Postgres (127.0.0.1:54322) with DB-backed tests executing, not skipped. P03 collapsed into evidence capture; no separate transcript ceremony.
+  - artefact: VH-DE004-ISO
+    kind: VH
+    requirement: DE-004.AC-003
+    phase: IP-004-P04
+    status: verified
+    notes: "User ran `ls /run/postgresql` inside a specDev jail: `cannot access '/run/postgresql': No such file or directory`. Host Postgres socket dir absent inside the jail -> prod isolation confirmed, exposePostgres=false in practice. Bootstrap teardown is a no-op: exposePostgres=true was never committed in ~/flakes (all three specDev defaults remain false)."
+```
+
+## 1. Summary
+
+- **Delta**: DE-004 - Jail-local Emacs test runner + Supabase-isolated Postgres for jailed agents.
+- **Specs Impacted**: none; this is infra/workflow wiring with no governing SPEC yet.
+- **Design Revision**: DR-004, with five phase-1 open questions carried as explicit gates.
+- **Desired Outcome**: jailed specDev agents can run the Emacs ERT suite in batch against Supabase-local Postgres while the host Emacs daemon and live host Postgres socket remain unavailable.
+
+## 2. Context & Constraints
+
+- **Current Behaviour**: `just check` uses `emacsclient --eval` against the host daemon; jailed agents have no Emacs/psql/Supabase tooling and `exposePostgres=false`.
+- **Target Behaviour**: add an explicit `check-batch` path using the host wrapped Emacs derivation exported through `pub`, plus Supabase-local Postgres at port 54322.
+- **Dependency**: DE-003 owns the `SATAN_DB_HOST` consolidation. DE-004 steady-state wiring must not depend on hardcoded `/run/postgresql`.
+- **Bootstrap Choice**: user clarified that DE-003 is currently blocked by lack of DB access. Phase 01 captured the DR-004 DEC-008 bootstrap gate: temporary host Postgres exposure only after the recorded full `pg_dumpall`, with teardown before DE-004 steady-state wiring and close.
+- **Scope Boundaries**: edit `.emacs.d/flake.nix`, `Justfile`, and `supabase/`; the only sanctioned `~/flakes` touch is the `pub` Emacs package export. Do not edit `~/flakes/pub/jailed-agents.nix`.
+
+## 3. Gate Check
+
+- [x] DE-004, DR-004, and IP-004 read together.
+- [x] Required policy POL-001 read; no module extraction triggered.
+- [x] No accepted ADRs or required standards currently apply.
+- [x] Test strategy identified as VA/VH over existing ERT suites; DR-004 does not add new VTs.
+- [x] Workspace/config blast radius assessed at planning level.
+- [x] DE-003 dependency completion state confirmed during Phase 01: user clarified DE-003 is blocked by lack of DB access.
+- [x] Bootstrap backup need decided during Phase 01: bootstrap remains backup-gated, and the required `pg_dumpall` evidence has been captured.
+
+Planning note: phase sheets are authored one at a time. `phases/phase-01.md` is the active sheet; later sheets should be created after Phase 01 resolves the remaining gates.
+
+## 4. Phase Overview
+
+| Phase | Objective | Entrance Criteria | Exit Criteria / Done When | Phase Sheet |
+| --- | --- | --- | --- | --- |
+| Phase 01 - Readiness and Isolation Gates | Resolve DR open questions and choose bootstrap/no-bootstrap path | DE/DR/IP agree on target state; no DE-004 implementation started | Completed: DE-003 state, backup evidence, Supabase reachability, Emacs invocation, DB inventory, auth, migrations, and pub pin strategy recorded | `phases/phase-01.md` |
+| Phase 02 - Steady-State Nix and Recipe Wiring | Add Nix/Justfile/Supabase wiring without host DB exposure | Phase 01 complete; DE-003 host knob absent but explicit blocker for Phase 03 only; no host exposure enabled | Completed: pub Emacs export, jail packages/env/binds, Supabase config, db recipes, and check-batch are in place | `phases/phase-02.md` |
+| Phase 03 - Jailed Test Execution | Prove the batch suite passes from inside a jailed agent | Phase 02 complete; Nix rebuild applied; Supabase starts | jailed `just check-batch` passes and DB-backed tests run against Supabase | _create after Phase 02_ |
+| Phase 04 - Isolation Evidence and Close Prep | Capture close evidence and remove any bootstrap exposure | Phase 03 complete | host socket unavailable from jail; VA/VH evidence recorded; artifacts ready for audit/close | _create after Phase 03_ |
+
+## 5. Phase Detail Snapshot
+
+- **Research Notes**: `notes.md`
+- **Design Revision**: `DR-004.md`
+- **Active Phase Sheet**: none; `phases/phase-02.md` is complete. Create Phase 03 when jailed execution evidence is ready to run.
+- **Parallelisable Work**: Flag tasks with `[P]` inside phase sheets
+- **Plan Updates**: Update this plan when Phase 01 resolves, narrows, or revises any DR open question.
+
+## 6. Testing & Verification Plan
+
+- **Updated Suites**: none planned in DE-004; existing ERT suites are reused. DE-003 owns dl-satan-db test changes.
+- **New Cases**: no new VT unless Phase 01 discovers a coverage gap. Verification is primarily VA/VH evidence from jailed commands and isolation checks.
+- **Tooling/Fixtures**: Supabase local stack, psql, wrapped Emacs, `check-batch`, and jailed specDev agents.
+- **Rollback Plan**: revert flake/Justfile/supabase changes and run `home-manager switch`; restore from `pg_dumpall` only if the bootstrap exception was used and damaged host DB state.
+- **Verification Coverage**: `VA-DE004-P01`, `VA-DE004-BACKUP`, `VA-DE004-P03`, and `VH-DE004-ISO`.
+
+## 7. Risks & Mitigations
+
+| Risk | Mitigation | Owner |
+| --- | --- | --- |
+| R5 bootstrap exposes live Postgres | Required because DE-003 is currently blocked by DB access; require pg_dumpall first, supervise the window, and tear down before DE-004 close | David/agent |
+| R6 jail cannot reach Supabase TCP loopback | Phase 01 TCP probe passed; no bind/socket fallback needed. Phase 02 must still add `postgresql` before final `psql` auth evidence | agent |
+| pub Emacs derivation drifts from host | Define once or import shared derivation; align/follow nixpkgs and emacs-overlay inputs; do not copy package lists | agent |
+| DB-backed tests skip silently | Phase 03 evidence must show DB-backed tests actually ran against Supabase, not merely that the suite passed with skips | agent |
+| DE-003 changes blur into DE-004 | Keep DB host-knob work under DE-003; DE-004 only consumes it or provides the conditional bootstrap environment | agent |
+
+## 8. Open Questions & Decisions
+
+- [x] Emacs supports `--init-directory`: GNU Emacs 30.2 prints `/home/david/.emacs.d/` for `user-emacs-directory` under the planned flag.
+- [x] Exact `db-init` database list and migration/seed source: create/drop `satan_memory_test` for the default suite, then apply `dl-satan-memory-migrate-apply` over `satan/memory/migrations/0001..0006`.
+- [x] Supabase role/auth works without a `david` role assumption: default tests do not hardcode `current_user`/`session_user`; use `PGUSER=postgres`, `PGPASSWORD=postgres`, `PGPORT=54322`, and DE-003's host knob.
+- [x] specDev jail can reach Supabase via `127.0.0.1:54322`: bwrap-profile TCP probe passed.
+- [x] pub/flakes structure for shared wrapped Emacs derivation and pin alignment: define/export wrapped Emacs once in `pub`, consume it from host home module and jailed agents, and align `nixpkgs`/`emacs-overlay`/`emacs-config` through parent input follows.
+- [x] Bootstrap exception is needed: user clarified DE-003 is blocked by lack of DB access.
+
+## 9. Progress Tracking
+
+- [x] Phase 01 complete
+- [x] Phase 02 complete
+- [x] Phase 03 complete (collapsed: jailed agents already run check-batch against Supabase; VA-DE004-P03 verified by practice)
+- [x] Phase 04 complete (collapsed: jail probe `ls /run/postgresql` -> absent; exposePostgres=false; teardown no-op; VH-DE004-ISO verified)
+- [x] Verification gates passed
+
+## 10. Notes / Links
+
+- Audit reference: pending.
+- Supporting docs: `docs/emacs/traps.md`, `docs/satan/INDEX.md`, POL-001.
+- Reference code: `/home/david/dev/vk/flake.nix`, `/home/david/dev/vk/Justfile`, `/home/david/flakes/modules/home/emacs.nix`, `/home/david/flakes/pub/flake.nix`, `/home/david/flakes/pub/jailed-agents.nix`.

@@ -1,0 +1,14 @@
+id = 10
+slug = "decouple-satan-perception-from-agent-run"
+title = "Decouple SATAN perception from agent run"
+status = "completed"
+created = "2026-06-08"
+updated = "2026-06-10"
+
+[relationships]
+needs = []
+after = []
+
+[[relation]]
+label = "governed_by"
+target = "ADR-001"

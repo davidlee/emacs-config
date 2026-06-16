@@ -1,0 +1,21 @@
+schema = "doctrine.backlog"
+version = 1
+
+id = 2
+slug = "intervention_mark_suite_2_tests_fail_in_full_just_check_run_wall_clock_shared_db_cross_talk"
+title = "Intervention-mark suite: 2 tests fail in full just check run"
+kind = "issue"
+status = "resolved"
+resolution = "fixed"
+created = "2026-05-30"
+updated = "2026-06-01"
+tags = ["satan", "testing"]
+
+[relationships]
+needs    = ["SL-003"]
+after    = []
+triggers = []
+
+[[relation]]
+label = "slices"
+target = "SL-003"

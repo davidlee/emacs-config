@@ -1,0 +1,167 @@
+# SL-004: Jail-local Emacs test runner + Supabase-isolated Postgres for jailed agents
+
+# DE-004 – Jail-local Emacs test runner + Supabase-isolated Postgres for jailed agents
+
+```yaml supekku:delta.relationships@v1
+schema: supekku.delta.relationships
+version: 1
+delta: DE-004
+revision_links:
+  introduces: []
+  supersedes: []
+specs:
+  primary: []
+  collaborators: []
+requirements:
+  implements: []
+  updates: []
+  verifies: []
+phases:
+  - id: IP-004-P01
+    goal: "Readiness and isolation gates before steady-state wiring"
+    status: completed
+  - id: IP-004-P02
+    goal: "Steady-state Nix and recipe wiring"
+    status: completed
+  - id: IP-004-P03
+    goal: "Jailed test execution (collapsed: verified by practice)"
+    status: completed
+  - id: IP-004-P04
+    goal: "Isolation evidence + close prep (collapsed: jail probe + exposePostgres=false)"
+    status: completed
+```
+
+```yaml supekku:delta.context_inputs@v1
+schema: supekku.delta.context_inputs
+version: 1
+entries:
+  - type: reference
+    id: CI1
+    summary: "~/flakes/pub/jailed-agents.nix — jail builder. Has exposePostgres flag + postgresOptions (try-readwrite /run/postgresql); specDev profile = persist-home + network. NOT edited (lives in ~/flakes)."
+  - type: reference
+    id: CI2
+    summary: "~/.emacs.d/flake.nix — instantiates jailed-{claude,codex,pi,opencode,gemini,zero} on specDev. Per-agent exposePostgres/extraPkgs/extraOptions settable here. This is the file we edit."
+  - type: reference
+    id: CI3
+    summary: "~/dev/vk/flake.nix — proven pattern for Supabase lifecycle tooling: exposePostgres=true + supabase-cli + docker.sock bind + DOCKER_HOST forward. It did NOT prove .emacs.d's steady-state TCP loopback path to Supabase; Phase 01 separately proved that path."
+  - type: reference
+    id: CI4
+    summary: "~/.emacs.d/Justfile — `just check` = emacsclient --eval '(dl-test-run-suite)' against a bare (default) server socket. DB-backed tests skip unless their test DB is reachable."
+  - type: architecture
+    id: CI5
+    summary: "docs/satan/INDEX.md — SATAN broker/memory/patch/attribute layers; dl-satan-db.el is the shared psql subprocess runner (host defaults /run/postgresql)."
+  - type: policy
+    id: POL-001
+    summary: "Module extraction policy. Names 'emacs --batch to run anything' test-harness coupling as a motivating cost. This delta adds a jail-local daemon to RUN tests; it extracts no module, triggers no carve. No conflict."
+  - type: delta
+    id: DE-003
+    summary: "In-progress DRY consolidation of the shared SATAN DB layer. Owns the 5 prod *-host defcustoms + 2 test --host defconsts. The single env-driven host knob (SATAN_DB_HOST) this delta depends on is DE-003's deliverable."
+```
+
+```yaml supekku:delta.risk_register@v1
+schema: supekku.delta.risk_register
+version: 1
+risks:
+  - id: R1
+    title: "Jailed batch Emacs cannot load the suite"
+    likelihood: medium
+    impact: high
+    mitigation: "RESOLVED-DOWN by DR-004 DEC-002: batch (-Q) avoids init.el side-effects, and DEC-001 reuses the host's full wrapped Emacs so all requires resolve. Phase 01 confirmed GNU Emacs 30.2 accepts --init-directory, so user-emacs-directory can point at /workspace/.emacs.d without fallback. Full load/pass evidence belongs to Phase 03 after Phase 02 wiring adds the wrapped Emacs to the jail."
+  - id: R2
+    title: "Prod-data exposure via host /run/postgresql"
+    likelihood: medium
+    impact: high
+    mitigation: "Safety goal is satan_memory unreachable from jailed agents. Do NOT set exposePostgres=true in the steady state. Jail reaches Supabase (127.0.0.1:54322) only. Verify host socket absent inside the jail as an exit gate. NB: a TEMPORARY, scoped exception applies during the bootstrap phase — see R5."
+  - id: R3
+    title: "Emacs closure size inflates every jailed agent"
+    likelihood: low
+    impact: low
+    mitigation: "RESOLVED-DOWN by DR-004 DEC-001/DEC-006: the jail reuses the SAME wrapped-Emacs store path the host already builds, so adding it to all specDev agents costs ~0 marginal disk (store-shared). All agents get the capability (jailed-pi most-used)."
+  - id: R4
+    title: "DB host hardcoded in 7 spots; Supabase repoint needs DE-003 first"
+    likelihood: medium
+    impact: medium
+    mitigation: "Hard dependency on DE-003 (depends_on). Sequence DE-003's host-knob consolidation before DE-004 steady-state. NB: the bootstrap exception in R5 lets a jailed agent DO the DE-003 refactor before the knob exists."
+  - id: R5
+    title: "Bootstrap chicken-and-egg: refactoring DB code to enable Supabase may itself need host Postgres"
+    likelihood: medium
+    impact: high
+    mitigation: "To let a jailed agent perform the DE-003 host-knob refactor (and prove Supabase works), grant TEMPORARY host Postgres in the jail (exposePostgres=true, or bind a scoped cluster). This is a deliberate, time-boxed exception to R2 for the bootstrap phase ONLY: the live satan_memory DB is reachable during it, so the bootstrapping agent is supervised / restricted to *_test DBs. Phase 01 captured the mandatory backup before any exposure: /home/david/.cache/de-004-backups/pg_dumpall-20260530T234338Z.sql, SHA-256 83c336846fab430b73b5939cea55d955ea3ce30518018542636690dec8d904d8. Remove the exception and re-assert the no-host-socket exit gate before close. Boundary: DB-code changes made here are DE-003's work and commit under DE-003."
+  - id: R6
+    title: "Jail cannot reach Supabase (TCP loopback vs net-namespace isolation)"
+    likelihood: medium
+    impact: high
+    mitigation: "Phase 01 confirmed the current specDev bwrap profile can reach host loopback TCP 127.0.0.1:54322 using the generated runtime closure args; no bind/socket fallback is needed. Phase 02 still needs to add postgresql to the jail before a psql auth probe can run inside the final wrapper."
+  - id: R7
+    title: "pub Emacs derivation diverges from host (pin drift) → big rebuild, not shared"
+    likelihood: medium
+    impact: low
+    mitigation: "Phase 01 selected a pub-owned define-once wrapped Emacs export. The ~0-marginal-closure benefit holds only if pub resolves the identical derivation: align nixpkgs, emacs-overlay, and emacs-config through parent input follows. Do not copy the package list into .emacs.d."
+```
+
+## 1. Summary & Context
+
+- **Technical Spec(s)**: none (infra change; no governing SPEC exists for jail/test wiring).
+- **Implementation Plan**: [IP-004](./IP-004.md) – Phase 01 complete; later phase sheets are created one at a time.
+- **Change Drivers**: User request — jailed agents (`jailed-claude`/`codex`/`pi`/…) must run the Emacs test suite and reach a Postgres DB, without exposing the live `satan_memory` DB.
+
+## 2. Motivation
+
+Jailed coding agents currently cannot run `just check` (no `emacsclient`, no Emacs
+server in the jail) and have no Postgres access (`exposePostgres = false` for every
+`~/.emacs.d` agent). Naively binding the **host** Emacs daemon socket would let
+`emacsclient --eval` execute arbitrary elisp on the host — a total sandbox escape —
+and binding host `/run/postgresql` would leave the live `satan_memory` DB one
+`DROP DATABASE` away from a jailed agent.
+
+Target state: a jailed agent can run the full suite **inside** the jail, against an
+**isolated** Postgres, with the host daemon and host DB unreachable.
+
+## 3. Scope & Objectives
+
+- **Primary Outcomes** (per DR-004):
+  - A jailed agent runs `just check-batch` — a `emacs --batch -Q` invocation of the host's wrapped Emacs (exported via `pub`) — and it reports PASS.
+  - DB-backed tests pass against a **Supabase-local Postgres** (127.0.0.1:54322; Phase 01 proved jail TCP reachability), with the live `satan_memory` DB unreachable from the jail (`exposePostgres` stays false in steady state).
+  - Capability lands on **all** specDev agents at ~0 marginal closure (shared store path).
+- **Operational Constraints**: Edit `~/.emacs.d/flake.nix` + `Justfile` + `supabase/`. The **only** sanctioned `~/flakes` touch is exposing the wrapped Emacs as `pub.packages.<sys>.emacs`; the jail builder `jailed-agents.nix` is NOT edited. Follow the vk Supabase pattern (docker.sock bind + `DOCKER_HOST`).
+- **Dependencies**: **DE-003** must land the single env-driven DB host knob (`SATAN_DB_HOST`) the tests read; `~/dev/vk`'s Supabase wiring is the reference.
+
+## 4. Out of Scope
+
+- The el host-string consolidation itself (5 prod defcustoms + 2 test defconsts → one env knob) — owned by **DE-003**.
+- Module extraction under POL-001 — not triggered.
+- `satan_attrd_test_*` (rust attrd suite) DB provisioning — separate toolchain, not the elisp `dl-test-run-suite`.
+- Auto-starting Supabase inside `check-batch` — DECIDED (DR-004 DEC-004): explicit `db-start`/`db-init` recipes; `check-batch` stays a pure test run.
+- Editing host `just check` (live emacsclient) — unchanged; `check-batch` is additive (DEC-005).
+
+## 5. Approach Overview
+
+- **System Touchpoints**: `~/flakes/pub` (expose wrapped Emacs), `~/.emacs.d/flake.nix` (jail pkgs/env/binds), `~/.emacs.d/Justfile` + `~/.emacs.d/supabase/`, Supabase local stack.
+- **Key Changes** (firmed up in DR-004 — see its §4):
+  - Export the host wrapped Emacs as `pub.packages.<sys>.emacs`; consume it in the jail (DEC-001).
+  - Run the suite via `emacs --batch -Q -L … -l dev/dl-test.el --eval '(dl-test-run-suite)'` — no daemon, no init.el (DEC-002). New `check-batch` recipe.
+  - Add Supabase wiring (vk pattern): `supabase-cli` + `postgresql` (psql) in `extraPkgs`, docker.sock bind, `DOCKER_HOST` forward; jail env `SATAN_DB_HOST=127.0.0.1`, `PGPORT=54322`, `PGUSER=postgres`, `PGPASSWORD=postgres`. `db-start`/`db-init` recipes.
+  - Leave `exposePostgres = false` (host DB stays unreachable) outside the bootstrap window.
+- **Bootstrap phase (deliberate, time-boxed — see R5)**: There is a chicken-and-egg: a jailed agent may need to *do* the DE-003 DB-host refactor and prove Supabase before the steady-state isolation exists. To break it, grant the jail TEMPORARY host Postgres so the agent can develop/run DB code against the host cluster. **Precondition: full `pg_dumpall` backup (globals + **all** prod DBs) before the exception is enabled.** Tear the exception down and re-assert the no-host-socket gate before close.
+- **Migration / Rollout Notes**: `home-manager switch` after flake edits; new `.el` files (if any) must be `git add`ed for the flake parser to see them.
+
+## 6. Verification Strategy
+
+- **Acceptance Criteria**:
+  1. From inside a jailed agent, `just check-batch` runs and reports PASS (batch suite, no daemon).
+  2. DB-backed tests run green against Supabase (not skipped).
+  3. `psql -h /run/postgresql -l` inside the jail FAILS / `/run/postgresql` is absent — proves prod isolation. **(Asserted at close, after the R5 bootstrap exception is removed — not during bootstrap.)**
+  4. Only `~/flakes/pub` was touched (Emacs export); `jailed-agents.nix` unchanged.
+  5. A `pg_dumpall` backup (globals + all prod DBs) was taken before any host-Postgres exposure (R5 precondition evidence).
+- **Planned Artefacts**: VA (agent-run test report from inside the jail) + VH (user attests prod DB unreachable). VT IDs from IP-004 phases.
+
+## 7. Follow-ups & Tracking
+
+- **Dependencies**: DE-003 (env-driven `SATAN_DB_HOST`).
+- **Resolved in DR-004**: emacs source (pub export, DEC-001), invocation (batch, DEC-002), DB (Supabase, DEC-003), lifecycle (explicit recipes, DEC-004), recipe shape (additive check-batch, DEC-005), agent scope (all specDev, DEC-006), bind surface (DEC-007), bootstrap (DEC-008).
+- **Resolved by Phase 01**: Emacs 30.2 supports `--init-directory`; `db-init` scope is `satan_memory_test`; migration source is `satan/memory/migrations/0001..0006`; specDev TCP reachability to Supabase loopback passed; pub export strategy is define-once in `pub` with pin follows.
+
+## 8. Implementation Notes
+
+- vk reference: `~/dev/vk/flake.nix` (jail Supabase block) + `~/dev/vk/Justfile` (`db-start`/`db-init`).
+- psql honours `PGPORT`/`PGPASSWORD` from env automatically — `dl-satan-db.el` passes neither flag, so Supabase port+auth need no code change; only the host string is a knob (DE-003).

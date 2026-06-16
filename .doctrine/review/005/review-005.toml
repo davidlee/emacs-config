@@ -1,0 +1,11 @@
+id    = 5
+slug  = "de_008_conformance_git_activity_24h_feed_git_state_commit_role_retirement"
+title = "DE-008 git activity 24h feed — conformance audit"
+
+[review]
+facet     = "implementation"
+raiser    = "agent"
+responder = "agent"
+
+[target]
+ref   = "SL-008"

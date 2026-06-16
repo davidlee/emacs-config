@@ -17,13 +17,13 @@
       inputs.emacs-config.follows = "emacs-config";
     };
     llm-agents.url = "github:numtide/llm-agents.nix";
-    spec-driver.url = "github:davidlee/spec-driver";
+    doctrine.url = "github:davidlee/doctrine";
     zig-overlay.url = "github:mitchellh/zig-overlay";
   };
 
   outputs = inputs @ {
     flake-parts,
-    spec-driver,
+    doctrine, # doctrine
     zig-overlay, # for building ghostel
     ...
   }:
@@ -50,7 +50,7 @@
           if isLinux
           then inputs.pub.lib.${system}.mkJailedAgents {inherit (inputs) llm-agents;}
           else {};
-        spec-driver-pkg = spec-driver.packages.${system}.default;
+        doctrine-pkg = doctrine.packages.${system}.default;
         wrappedEmacs = inputs.pub.packages.${system}.emacs;
         projectPkgs = with pkgs;
           [
@@ -65,7 +65,7 @@
             socat
             bun
           ]
-          ++ [spec-driver-pkg];
+          ++ [doctrine-pkg];
 
         mcpJailOptions = with jailLib.combinators; [
           # expose SATAN MCP

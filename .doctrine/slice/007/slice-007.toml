@@ -1,0 +1,10 @@
+id = 7
+slug = "satan-interactive-pi-dev-mcp-harness"
+title = "SATAN interactive pi.dev MCP harness"
+status = "in_progress"
+created = "2026-05-31"
+updated = "2026-05-31"
+
+[relationships]
+needs = []
+after = []

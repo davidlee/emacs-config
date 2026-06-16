@@ -1,0 +1,11 @@
+id    = 9
+slug  = "de_010_perceive_consume_conformance_doc_reconciliation"
+title = "DE-010 perceive/consume conformance + doc reconciliation"
+
+[review]
+facet     = "reconciliation"
+raiser    = "agent"
+responder = "agent"
+
+[target]
+ref   = "SL-010"

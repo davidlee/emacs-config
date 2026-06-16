@@ -1,0 +1,128 @@
+# Implementation Plan for SL-005
+
+```yaml supekku:plan.overview@v1
+schema: supekku.plan.overview
+version: 1
+plan: IP-005
+delta: DE-005
+revision_links:
+  aligns_with:
+    - DR-005
+specs:
+  primary: []
+  collaborators: []
+requirements:
+  targets: []
+  dependencies: []
+phases:
+  - id: IP-005-P01
+    goal: "content_read tool (O1) + mandatory description file"
+    status: completed
+  - id: IP-005-P02
+    goal: "content-backlog sensor (O2) with DEC-5 watermark"
+    status: completed
+  - id: IP-005-P03
+    goal: "panopticon.content percept rule + evidence probe (O3)"
+    status: completed
+  - id: IP-005-P04
+    goal: "Integration: home-manager switch, full suite, CHANGELOG"
+    status: completed
+```
+
+```yaml supekku:verification.coverage@v1
+schema: supekku.verification.coverage
+version: 1
+subject: IP-005
+entries:
+  - artefact: VT-content-tool
+    kind: VT
+    requirement: DE-005.O1
+    status: verified
+    notes: "ert over temp content store — recent/get/filter/search + error/empty paths (DR-005 §5); green in full suite 2026-06-03 (dl-satan-content/*)"
+  - artefact: VT-content-sensor
+    kind: VT
+    requirement: DE-005.O2
+    status: verified
+    notes: "ert watermark advance / backlog count, DEC-5 format, disable switch; green in full suite 2026-06-03"
+  - artefact: VT-content-rule
+    kind: VT
+    requirement: DE-005.O3
+    status: verified
+    notes: "ert panopticon.content emits content_domain:* handles; admittable; deduped; green in full suite 2026-06-03"
+  - artefact: VA-integration
+    kind: VA
+    requirement: DE-005.O1
+    status: verified
+    notes: "just check green post-DE-009 (961/970, 0 unexpected); VH home-manager switch attested 2026-06-03 — live content_read returned 20 captures end-to-end"
+```
+
+## 1. Summary
+
+- **Delta**: DE-005 — SATAN content percept + content_read tool
+- **Design**: [DR-005](./DR-005.md) (locked; internal + external adversarial passes integrated)
+- **Desired Outcome**: SATAN can read panopticon's page-content store (`content_read` tool), perceive a capture backlog (sensor), and let captures shape resonance admission (`panopticon.content` rule) — read-only, no memory-substrate write.
+
+## 2. Context & Constraints
+
+- **Current Behaviour**: page bodies invisible to SATAN; `recent_browser` sees tab segments only.
+- **Target Behaviour**: DR-005 §3–4.
+- **Dependencies**: none blocking. Producer (panopticon) untouched.
+- **Constraints**: read-only; in-tree (POL-001); bounded output (paginated `get`, capped scopes); follow `tools-activity`/`sensor-curiosity`/`memory-canon` shapes (no parallel impl).
+
+## 3. Gate Check
+
+- [x] Backlog items linked and prioritised — n/a (delta-driven, no backlog item)
+- [x] Spec(s) updated or delta specifies required changes — no SPECs in project; DR-005 is design authority
+- [x] Test strategy identified — ert + temp-store fixtures (unit); live-server dispatch (VA)
+- [x] Workspace/config changes assessed — 2 new tracked `.el` + 1 `~/notes` file; `home-manager switch` required (P04)
+
+## 4. Phase Overview
+
+| Phase | Objective | Entrance Criteria | Exit Criteria / Done When | Phase Sheet |
+| --- | --- | --- | --- | --- |
+| P01 — content_read tool | O1 tool, 4 scopes, paginated `get`, + `content_read.md` | DR-005 locked | All scopes ert-green (in-session); `content_read.md` exists; module lints clean; registered | `phases/phase-01.md` |
+| P02 — content-backlog sensor | O2 sensor, DEC-5 watermark, disable switch, schedule | P01 patterns established (jsonl read helper) | Probe emits once + advances watermark to max captured_at; disabled→no-op; ert-green; lint clean | `phases/phase-02.md` |
+| P03 — panopticon.content percept | O3 evidence content-probe + canon defrule | P01 (jsonl read) | Rule emits `content_domain:*` deduped from `:content_recent`; admittable; ert-green; lint clean | `phases/phase-03.md` |
+| P04 — Integration & close-prep | git add, `home-manager switch`, full `just check`, CHANGELOG | P01–P03 complete | New requires load in live server; full suite green; CHANGELOG updated; ready for `/audit-change` | `phases/phase-04.md` |
+
+P01–P03 touch mostly disjoint files (tool vs sensor vs canon/evidence) — `[P]` parallelizable via `/dispatch` if desired; P04 is the join. P01 first establishes the shared jsonl-read/clamp idioms the others reuse.
+
+## 5. Phase Detail Snapshot
+
+- **Design Revision**: `DE-005/DR-005.md` (DEC-1..6, O-1/O-3).
+- **Active Phase Sheet**: `phases/phase-01.md` (created).
+- **TDD loop**: red/green/refactor via `eval-buffer` + ert in the running session (new files load — deps already installed; compile-angel byte-compiles on save). `home-manager switch` deferred to P04 so the new `(require)` + tracked files land once, together.
+- **Parallelisable Work**: P01/P02/P03 flagged `[P]`.
+
+## 6. Testing & Verification Plan
+
+- **New Suites**: `satan/test/` ert for tool, sensor, rule (mirror existing satan test fixtures/helpers; build a temp-content-store fixture helper).
+- **Key Cases**: DR-005 §5 table — incl. paginated `get` (offset/next_offset/total, negative-offset clamp), distinct unknown-hash vs missing-sidecar errors, search recency-sort + dedupe-by-hash + cap, malformed-line skip, empty-store; sensor watermark format (DEC-5) + disable; rule handle emission + admittability.
+- **Fixtures**: temp dir with `articles.jsonl` + `<shard>/<hash>.{md,json}`; a malformed-line case; an `.md` with searchable body.
+- **Rollback**: `dl-satan-sensor-content-enabled` nil silences sensor; tool inert unless called.
+- **Coverage**: cross-check `verification.coverage` entries — one VT per objective + VA integration.
+
+## 7. Risks & Mitigations
+
+| Risk | Mitigation | Owner |
+| --- | --- | --- |
+| Missing `content_read.md` crashes dispatch (DE-005 R7/F-1) | Ship file in P01; assert presence | Dev |
+| Watermark format mismatch (DE-005 R5/DEC-5) | Store max `captured_at` verbatim; ert asserts | Dev |
+| New tests can't run pre-switch | In-session `eval-buffer` TDD; P04 does switch + full suite | Dev |
+| `articles.jsonl` growth (DE-005 R6/DEC-6) | `recent-scan-max` cap; rotation = producer follow-up | Dev |
+
+## 8. Open Questions & Decisions
+
+- [ ] P02 implementation-time: confirm exact tick/probe call site (mirror `dl-satan-sensor-curiosity-probe` registration).
+
+## 9. Progress Tracking
+
+- [ ] P01 complete
+- [x] P02 complete
+- [x] P03 complete
+- [x] P04 complete — suite green (961/970, 0 unexpected); CHANGELOG done; VH `home-manager switch` attested (2026-06-03, 20 live captures)
+
+## 10. Notes / Links
+
+- Audit reference: AUD-XXX (pending — `/audit-change` after P04).
+- DR-005, POL-001; `docs/satan/perceptual-design.md` §S2.

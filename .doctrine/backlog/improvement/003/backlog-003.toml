@@ -1,0 +1,21 @@
+schema = "doctrine.backlog"
+version = 1
+
+id = 3
+slug = "t_attr_1d_render_attribute_capsule_into_the_prompt"
+title = "T-attr-1d: render attribute capsule into the prompt"
+kind = "improvement"
+status = "resolved"
+resolution = "done"
+created = "2026-05-30"
+updated = "2026-06-01"
+tags = ["satan", "attributes"]
+
+[relationships]
+needs    = []
+after    = []
+triggers = []
+
+[[relation]]
+label = "slices"
+target = "SL-002"

@@ -1,0 +1,11 @@
+id    = 3
+slug  = "de_006_conformance_audit_db_host_isolation"
+title = "DE-006 DB host isolation — conformance audit"
+
+[review]
+facet     = "implementation"
+raiser    = "agent"
+responder = "agent"
+
+[target]
+ref   = "SL-006"
