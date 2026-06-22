@@ -61,7 +61,7 @@ Identifier is anchored on the ISO-week Monday."
   "Return (REALM TYPE) for the current buffer's journal file.
 REALM is `personal' or `work'; TYPE is `daily' or `weekly'.
 Returns nil if the buffer isn't visiting a known journal path."
-  (when-let ((file (buffer-file-name)))
+  (when-let* ((file (buffer-file-name)))
     (cond ((string-prefix-p (expand-file-name dl-notes-journal-dir) file)
             '(personal daily))
       ((string-prefix-p (expand-file-name dl-notes-weekly-dir) file)
@@ -174,7 +174,7 @@ Returns nil when the buffer isn't a journal file."
       ;; --- prev/next/mid depending on type ---
       (pcase type
         ('daily
-          (when-let ((date (my/journal--slug-date slug)))
+          (when-let* ((date (my/journal--slug-date slug)))
             (let* ((dir (if (eq realm 'personal)
                           dl-notes-journal-dir
                           dl-notes-work-journal-dir))
@@ -233,7 +233,7 @@ Returns nil when the buffer isn't a journal file."
                         (format-time-string "%d" day))))
                   (number-sequence 0 6) " | "))))))
       ;; --- cross-realm link ---
-      (when-let ((other (my/journal--other-file)))
+      (when-let* ((other (my/journal--other-file)))
         (setq cross-link (format "[[file:%s][%s]]" other
                            (if (eq realm 'personal) "Work" "Personal"))))
       ;; --- assemble: pipe-delimited, wrapped in :NAV: drawer ---
@@ -253,7 +253,7 @@ Returns nil when the buffer isn't a journal file."
 Idempotent — finds or creates :NAV:/:END: and replaces its content.
 Does nothing if the buffer isn't a journal file."
   (interactive)
-  (if-let ((links (my/journal--links-string)))
+  (if-let* ((links (my/journal--links-string)))
     (org-with-wide-buffer
       (goto-char (point-min))
       (if (re-search-forward "^:NAV:" nil t)
@@ -606,7 +606,7 @@ Intended for use in `find-file-hook'."
                            (my/journal--day-skeleton tags time)
                          (my/journal--week-skeleton tags time))))
         (insert skeleton)
-        (when-let ((links (my/journal--links-string)))
+        (when-let* ((links (my/journal--links-string)))
           (goto-char (point-min))
           (if (re-search-forward "^\\* " nil t)
               (progn

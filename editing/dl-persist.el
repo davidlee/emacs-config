@@ -85,7 +85,7 @@
 ;;
 (defun my/save-buffer-on-focus-change ()
   "Save the previously current file buffer when switching buffers."
-  (when-let ((buf (other-buffer (current-buffer) t)))
+  (when-let* ((buf (other-buffer (current-buffer) t)))
     (when (buffer-live-p buf)
       (with-current-buffer buf
         (my/save-buffer-if-reasonable)))))

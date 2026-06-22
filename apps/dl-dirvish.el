@@ -114,7 +114,7 @@ Use alt-enter (broot\\='s `:cd' verb) on a directory to select it."
     (my/file-manager--launch
       "broot" (list "--outcmd" tmp) "broot" tmp
       (lambda (text)
-        (when-let ((path (my/broot--parse-outcmd text)))
+        (when-let* ((path (my/broot--parse-outcmd text)))
           (cond ((file-directory-p path) (dired path))
             ((file-exists-p path) (find-file path))))))))
 

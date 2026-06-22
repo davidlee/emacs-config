@@ -21,7 +21,7 @@
   ;; it'd be nice if there were a simpler way
   (defun my/project-try-local (dir)
     "Detect a project root by looking for explicit project markers above DIR."
-    (when-let ((root
+    (when-let* ((root
                  (cl-some
                    (lambda (marker)
                      (locate-dominating-file dir marker))

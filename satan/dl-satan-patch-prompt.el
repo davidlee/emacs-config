@@ -59,15 +59,15 @@ Recognised keys: :note_context :memory_matches :proposal_id
   (let* ((parts
           (delq nil
                 (list
-                 (when-let ((s (plist-get context :note_context)))
+                 (when-let* ((s (plist-get context :note_context)))
                    (format "note context:\n%s" s))
-                 (when-let ((m (plist-get context :memory_matches)))
+                 (when-let* ((m (plist-get context :memory_matches)))
                    (format "memory matches: %d" (length m)))
-                 (when-let ((p (plist-get context :proposal_id)))
+                 (when-let* ((p (plist-get context :proposal_id)))
                    (format "proposal: %s" p))
-                 (when-let ((r (plist-get context :mode_run_id)))
+                 (when-let* ((r (plist-get context :mode_run_id)))
                    (format "mode run: %s" r))
-                 (when-let ((src (plist-get context :source)))
+                 (when-let* ((src (plist-get context :source)))
                    (format "source: %S" src))))))
     (if parts (mapconcat #'identity parts "\n\n") "")))
 

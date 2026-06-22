@@ -642,9 +642,9 @@ success or an error string on failure."
             (p  (plist-get r :payload)))
         (cond
          ((equal ev "tool-call")
-          (when-let ((id (plist-get p :id))) (puthash id t calls)))
+          (when-let* ((id (plist-get p :id))) (puthash id t calls)))
          ((or (equal ev "tool-result") (equal ev "tool-denied"))
-          (when-let ((id (plist-get p :id))) (puthash id t results))))))
+          (when-let* ((id (plist-get p :id))) (puthash id t results))))))
     (let ((ok t))
       (maphash (lambda (id _) (unless (gethash id results) (setq ok nil))) calls)
       ok)))

@@ -343,7 +343,7 @@ This does not kill the persistent shpool session."
     (user-error "Empty shpool session name"))
   (when (yes-or-no-p (format "Kill persistent shpool session %S? " name))
     (let ((output (my/shpool--command-output "kill" name)))
-      (when-let ((buf (get-buffer (my/shpool-buffer-name name))))
+      (when-let* ((buf (get-buffer (my/shpool-buffer-name name))))
         (kill-buffer buf))
       (my/shpool--forget-session name)
       (if (string-empty-p output)

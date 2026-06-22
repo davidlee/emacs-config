@@ -59,14 +59,14 @@ Helper for tests: calls `my/journal--links-string' and parses out the
 first pipe-separated line between the drawer boundaries.
 For weeklies, a second line with day links is available via
 `my/journal--nav-day-links'."
-  (when-let ((drawer (my/journal--links-string)))
+  (when-let* ((drawer (my/journal--links-string)))
     (when (string-match ":NAV:\n\\([^\n]+\\)" drawer)
       (match-string 1 drawer))))
 
 (defun my/journal--nav-day-links ()
   "Return the second line (day links) of the :NAV: drawer content.
 Returns nil if there's only one line (i.e. daily notes)."
-  (when-let ((drawer (my/journal--links-string)))
+  (when-let* ((drawer (my/journal--links-string)))
     (when (string-match ":NAV:\n[^\n]+\n\\([^\n]+\\)" drawer)
       (match-string 1 drawer))))
 

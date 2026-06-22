@@ -36,7 +36,7 @@ LIMIT bounds the candidate pool (default 50).  Falls back to plain
         (read-string prompt)
       (let* ((annotate
               (lambda (id)
-                (when-let ((row (gethash id by-id)))
+                (when-let* ((row (gethash id by-id)))
                   (format "  %-18s  %s  %s"
                           (plist-get row :kind)
                           (plist-get row :observed_end_at)
