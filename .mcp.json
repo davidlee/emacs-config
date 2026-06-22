@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "doctrine": {
+      "args": [
+        "serve",
+        "--mcp"
+      ],
+      "command": "/nix/store/sb67sidgzwa7znskp9sdgs4x535hips4-doctrine-0.5.1/bin/doctrine"
+    }
+  }
+}

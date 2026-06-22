@@ -9,13 +9,18 @@ oauth2.*
 .claude/settings.local.json
 .org-id-locations
 .mc-lists.el
+
 /eca
 /.spec-driver/run/events.jsonl
 /supabase/*
 
 .spec-driver
 
-
+.claude
+.pi
+.agents
+.codex
+.dirge
 _claude
 
 
