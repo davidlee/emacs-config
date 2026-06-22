@@ -238,12 +238,18 @@
             extraOptions = jailEnvOptions;
             inherit workspaceDeps;
           };
-          jailed-codex = jailLib.makeJailedCodex {
+          jailed-dirge = jailLib.makeJailedDirge {
             profile = "specDev";
             extraPkgs = projectPkgs;
-            extraOptions = jailEnvOptions;
+            extraOptions = apiKeyJailOptions;
             inherit workspaceDeps;
           };
+          # jailed-codex = jailLib.makeJailedCodex {
+          #   profile = "specDev";
+          #   extraPkgs = projectPkgs;
+          #   extraOptions = jailEnvOptions;
+          #   inherit workspaceDeps;
+          # };
           # jailed-zero = jailLib.makeJailedZerostack {
           #   profile = "specDev";
           #   extraPkgs = projectPkgs;
