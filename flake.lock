@@ -184,11 +184,11 @@
         "rust-overlay": "rust-overlay"
       },
       "locked": {
-        "lastModified": 1782995200,
-        "narHash": "sha256-6eCxbCd5rT76xxoCUqx7P8GjweZDjtyNyGD5dUcBnuc=",
+        "lastModified": 1782998575,
+        "narHash": "sha256-tMpb1b6/cU9M0q8W2gy3tR4PKG73wo318t3+QBtOHu4=",
         "owner": "davidlee",
         "repo": "doctrine",
-        "rev": "60cb732db8808b18292cf0ce74f7d843604ba490",
+        "rev": "71d0f2691618105bb9b1c059aa4a88b6d0b253a3",
         "type": "github"
       },
       "original": {
@@ -217,7 +217,7 @@
       "flake": false,
       "locked": {
         "lastModified": 0,
-        "narHash": "sha256-dUoaB+toH5sHnr8ED9CJa58rO1dBQvDXTEdwe6zBZQc=",
+        "narHash": "sha256-zdoSm3n1OjNtPzkQ/BPKTsgQwFOy+6lX27+DTne68mU=",
         "path": ".",
         "type": "path"
       },
@@ -248,8 +248,8 @@
         "nixpkgs-stable": "nixpkgs-stable_2"
       },
       "locked": {
-        "lastModified": 1782988867,
-        "narHash": "sha256-BP7zGqBgVl67PCF6ftjQXLuBJbBdLsQN1l6NToxcVJ0=",
+        "lastModified": 1782991601,
+        "narHash": "sha256-AyzeMluR5O3NplsS8XfKCh1EeKwTMbHAvszOGd0QxzI=",
         "type": "tarball",
         "url": "https://github.com/nix-community/emacs-overlay/archive/master.tar.gz"
       },
@@ -452,11 +452,11 @@
         "treefmt-nix": "treefmt-nix_2"
       },
       "locked": {
-        "lastModified": 1782981686,
-        "narHash": "sha256-+u0g5NKXt67e4MxX2hvECg0ArGRbtCJPgbH8tuTNraw=",
+        "lastModified": 1782998715,
+        "narHash": "sha256-KReLqVynLpjDtqoXWn57wcQPSwSSMisZs0l4QcRINLU=",
         "owner": "numtide",
         "repo": "llm-agents.nix",
-        "rev": "cb156ebf811904005c136ca42a467a6f12de6cb8",
+        "rev": "9e55a43abe4371735022344bd5912c3109a755b4",
         "type": "github"
       },
       "original": {
@@ -742,8 +742,8 @@
         ]
       },
       "locked": {
-        "lastModified": 1782979985,
-        "narHash": "sha256-/ozmfw0OUsZLszTNnzjX5uBEf4rl6OIZNCpLzg8BPAs=",
+        "lastModified": 1783000016,
+        "narHash": "sha256-f9gAmLF543Ue4XOWZjUJTv+67fC+2i/JHorSrcvogLQ=",
         "path": "/home/david/flakes/pub",
         "type": "path"
       },
