@@ -7,7 +7,7 @@
     devshell.url = "github:numtide/devshell";
     emacs-overlay.url = "https://github.com/nix-community/emacs-overlay/archive/master.tar.gz";
     emacs-config = {
-      url = "path:/home/david/.emacs.d";
+      url = "path:.";
       flake = false;
     };
     pub = {

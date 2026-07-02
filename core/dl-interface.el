@@ -148,12 +148,12 @@
 (use-package breadcrumb
   :defer t)
 
-(use-package frame-mode
-  :demand t
-  :config
-  (progn
-    (frame-mode +1)
-    (frame-keys-mode +1)))
+;; (use-package frame-mode
+;;   :demand t
+;;   :config
+;;   (progn
+;;     (frame-mode +1)
+;;     (frame-keys-mode +1)))
 
 (provide 'dl-interface)
 ;;; dl-interface.el ends here
