@@ -19,7 +19,7 @@
 
   ;; Identity
   (user-full-name "David Lee")
-  (user-email-address "dav@davlee.com")
+  (user-mail-address "dav@davlee.com")
 
   ;; put custom vars from configurators somewhere other than my init.el
   (custom-file (locate-user-emacs-file "custom-vars.el"))

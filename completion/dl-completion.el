@@ -53,7 +53,6 @@
   :init
   (savehist-mode 1)
   :custom
-  (history-length 1000)
   (savehist-save-minibuffer-history t))
 
 ;; Remember recent files.

@@ -18,6 +18,9 @@
   (org-use-speed-commands t)
   (org-log-done 'time)
   ;; (org-ellipsis "  ")
+  (org-catch-invisible-edits 'show-and-error)
+  (org-special-ctrl-a/e t)
+  (org-auto-align-tags nil)
   (org-ellipsis "…")
   (org-pretty-entities t)
   (org-agenda-block-separator "")
@@ -44,10 +47,7 @@
           (org-agenda-finalize . org-modern-agenda))
 
   :custom
-  (org-auto-align-tags nil)
   (org-tags-column 0)
-  (org-catch-invisible-edits 'show-and-error)
-  (org-special-ctrl-a/e t)
   ;; styling
   (org-agenda-tags-column 0)
   (org-modern-star 'replace)
@@ -68,7 +68,7 @@
 (set-face-background 'fringe (face-attribute 'default :background))
 
 (use-package org-bullets
-  :hook (org-mode .(lambda  ()org-bullets-mode))
+  :hook (org-mode .(lambda  () org-bullets-mode 1))
   :after org-modern)
 
 (defun my/org-hl-line-strip-bg ()

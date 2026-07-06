@@ -17,6 +17,7 @@
   (denote-file-type 'org)
   (denote-prompts '(title keywords)))
 
+(use-package denote-explore) ; todo setup
 
 (defun my/denote-kill-link-to-current-file (&optional id-only)
   "Copy a denote link for the current buffer's file to the kill-ring.
@@ -24,12 +25,12 @@ With prefix arg ID-ONLY, omit the title and store the bare `[[denote:ID]]'."
   (interactive "P")
   (unless buffer-file-name (user-error "Buffer has no file"))
   (let* ((file  buffer-file-name)
-         (id    (denote-retrieve-filename-identifier file))
-         (type  (denote-filetype-heuristics file))
-         (title (denote-retrieve-front-matter-title-value file type))
-         (link  (if id-only
-                  (format "[[denote:%s]]" id)
-                  (format "[[denote:%s][%s]]" id (or title "")))))
+          (id    (denote-retrieve-filename-identifier file))
+          (type  (denote-filetype-heuristics file))
+          (title (denote-retrieve-front-matter-title-value file type))
+          (link  (if id-only
+                   (format "[[denote:%s]]" id)
+                   (format "[[denote:%s][%s]]" id (or title "")))))
     (kill-new link)
     (message "Killed: %s" link)))
 

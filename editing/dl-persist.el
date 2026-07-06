@@ -54,10 +54,9 @@
 ;; File Revert
 
 
-;; (use-package saveplace
-;;   :init
-;;   (save-place-mode 1))
-
+(use-package saveplace
+  :init
+  (save-place-mode 1))
 
 (use-package emacs
   :ensure nil
@@ -126,6 +125,11 @@
 (add-hook 'buffer-list-update-hook #'my/save-buffer-on-focus-change)
 (add-function :after after-focus-change-function
   (lambda (&rest _) (my/save-all-file-buffers)))
+
+(use-package super-save
+  :ensure t
+  :config
+  (super-save-mode +1))
 
 ;; --------------------------------------------------------------------------------
 ;; Undo / Redo
