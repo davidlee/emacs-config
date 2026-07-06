@@ -5,7 +5,7 @@
         "serve",
         "--mcp"
       ],
-      "command": "/nix/store/sb67sidgzwa7znskp9sdgs4x535hips4-doctrine-0.5.1/bin/doctrine"
+      "command": "/nix/store/yi95iyl8xh70xya37j8nbrm1p652328r-doctrine-0.10.1/bin/doctrine"
     }
   }
 }
