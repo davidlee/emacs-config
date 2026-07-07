@@ -1,3 +1,5 @@
+;;; dl-dwim.el --- DESCR -*- lexical-binding: t; -*-
+
 ;; https://github.com/xenodium/dwim-shell-command
 
 ;; https://github.com/xenodium/dwim-shell-command/blob/main/dwim-shell-commands.el
@@ -18,3 +20,4 @@
   )
 
 (provide 'dl-dwim)
+;;; dl-dwim.el ends here

@@ -1,4 +1,4 @@
-                                        ; dl-denote-journal.el --- Daily / weekly journal notes (Denote-named) -*- lexical-binding: t; -*-
+;;; dl-denote-journal.el --- denote-journal -*- lexical-binding: t; -*-
 
 ;; Roll-own journal helpers: denote 4.1.3 ships without the
 ;; `denote-journal' submodule (it was split off in 4.x).  These functions
@@ -581,10 +581,10 @@ Works for all six journal types (personal/work × daily/weekly).
 Harmless for existing files, non-journal paths, and already-populated buffers.
 Intended for use in `find-file-hook'."
   (when (and (buffer-file-name)
-             (not (file-exists-p (buffer-file-name)))
-             (not (save-excursion
-                    (goto-char (point-min))
-                    (re-search-forward ":NAV:" nil t))))
+          (not (file-exists-p (buffer-file-name)))
+          (not (save-excursion
+                 (goto-char (point-min))
+                 (re-search-forward ":NAV:" nil t))))
     (when-let* ((realm-type (my/journal--buffer-realm))
                  (realm (car realm-type))
                  (type (cadr realm-type))
@@ -596,22 +596,22 @@ Intended for use in `find-file-hook'."
                      ('(work . daily)      ":work:journal:")
                      ('(personal . weekly) ":weekly:journal:")
                      ('(work . weekly)     ":work:weekly:journal:")))
-             (time (pcase type
-                     ('daily  (my/journal--slug-date slug))
-                     ('weekly (when-let* ((yw (my/journal--slug-iso-week slug))
-                                          (year (car yw))
-                                          (week (cadr yw)))
-                                (my/journal--iso-week-monday year week)))))
-             (skeleton (if (eq type 'daily)
-                           (my/journal--day-skeleton tags time)
-                         (my/journal--week-skeleton tags time))))
+              (time (pcase type
+                      ('daily  (my/journal--slug-date slug))
+                      ('weekly (when-let* ((yw (my/journal--slug-iso-week slug))
+                                            (year (car yw))
+                                            (week (cadr yw)))
+                                 (my/journal--iso-week-monday year week)))))
+              (skeleton (if (eq type 'daily)
+                          (my/journal--day-skeleton tags time)
+                          (my/journal--week-skeleton tags time))))
         (insert skeleton)
         (when-let* ((links (my/journal--links-string)))
           (goto-char (point-min))
           (if (re-search-forward "^\\* " nil t)
-              (progn
-                (forward-line -1)
-                (insert "\n" links))
+            (progn
+              (forward-line -1)
+              (insert "\n" links))
             (goto-char (point-max))
             (insert "\n" links)))))))
 

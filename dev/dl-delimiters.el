@@ -1,3 +1,5 @@
+;;; dl-delimiters.el --- DESCR -*- lexical-binding: t; -*-
+
 (use-package rainbow-delimiters)
 (use-package rainbow-mode)
 
@@ -8,3 +10,4 @@
   :commands rainbow-mode)
 
 (provide 'dl-delimiters)
+;;; dl-delimiters.el ends here

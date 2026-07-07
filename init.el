@@ -82,7 +82,7 @@
 (require 'dl-shpool)
 (require 'dl-magit)
 (require 'dl-claude)
-(require 'dl-eaf)
+;; (require 'dl-eaf)
 (require 'dl-agent-shell)
 (require 'dl-smudge)
 (require 'dl-secret)
@@ -102,4 +102,3 @@
 (require 'dl-file-ops)
 
 ;;; init.el ends here
-(put 'secrets-mode 'disabled nil)
