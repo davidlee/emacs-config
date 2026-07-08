@@ -23,6 +23,12 @@
 (require 'use-package)
 (require 'package-vc)
 
+;; Don't pop *Warnings* for files lacking a lexical-binding cookie
+;; (third-party/legacy .el). Still logged, just not raised.
+(add-to-list 'warning-suppress-types '(files missing-lexbind-cookie))
+;; (add-to-list 'warning-suppress-types '(bytecomp))
+;; (add-to-list 'warning-suppress-types '(comp))
+
 (add-to-list 'default-frame-alist '(internal-border-width . 10))
 (setq underline-minimum-offset 3)
 (setq x-use-underline-position-properties nil)
