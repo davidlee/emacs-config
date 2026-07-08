@@ -130,6 +130,8 @@
         '';
 
         satanJailOptions = with jailLib.combinators; [
+          (unsafe-add-raw-args ''--bind "$HOME/dev/satan" "/workspace/satan"'') ## Migration !!
+
           (unsafe-add-raw-args ''--ro-bind "$HOME/notes" "/satan/notes"'')
           (unsafe-add-raw-args ''--bind "$HOME/notes/satan/hippocampus" "/satan/hippocampus"'')
           (unsafe-add-raw-args ''--bind "$SATAN_RUN_DIR" "/satan/run"'')

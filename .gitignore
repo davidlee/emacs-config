@@ -83,3 +83,4 @@ oauth2-auto.plist
 .doctrine/skills/*
 .doctrine/agents/*
 !.doctrine/agents/AGENTS.md
+.doctrine/dispatch/
