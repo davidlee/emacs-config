@@ -26,6 +26,111 @@ target = "RFC-001"
 label = "related"
 target = "SL-012"
 
+[[selector]]
+selector = "satan/dl-satan-trace.el"
+intent = "design-target"
+note = "SL-011 design §5 code-impact targets + test suites"
+
+[[selector]]
+selector = "satan/dl-satan-db.el"
+intent = "design-target"
+note = "SL-011 design §5 code-impact targets + test suites"
+
+[[selector]]
+selector = "satan/dl-satan-memory-evidence.el"
+intent = "design-target"
+note = "SL-011 design §5 code-impact targets + test suites"
+
+[[selector]]
+selector = "satan/dl-satan-tools-bough.el"
+intent = "design-target"
+note = "SL-011 design §5 code-impact targets + test suites"
+
+[[selector]]
+selector = "satan/dl-satan-tools-sway.el"
+intent = "design-target"
+note = "SL-011 design §5 code-impact targets + test suites"
+
+[[selector]]
+selector = "satan/dl-satan-tools-vcs.el"
+intent = "design-target"
+note = "SL-011 design §5 code-impact targets + test suites"
+
+[[selector]]
+selector = "satan/dl-satan-broker.el"
+intent = "design-target"
+note = "SL-011 design §5 code-impact targets + test suites"
+
+[[selector]]
+selector = "satan/dl-satan-context.el"
+intent = "design-target"
+note = "SL-011 design §5 code-impact targets + test suites"
+
+[[selector]]
+selector = "satan/dl-satan-patch-worktree.el"
+intent = "design-target"
+note = "SL-011 design §5 code-impact targets + test suites"
+
+[[selector]]
+selector = "satan/dl-satan-patch-runner.el"
+intent = "design-target"
+note = "SL-011 design §5 code-impact targets + test suites"
+
+[[selector]]
+selector = "satan/test/dl-satan-trace-test.el"
+intent = "design-target"
+note = "SL-011 design §5 code-impact targets + test suites"
+
+[[selector]]
+selector = "satan/test/dl-satan-db-test.el"
+intent = "design-target"
+note = "SL-011 design §5 code-impact targets + test suites"
+
+[[selector]]
+selector = "satan/test/dl-satan-memory-evidence-test.el"
+intent = "design-target"
+note = "SL-011 design §5 code-impact targets + test suites"
+
+[[selector]]
+selector = "satan/test/dl-satan-broker-test.el"
+intent = "design-target"
+note = "SL-011 design §5 code-impact targets + test suites"
+
+[[selector]]
+selector = "satan/test/dl-satan-context-test.el"
+intent = "design-target"
+note = "SL-011 design §5 code-impact targets + test suites"
+
+[[selector]]
+selector = "satan/test/dl-satan-patch-worktree-test.el"
+intent = "design-target"
+note = "SL-011 design §5 code-impact targets + test suites"
+
+[[selector]]
+selector = "satan/dl-satan-intervention.el"
+intent = "design-target"
+note = "PHASE-03: db-caller :label sites + migrate timeout opt-out + sway test reseat"
+
+[[selector]]
+selector = "satan/dl-satan-memory-migrate.el"
+intent = "design-target"
+note = "PHASE-03: db-caller :label sites + migrate timeout opt-out + sway test reseat"
+
+[[selector]]
+selector = "satan/dl-satan-memory-store.el"
+intent = "design-target"
+note = "PHASE-03: db-caller :label sites + migrate timeout opt-out + sway test reseat"
+
+[[selector]]
+selector = "satan/dl-satan-patch-store.el"
+intent = "design-target"
+note = "PHASE-03: db-caller :label sites + migrate timeout opt-out + sway test reseat"
+
+[[selector]]
+selector = "satan/test/test-sway-border.el"
+intent = "design-target"
+note = "PHASE-03: db-caller :label sites + migrate timeout opt-out + sway test reseat"
+
 # STRUCTURAL relations are uniform `[[relation]]` rows, never a typed
 # `[relationships]` axis (SL-048 "the cut"). Slices carry no typed STRUCTURAL
 # relation axes — the `[relationships]` table above holds only the dep/seq payload
