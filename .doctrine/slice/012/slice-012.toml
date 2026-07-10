@@ -8,7 +8,7 @@ tags = ["packaging", "refactor", "satan"]
 
 [relationships]
 needs = []                      # slice→work hard prerequisite
-after = []                      # slice→work soft sequence: { to, rank }
+after = [{ to = "SL-011", rank = 0 }]                      # slice→work soft sequence: { to, rank }
 
 [[selector]]
 selector = "satan/**"
@@ -16,27 +16,67 @@ intent = "scope-relevant"
 
 [[selector]]
 selector = "init.el"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "dev/dl-test.el"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "lisp/dl-sleipnir-doctor.el"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "lisp/test/dl-sleipnir-doctor-test.el"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "justfile"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "docs/satan/**"
-intent = "scope-relevant"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/satan.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/satan-custom.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/*.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/test/*.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/harness/**"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/bin/**"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/memory/**"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/protocol/**"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/patterns.eld"
+intent = "design-target"
+
+[[selector]]
+selector = "core/dl-path.el"
+intent = "design-target"
 
 [[relation]]
 label = "governed_by"

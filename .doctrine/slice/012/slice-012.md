@@ -16,8 +16,9 @@ standalone Elisp package as a prerequisite to future selective extractions.
 
 ### In scope
 
-1. **Move all of `satan/`** into a standalone Elisp package at `~/dev/satan-el/`
-   (or equivalent — determined in design).
+1. **Move all SATAN artifacts** out of `.emacs.d` into `/workspace/satan/`:
+   - `satan/` → `/workspace/satan/satan/` (elisp, harness, bin, memory, protocol, data)
+   - `docs/satan/` → `/workspace/satan/docs/` (architecture docs)
 
 2. **Rename the `dl-` and `my/` prefixes** throughout. SATAN as a standalone
    package owns its namespace:
@@ -29,9 +30,11 @@ standalone Elisp package as a prerequisite to future selective extractions.
      becomes a soft dependency with `declare-function` + `fboundp` guard (already
      soft, just rename)
 
-3. **Resolve `dl-notes-paths` hard coupling.** SATAN's 6 files require
-   `dl-notes-paths` for `dl-notes-root` and path constants. Replace with a
-   `satan-notes-root` defcustom, set by the consuming config.
+3. **Resolve `dl-notes-paths` hard coupling.** SATAN's 10 files require
+   `dl-notes-paths` for `dl-notes-root`, `dl-notes-journal-dir`,
+   `dl-notes-weekly-dir`, and `dl-notes-inbox-file`. Replace with a
+   `satan-notes-root` defcustom (paths derived below it), set by the
+   consuming config.
 
 4. **Add proper ELPA package boilerplate:**
    - `satan.el` entry point (renamed from `dl-satan.el`)
@@ -75,14 +78,19 @@ standalone Elisp package as a prerequisite to future selective extractions.
 
 ## Summary
 
-Extract SATAN into `~/dev/satan-el/` as a standalone Elisp package with its own
-namespace (`satan-*`), its own tests, and a `satan-notes-root` defcustom
-replacing the `dl-notes-paths` hard coupling. Wire it as a `use-package` with a
-`load-path` entry. The config's existing `(require 'dl-satan)` and Nix config-dir
-reference are removed. `just check` remains green.
+Extract SATAN into `/workspace/satan/` (`~/dev/satan` on host) as a standalone
+Elisp package with its own namespace (`satan-*`), its own tests and test
+runner, and a `satan-notes-root` defcustom replacing the `dl-notes-paths` hard
+coupling. Wire it as a `use-package` with a `load-path` entry. The config's
+existing `(require 'dl-satan)`, its satan flake outputs (gptel/fake harness,
+jail options), and the config-dir reference are removed. `just check` remains
+green in both repos. Runs after SL-011 closes (design D9).
 
 ## Follow-Ups
 
 - IMP-006..009 (selective daemon extractions) — easier now that SATAN is a package
 - Deferred: defcustom consolidation (`satan-custom.el`)
 - Deferred: rename `my/` interactive commands inside SATAN (may be design-time decision)
+- `/reviewing-memory` pass + boot-sector re-seat after the move (17 memories
+  reference `dl-satan-*` / `.emacs.d/satan` paths)
+- `.doctrine/` bootstrap in the satan repo (deferred from design D1)
