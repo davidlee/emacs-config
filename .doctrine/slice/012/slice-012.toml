@@ -1,9 +1,9 @@
 id = 12
 slug = "extract-satan-to-standalone-elisp-package"
 title = "Extract SATAN to standalone Elisp package"
-status = "design"
+status = "plan"
 created = "2026-07-08"
-updated = "2026-07-08"
+updated = "2026-07-10"
 tags = ["packaging", "refactor", "satan"]
 
 [relationships]
