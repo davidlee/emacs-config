@@ -60,16 +60,27 @@ Docs (`docs/satan/**`) — regenerate or update. Sample paths and symbol names
 embedded in prose should reflect new naming. Do not rewrite entire docs; use
 search-replace for mechanical name changes, hand-edit where context demands.
 
-Harness Python (`satan/harness/`) — no rename. References SATAN env vars
-(`SATAN_RUN_ID`, etc.) which are wire-level, not symbol names.
+Harness Python (`satan/harness/`) — no *behavioural* rename. References SATAN
+env vars (`SATAN_RUN_ID`, etc.) which are wire-level, not symbol names. But
+its comments cite elisp artifacts by old name (`protocol.py` ↔
+`dl-satan-protocol.el`, `dl-satan-audit-validate-actions`) — comment
+references update with the sweep (RV-010 F-7). The rename gate
+(`rg 'dl-satan-'` / `rg 'my/satan-'` → empty) runs **repo-wide**, harness and
+protocol fixtures included, not just code/tests/bin/docs.
 
 ### D4 — Coupling: `dl-notes-paths` → defcustoms
 
-**Actual coupling surface (verified 2026-07-10):** **10 files** require
-`dl-notes-paths` (`context, mode, motive, patch-prompt, tools-atsatan,
-tools-hippocampus, tools-inbox, tools-notes, tools-org, tools`), using **4
-symbols**: `dl-notes-root` (22×), `dl-notes-journal-dir` (3×),
-`dl-notes-weekly-dir` (1×), `dl-notes-inbox-file` (1×).
+**Actual coupling surface (verified 2026-07-10, re-verified via RV-010 F-3):**
+**13 production files** consume `dl-notes-*` symbols — 10 with a hard
+`(require 'dl-notes-paths)` (`context, mode, motive, patch-prompt,
+tools-atsatan, tools-hippocampus, tools-inbox, tools-notes, tools-org,
+tools`) plus **3 transitive consumers with no require** (`run, broker,
+sensor-wpm` — they rely on another module having loaded the feature). Symbols:
+`dl-notes-root`, `dl-notes-journal-dir`, `dl-notes-weekly-dir`,
+`dl-notes-inbox-file`. **2 test files** (`test/dl-satan-context-test.el`,
+`test/dl-satan-integration-test.el`) also bind/reference `dl-notes-*` and
+convert with the rest. The decouple gate is consumer-based
+(`rg 'dl-notes-' → empty` repo-wide), not require-based.
 
 Two new surfaces in the satan package (`satan/satan.el` or dedicated
 `satan/satan-custom.el`):
@@ -123,8 +134,9 @@ Consumer wiring in `.emacs.d/init.el`:
      (my/journal--today-file dl-notes-journal-dir "journal"))))
 ```
 
-The 10 files drop `(require 'dl-notes-paths)`; journal-today references
-(`dl-satan-context.el`, `dl-satan-tools-org.el`) use
+The 10 requiring files drop `(require 'dl-notes-paths)`; all 13 consumers
+(and the 2 test files) replace their `dl-notes-*` references per the table;
+journal-today references (`dl-satan-context.el`, `dl-satan-tools-org.el`) use
 `(funcall satan-journal-today)` when non-nil.
 
 Weekly journal (`dl-satan-tools-org.el` line 51: `my/journal--week-file`) is a
@@ -184,8 +196,16 @@ own repos unchanged.
 
 ### D7 — Test infrastructure
 
-**`.emacs.d/`** — `dev/dl-test.el` drops `satan/test` from `dl-test-suite-dirs`.
-`just check` no longer runs satan tests.
+**`.emacs.d/`** — `dev/dl-test.el` drops `satan/test` from `dl-test-suite-dirs`,
+**and** the `Justfile` `check` recipe drops its hardcoded `-L satan
+-L satan/test` load-path flags (RV-010 F-8 — the batch entrypoint bypasses
+`dl-path.el`, so editing dl-path alone leaves `just check` pointing at a
+deleted tree). `just check` no longer runs satan tests. The config-side doctor
+test (`lisp/test/dl-sleipnir-doctor-test.el`) requires
+`dl-satan-memory-evidence` and binds `dl-satan-*` vars — it is rewritten
+against the renamed package interface (satan on load-path via D5), or its
+satan-coupled cases move into the satan repo (RV-010 F-4; decide at
+phase-plan).
 
 **Test runner moves with the tests.** A naive `mapc load-file test/*.el` recipe
 regresses on behaviour `dev/dl-test.el` already owns: (a) suites that `require`
@@ -197,6 +217,13 @@ So: copy `dev/dl-test.el` into the satan repo as `dev/satan-test.el`, suite
 dirs parameterised to `'("satan/test")`, symbols renamed per D3. The config's
 `dl-test.el` keeps `lisp/test` only. Deliberate clone — the repo boundary is
 the DRY boundary now.
+
+**Runner anchor (RV-010 F-1):** `dl-test.el` expands suite dirs under
+`user-emacs-directory`, which in batch resolves to `~/.emacs.d` — wrong repo.
+`satan-test.el` must anchor to the repo root instead (resolve relative to
+`load-file-name` / `default-directory`), or the justfile must pass
+`--init-directory "{{justfile_directory()}}"`. Do both belt-and-braces is
+unnecessary — anchor the runner to its own location; no Emacs init implied.
 
 **Linter script:** `bin/elisp-locate-paren-error` lives in `.emacs.d/bin/` and
 is not in the D1 move table. Copy it into the satan repo's `bin/` (self-
@@ -229,6 +256,16 @@ production socket in batch).
 PSQL/supabase: the satan repo's devshell already provides `postgresql_18` and
 `supabase-cli`. Tests that need a DB self-isolate via the existing
 `SATAN_DB_HOST` pattern; suites skip DB tests when the DB is unreachable.
+
+**Flake tracked-file trap (RV-010 F-2):** nix flake evaluation sees only
+git-tracked files. The copied tree must be `git add`ed in the satan repo
+before any flake eval/build gate runs — untracked `.el`/`harness` files are
+invisible to the build and fail silently as "missing path".
+
+**Runtime dependency note (RV-010 F-5, from SL-011):** SL-011 makes
+`timeout(1)` (coreutils) a runtime dependency of the package. Package docs /
+`Package-Requires` commentary must record it (elisp can't declare a binary
+dep; a README/Commentary note + devshell coverage is the mechanism).
 
 ### D8 — flake mount paths (jail)
 

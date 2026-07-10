@@ -1,0 +1,189 @@
+id    = 10
+slug  = "external-adversarial-review-codex-sl-012-design-plan"
+title = "External adversarial review (codex): SL-012 design + plan"
+# no status — a review's status is DERIVED from its findings (ADR-007 D-C8), so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "plan"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "codex"
+responder = "responder"
+
+[target]                   # the outbound `reviews` edge (ADR-004): RV-NNN ──reviews──▶ <ref>
+ref   = "SL-012"
+
+[[finding]]
+id = "F-1"
+status = "answered"
+severity = "major"
+title = "PHASE-01 test recipe resolves suites from the wrong repo"
+detail = """
+SL-012 D7's proposed /workspace/satan justfile omits --init-directory even though the copied runner resolves suite dirs relative to user-emacs-directory. Evidence: .doctrine/slice/012/design.md:205-221 proposes 
+Error: file-missing ("Cannot open load file" "No such file or directory" "satan-test")
+  command-line-1(("-L" "./satan" "-L" "./dev" "-l" "satan-test"))
+  command-line()
+  normal-top-level(); dev/dl-test.el:30-31,45 expand suite dirs under user-emacs-directory; empirical probe ~/.emacs.d/ run in /workspace/satan prints /root/.emacs.d/ and /home/david/.emacs.d/satan/test prints /root/.emacs.d/satan/test. Reproduction: run those two emacs --batch probes from /workspace/satan."""
+disposition = "fixed"
+response = "Integrated. design.md D7 'Runner anchor' para: satan-test.el anchors suite dirs to repo root via load-file-name, not user-emacs-directory; PHASE-01 EX-3 amended."
+
+[[finding]]
+id = "F-2"
+status = "answered"
+severity = "major"
+title = "PHASE-01 ignores the git-tracked-file gate in the destination flake repo"
+detail = """
+The plan copies a new Elisp tree into /workspace/satan and then asks Nix to evaluate/build it, but never requires those copied files to be git-tracked. Evidence: AGENTS.md:73 says adding a new .el file requires ; AGENTS.md:80 states flake builds see only git-tracked files; .doctrine/slice/012/plan.toml:28-38 defines PHASE-01 success entirely in terms of copied files plus flake eval/build; .gitignore
+AGENTS.md
+CLAUDE.md
+flake.lock
+flake.nix
+justfile currently shows only the scaffold (.gitignore, AGENTS.md, CLAUDE.md, flake.lock, flake.nix, justfile). Reproduction: .gitignore
+AGENTS.md
+CLAUDE.md
+flake.lock
+flake.nix
+justfile and compare against PHASE-01 EX-1/VA-3."""
+disposition = "fixed"
+response = "Integrated. design.md D7 'Flake tracked-file trap' para; new PHASE-01 EX-6: git add copied tree before any flake eval/build gate."
+
+[[finding]]
+id = "F-3"
+status = "answered"
+severity = "major"
+title = "D4 understates the dl-notes-paths coupling surface"
+detail = """
+SL-012 D4 claims the coupling surface is '10 files require dl-notes-paths' using four symbols. The tree disagrees. Evidence: .doctrine/slice/012/design.md:68-72 makes the claim; satan/dl-satan-broker.el
+satan/dl-satan-context.el
+satan/dl-satan-mode.el
+satan/dl-satan-motive.el
+satan/dl-satan-patch-prompt.el
+satan/dl-satan-run.el
+satan/dl-satan-sensor-wpm.el
+satan/dl-satan-tools-atsatan.el
+satan/dl-satan-tools-hippocampus.el
+satan/dl-satan-tools-inbox.el
+satan/dl-satan-tools-notes.el
+satan/dl-satan-tools-org.el
+satan/dl-satan-tools.el returns 13 production files, including satan/dl-satan-run.el:14-24, satan/dl-satan-broker.el:42-52, and satan/dl-satan-sensor-wpm.el:19-24, which consume dl-notes-root via  without any . Tests also carry old bindings in satan/test/dl-satan-context-test.el:188-207 and satan/test/dl-satan-integration-test.el:42-43. Reproduction: run the rg command above, then inspect those file ranges."""
+disposition = "fixed"
+response = "Integrated. D4 rewritten: 13 production consumers (10 requires + 3 transitive: run, broker, sensor-wpm) + 2 test files; decouple gate consumer-based (rg 'dl-notes-' empty repo-wide). PHASE-03 objective amended."
+
+[[finding]]
+id = "F-4"
+status = "answered"
+severity = "major"
+title = "PHASE-04 misses config-repo test consumers of the old dl-satan interface"
+detail = '''
+The cutover criteria rename init.el and dl-sleipnir-doctor, but they omit lisp/test consumers that still require the old SATAN feature surface. Evidence: .doctrine/slice/012/plan.toml:94-109 lists PHASE-04 EX-2/EX-3; lisp/test/dl-sleipnir-doctor-test.el:18:(require 'dl-satan-memory-evidence)
+lisp/test/dl-sleipnir-doctor-test.el:52:  "Eval BODY with `dl-satan-tools-activity-dir' bound to a fresh tmp tree.
+lisp/test/dl-sleipnir-doctor-test.el:56:  `(let* ((dl-satan-tools-activity-dir
+lisp/test/dl-sleipnir-doctor-test.el:60:           (make-directory (expand-file-name "segments" dl-satan-tools-activity-dir) t)
+lisp/test/dl-sleipnir-doctor-test.el:61:           (make-directory (expand-file-name "current" dl-satan-tools-activity-dir) t)
+lisp/test/dl-sleipnir-doctor-test.el:63:       (delete-directory dl-satan-tools-activity-dir t))))
+lisp/test/dl-sleipnir-doctor-test.el:75:               dl-satan-tools-activity-dir))
+lisp/test/dl-sleipnir-doctor-test.el:85:                                dl-satan-tools-activity-dir)))
+lisp/test/dl-sleipnir-doctor-test.el:119:        (dl-satan-memory-evidence-segment-stale-seconds 1800))
+lisp/dl-sleipnir-doctor.el:7:(declare-function dl-satan-mode-check-tool-references "dl-satan-mode" ())
+lisp/dl-sleipnir-doctor.el:8:(declare-function dl-satan-budget-today-total "dl-satan-budget" (runs-dir &optional time))
+lisp/dl-sleipnir-doctor.el:9:(declare-function dl-satan-budget-exceeded-p "dl-satan-budget" (runs-dir &optional time))
+lisp/dl-sleipnir-doctor.el:10:(declare-function dl-satan-memory-store-recent "dl-satan-memory-store" (&rest args))
+lisp/dl-sleipnir-doctor.el:11:(declare-function dl-satan-broker-run-dirs-for-date "dl-satan-broker" (runs-dir date-prefix))
+lisp/dl-sleipnir-doctor.el:12:(declare-function dl-satan-broker--failure-streak-count "dl-satan-broker" (runs-dir))
+lisp/dl-sleipnir-doctor.el:13:(declare-function dl-satan-broker--run-id-from-leaf "dl-satan-broker" (name))
+lisp/dl-sleipnir-doctor.el:14:(declare-function dl-satan-patch-runner-active-p "dl-satan-patch-runner" ())
+lisp/dl-sleipnir-doctor.el:15:(declare-function dl-satan-patch-store-list "dl-satan-patch-store" (&rest args))
+lisp/dl-sleipnir-doctor.el:16:(declare-function dl-satan-memory-evidence--current-window-status "dl-satan-memory-evidence" (path now))
+lisp/dl-sleipnir-doctor.el:17:(declare-function dl-satan-memory-evidence--segments-status "dl-satan-memory-evidence" (path start end limit now))
+lisp/dl-sleipnir-doctor.el:21:(defvar dl-satan-runs-dir)
+lisp/dl-sleipnir-doctor.el:22:(defvar dl-satan-budget-daily-tokens)
+lisp/dl-sleipnir-doctor.el:23:(defvar dl-satan-patch-runner-enabled)
+lisp/dl-sleipnir-doctor.el:24:(defvar dl-satan-patch-worktree-root)
+lisp/dl-sleipnir-doctor.el:25:(defvar dl-satan-tools-activity-dir)
+lisp/dl-sleipnir-doctor.el:84:  (and (featurep 'dl-satan-broker) (boundp 'dl-satan-runs-dir)))
+lisp/dl-sleipnir-doctor.el:87:  (and (featurep 'dl-satan-patch-store) (featurep 'dl-satan-patch-runner)))
+lisp/dl-sleipnir-doctor.el:90:  (and (featurep 'dl-satan-memory-evidence)
+lisp/dl-sleipnir-doctor.el:91:       (boundp 'dl-satan-tools-activity-dir)))
+lisp/dl-sleipnir-doctor.el:124:  (if (not (fboundp 'dl-satan-mode-check-tool-references))
+lisp/dl-sleipnir-doctor.el:128:          (dl-satan-mode-check-tool-references)
+lisp/dl-sleipnir-doctor.el:135:  (if (not (and (fboundp 'dl-satan-budget-today-total)
+lisp/dl-sleipnir-doctor.el:136:                (fboundp 'dl-satan-budget-exceeded-p)))
+lisp/dl-sleipnir-doctor.el:138:    (let* ((total (dl-satan-budget-today-total dl-satan-runs-dir))
+lisp/dl-sleipnir-doctor.el:139:           (exceeded (dl-satan-budget-exceeded-p dl-satan-runs-dir))
+lisp/dl-sleipnir-doctor.el:140:           (ceiling (and (boundp 'dl-satan-budget-daily-tokens)
+lisp/dl-sleipnir-doctor.el:141:                         dl-satan-budget-daily-tokens)))
+lisp/dl-sleipnir-doctor.el:152:  (if (not (fboundp 'dl-satan-memory-store-recent))
+lisp/dl-sleipnir-doctor.el:154:    (let ((result (dl-satan-memory-store-recent :limit 1)))
+lisp/dl-sleipnir-doctor.el:166:           (dirs (dl-satan-broker-run-dirs-for-date dl-satan-runs-dir prefix))
+lisp/dl-sleipnir-doctor.el:185:  (if (not (fboundp 'dl-satan-broker--failure-streak-count))
+lisp/dl-sleipnir-doctor.el:187:    (let ((streak (dl-satan-broker--failure-streak-count dl-satan-runs-dir)))
+lisp/dl-sleipnir-doctor.el:198:    (let* ((link (expand-file-name "most-recent" dl-satan-runs-dir))
+lisp/dl-sleipnir-doctor.el:203:                        (if (fboundp 'dl-satan-broker--run-id-from-leaf)
+lisp/dl-sleipnir-doctor.el:204:                            (dl-satan-broker--run-id-from-leaf target)
+lisp/dl-sleipnir-doctor.el:255:           (root dl-satan-tools-activity-dir)
+lisp/dl-sleipnir-doctor.el:265:                   (car (dl-satan-memory-evidence--current-window-status
+lisp/dl-sleipnir-doctor.el:268:                   (car (dl-satan-memory-evidence--segments-status
+lisp/dl-sleipnir-doctor.el:273:                   (car (dl-satan-memory-evidence--segments-status
+lisp/dl-sleipnir-doctor.el:295:    (let* ((enabled (and (boundp 'dl-satan-patch-runner-enabled)
+lisp/dl-sleipnir-doctor.el:296:                         dl-satan-patch-runner-enabled))
+lisp/dl-sleipnir-doctor.el:297:           (active (and (fboundp 'dl-satan-patch-runner-active-p)
+lisp/dl-sleipnir-doctor.el:298:                        (dl-satan-patch-runner-active-p))))
+lisp/dl-sleipnir-doctor.el:306:  (if (not (fboundp 'dl-satan-patch-store-list))
+lisp/dl-sleipnir-doctor.el:308:    (let ((result (dl-satan-patch-store-list :state "queued")))
+lisp/dl-sleipnir-doctor.el:320:  (if (not (fboundp 'dl-satan-patch-store-list))
+lisp/dl-sleipnir-doctor.el:322:    (let ((result (dl-satan-patch-store-list :state "needs_review")))
+lisp/dl-sleipnir-doctor.el:334:  (if (not (and (boundp 'dl-satan-patch-worktree-root)
+lisp/dl-sleipnir-doctor.el:335:                (file-directory-p dl-satan-patch-worktree-root)))
+lisp/dl-sleipnir-doctor.el:337:    (let* ((entries (directory-files dl-satan-patch-worktree-root nil "\\`[^.]"))
+lisp/dl-sleipnir-doctor.el:341:                     (expand-file-name e dl-satan-patch-worktree-root)))
+dev/dl-test.el:7:;;                              let-binds dl-satan-db-host-override still finds lisp/test/dl-sleipnir-doctor-test.el:18 requiring dl-satan-memory-evidence plus old dl-satan variables throughout lines 52-119. Once PHASE-04 EX-5 deletes .emacs.d/satan and PHASE-02 renames features to satan-*, that test is no longer satisfiable unless it is rewritten, but no exit criterion names it. Reproduction: run the rg command above and inspect lisp/test/dl-sleipnir-doctor-test.el.'''
+disposition = "fixed"
+response = "Integrated. design.md D7 config-side para + PHASE-04 EX-3: dl-sleipnir-doctor-test.el rewritten against renamed interface or satan-coupled cases relocated; mechanism decided at phase-plan."
+
+[[finding]]
+id = "F-5"
+status = "answered"
+severity = "minor"
+title = "SL-011's new timeout(1) runtime dependency is dropped from SL-012's executable plan"
+detail = "The prerequisite slice says the standalone package must document a new runtime dependency on coreutils , but SL-012 never turns that into any criterion. Evidence: .doctrine/slice/011/design.md:21-22 says  becomes a runtime dependency and SL-012 must note it in package docs/requirements; .doctrine/slice/012/design.md:251:timeout defcustoms, tick/subprocess JSONL trace rows. returns only the incidental D9 mention at design.md:251, with no PHASE criterion or verification covering package docs/requirements. Reproduction: run that rg command."
+disposition = "fixed"
+response = "Integrated. design.md D7 'Runtime dependency note' para; new PHASE-02 EX-6: timeout(1)/coreutils dep recorded in package Commentary/README + devshell coverage."
+
+[[finding]]
+id = "F-6"
+status = "answered"
+severity = "major"
+title = "PHASE-01 weakens D9's hard SL-011 prerequisite into a waivable note"
+detail = "D9 says SL-011 must be implemented and closed before SL-012 execution begins, but PHASE-01 EN-1 turns that into a consult-waivable entrance check. Evidence: .doctrine/slice/012/design.md:253-258 defines the contract; .doctrine/slice/012/plan.toml:24 says 'SL-011 is closed ... or an explicit /consult waiver is recorded in notes.md'; doctrine slice status SL-011 currently reports 'ready' rather than closed. That makes the documented prerequisite abusable at the exact point the plan is supposed to enforce it. Reproduction: run doctrine slice status SL-011 and compare plan.toml EN-1 against design.md D9."
+disposition = "fixed"
+response = "Integrated with partial contest. Contest: a waiver path per se is D9-sanctioned (design.md D9 explicitly routes descope/stall through /consult). Conceded: plan wording ('waiver recorded in notes.md') was self-serviceable by an agent. EN-1 tightened: sole escape is a /consult run with explicit USER approval recorded; agent-authored note does not satisfy."
+
+[[finding]]
+id = "F-7"
+status = "answered"
+severity = "minor"
+title = "PHASE-02's rename gate excludes moved harness/protocol artifacts"
+detail = '''
+The rename sweep claims to cover the satan repo, but its executable rg gate only names code, tests, bin, and docs, leaving moved Python/protocol files outside the pass condition. Evidence: .doctrine/slice/012/plan.toml:52-55 defines EX-2/EX-5; D1 moves satan/harness and satan/protocol at .doctrine/slice/012/design.md:16-19; current blind-spot strings already exist in satan/harness/protocol.py:4 and :145. Reproduction: satan/bin/satan-run-tick:2:# SATAN tick trigger.  Invokes `my/satan-tick' over emacsclient.
+satan/bin/satan-run-tick:3:# The elisp side picks a mode from `dl-satan-tick-pool' and applies
+satan/bin/satan-run-tick:6:exec emacsclient --eval "(my/satan-tick)"
+satan/bin/satan-run:2:# SATAN run trigger.  Invokes Emacs's `my/satan-run' over emacsclient.
+satan/bin/satan-run:6:exec emacsclient --eval "(my/satan-run \"$mode\")"
+satan/bin/satan-rebuild-interventions:3:# `my/satan-rebuild-interventions' over emacsclient; the elisp side
+satan/bin/satan-rebuild-interventions:4:# replays every intervention audit-event under `dl-satan-runs-dir'
+satan/bin/satan-rebuild-interventions:8:exec emacsclient --eval "(my/satan-rebuild-interventions)"
+satan/harness/protocol.py:4:harness side. Keep in lockstep with `../dl-satan-protocol.el` and
+satan/harness/protocol.py:145:# Mirror of `dl-satan-audit-validate-actions` on the elisp side. The four.'''
+disposition = "fixed"
+response = "Integrated. D3 harness para: comment references (protocol.py <-> dl-satan-protocol.el, dl-satan-audit-validate-actions) update with sweep; rename gate now repo-wide. PHASE-02 EX-2 amended."
+
+[[finding]]
+id = "F-8"
+status = "answered"
+severity = "blocker"
+title = "PHASE-04 never rewires .emacs.d's batch test entrypoint to the external package"
+detail = "The config repo's green gate runs under  with explicit  flags, so changing core/dl-path.el does nothing for the test harness. Evidence: Justfile:19-22 invokes ; PHASE-04 only requires core/dl-path.el and dev/dl-test.el changes at .doctrine/slice/012/plan.toml:94-109 and says nothing about Justfile; EX-5 then deletes .emacs.d/satan. Once that tree is gone, VA-1 cannot honestly mean  unless the batch recipe itself is repointed to the external checkout. Reproduction: inspect Justfile:19-22 and compare it with PHASE-04 EX-1/EX-3/VA-1."
+disposition = "fixed"
+response = "Integrated. design.md D7 config-side: Justfile check recipe's hardcoded '-L satan -L satan/test' named load-bearing (batch entrypoint bypasses dl-path.el); new PHASE-04 EX-8 requires dropping the flags + doctor-test package resolution via D5 load-path or explicit -L."
+
+# Findings are append-only `[[finding]]` tables, added by `review raise` (PHASE-03).
+# Empty here at creation — a fresh review is Active, awaiting the raiser (D-C8).
