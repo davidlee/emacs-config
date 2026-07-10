@@ -43,6 +43,47 @@ postgres must be up or `just check` is red and blocks `worker_commit`. See memor
 - **PHASE-04**: `dl-satan-trace-subprocess` gained a trailing optional `label`
   arg (reconciles the "reuse for the row" + "label on the row" mandates).
 
+## PHASE-05 (tick wall budget) — landed on `dispatch/011`
+
+Wired the pre-built budget primitives (`-stage-optional`, `--budget-exhausted-p`,
+`:budget-ms`) into the 5 optional stages. Reconciliations:
+
+- **`with-tick` seeded `:budget-ms` from `dl-satan-trace-tick-budget-seconds`**
+  (new defcustom, default 10s, nil=unbounded) — PHASE-02 built it hard-nil.
+- **sensor_status `:content` degrade** keyed on `content-probe` being nil:
+  both non-optional branches (cue-only, probe-ran) return a cons, so nil ⟺
+  budget-skip → `"budget_skipped"`. No accumulator re-read.
+- **resonance degrade via `or`-fallback** — `dl-satan-resonance-derive` never
+  returns nil, so `(or (stage-optional …) (list :status 'budget-skipped …))`
+  fires only on skip. `render-block` emits only on `:status ok` → any other
+  status self-suppresses (nil block). Kept the macro generic.
+- **5th optional `recent_runs`** was UNWRAPPED (PHASE-04 wrapped only 4) —
+  added `-stage-optional "spawn.recent_runs"` in `--recent-runs-for-spec`,
+  nested under core `spawn.bundle`. `render-recent-runs` already nil-tolerant.
+
+## PHASE-06 (confinement + patch ledger) — landed on `dispatch/011`
+
+- `dl-satan-patch-worktree--assert-owned` — `file-truename` prefix guard, hard
+  `error` (tree write = corruption, not a degrade). Called before the two
+  mutating git ops (`worktree add`, `worktree remove --force`). `branch -D`
+  left unguarded (mutates a ref, not a tree). Read-only ops exempt.
+- `--git` routed through `trace-call` (`:label "patch.git"`, `:timeout-secs`
+  from new `dl-satan-patch-worktree-timeout-seconds`=30), NO `GIT_OPTIONAL_LOCKS`
+  (patch ops exempt, EX-2). Contract-neutral: `trace-call` uses the SAME
+  `call-process … nil t nil` combined-buffer capture as the old `--git`, so
+  `(ok . STDOUT)/(error . MSG)` is preserved; timeout surfaces as
+  `(error "git exit 124: …")` on the existing error path.
+
+## PHASE-07 VA-1 residue sweep — CLEAN (agent verification)
+
+No unaccounted direct psql/git/bough/swaymsg subprocess outside the choke
+points. Only design-sanctioned direct git is `dl-satan-tools-vcs.el:64`
+`--git-repo-p` (read-only `rev-parse --git-dir`, inline `GIT_OPTIONAL_LOCKS=0`,
+design §2-exempt). Async daemon NOTIFY streamers (attribute/patch listeners)
+are `make-process` of custom rust binaries, not psql, not per-tick chokes.
+Everything else swept is rg/fd/calendar/logger/harness-child. VH-1 (live tick +
+git-status loop) remains a HUMAN gate — slice must not conclude until signed.
+
 ## Selectors
 
 Declared design-target selectors from design §5 mid-drive (were empty at plan
