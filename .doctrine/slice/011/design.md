@@ -65,12 +65,20 @@ No accumulator / nil budget → runs BODY (passthrough).")
 (defun dl-satan-trace-subprocess (argv cwd ms exit &optional timed-out)
   "Append one subprocess ledger row immediately. run_id from accumulator or nil.")
 
-(cl-defun dl-satan-trace-call (program args &key stdin cwd timeout-secs env)
+(cl-defun dl-satan-trace-call (program args &key stdin cwd timeout-secs env label)
   "Run PROGRAM ARGS bounded by timeout(1); ledger the call.
 ENV is a list of \"VAR=VAL\" strings appended to `process-environment'.
 STDIN string fed via `call-process-region' when non-nil.
-Returns (:exit N :stdout STR :timed-out BOOL).  Exit 124 → :timed-out t.
-Ledger row logs the logical PROGRAM+ARGS (timeout wrapper stripped), CWD,
+TIMEOUT-SECS nil → unbounded (no wrapper) — long-running legit ops
+(migrations) pass nil explicitly.
+LABEL is a caller-supplied attribution string (e.g. \"memory-store.query\")
+carried on the ledger row — argv alone cannot distinguish psql callers
+(SQL is stdin, not argv).
+Returns (:exit N :stdout STR :timed-out BOOL).  Exit 124 → :timed-out t;
+wrapper exits 125/126/127 map honestly to :exit, never :timed-out.
+Wrapper invocation is `timeout -k 2 SECS PROGRAM ARGS…' — KILL after a
+2s grace so a TERM-ignoring child (hung socket/NFS) still dies.
+Ledger row logs the logical PROGRAM+ARGS (wrapper stripped), LABEL, CWD,
 ms, exit.")
 ```
 
@@ -89,9 +97,13 @@ bounded subprocess" is one responsibility. Revisit if it grows.
  "skipped":[],"outcome":"spawned"}
 
 {"kind":"subprocess","run_id":"20260710T091500-tick-pulse-ab12","ts":"…",
- "argv":["git","status","--porcelain"],"cwd":"~/dev/foo","ms":180,
- "exit":0,"timed_out":false}
+ "argv":["git","status","--porcelain"],"label":"evidence.git_state",
+ "cwd":"~/dev/foo","ms":180,"exit":0,"timed_out":false}
 ```
+
+**Stage nesting caveat**: stages may nest (`spawn.bundle` contains the
+optional `recent_runs` work) — stage ms overlap, so Σ stages ≠ total_ms.
+Percentile tooling (IMP-014) must treat stages independently, never sum.
 
 `outcome`: `spawned | budget_denied | session_blocked | perceive_failed`.
 Denied ticks perceive (ISSUE-001 / DR-010 §3), so they trace too —
@@ -118,10 +130,17 @@ return-shape contract:
 
 | Site | Edit | Timeout defcustom | Degrade path |
 |---|---|---|---|
-| `dl-satan-db-query` / `-psql` | `call-process[-region]` → `trace-call :stdin sql` | `dl-satan-db-timeout-seconds` (5) | existing `(error . msg)`; timeout msg explicit |
-| `evidence--git-output` + `--git-state` rev-parse | `trace-call :env '("GIT_OPTIONAL_LOCKS=0") :cwd default-directory` | `dl-satan-memory-evidence-git-timeout-seconds` (3) | already nil-on-nonzero; exit 124 naturally nil; `sensor_status` git slot unaffected (feed is file-read) |
+| `dl-satan-db-query` / `-psql` | `call-process[-region]` → `trace-call :stdin sql :label CALLER` | `dl-satan-db-timeout-seconds` (5) | existing `(error . msg)`; timeout msg explicit |
+| `evidence--git-output` + `--git-state` rev-parse | `trace-call :env '("GIT_OPTIONAL_LOCKS=0") :cwd default-directory` | `dl-satan-memory-evidence-git-timeout-seconds` (3) | nil-on-nonzero as today; additionally `git_state` gains `:timed_out t` when any sub-call hit the deadline — a timeout must not read as a clean repo |
 | `evidence--bough-call` | `trace-call` | `dl-satan-bough-timeout-seconds` (5) | existing attempt/ok counters → `bough_status` degraded |
 | `dl-satan-tools-sway--call` | `trace-call` | `dl-satan-tools-sway-timeout-seconds` (2) | existing tool error return |
+
+**Timeout scope consequences (owned explicitly):**
+- The db timeout applies to **every** `dl-satan-db` caller, including
+  model-facing memory tools mid-run — a >5s resonance/store query now
+  degrades to an error result instead of stalling the editor. Intended.
+- `dl-satan-memory-migrate` (and any `--single-transaction` op) passes
+  `:timeout-secs nil` — migrations are legitimately long; never killed.
 
 ### `GIT_OPTIONAL_LOCKS=0` scope
 
@@ -147,6 +166,13 @@ return-shape contract:
   internals). `dl-satan-trace-tick-budget-seconds` defcustom (default 10;
   nil = unbounded). Rejected: observe-only (slice promises truncation);
   hard abort (loses the percept; fights ISSUE-001 perceive-unconditionally).
+- **Worst-case arithmetic (honest):** the wall budget bounds only the
+  optional tail. The true ceiling is Σ core per-probe timeouts ≈
+  git 3s×5 + psql 5s×~5 + bough 5s ≈ 40s pathological (every probe at its
+  deadline simultaneously). The budget's job is that a *typically* slow
+  tick sheds its fat optional stages early; the per-probe deadlines are
+  what make the pathological case finite at all (today it is unbounded).
+  Tightening defaults is a data-driven follow-up once trace rows exist.
 
 ### Stage names (stable strings — phase-3 keys)
 
@@ -230,7 +256,7 @@ not a slow probe.
 | Slice closure intent | Design cover | Mode |
 |---|---|---|
 | Choke-point env injection (`GIT_OPTIONAL_LOCKS=0` present) | `trace-call` env visible to child (`sh -c 'echo $GIT_OPTIONAL_LOCKS'`); evidence choke passes it | VT |
-| Probe-timeout degradation | exit-124 → `:timed-out t`; db → `(error . …)`; git-output → nil; `sleep 10` with 1s deadline returns fast | VT |
+| Probe-timeout degradation | exit-124 → `:timed-out t`; db → `(error . …)`; git-output → nil + `git_state :timed_out t`; `sleep 10` with 1s deadline returns fast; TERM-ignoring child killed by `-k` grace; `:timeout-secs nil` runs unwrapped (migrate path); ledger row carries `:label` | VT |
 | Budget-breach truncation | optional macro skips on exhausted fake accumulator; assemble under breach → nil slots + honest `sensor_status`, shape valid through `--truncate` + canon | VT |
 | Trace row shape | tick row (stages map, skipped, outcome, budget flags); ledger row (logical argv, no wrapper) | VT |
 | Worktree confinement | guard accepts owned, rejects `~/dev/foo`, rejects symlink escape | VT |
@@ -242,6 +268,11 @@ not a slow probe.
 - OQ-1 (trace destination): new day-bucketed JSONL under XDG state, one
   file with kind field (§1 D1). Audit log stays semantic.
 - OQ-2 (ledger sampling): every call — volume is tens per tick (§1).
+
+## Follow-ups (out of scope, recorded)
+
+- Trace-file retention/cleanup — day-bucketed files grow unbounded; fold
+  into IMP-014 (phase-3 reporting) which owns the read side.
 
 ## Slice-scope drift to reconcile at /plan
 

@@ -16,12 +16,15 @@ code inspection (2026-07-06):
 
 2. **Editor stalls while a tick runs.** Evidence assembly + broker prepare is
    one synchronous pipeline on the emacs main thread: psql queries, four bough
-   subprocess calls, sway probes, git, content probe, JSON parsing — all
-   blocking `call-process`, serially summed (the ~185-line `let*` in
-   `dl-satan-broker--spawn` / evidence `--collect`). Freeze duration ≈ sum of
-   every probe's latency; one slow probe (cold psql, hung bough) stalls the UI
-   for seconds. Today there is no per-stage timing, so slow ticks are felt but
-   not attributable.
+   subprocess calls, git, content probe, JSON parsing — all blocking
+   `call-process`, serially summed. (Design-time correction 2026-07-10: the
+   pipeline is now the DR-010 perceive/spawn split — perceive runs pre-gate
+   in `dl-satan-broker-run`, spawn-side enrichment in `dl-satan-broker--spawn`
+   — but both halves remain synchronous on the main thread; denied ticks
+   still perceive, so observability must cover both halves and denied
+   outcomes.) Freeze duration ≈ sum of every probe's latency; one slow probe
+   (cold psql, hung bough) stalls the UI for seconds. Today there is no
+   per-stage timing, so slow ticks are felt but not attributable.
 
 Structural fix for (2) — perception out of the editor process — is the
 ADR-001 / RFC-001 direction and out of scope here. This slice makes the
@@ -90,14 +93,17 @@ worst-case editor stalls.
   (`rev-parse` and `log` do not; `status` was the offender).
 - **Assumption**: existing `sensor_status` error slots are consumed gracefully
   downstream (percept render, model prompt) when probes degrade.
-- **Risk**: timeout mechanism for `call-process` needs care — elisp
-  `with-timeout` does not kill the subprocess; likely needs the `timeout(1)`
-  wrapper or `make-process` + sentinel at the choke points only.
-- **OQ-1**: trace row destination — existing audit log vs new
-  `tick-trace.jsonl`? (Lean: new file; audit log is semantic, trace is
-  telemetry.)
-- **OQ-2**: should the subprocess ledger sample or log every call? (Lean:
-  every call; volume is tens per tick, trivial.)
+- **Risk (resolved in design)**: timeout mechanism — `timeout(1) -k 2`
+  wrapper at choke points (design §2 D2); `with-timeout` rejected (does not
+  kill the child), `make-process`+sentinel rejected (IO-plumbing rewrite).
+- **OQ-1 (resolved)**: new day-bucketed JSONL under `$XDG_STATE_HOME/satan/`,
+  one file with `kind` field for tick + subprocess rows (design §1 D1).
+  Audit log stays semantic.
+- **OQ-2 (resolved)**: log every call; volume is tens per tick (design §1).
+- **Constraint (added at design)**: SL-012 renames `dl-satan-*` → `satan-*`
+  and moves the tree; SL-011 lands first (`SL-012 after SL-011` recorded).
+  New symbols follow current canon; trace stage names / JSONL keys are
+  prefix-free, sweep-immune.
 
 ## Verification / Closure Intent
 
