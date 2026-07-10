@@ -1,9 +1,9 @@
 id = 11
 slug = "satan-tick-perf"
 title = "SATAN tick performance: observe and bound"
-status = "design"
+status = "plan"
 created = "2026-07-06"
-updated = "2026-07-06"
+updated = "2026-07-10"
 tags = ["satan", "performance", "observability"]
 
 [relationships]
