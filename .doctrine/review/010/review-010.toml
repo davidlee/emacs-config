@@ -14,7 +14,7 @@ ref   = "SL-012"
 
 [[finding]]
 id = "F-1"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "PHASE-01 test recipe resolves suites from the wrong repo"
 detail = """
@@ -28,7 +28,7 @@ response = "Integrated. design.md D7 'Runner anchor' para: satan-test.el anchors
 
 [[finding]]
 id = "F-2"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "PHASE-01 ignores the git-tracked-file gate in the destination flake repo"
 detail = """
@@ -48,7 +48,7 @@ response = "Integrated. design.md D7 'Flake tracked-file trap' para; new PHASE-0
 
 [[finding]]
 id = "F-3"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "D4 understates the dl-notes-paths coupling surface"
 detail = """
@@ -70,7 +70,7 @@ response = "Integrated. D4 rewritten: 13 production consumers (10 requires + 3 t
 
 [[finding]]
 id = "F-4"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "PHASE-04 misses config-repo test consumers of the old dl-satan interface"
 detail = '''
@@ -141,7 +141,7 @@ response = "Integrated. design.md D7 config-side para + PHASE-04 EX-3: dl-sleipn
 
 [[finding]]
 id = "F-5"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "SL-011's new timeout(1) runtime dependency is dropped from SL-012's executable plan"
 detail = "The prerequisite slice says the standalone package must document a new runtime dependency on coreutils , but SL-012 never turns that into any criterion. Evidence: .doctrine/slice/011/design.md:21-22 says  becomes a runtime dependency and SL-012 must note it in package docs/requirements; .doctrine/slice/012/design.md:251:timeout defcustoms, tick/subprocess JSONL trace rows. returns only the incidental D9 mention at design.md:251, with no PHASE criterion or verification covering package docs/requirements. Reproduction: run that rg command."
@@ -150,7 +150,7 @@ response = "Integrated. design.md D7 'Runtime dependency note' para; new PHASE-0
 
 [[finding]]
 id = "F-6"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "PHASE-01 weakens D9's hard SL-011 prerequisite into a waivable note"
 detail = "D9 says SL-011 must be implemented and closed before SL-012 execution begins, but PHASE-01 EN-1 turns that into a consult-waivable entrance check. Evidence: .doctrine/slice/012/design.md:253-258 defines the contract; .doctrine/slice/012/plan.toml:24 says 'SL-011 is closed ... or an explicit /consult waiver is recorded in notes.md'; doctrine slice status SL-011 currently reports 'ready' rather than closed. That makes the documented prerequisite abusable at the exact point the plan is supposed to enforce it. Reproduction: run doctrine slice status SL-011 and compare plan.toml EN-1 against design.md D9."
@@ -159,7 +159,7 @@ response = "Integrated with partial contest. Contest: a waiver path per se is D9
 
 [[finding]]
 id = "F-7"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "PHASE-02's rename gate excludes moved harness/protocol artifacts"
 detail = '''
@@ -178,7 +178,7 @@ response = "Integrated. D3 harness para: comment references (protocol.py <-> dl-
 
 [[finding]]
 id = "F-8"
-status = "answered"
+status = "verified"
 severity = "blocker"
 title = "PHASE-04 never rewires .emacs.d's batch test entrypoint to the external package"
 detail = "The config repo's green gate runs under  with explicit  flags, so changing core/dl-path.el does nothing for the test harness. Evidence: Justfile:19-22 invokes ; PHASE-04 only requires core/dl-path.el and dev/dl-test.el changes at .doctrine/slice/012/plan.toml:94-109 and says nothing about Justfile; EX-5 then deletes .emacs.d/satan. Once that tree is gone, VA-1 cannot honestly mean  unless the batch recipe itself is repointed to the external checkout. Reproduction: inspect Justfile:19-22 and compare it with PHASE-04 EX-1/EX-3/VA-1."
