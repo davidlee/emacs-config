@@ -18,3 +18,82 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
   (Justfile), PHASE-02 EX-6 (timeout(1) dep).
 - Workflow memory recorded: `mem.pattern.doctrine.codex-external-review`.
 - SL-011 status at plan time: `ready` (not closed) — PHASE-01 EN-1 gates on it.
+
+## 2026-07-12 — PHASE-01 executed; boundary crossing exposed a design gap
+
+**Context state:** SL-011 closed (EN-1 ✓). DB up (supabase 127.0.0.1:54322).
+Dispatch dropped — executing **inline** (no worktree), writing into
+`/workspace/satan` (a separate git repo, user-confirmed writable). PHASE-01
+`in_progress`, slice `started`.
+
+### What landed (committed to the satan repo — real, keep)
+- Full D1 tree copied verbatim (old `dl-satan-*` names), manifest-exact:
+  `satan/*.el` ×65, `test/` ×62, harness ×9, bin ×4, memory/migrations ×7,
+  protocol ×1, patterns.eld; `docs/satan/**` → `docs/**` (×39, flattened);
+  `dev/satan-test.el` (runner); `bin/` + `tools/` linter; `justfile`.
+- Scaffold `src/`/`test/` deleted; `.direnv` added to `.gitignore`.
+- **`just lint` GREEN** (65/65).
+
+### Design gap #1 (fixed in place) — linter not self-contained
+`bin/elisp-locate-paren-error` depends on `tools/elisp-locate-paren-error.el`
+(**absent from the D1 move table**) and hardcoded `.emacs.d` `-L` dirs. Fixed:
+copied the tool `.el` into `tools/`, repointed the wrapper, dropped the dead
+`-L` flags. **D1 move table is incomplete** — record at reconcile.
+
+### Design gap #2 (THE design revision) — package self-location coupling
+`just check` (ERT) = 64 fail / 39 LOADERR / 361 ran. Two config-root coupling
+axes, but the design severs only one:
+
+- **Axis 1 — `dl-notes-root`** (config module `dl-notes-paths`): 10 prod files
+  hard-`require` it → 39 LOADERR cascade. **Design D4 / PHASE-03 owns this.** ✓
+- **Axis 2 — `user-emacs-directory`** (package assumes its *own* code/data live
+  under the config root): **NOT in the design.** Root cause proven:
+  `user-emacs-directory` = `~/.emacs.d` = `/home/david/.emacs.d`, but the repo
+  is `/workspace/.emacs.d` — different paths; `migrate-directory` resolved to a
+  non-existent dir (`dir-exists=nil`) → test DBs never migrated → 64 failures
+  (`function memory_show_trace does not exist`). **This breaks the SHIPPED
+  package too:** PHASE-04 deletes `~/.emacs.d/satan/`, dangling every such path.
+
+  The design half-saw this — RV-010 **F-1** noted `user-emacs-directory` is
+  wrong in batch, but scoped the fix to the **test runner only** (done). It is
+  endemic in **5 production defcustoms + 1 hardcode**:
+  - `dl-satan-memory-migrate.el:26` — `satan/memory/migrations/`
+  - `dl-satan-pattern.el:44` — `satan/patterns.eld`
+  - `dl-satan-context.el:535` — `satan` dir
+  - `dl-satan-tools-docs.el:35,129` — doc-corpus roots
+  - `dl-satan-broker.el:56` — repo root
+  - `dl-satan-tools-vcs.el:24` — hardcoded `~/.emacs.d/`
+
+### User decision (2026-07-12) — do it properly
+"If it's to be a real package, it needs its own identity and resolution."
+Scope: a **package "know thyself" root convention** — a documented
+`satan--root` (resolved from `load-file-name`, canonical ELPA self-location)
+that all package path resolution anchors to. Not a minimal spot-fix. This is a
+**design revision** (new decision, e.g. D4b/D10, extending D4 to *both*
+config-root axes), cascading to a **plan revision** (owning phase + green
+invariant). Routing agreed: `/design` → `/plan` → phase-sheet update.
+
+### Plan tension to resolve in the plan revision
+PHASE-01 (and cascading PHASE-02) exit gate "**full ERT green**" is
+**unsatisfiable** for a copy-verbatim / defer-decouple phase — green requires
+both axes severed. Re-cut the green bar to: *lint green + suite loads & runs
+across the boundary + suites not blocked by the two axes pass; coupling-blocked
+suites known-red until the decouple phase*. Full green only from the decouple
+phase onward.
+
+### Open sub-decisions for the design/plan agent
+1. **Axis-2 home:** fold into PHASE-03 (rename it "Decouple config-root
+   assumptions", cover both axes) — my recommendation — vs a new dedicated
+   phase. Both axes are semantic and belong *after* the rename (PHASE-02) so the
+   sweep doesn't rewrite new call sites.
+2. **`dl-secret-test.el`** requires `dl-secret` (a config-owned module, not
+   SATAN). It shouldn't have moved. Recommend dropping it from the package
+   (dl-secret stays config; satan only soft-deps `my/op-read-env`). Small
+   scope/manifest nit, not design-tier.
+3. `satan--root` naming/convention: confirm `satan--root` (private) vs a public
+   `satan-lisp-directory`; document the convention so future modules use it.
+
+### Dual-presence window (PHASE-01 EX-5)
+Copy-not-move: `.emacs.d/satan/` and `/workspace/satan/satan/` now co-exist.
+**No edits to the `.emacs.d` copy** until PHASE-04 cutover, or edits must be
+replayed into the package (PHASE-04 EN-2 audits the window closed).
