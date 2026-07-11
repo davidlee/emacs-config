@@ -64,6 +64,7 @@
             sqlite
             socat
             bun
+            codex
           ]
           ++ [doctrine-pkg];
 
@@ -83,7 +84,7 @@
 
         supabaseJailOptions = with jailLib.combinators; [
           (try-fwd-env "DOCKER_HOST")
-          (try-readwrite "/run/user/1000/docker.sock")
+          (try-readwrite "/run/user/1000/podman/podman.sock")
           (set-env "SATAN_DB_HOST" "127.0.0.1")
           (set-env "PGHOST" "127.0.0.1")
           (set-env "PGPORT" "54322")
@@ -279,6 +280,14 @@
             useOpEnv = false;
             passApiKeysFromEnv = true;
           };
+          jailed-shell = jailLib.makeJailedAgent {
+            name = "shell";
+            agent = pkgs.zsh;
+            profile = "specDev";
+            extraPkgs = projectPkgs;
+            subagents = ["pi" "dirge" "claude"];
+            extraOptions = jailEnvOptions;
+          };
           bubblewrap = pkgs.bubblewrap;
         };
       in {
@@ -291,6 +300,10 @@
         devshells.default = {
           packages = projectPkgs ++ lib.optionals isLinux (lib.attrValues jailPkgs);
           commands = [
+            {
+              name = "d";
+              command = "doctrine $@";
+            }
             {
               name = "sdr";
               help = "spec-driver";
@@ -311,6 +324,11 @@
                   *) jailed-claude --dangerously-skip-permissions "$@" ;;
                 esac
               '';
+            }
+            {
+              name = "jail-zsh";
+              help = "jailed shell (zsh) in pi's context";
+              command = "jailed-shell $@";
             }
           ];
         };
