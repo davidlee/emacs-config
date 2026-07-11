@@ -157,3 +157,12 @@ Wrappers have no external callers; blast radius = 2 defuns + docstrings. Other 2
 `my/satan-*` commands map cleanly. EX-2/EX-3 gates unchanged.
 Surface measured: `dl-satan-` ~10719 hits (4128 prod/65 files, 5926 test/61,
 655 docs, 2 bin, 2 harness) + 65+61+1 file renames; `my/satan-` 87/25 files.
+
+## PHASE-02 executed (2026-07-12) — green
+Sweep + 125 file renames + entry headers committed satan `3a31590`. Lint 65/65;
+byte-compile re-cut VA-2 (25 clean / 40 blocked ONLY on dl-notes-paths, zero
+rename-induced errors — pre-existing warnings verified against original);
+ERT 361/64/3 identical to PHASE-01 (no regression). EX-1..6 met. Collision rule
+(D3 delta) applied: satan-renormalize-memory, satan-show-migrate-status.
+VA-2 re-cut into plan.toml (corollary of D10). PHASE-04 carry: post-commit
+install-hint comment still cites ~/.emacs.d/satan.

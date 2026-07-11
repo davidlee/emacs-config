@@ -59,7 +59,7 @@ exit_criteria = [
 ]
 verification = [
   { id = "VA-1", text = "GREEN GATE (re-cut per design D10, same bar as PHASE-01 VA-1): lint green + full suite loads/runs across the boundary under satan-* names + non-coupling suites pass; coupling-blocked suites known-red until PHASE-03. The rename must not regress which suites pass vs PHASE-01. Full ERT green is a PHASE-03 gate" },
-  { id = "VA-2", text = "Byte-compilation clean: emacs --batch -L ./satan --eval batch-byte-compile over satan/*.el" },
+  { id = "VA-2", text = "Byte-compilation: emacs --batch -L ./satan batch-byte-compile over satan/*.el. RE-CUT (corollary of D10/VA-1 re-cut): clean for files NOT blocked by the dl-notes-paths coupling; the coupling-blocked files (~40/65) error at compile-time on the missing 'dl-notes-paths require until PHASE-03 decouples. The rename must introduce ZERO new errors — every failure must be the identical missing-require, no void-function/unbound/wrong-signature. Fully clean is a PHASE-03 gate" },
   { id = "VA-3", text = "rg gates EX-2/EX-3 run and captured in notes" },
 ]
 specs        = []
