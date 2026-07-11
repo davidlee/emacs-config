@@ -12,6 +12,7 @@
 (require 'json)
 (require 'subr-x)
 (require 'dl-satan-patch-store)  ; for the patch group + id helper
+(require 'dl-satan-trace)         ; route patch git through the subprocess ledger
 
 (defcustom dl-satan-patch-worktree-root
   (expand-file-name "satan/patch-agent/worktrees/"
@@ -25,6 +26,10 @@ One directory per job, keyed by job id."
   (or (executable-find "git") "git")
   "Path to the `git' binary."
   :type 'string :group 'dl-satan-patch)
+
+(defcustom dl-satan-patch-worktree-timeout-seconds 30
+  "Wall-clock timeout (seconds) for patch git ops routed through the trace ledger."
+  :type 'number :group 'dl-satan-patch)
 
 ;; ---------------------------------------------------------------------
 ;; branch naming
@@ -54,25 +59,33 @@ slugified to lowercase alnum + dashes."
 ;; git plumbing
 ;; ---------------------------------------------------------------------
 
+(defun dl-satan-patch-worktree--assert-owned (path)
+  "Signal an error unless PATH is under `dl-satan-patch-worktree-root'.
+Compares `file-truename' of both sides (symlink-escape proof).  Every
+mutating git op calls this with its target BEFORE running; writing to a
+user tree is corruption, not a slow probe — so this is a hard error."
+  (let ((root (file-name-as-directory
+               (file-truename dl-satan-patch-worktree-root)))
+        (target (file-name-as-directory (file-truename path))))
+    (unless (string-prefix-p root target)
+      (error "patch-worktree confinement: %s escapes %s" path root))))
+
 (defun dl-satan-patch-worktree--git (repo args &optional input)
   "Run `git -C REPO ARGS', optionally feeding INPUT to stdin.
-Return (ok . STDOUT) or (error . MSG)."
-  (with-temp-buffer
-    (let* ((full-args (append (list "-C" repo) args))
-           (status (if input
-                       (with-temp-buffer
-                         (insert input)
-                         (apply #'call-process-region
-                                (point-min) (point-max)
-                                dl-satan-patch-worktree-git-program
-                                nil (current-buffer) nil full-args))
-                     (apply #'call-process
-                            dl-satan-patch-worktree-git-program
-                            nil t nil full-args))))
-      (if (and (integerp status) (zerop status))
-          (cons 'ok (buffer-string))
-        (cons 'error (format "git exit %s: %s"
-                              status (string-trim (buffer-string))))))))
+Return (ok . STDOUT) or (error . MSG).  Routed through `dl-satan-trace-call'
+for ledger visibility + a 30s wall timeout; NO `GIT_OPTIONAL_LOCKS' env
+(patch ops are exempt)."
+  (let* ((full-args (append (list "-C" repo) args))
+         (res (dl-satan-trace-call
+               dl-satan-patch-worktree-git-program full-args
+               :stdin input
+               :timeout-secs dl-satan-patch-worktree-timeout-seconds
+               :label "patch.git"))
+         (exit (plist-get res :exit))
+         (out (plist-get res :stdout)))
+    (if (and (integerp exit) (zerop exit))
+        (cons 'ok out)
+      (cons 'error (format "git exit %s: %s" exit (string-trim out))))))
 
 ;; ---------------------------------------------------------------------
 ;; create
@@ -103,6 +116,7 @@ base_ref."
      (t
       (let* ((parent (file-name-directory (directory-file-name wt))))
         (make-directory parent t))
+      (dl-satan-patch-worktree--assert-owned wt)
       (pcase (dl-satan-patch-worktree--git
               repo (list "worktree" "add" wt "-b" branch base))
         (`(error . ,msg)
@@ -260,6 +274,7 @@ branch.  Idempotent.  Returns (ok PLIST) with :removed-worktree and
          (removed nil)
          (deleted nil))
     (when (file-exists-p wt)
+      (dl-satan-patch-worktree--assert-owned wt)
       (pcase (dl-satan-patch-worktree--git
               repo (list "worktree" "remove" "--force" wt))
         (`(error . ,msg) (cl-return-from dl-satan-patch-worktree-cleanup

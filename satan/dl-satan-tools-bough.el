@@ -22,6 +22,15 @@
 (require 'json)
 (require 'subr-x)
 (require 'dl-satan-tools)
+(require 'dl-satan-trace)
+
+(defcustom dl-satan-bough-timeout-seconds 5
+  "Per-call wall-clock deadline (seconds) for the `bough' subprocess.
+Applied via `dl-satan-trace-call' in `dl-satan-bough--invoke' so a
+hung bough binary cannot stall evidence assembly.  A breach maps to
+\(error . \"bough timed out …\") — degrading bough_status like any
+other error."
+  :type 'integer :group 'dl-satan)
 
 (defcustom dl-satan-bough-program
   (or (executable-find "bough")
@@ -86,33 +95,32 @@ commands return a single document (object or array).  Return
 (defun dl-satan-bough--invoke (workspace &rest args)
   "Run `bough --json [--workspace WS] ARGS...'.
 Return (ok . PARSED) or (error . MSG).  PARSED is the JSON output
-decoded with plist objects and list arrays."
-  (let ((stderr-file (make-temp-file "satan-bough-stderr-")))
-    (unwind-protect
-        (with-temp-buffer
-          (let* ((full (append (list "--json")
-                               (when workspace (list "--workspace" workspace))
-                               args))
-                 (status (apply #'call-process
-                                dl-satan-bough-program
-                                nil (list (current-buffer) stderr-file)
-                                nil full))
-                 (stdout (buffer-string))
-                 (stderr (with-temp-buffer
-                           (insert-file-contents stderr-file)
-                           (buffer-string))))
-            (cond
-             ((not (and (integerp status) (zerop status)))
-              (cons 'error
-                    (format "bough exit %s: %s"
-                            status
-                            (string-trim (if (string-empty-p (string-trim stderr))
-                                             stdout stderr)))))
-             ((string-empty-p (string-trim stdout))
-              (cons 'ok nil))
-             (t
-              (dl-satan-bough--parse-json-output stdout)))))
-      (ignore-errors (delete-file stderr-file)))))
+decoded with plist objects and list arrays.
+
+Routed through `dl-satan-trace-call' so the call is ledgered and
+bounded by `dl-satan-bough-timeout-seconds'.  `trace-call' returns
+only `:stdout', so stdout+stderr are captured COMBINED there; the
+error message and JSON parse both read that combined output.  A
+deadline breach maps to (error . \"bough timed out …\")."
+  (let* ((full (append (list "--json")
+                       (when workspace (list "--workspace" workspace))
+                       args))
+         (result (dl-satan-trace-call
+                  dl-satan-bough-program full
+                  :timeout-secs dl-satan-bough-timeout-seconds
+                  :label "evidence.bough"))
+         (exit (plist-get result :exit))
+         (output (plist-get result :stdout)))
+    (cond
+     ((plist-get result :timed-out)
+      (cons 'error (format "bough timed out after %ss"
+                           dl-satan-bough-timeout-seconds)))
+     ((not (and (integerp exit) (zerop exit)))
+      (cons 'error (format "bough exit %s: %s" exit (string-trim output))))
+     ((string-empty-p (string-trim output))
+      (cons 'ok nil))
+     (t
+      (dl-satan-bough--parse-json-output output)))))
 
 (defun dl-satan-bough--day-not-found-p (msg)
   "Detect the literal `day not found' bough error."

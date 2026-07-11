@@ -31,6 +31,7 @@
 (require 'dl-satan-sensor-content)
 (require 'dl-satan-sensor-wpm)
 (require 'dl-satan-ingest-cursor)
+(require 'dl-satan-trace)
 
 (defvar dl-satan-memory-store--current-run-id)
 
@@ -714,40 +715,48 @@ without launching the child."
     ;; status `failed' + reason "perceive_failed" (a terminal status the
     ;; audit verifier already knows — not a new accepted status).
     (unless (file-directory-p dir) (make-directory dir t))
-    (let ((perceive-error nil))
-      (condition-case err
-          (setq prepare (dl-satan-run-perceive prepare mode dir))
-        (error (setq perceive-error err)))
-      (cond
-       (perceive-error
-        (dl-satan-broker--write-no-child-run
-         mode prepare dir 'failed "perceive_failed"
-         :final (list :summary (format "perceive failed: %s"
-                                       (error-message-string perceive-error))
-                      :actions []
-                      :reason "perceive_failed")
-         :rename-announce t)
-        run-id)
-       ;; DEC-8: refuse to spawn while an interactive session is open.
-       ;; ISSUE-001: now perceives first.  No rename, no announce — the
-       ;; deferral must not pollute the failure-streak counter or alert.
-       ((and (boundp 'dl-satan-mcp--session-active)
-             dl-satan-mcp--session-active)
-        (message "SATAN broker: interactive session active — refusing scheduled run (DEC-8)")
-        (dl-satan-broker--write-no-child-run
-         mode prepare dir 'failed "session_blocked"
-         :final (list :summary "Scheduled run blocked by active interactive session (DEC-8)"
-                      :actions []
-                      :reason "session_blocked")
-         :rename-announce nil)
-        run-id)
-       ((dl-satan-budget-exceeded-p dl-satan-runs-dir)
-        (let ((spent (dl-satan-budget-today-total dl-satan-runs-dir)))
-          (dl-satan-broker--write-budget-denied-run
-           mode prepare dir spent dl-satan-budget-daily-tokens)
-          run-id))
-       (t
-        (dl-satan-broker--spawn mode prepare dir))))))
+    ;; SL-011: one tick accumulator per run — every stage wrap below this
+    ;; point (perceive, enrich, spawn) records onto it, and each `cond'
+    ;; branch stamps its domain outcome before returning the run-id.
+    (dl-satan-trace-with-tick run-id name
+      (let ((perceive-error nil))
+        (condition-case err
+            (setq prepare (dl-satan-run-perceive prepare mode dir))
+          (error (setq perceive-error err)))
+        (cond
+         (perceive-error
+          (dl-satan-broker--write-no-child-run
+           mode prepare dir 'failed "perceive_failed"
+           :final (list :summary (format "perceive failed: %s"
+                                         (error-message-string perceive-error))
+                        :actions []
+                        :reason "perceive_failed")
+           :rename-announce t)
+          (dl-satan-trace-outcome "perceive_failed")
+          run-id)
+         ;; DEC-8: refuse to spawn while an interactive session is open.
+         ;; ISSUE-001: now perceives first.  No rename, no announce — the
+         ;; deferral must not pollute the failure-streak counter or alert.
+         ((and (boundp 'dl-satan-mcp--session-active)
+               dl-satan-mcp--session-active)
+          (message "SATAN broker: interactive session active — refusing scheduled run (DEC-8)")
+          (dl-satan-broker--write-no-child-run
+           mode prepare dir 'failed "session_blocked"
+           :final (list :summary "Scheduled run blocked by active interactive session (DEC-8)"
+                        :actions []
+                        :reason "session_blocked")
+           :rename-announce nil)
+          (dl-satan-trace-outcome "session_blocked")
+          run-id)
+         ((dl-satan-budget-exceeded-p dl-satan-runs-dir)
+          (let ((spent (dl-satan-budget-today-total dl-satan-runs-dir)))
+            (dl-satan-broker--write-budget-denied-run
+             mode prepare dir spent dl-satan-budget-daily-tokens)
+            (dl-satan-trace-outcome "budget_denied")
+            run-id))
+         (t
+          (dl-satan-trace-outcome "spawned")
+          (dl-satan-broker--spawn mode prepare dir)))))))
 
 (defun dl-satan-broker--spawn (mode prepare dir)
   "Spawn the jailed harness for MODE under DIR.
@@ -803,10 +812,12 @@ Returns the run-id."
     ;; cannot fail the tick — the run proceeds without an observer pass
     ;; when it does.
     (let* ((manifest (dl-satan-broker--build-manifest mode run-id))
-           (audit (dl-satan-audit-open dir manifest nil prepare))
+           (audit (dl-satan-trace-stage "spawn.audit_open"
+                    (dl-satan-audit-open dir manifest nil prepare)))
            (prepare (plist-put prepare :audit audit))
            (observer (condition-case _err
-                         (dl-satan-observer-process prepare)
+                         (dl-satan-trace-stage "spawn.observer"
+                           (dl-satan-observer-process prepare))
                        (error nil)))
            (prepare (plist-put prepare :observer observer))
            ;; DR-010 §3: percept already built upstream by perceive; enrich
@@ -820,10 +831,11 @@ Returns the run-id."
            ;; 4.4 threads them into the audit close so the run's
            ;; `actions.json' carries the produced `pre_spawn' key.
            (pre-spawn (condition-case _err
-                          (dl-satan-sensor-alerts-check
-                           sensor-status mode
-                           :time-now (plist-get prepare :time_now)
-                           :run-dir dir)
+                          (dl-satan-trace-stage "spawn.sensor_alerts"
+                            (dl-satan-sensor-alerts-check
+                             sensor-status mode
+                             :time-now (plist-get prepare :time_now)
+                             :run-dir dir))
                         (error nil)))
            ;; DR-010 §3 — consume-side probe COMMIT.  The pure read-
            ;; snapshots were taken upstream by `dl-satan-run-perceive'
@@ -834,18 +846,21 @@ Returns the run-id."
            (_probe-snapshots (plist-get prepare :probe_snapshots))
            (_curiosity-signal
             (condition-case _err
-                (dl-satan-sensor-curiosity-probe-commit
-                 (plist-get _probe-snapshots :curiosity))
+                (dl-satan-trace-stage "probes.commit.curiosity"
+                  (dl-satan-sensor-curiosity-probe-commit
+                   (plist-get _probe-snapshots :curiosity)))
               (error nil)))
            (_content-signal
             (condition-case _err
-                (dl-satan-sensor-content-probe-commit
-                 (plist-get _probe-snapshots :content))
+                (dl-satan-trace-stage "probes.commit.content"
+                  (dl-satan-sensor-content-probe-commit
+                   (plist-get _probe-snapshots :content)))
               (error nil)))
            (_wpm-signal
             (condition-case _err
-                (dl-satan-sensor-wpm-probe-commit
-                 (plist-get _probe-snapshots :wpm))
+                (dl-satan-trace-stage "probes.commit.wpm"
+                  (dl-satan-sensor-wpm-probe-commit
+                   (plist-get _probe-snapshots :wpm)))
               (error nil)))
            ;; DR-010 §3 (DEC-cursor-per-source-intra-day) — consume-side
            ;; ingest-cursor advance.  Reached only on a SUCCESSFUL spawn:
@@ -856,11 +871,13 @@ Returns the run-id."
            ;; fails so a cursor write error cannot fail the tick.
            (_ingest-cursor
             (condition-case _err
-                (dl-satan-ingest-cursor-advance)
+                (dl-satan-trace-stage "spawn.ingest_cursor"
+                  (dl-satan-ingest-cursor-advance))
               (error nil)))
            (prepare (plist-put prepare :pre_spawn pre-spawn)))
-    (let* ((bundle (funcall (or (plist-get mode :context-fn) #'ignore)
-                            mode prepare))
+    (let* ((bundle (dl-satan-trace-stage "spawn.bundle"
+                     (funcall (or (plist-get mode :context-fn) #'ignore)
+                              mode prepare)))
            (_attached (dl-satan-audit-attach-bundle audit bundle))
            (run-ctx (make-dl-satan-run
                      :id run-id
@@ -915,15 +932,16 @@ Returns the run-id."
              (process-environment env)
              (exec-path (dl-satan-broker--exec-path-from-env env))
              (proc
-              (make-process
-               :name (format "satan-%s" run-id)
-               :command (cons cmd args)
-               :connection-type 'pipe
-               :coding 'utf-8
-               :noquery t
-               :stderr stderr-buf
-               :filter (dl-satan-broker--make-filter run-ctx)
-               :sentinel (dl-satan-broker--make-sentinel run-ctx))))
+              (dl-satan-trace-stage "spawn.exec"
+                (make-process
+                 :name (format "satan-%s" run-id)
+                 :command (cons cmd args)
+                 :connection-type 'pipe
+                 :coding 'utf-8
+                 :noquery t
+                 :stderr stderr-buf
+                 :filter (dl-satan-broker--make-filter run-ctx)
+                 :sentinel (dl-satan-broker--make-sentinel run-ctx)))))
         (setf (dl-satan-run-process run-ctx) proc)
         (let ((to (plist-get mode :timeout-seconds)))
           (when (and (integerp to) (> to 0))

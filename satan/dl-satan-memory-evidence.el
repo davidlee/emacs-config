@@ -35,6 +35,7 @@
 (require 'json)
 (require 'subr-x)
 (require 'dl-satan-jsonl)
+(require 'dl-satan-trace)
 (require 'dl-satan-tools-activity)
 (require 'dl-satan-tools-bough)
 (require 'dl-satan-tools-content)
@@ -53,6 +54,13 @@ Capped further by `:run_started_at' (see §4.1)."
 Decoupled from `dl-satan-memory-evidence-window-minutes' (the focus/
 browser attention window) because commits are bursty: a 10-min window
 almost never catches one.  Default 24h."
+  :type 'integer :group 'dl-satan)
+
+(defcustom dl-satan-memory-evidence-git-timeout-seconds 3
+  "Per-call wall-clock deadline (seconds) for git subprocesses.
+Applied via `dl-satan-trace-call' at the `--git-output' / `--git-state'
+chokepoints so a hung repo cannot stall evidence assembly.  A breach
+returns nil (git-output) or marks `:timed_out t' (git-state)."
   :type 'integer :group 'dl-satan)
 
 (defcustom dl-satan-memory-evidence-seg-limit 10
@@ -422,37 +430,70 @@ caps the combined output."
 ;; Git + fs (§4.2)
 ;; ---------------------------------------------------------------------
 
+(defvar dl-satan-memory-evidence--git-timed-out nil
+  "Set non-nil when a routed git sub-call breaches its deadline.
+Dynamically let-bound by `--git-state' around its probe set so a
+timeout does not silently read as a clean repo (see `:timed_out').")
+
 (defun dl-satan-memory-evidence--git-output (&rest args)
-  "Run `git ARGS' and return trimmed stdout, or nil on non-zero exit."
-  (with-temp-buffer
-    (let ((exit (apply #'call-process "git" nil
-                       (list (current-buffer) nil) nil args)))
-      (and (integerp exit) (zerop exit)
-           (string-trim (buffer-string))))))
+  "Run `git ARGS' and return trimmed stdout, or nil on non-zero exit.
+Routed through `dl-satan-trace-call' so the call is ledgered and
+bounded by `dl-satan-memory-evidence-git-timeout-seconds'.  The
+GIT_OPTIONAL_LOCKS=0 env is passed to the child via `:env' so
+read-only git never writes index/ref locks.  A deadline breach both
+returns nil (non-zero exit) and records the breach in
+`dl-satan-memory-evidence--git-timed-out'."
+  (let* ((result (dl-satan-trace-call
+                  (or (executable-find "git") "git") args
+                  :cwd default-directory
+                  :env '("GIT_OPTIONAL_LOCKS=0")
+                  :timeout-secs dl-satan-memory-evidence-git-timeout-seconds
+                  :label "evidence.git"))
+         (exit (plist-get result :exit)))
+    (when (plist-get result :timed-out)
+      (setq dl-satan-memory-evidence--git-timed-out t))
+    (and (integerp exit) (zerop exit)
+         (string-trim (plist-get result :stdout)))))
 
 (defun dl-satan-memory-evidence--git-state (cwd)
-  "Return git state plist for CWD, or nil if CWD is not in a repo."
+  "Return git state plist for CWD, or nil if CWD is not in a repo.
+When any routed sub-call breaches its deadline the plist carries an
+extra `:timed_out t' so a partial (potentially wrong \"clean\") read
+is never mistaken for a genuine one."
   (when (and cwd (file-directory-p cwd))
-    (let ((default-directory (file-name-as-directory cwd)))
-      (when (zerop (call-process "git" nil nil nil
-                                 "rev-parse" "--git-dir"))
-        (list :head_short
-              (dl-satan-memory-evidence--git-output
-               "rev-parse" "--short" "HEAD")
-              :remote
-              (dl-satan-memory-evidence--git-output
-               "config" "--get" "remote.origin.url")
-              :dirty
-              (not (string-empty-p
-                    (or (dl-satan-memory-evidence--git-output
-                         "status" "--porcelain")
-                        "")))
-              :commits
-              (split-string
-               (or (dl-satan-memory-evidence--git-output
-                    "log" "-n" "5" "--oneline")
-                   "")
-               "\n" t))))))
+    (let* ((default-directory (file-name-as-directory cwd))
+           (dl-satan-memory-evidence--git-timed-out nil)
+           (probe (dl-satan-trace-call
+                   (or (executable-find "git") "git")
+                   '("rev-parse" "--git-dir")
+                   :cwd default-directory
+                   :env '("GIT_OPTIONAL_LOCKS=0")
+                   :timeout-secs dl-satan-memory-evidence-git-timeout-seconds
+                   :label "evidence.git"))
+           (probe-exit (plist-get probe :exit)))
+      (when (and (integerp probe-exit) (zerop probe-exit)
+                 (not (plist-get probe :timed-out)))
+        (let ((state
+               (list :head_short
+                     (dl-satan-memory-evidence--git-output
+                      "rev-parse" "--short" "HEAD")
+                     :remote
+                     (dl-satan-memory-evidence--git-output
+                      "config" "--get" "remote.origin.url")
+                     :dirty
+                     (not (string-empty-p
+                           (or (dl-satan-memory-evidence--git-output
+                                "status" "--porcelain")
+                               "")))
+                     :commits
+                     (split-string
+                      (or (dl-satan-memory-evidence--git-output
+                           "log" "-n" "5" "--oneline")
+                          "")
+                      "\n" t))))
+          (if dl-satan-memory-evidence--git-timed-out
+              (append state (list :timed_out t))
+            state))))))
 
 (defun dl-satan-memory-evidence--recent-files (cwd limit)
   "Return up to LIMIT entries of `recentf-list' whose absolute path is
@@ -618,51 +659,61 @@ about substrate slices."
                           dl-satan-memory-evidence-budget-hard-cap))
          (cue-only (plist-get opts :cue_only))
          (current-path (expand-file-name "current/sway.json" root))
-         (current-probe (dl-satan-memory-evidence--current-window-status
-                         current-path now-t))
+         (current-probe (dl-satan-trace-stage "evidence.current_window"
+                          (dl-satan-memory-evidence--current-window-status
+                           current-path now-t)))
          (focus-probe (if cue-only
                           (cons 'ok '())
-                        (dl-satan-memory-evidence--segments-status
-                         (expand-file-name
-                          (format "segments/focus-%s.jsonl" today) root)
-                         start end seg-limit now-t)))
-         (browser-probe (if cue-only
-                            (cons 'ok '())
+                        (dl-satan-trace-stage "evidence.focus_segments"
                           (dl-satan-memory-evidence--segments-status
                            (expand-file-name
-                            (format "segments/browser-%s.jsonl" today) root)
-                           start end seg-limit now-t)))
+                            (format "segments/focus-%s.jsonl" today) root)
+                           start end seg-limit now-t))))
+         (browser-probe (if cue-only
+                            (cons 'ok '())
+                          (dl-satan-trace-stage "evidence.browser_segments"
+                            (dl-satan-memory-evidence--segments-status
+                             (expand-file-name
+                              (format "segments/browser-%s.jsonl" today) root)
+                             start end seg-limit now-t))))
          (git-start (dl-satan-memory-evidence--iso-format
                       (time-subtract (date-to-time end)
                                      (seconds-to-time
                                       (* 60 dl-satan-memory-evidence-git-window-minutes)))))
          (git-probe (if cue-only
                         (cons "ok" '())
-                      (dl-satan-memory-evidence--git-commits-status
-                       (dl-satan-memory-evidence--git-feed-paths root git-start end)
-                       git-start end seg-limit)))
+                      (dl-satan-trace-stage "evidence.git_feed"
+                        (dl-satan-memory-evidence--git-commits-status
+                         (dl-satan-memory-evidence--git-feed-paths root git-start end)
+                         git-start end seg-limit))))
          (content-probe (if cue-only
                             (cons "ok" '())
                           (let ((dl-satan-tools-content-dir
                                  (expand-file-name "content/" root)))
-                            (dl-satan-memory-evidence--content-probe
-                             content-limit))))
+                            (dl-satan-trace-stage-optional "evidence.content_probe"
+                              (dl-satan-memory-evidence--content-probe
+                               content-limit)))))
          (dl-satan-memory-evidence--bough-tracking t)
          (dl-satan-memory-evidence--bough-attempts 0)
          (dl-satan-memory-evidence--bough-ok 0)
          (bough-recent (unless cue-only
-                         (dl-satan-memory-evidence--bough-recent
-                          start workspace bough-limit)))
-         (bough-active (dl-satan-memory-evidence--bough-active workspace))
+                         (dl-satan-trace-stage-optional "evidence.bough_recent"
+                           (dl-satan-memory-evidence--bough-recent
+                            start workspace bough-limit))))
+         (bough-active (dl-satan-trace-stage "evidence.bough_active"
+                         (dl-satan-memory-evidence--bough-active workspace)))
          (bough-day (unless cue-only
-                      (dl-satan-memory-evidence--bough-day today workspace)))
+                      (dl-satan-trace-stage-optional "evidence.bough_day"
+                        (dl-satan-memory-evidence--bough-day today workspace))))
          (bough-status (dl-satan-memory-evidence--bough-status))
          (sensor-status (list :current_window (car current-probe)
                               :focus (car focus-probe)
                               :browser (car browser-probe)
                               :bough bough-status
                               :git (car git-probe)
-                              :content (car content-probe)))
+                              :content (if content-probe
+                                           (car content-probe)
+                                         "budget_skipped")))
          (raw (list
                :current_window (cdr current-probe)
                :focus_segments (cdr focus-probe)
@@ -672,13 +723,16 @@ about substrate slices."
                :bough_recent bough-recent
                :bough_active bough-active
                :bough_day bough-day
-               :git_state (dl-satan-memory-evidence--git-state cwd)
-               :fs_state (dl-satan-memory-evidence--fs-state cwd)
+               :git_state (dl-satan-trace-stage "evidence.git_state"
+                            (dl-satan-memory-evidence--git-state cwd))
+               :fs_state (dl-satan-trace-stage "evidence.fs_state"
+                           (dl-satan-memory-evidence--fs-state cwd))
                :window_start_at start
                :window_end_at end
                :git_window_start_at git-start
                :sensor_status sensor-status)))
-    (dl-satan-memory-evidence--truncate raw budget-target budget-hard)))
+    (dl-satan-trace-stage "evidence.truncate"
+      (dl-satan-memory-evidence--truncate raw budget-target budget-hard))))
 
 (provide 'dl-satan-memory-evidence)
 ;;; dl-satan-memory-evidence.el ends here

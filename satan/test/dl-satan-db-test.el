@@ -1,7 +1,9 @@
 ;;; dl-satan-db-test.el --- shared psql runner ert -*- lexical-binding: t; -*-
 
 (require 'ert)
+(require 'cl-lib)
 (require 'dl-satan-db)
+(require 'dl-satan-trace)
 
 (defconst dl-satan-db-test--db "satan_memory_test"
   "Test database (same as memory-store tests use).")
@@ -226,6 +228,72 @@ the resolved host, not this literal.  Kept as a sentinel for test bodies.")
   (let ((dl-satan-db-host-override "10.0.0.1"))
     (should (equal (dl-satan-db-database-url "mydb" "/run/postgresql")
                    "postgres:///mydb?host=10.0.0.1"))))
+
+;; ---------------------------------------------------------------------
+;; VT-1 — routing through `dl-satan-trace-call': timeout, unbounded
+;; opt-out, and per-caller ledger labelling.  These stub
+;; `dl-satan-trace-call' so no real DB (and no real `timeout') is
+;; needed to force the timed-out branch deterministically.
+;; ---------------------------------------------------------------------
+
+(ert-deftest dl-satan-db/query-timeout-maps-to-error ()
+  "A timed-out psql (`dl-satan-trace-call' :timed-out t) → (error . …)."
+  (let ((dl-satan-db-host-override "127.0.0.1"))
+    (cl-letf (((symbol-function 'dl-satan-trace-call)
+               (lambda (&rest _)
+                 (list :exit 124 :stdout "" :timed-out t))))
+      (pcase (dl-satan-db-query "d" "h" "psql" "SELECT 1" nil)
+        (`(error . ,msg) (should (string-match-p "timed out" msg)))
+        (other (ert-fail (format "expected timeout error, got %S" other)))))))
+
+(ert-deftest dl-satan-db/psql-timeout-maps-to-error ()
+  "A timed-out psql via `dl-satan-db-psql' → (error . …)."
+  (let ((dl-satan-db-host-override "127.0.0.1"))
+    (cl-letf (((symbol-function 'dl-satan-trace-call)
+               (lambda (&rest _)
+                 (list :exit 124 :stdout "" :timed-out t))))
+      (pcase (dl-satan-db-psql "d" "h" "psql" (list "-c" "SELECT 1"))
+        (`(error . ,msg) (should (string-match-p "timed out" msg)))
+        (other (ert-fail (format "expected timeout error, got %S" other)))))))
+
+(ert-deftest dl-satan-db/psql-timeout-secs-nil-runs-unbounded ()
+  "Migrate-style `:timeout-secs nil' forwards nil to `dl-satan-trace-call'
+so the call runs UNBOUNDED (no `timeout' wrapper)."
+  (let ((dl-satan-db-host-override "127.0.0.1")
+        captured)
+    (cl-letf (((symbol-function 'dl-satan-trace-call)
+               (lambda (_program _args &rest kw)
+                 (setq captured (plist-member kw :timeout-secs))
+                 (list :exit 0 :stdout "ok" :timed-out nil))))
+      (dl-satan-db-psql "d" "h" "psql" (list "-f" "-") "SELECT 1"
+                        :timeout-secs nil)
+      ;; Forwarded, and forwarded as nil (unbounded).
+      (should captured)
+      (should (eq (cadr captured) nil)))))
+
+(ert-deftest dl-satan-db/psql-default-timeout-is-bounded ()
+  "Omitting `:timeout-secs' forwards the defcustom default (bounded)."
+  (let ((dl-satan-db-host-override "127.0.0.1")
+        captured)
+    (cl-letf (((symbol-function 'dl-satan-trace-call)
+               (lambda (_program _args &rest kw)
+                 (setq captured (plist-get kw :timeout-secs))
+                 (list :exit 0 :stdout "ok" :timed-out nil))))
+      (dl-satan-db-psql "d" "h" "psql" (list "-c" "SELECT 1"))
+      (should (equal captured dl-satan-db-timeout-seconds)))))
+
+(ert-deftest dl-satan-db/query-forwards-label-for-ledger-attribution ()
+  "Per-caller `:label' reaches `dl-satan-trace-call' so ledger rows carry
+per-caller attribution."
+  (let ((dl-satan-db-host-override "127.0.0.1")
+        captured)
+    (cl-letf (((symbol-function 'dl-satan-trace-call)
+               (lambda (_program _args &rest kw)
+                 (setq captured (plist-get kw :label))
+                 (list :exit 0 :stdout "42" :timed-out nil))))
+      (dl-satan-db-query "d" "h" "psql" "SELECT 42" nil
+                         :label "memory.fetch")
+      (should (equal captured "memory.fetch")))))
 
 (provide 'dl-satan-db-test)
 ;;; dl-satan-db-test.el ends here

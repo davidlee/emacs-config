@@ -120,5 +120,40 @@ it to a vector of dotted-pair conses — a JSON-illegal shape."
     (should (vectorp v))
     (should (vectorp (aref v 0)))))
 
+(ert-deftest dl-satan-jsonl/prepare-decodes-unibyte-strings ()
+  "`json-serialize' rejects unibyte strings with `wrong-type-argument
+json-value-p'.  Raw UTF-8 bytes leak into the subprocess ledger via
+psql argv / child output (e.g. a `payload=…—…' element carrying an
+em-dash).  `dl-satan-jsonl-prepare' must decode unibyte strings to
+multibyte so the row survives the wire layer instead of being silently
+dropped."
+  ;; A bare unibyte UTF-8 string decodes to a multibyte string that
+  ;; `json-serialize' accepts and round-trips to the original text.
+  (let* ((raw (encode-coding-string "payload=x—y" 'utf-8))
+         (out (dl-satan-jsonl-prepare raw)))
+    (should (not (multibyte-string-p raw)))
+    (should (multibyte-string-p out))
+    (should (equal "[\"payload=x—y\"]"
+                   (decode-coding-string (json-serialize (vector out))
+                                         'utf-8)))))
+
+(ert-deftest dl-satan-jsonl/prepare-unibyte-in-ledger-row ()
+  "The realistic subprocess ledger row: a plist whose `:argv' vector
+holds a unibyte argv element serialises without error after prepare."
+  (let* ((raw (encode-coding-string "payload=x—y" 'utf-8))
+         (row (list :kind "subprocess"
+                    :argv (vector "psql" "-c" raw)))
+         (encoded (json-serialize (dl-satan-jsonl-prepare row)
+                                  :null-object :null :false-object :false)))
+    (should (stringp encoded))
+    (should (string-match-p "payload=x—y"
+                            (decode-coding-string encoded 'utf-8)))))
+
+(ert-deftest dl-satan-jsonl/prepare-leaves-multibyte-strings-unchanged ()
+  "Ordinary multibyte strings pass through untouched — not re-decoded."
+  (let ((s "payload=x—y"))
+    (should (multibyte-string-p s))
+    (should (equal s (dl-satan-jsonl-prepare s)))))
+
 (provide 'dl-satan-jsonl-test)
 ;;; dl-satan-jsonl-test.el ends here

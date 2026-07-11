@@ -222,5 +222,42 @@ to a temp dir; run BODY; clean up."
            (`(error . ,_) t)))
         (err (ert-fail (format "cleanup-delete-branch: %S" err)))))))
 
+;; ---------------------------------------------------------------------
+;; confinement guard (VT-1)
+;; ---------------------------------------------------------------------
+
+(ert-deftest dl-satan-patch-worktree/assert-owned-accepts-owned-path ()
+  "Guard accepts a path under the patch-worktree root."
+  (let* ((root (make-temp-file "satan-patch-guard-" t))
+         (dl-satan-patch-worktree-root root))
+    (unwind-protect
+        (let ((owned (expand-file-name "job1" root)))
+          (should (progn (dl-satan-patch-worktree--assert-owned owned) t)))
+      (delete-directory root t))))
+
+(ert-deftest dl-satan-patch-worktree/assert-owned-rejects-outside-path ()
+  "Guard signals when the target escapes the root (a user tree)."
+  (let* ((root (make-temp-file "satan-patch-guard-" t))
+         (dl-satan-patch-worktree-root root))
+    (unwind-protect
+        (should-error
+         (dl-satan-patch-worktree--assert-owned
+          (make-temp-name "/tmp/definitely-outside-")))
+      (delete-directory root t))))
+
+(ert-deftest dl-satan-patch-worktree/assert-owned-rejects-symlink-escape ()
+  "Guard signals when an in-root symlink resolves outside the root.
+`file-truename' follows the link, so a symlink planted under the root
+that points at a user tree is still rejected."
+  (let* ((root (make-temp-file "satan-patch-guard-" t))
+         (outside (make-temp-file "satan-patch-outside-" t))
+         (dl-satan-patch-worktree-root root))
+    (unwind-protect
+        (let ((link (expand-file-name "escape" root)))
+          (make-symbolic-link outside link)
+          (should-error (dl-satan-patch-worktree--assert-owned link)))
+      (delete-directory root t)
+      (delete-directory outside t))))
+
 (provide 'dl-satan-patch-worktree-test)
 ;;; dl-satan-patch-worktree-test.el ends here
