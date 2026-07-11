@@ -15,10 +15,19 @@
 
 (require 'cl-lib)
 (require 'subr-x)
+(require 'dl-satan-trace)
 
 (defgroup dl-satan-db nil
   "Shared psql subprocess runner for the SATAN broker."
   :group 'dl-satan)
+
+(defcustom dl-satan-db-timeout-seconds 5
+  "Per-call wall-clock deadline (seconds) for psql subprocesses.
+Applied via `dl-satan-trace-call' at both chokepoints.  A breach maps
+to the existing (error . MSG) contract.  Callers that must never be
+killed (schema migrations, bulk renormalize writes) pass an explicit
+`:timeout-secs nil' to run UNBOUNDED."
+  :type 'integer :group 'dl-satan-db)
 
 (defcustom dl-satan-db-default-host "/run/postgresql"
   "Default Postgres host or socket directory.
@@ -66,7 +75,9 @@ connect via libpq env vars rather than through dl-satan-db-psql."
 ;; dl-satan-db-query — the common case (SQL + variables → trimmed result)
 ;; ---------------------------------------------------------------------
 
-(defun dl-satan-db-query (db host program sql variables)
+(cl-defun dl-satan-db-query (db host program sql variables
+                                &key label
+                                (timeout-secs dl-satan-db-timeout-seconds))
   "Run SQL against DB with VARIABLES (alist of NAME . VALUE) bound via -v.
 Returns (ok . STDOUT-TRIMMED) or (error . MSG).
 
@@ -74,7 +85,13 @@ HOST and PROGRAM are explicit params so each module passes its own
 defcustoms independently.  SQL is fed to psql on stdin via -f -
 because -c does not perform variable substitution.  Field separator is
 tab so multi-column SELECTs are unambiguous to parse.  Always passes
--q (quiet mode) so psql welcome-banner never leaks into stdout."
+-q (quiet mode) so psql welcome-banner never leaks into stdout.
+
+The call is routed through `dl-satan-trace-call' so it is ledgered and
+bounded.  LABEL is an optional per-caller ledger tag.  TIMEOUT-SECS
+defaults to `dl-satan-db-timeout-seconds'; an explicit nil runs the
+call UNBOUNDED (no `timeout' wrapper).  A deadline breach maps to
+\(error . \"psql timed out …\")."
   (let* ((host (dl-satan-db-resolve-host host))
          (var-args (cl-loop for (k . v) in variables
                             append (list "-v"
@@ -86,27 +103,29 @@ tab so multi-column SELECTs are unambiguous to parse.  Always passes
                                   "-F" "\t"
                                   "-v" "ON_ERROR_STOP=1")
                             var-args
-                            (list "-f" "-"))))
-    (with-temp-buffer
-      (let* ((out-buf (current-buffer))
-              (status
-                (with-temp-buffer
-                  (insert sql)
-                  (apply #'call-process-region
-                    (point-min) (point-max)
-                    program
-                    nil out-buf nil full-args))))
-        (if (and (integerp status) (zerop status))
-          (cons 'ok (string-trim (buffer-string)))
-          (cons 'error (format "psql exit %s on %s: %s"
-                         status db
-                         (string-trim (buffer-string)))))))))
+                            (list "-f" "-")))
+         (result (dl-satan-trace-call program full-args
+                                      :stdin sql
+                                      :timeout-secs timeout-secs
+                                      :label label))
+         (exit (plist-get result :exit))
+         (out (plist-get result :stdout)))
+    (cond
+     ((plist-get result :timed-out)
+      (cons 'error (format "psql timed out after %ss on %s" timeout-secs db)))
+     ((and (integerp exit) (zerop exit))
+      (cons 'ok (string-trim out)))
+     (t
+      (cons 'error (format "psql exit %s on %s: %s"
+                           exit db (string-trim out)))))))
 
 ;; ---------------------------------------------------------------------
 ;; dl-satan-db-psql — thin wrapper for callers with custom flags
 ;; ---------------------------------------------------------------------
 
-(defun dl-satan-db-psql (db host program extra-flags &optional input)
+(cl-defun dl-satan-db-psql (db host program extra-flags &optional input
+                               &key label
+                               (timeout-secs dl-satan-db-timeout-seconds))
   "Run psql against DB with EXTRA-FLAGS appended after base args.
 Optional INPUT string is fed to psql on stdin.  Returns untrimmed
 (ok . STDOUT) or (error . MSG).
@@ -114,30 +133,34 @@ Optional INPUT string is fed to psql on stdin.  Returns untrimmed
 Base args are -h HOST -d DB --no-psqlrc -v ON_ERROR_STOP=1.
 EXTRA-FLAGS is a list of strings (e.g. --single-transaction, -f -,
 -c \"SELECT ...\").  When INPUT is non-nil, EXTRA-FLAGS should
-include -f - so psql reads from stdin; otherwise include -c SQL."
-  (let ((host (dl-satan-db-resolve-host host)))
-    (with-temp-buffer
-      (let* ((full-args (append (list "-h" host
+include -f - so psql reads from stdin; otherwise include -c SQL.
+
+The call is routed through `dl-satan-trace-call' so it is ledgered and
+bounded.  LABEL is an optional per-caller ledger tag.  TIMEOUT-SECS
+defaults to `dl-satan-db-timeout-seconds'; an explicit nil runs the
+call UNBOUNDED — migrations and bulk renormalize writes pass nil so
+they are never killed.  A deadline breach maps to (error . \"psql
+timed out …\")."
+  (let* ((host (dl-satan-db-resolve-host host))
+         (full-args (append (list "-h" host
                                   "-d" db
                                   "--no-psqlrc"
                                   "-v" "ON_ERROR_STOP=1")
-                          extra-flags))
-              (status (if input
-                        (let ((out-buf (current-buffer)))
-                          (with-temp-buffer
-                            (insert input)
-                            (apply #'call-process-region
-                              (point-min) (point-max)
-                              program
-                              nil out-buf nil full-args)))
-                        (apply #'call-process
-                          program
-                          nil t nil full-args))))
-        (if (and (integerp status) (zerop status))
-          (cons 'ok (buffer-string))
-          (cons 'error
-            (format "psql exit %s on %s: %s"
-              status db (string-trim (buffer-string)))))))))
+                            extra-flags))
+         (result (dl-satan-trace-call program full-args
+                                      :stdin input
+                                      :timeout-secs timeout-secs
+                                      :label label))
+         (exit (plist-get result :exit))
+         (out (plist-get result :stdout)))
+    (cond
+     ((plist-get result :timed-out)
+      (cons 'error (format "psql timed out after %ss on %s" timeout-secs db)))
+     ((and (integerp exit) (zerop exit))
+      (cons 'ok out))
+     (t
+      (cons 'error (format "psql exit %s on %s: %s"
+                           exit db (string-trim out)))))))
 
 ;; ---------------------------------------------------------------------
 ;; pg-array parser (from dl-satan-intervention, better double-quote handling)

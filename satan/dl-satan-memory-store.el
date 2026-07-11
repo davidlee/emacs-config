@@ -232,7 +232,8 @@ round-trip — and so the tab-split row parser below cannot misframe."
                (number-to-string min-score)
                limit
                kinds-arg))
-         (result (dl-satan-db-query db dl-satan-memory-store-host dl-satan-memory-store-psql-program sql vars)))
+         (result (dl-satan-db-query db dl-satan-memory-store-host dl-satan-memory-store-psql-program sql vars
+                                    :label "memory.resonate")))
     (pcase result
       (`(ok . ,out)
        (cons 'ok

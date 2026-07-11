@@ -60,7 +60,8 @@ bare slug resolved against `dl-satan-tools-vcs-search-roots'."
 
 (defun dl-satan-tools-vcs--git-repo-p (dir)
   "Return non-nil if DIR is inside a git work tree."
-  (zerop (call-process "git" nil nil nil "-C" dir "rev-parse" "--git-dir")))
+  (let ((process-environment (cons "GIT_OPTIONAL_LOCKS=0" process-environment)))
+    (zerop (call-process "git" nil nil nil "-C" dir "rev-parse" "--git-dir"))))
 
 (defun dl-satan-tools-vcs--log (dir limit)
   "Return up to LIMIT commit plists for DIR, newest first.

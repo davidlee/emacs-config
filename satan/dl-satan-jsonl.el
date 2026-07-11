@@ -46,7 +46,11 @@ Vectors are walked.  Non-special symbols are stringified
 with `wrong-type-argument json-value-p'), so any in-memory symbol that
 leaks into a bundle / percept / transcript record survives the wire
 layer.  Regular symbols emit their `symbol-name'; keywords drop the
-leading colon.  Other atoms pass through untouched."
+leading colon.  Unibyte strings (raw subprocess argv / child output
+bytes, e.g. a `payload=…—…' element) are decoded as UTF-8 so they too
+survive the wire layer instead of tripping `json-serialize' on raw
+bytes; multibyte strings pass through untouched.  Other atoms pass
+through untouched."
   (cond
    ((vectorp v)
     (vconcat (mapcar #'dl-satan-jsonl-prepare (append v nil))))
@@ -62,6 +66,8 @@ leading colon.  Other atoms pass through untouched."
    ((or (eq v t) (null v) (eq v :null) (eq v :false)) v)
    ((keywordp v) (substring (symbol-name v) 1))
    ((symbolp v)  (symbol-name v))
+   ((and (stringp v) (not (multibyte-string-p v)))
+    (decode-coding-string v 'utf-8))
    (t v)))
 
 (defun dl-satan-jsonl-make-filter (on-object on-error)

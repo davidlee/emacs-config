@@ -307,6 +307,39 @@ populate them.  Keeps current_window and bough_active."
            (should (null (plist-get out :bough_recent)))
            (should (null (plist-get out :bough_day)))))))))
 
+(ert-deftest dl-satan-memory-evidence/budget-exhausted-skips-optional-stages ()
+  "Phase 5 — under an exhausted tick budget the OPTIONAL evidence
+stages shed their work: `content_probe' / `bough_recent' / `bough_day'
+skip, so their raw slots go nil, `sensor_status' `:content' degrades to
+\"budget_skipped\", the skips land on the accumulator, and the percept
+stays valid through `--truncate' + canon (no signal)."
+  (dl-satan-memory-evidence-test--in-tmp tmp
+   (let* ((dl-satan-trace--current
+           (list :t0 (- (float-time) 100) :budget-ms 1
+                 :stages nil :skipped nil))
+          (ctx (list :time_now "2026-05-19T10:00:00+10:00"
+                     :mode_name "motd"))
+          (out (dl-satan-memory-evidence-assemble-with-bounds
+                "2026-05-19T08:45:00+10:00"
+                "2026-05-19T09:15:00+10:00"
+                ctx
+                (list :behaviour_dir (file-name-as-directory tmp)
+                      :cwd tmp))))
+     (should (null (plist-get out :bough_recent)))
+     (should (null (plist-get out :bough_day)))
+     (should (null (plist-get out :content_recent)))
+     (should (equal (plist-get (plist-get out :sensor_status) :content)
+                    "budget_skipped"))
+     ;; the optional skips are recorded honestly on the accumulator
+     (should (member "evidence.content_probe"
+                     (plist-get dl-satan-trace--current :skipped)))
+     (should (member "evidence.bough_recent"
+                     (plist-get dl-satan-trace--current :skipped)))
+     (should (member "evidence.bough_day"
+                     (plist-get dl-satan-trace--current :skipped)))
+     ;; degraded percept still canonicalizes (no signal, non-nil result)
+     (should (dl-satan-memory-canon-canonicalize out nil ctx)))))
+
 (ert-deftest dl-satan-memory-evidence/assemble-reads-panopticon ()
   (dl-satan-memory-evidence-test--in-tmp tmp
    (let* ((current-dir (expand-file-name "current" tmp))
@@ -356,6 +389,61 @@ populate them.  Keeps current_window and bough_active."
          (should git)
          (should (stringp (plist-get git :head_short)))
          (should (= 1 (length (plist-get git :commits)))))))))
+
+(ert-deftest dl-satan-memory-evidence/git-output-sets-optional-locks-env ()
+  ;; Prove read-only git subprocesses observe GIT_OPTIONAL_LOCKS=0.
+  ;; Stub `git' on `exec-path' with a shell script that echoes the env
+  ;; var, so the assertion is deterministic (no real repo, no race).
+  (dl-satan-memory-evidence-test--in-tmp tmp
+   (let ((stub (expand-file-name "git" tmp)))
+     (with-temp-file stub
+       (insert "#!/bin/sh\n")
+       (insert "printf '%s' \"$GIT_OPTIONAL_LOCKS\"\n"))
+     (set-file-modes stub #o755)
+     (let ((exec-path (cons tmp exec-path)))
+       (should (equal (dl-satan-memory-evidence--git-output "status")
+                      "0"))))))
+
+;; ---------------------------------------------------------------------
+;; VT-2 — routed choke deadlines: git-output/git-state timeout marker,
+;; bough timeout degrades bough_status.  `dl-satan-trace-call' is
+;; stubbed so the timed-out branch is forced without a real hang.
+;; ---------------------------------------------------------------------
+
+(ert-deftest dl-satan-memory-evidence/git-output-timeout-returns-nil ()
+  "A routed git call that breaches its deadline → nil (non-zero exit)."
+  (cl-letf (((symbol-function 'dl-satan-trace-call)
+             (lambda (&rest _)
+               (list :exit 124 :stdout "" :timed-out t))))
+    (should (null (dl-satan-memory-evidence--git-output "status")))))
+
+(ert-deftest dl-satan-memory-evidence/git-state-marks-timed_out ()
+  "When a routed sub-call times out, `--git-state' adds `:timed_out t' so
+a partial read is never mistaken for a clean repo.  The `--git-dir'
+probe succeeds; the follow-up probes time out."
+  (dl-satan-memory-evidence-test--in-tmp tmp
+   (cl-letf (((symbol-function 'dl-satan-trace-call)
+              (lambda (_program args &rest _)
+                (if (member "--git-dir" args)
+                    (list :exit 0 :stdout ".git" :timed-out nil)
+                  (list :exit 124 :stdout "" :timed-out t)))))
+     (let ((state (dl-satan-memory-evidence--git-state tmp)))
+       (should state)
+       (should (eq (plist-get state :timed_out) t))))))
+
+(ert-deftest dl-satan-memory-evidence/bough-timeout-degrades-status ()
+  "A bough call that times out counts as an attempt but not ok, so the
+synthesised bough_status degrades to `unreachable'."
+  (let ((dl-satan-memory-evidence--bough-tracking t)
+        (dl-satan-memory-evidence--bough-attempts 0)
+        (dl-satan-memory-evidence--bough-ok 0)
+        (dl-satan-bough-program (or (executable-find "sh") "/bin/sh")))
+    (cl-letf (((symbol-function 'dl-satan-trace-call)
+               (lambda (&rest _)
+                 (list :exit 124 :stdout "" :timed-out t))))
+      (should (null (dl-satan-memory-evidence--bough-call "active")))
+      (should (equal (dl-satan-memory-evidence--bough-status)
+                     "unreachable")))))
 
 ;; ---------------------------------------------------------------------
 ;; Git-activity feed (bursty — NEVER stale)

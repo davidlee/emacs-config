@@ -9,6 +9,14 @@
 (require 'cl-lib)
 (require 'dl-satan-tools)
 (require 'dl-satan-intervention)
+(require 'dl-satan-trace)
+
+(defcustom dl-satan-sway-timeout-seconds 2
+  "Per-call wall-clock deadline (seconds) for `swaymsg' subprocesses.
+Applied via `dl-satan-trace-call' in `dl-satan-sway--swaymsg' so a
+stuck compositor cannot hang a tool call.  A breach maps to
+\(error . \"swaymsg timed out …\")."
+  :type 'integer :group 'dl-satan)
 
 (defconst dl-satan-sway-classes
   '("focused" "focused_inactive" "focused_tab_title"
@@ -38,16 +46,25 @@ Kind `visible_sign'; the actual surface is the sway bar / window borders.")
   :type 'string :group 'dl-satan)
 
 (defun dl-satan-sway--swaymsg (&rest args)
-  "Invoke `swaymsg' with ARGS via `call-process'.  No shell.
-Return (ok . OUTPUT) on success, (error . MSG) on non-zero exit."
-  (with-temp-buffer
-    (let ((status (apply #'call-process
-                         dl-satan-sway-swaymsg-program nil t nil args)))
-      (if (and (integerp status) (zerop status))
-          (cons 'ok (string-trim (buffer-string)))
-        (cons 'error
-              (format "swaymsg exit %s: %s"
-                      status (string-trim (buffer-string))))))))
+  "Invoke `swaymsg' with ARGS.  No shell.
+Routed through `dl-satan-trace-call' so the call is ledgered and
+bounded by `dl-satan-sway-timeout-seconds'.  Return (ok . OUTPUT) on
+success, (error . MSG) on non-zero exit; a deadline breach maps to
+\(error . \"swaymsg timed out …\")."
+  (let* ((result (dl-satan-trace-call
+                  dl-satan-sway-swaymsg-program args
+                  :timeout-secs dl-satan-sway-timeout-seconds
+                  :label "sway"))
+         (exit (plist-get result :exit))
+         (output (plist-get result :stdout)))
+    (cond
+     ((plist-get result :timed-out)
+      (cons 'error (format "swaymsg timed out after %ss"
+                           dl-satan-sway-timeout-seconds)))
+     ((and (integerp exit) (zerop exit))
+      (cons 'ok (string-trim output)))
+     (t
+      (cons 'error (format "swaymsg exit %s: %s" exit (string-trim output)))))))
 
 (defun dl-satan-sway--class-args (record)
   "Return the positional colour argv for sway's `client.<class>' command.

@@ -122,9 +122,12 @@ row in the same transaction."
                             version
                             (dl-satan-memory-migrate--sql-literal filename)
                             (dl-satan-memory-migrate--sql-literal checksum))))
+         ;; Migrations run in one transaction and may legitimately be
+         ;; long; they must never be killed.  :timeout-secs nil = unbounded.
          (result   (dl-satan-db-psql
                     db dl-satan-memory-migrate-host dl-satan-memory-migrate-psql-program
-                    (list "--single-transaction" "-f" "-") script)))
+                    (list "--single-transaction" "-f" "-") script
+                    :timeout-secs nil)))
     (pcase result
       (`(ok . ,_) checksum)
       (`(error . ,msg) (user-error "Migration %d (%s) failed: %s"
@@ -288,9 +291,14 @@ would skip (must be max(applied)+1, max+2, ...)."
            "         WHERE th.trace_id = t.id AND th.active), '') "
            "FROM traces t "
            "ORDER BY t.id"))
+         ;; Bulk scan of every trace row (metadata_json::text) for the
+         ;; renormalize migration — legitimately long, never killed.
+         ;; Explicit nil INPUT before the keyword so `:timeout-secs' is not
+         ;; swallowed by the `&optional input' slot.
          (result (dl-satan-db-psql
                   db dl-satan-memory-migrate-host dl-satan-memory-migrate-psql-program
-                  (list "-A" "-t" "-F" "\t" "-c" sql))))
+                  (list "-A" "-t" "-F" "\t" "-c" sql) nil
+                  :timeout-secs nil)))
     (pcase result
       (`(ok . ,out)
        (cl-loop for line in (split-string out "\n" t)
@@ -377,7 +385,10 @@ its own condition-case)."
     (if (equal new-handles current)
         'skipped
       (let* ((sql (dl-satan-memory-renormalize--apply-sql row version canon))
-             (result (dl-satan-db-psql db dl-satan-memory-migrate-host dl-satan-memory-migrate-psql-program (list "-f" "-") sql)))
+             ;; Per-trace renormalize write — part of the migration path,
+             ;; never killed.  :timeout-secs nil = unbounded.
+             (result (dl-satan-db-psql db dl-satan-memory-migrate-host dl-satan-memory-migrate-psql-program (list "-f" "-") sql
+                                       :timeout-secs nil)))
         (pcase result
           (`(ok . ,_) 'updated)
           (`(error . ,msg)

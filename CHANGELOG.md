@@ -2,6 +2,15 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-07-11 — SL-011: SATAN tick performance — observe and bound
+
+Bounded and instrumented the perception tick so a slow probe can no longer hang it silently.
+
+- **`dl-satan-trace.el`** (new) — per-tick telemetry: one `kind:"tick"` row (stage timings, budget, outcome, skip list) plus a `kind:"subprocess"` ledger row per external call, day-bucketed JSONL under `$XDG_STATE_HOME/satan/`. Kill switch `dl-satan-trace-enabled`.
+- **Bounded choke points** — db / git / bough / sway subprocess calls route through `dl-satan-trace-call` with per-probe deadlines; read-only git carries `GIT_OPTIONAL_LOCKS=0` so a tick never collides with your own `git` on `index.lock`.
+- **Tiered tick wall budget** (`dl-satan-trace-tick-budget-seconds`, default 10) — over budget, optional stages (bough recent/day, content probe, resonance, recent-runs) shed and degrade honestly (nil slots, `budget_skipped` sensor status); core stages and watermark commits never skip.
+- **Patch-worktree confinement** — every mutating git op asserts its target is under the patch-worktree root (`file-truename`, symlink-escape proof; hard error), and patch git routes through the ledger.
+
 ## 2026-06-10 — SATAN backlog waybar widget (DE-010 follow-up)
 
 New `custom/satan-backlog` waybar module showing ingest backlog depth (`head −

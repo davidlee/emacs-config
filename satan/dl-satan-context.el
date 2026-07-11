@@ -17,6 +17,7 @@
 (require 'dl-satan-sensor-content)
 (require 'dl-satan-sensor-wpm)
 (require 'dl-satan-attribute-render)
+(require 'dl-satan-trace)
 
 (defvar dl-satan-runs-dir)              ; defined in dl-satan-broker.el
 (defvar dl-satan-run--iso-time-format)  ; defconst in dl-satan-run.el
@@ -47,18 +48,22 @@ Threaded keys (set by this function on PREPARE):
   :sensor_status    — sensor_status from evidence_window.
   :probe_snapshots  — (:curiosity SNAP :content SNAP :wpm SNAP)."
   (let* ((percept (dl-satan-percept-build prepare mode))
-         (_persisted (dl-satan-percept-persist dir percept))
+         (_persisted (dl-satan-trace-stage "perceive.persist"
+                       (dl-satan-percept-persist dir percept)))
          (evidence (plist-get percept :evidence_window))
          (sensor-status (plist-get evidence :sensor_status))
          (run-id (plist-get prepare :run_id))
          (ts (plist-get prepare :time_now))
          (snapshots
-          (list :curiosity (dl-satan-sensor-curiosity-probe-read
-                            :run-id run-id :ts ts)
-                :content (dl-satan-sensor-content-probe-read
-                          :run-id run-id :ts ts)
-                :wpm (dl-satan-sensor-wpm-probe-read
-                      :run-id run-id :ts ts))))
+          (list :curiosity (dl-satan-trace-stage "probes.read.curiosity"
+                             (dl-satan-sensor-curiosity-probe-read
+                              :run-id run-id :ts ts))
+                :content (dl-satan-trace-stage "probes.read.content"
+                           (dl-satan-sensor-content-probe-read
+                            :run-id run-id :ts ts))
+                :wpm (dl-satan-trace-stage "probes.read.wpm"
+                       (dl-satan-sensor-wpm-probe-read
+                        :run-id run-id :ts ts)))))
     (plist-put
      (plist-put
       (plist-put
@@ -78,8 +83,11 @@ Threaded keys (set by this function on PREPARE):
   :resonance      — plist from dl-satan-resonance-derive over the percept.
   :motive         — plist from dl-satan-motive-read."
   (let* ((percept (plist-get prepare :percept))
-         (resonance (dl-satan-resonance-derive percept))
-         (motive (dl-satan-motive-read dl-satan-motive-file)))
+         (resonance (or (dl-satan-trace-stage-optional "enrich.resonance"
+                          (dl-satan-resonance-derive percept))
+                        (list :status 'budget-skipped :cue nil :matches nil)))
+         (motive (dl-satan-trace-stage "enrich.motive"
+                   (dl-satan-motive-read dl-satan-motive-file))))
     (plist-put
      (plist-put prepare :resonance resonance)
      :motive motive)))
@@ -507,7 +515,8 @@ RUN-CTX is the prepare-phase run_ctx plist (Phase 0.1) — see
   "Return the recent-runs entry list for MODE-SPEC, or nil when disabled."
   (let ((n (plist-get mode-spec :recent-runs)))
     (when (and (integerp n) (> n 0))
-      (dl-satan-context--recent-runs n))))
+      (dl-satan-trace-stage-optional "spawn.recent_runs"
+        (dl-satan-context--recent-runs n)))))
 
 (defun dl-satan-context-tick (mode-spec &optional run-ctx)
   "Bundle for a tick mode.  Same shape as motd, plus optional recent-runs.

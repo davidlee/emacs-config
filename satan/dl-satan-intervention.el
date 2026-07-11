@@ -266,7 +266,8 @@ caller sees a `user-error'."
       (let* ((script (dl-satan-intervention--build-rebuild-script events))
              (result (dl-satan-db-psql
                       db dl-satan-memory-migrate-host dl-satan-memory-migrate-psql-program
-                      (list "--single-transaction" "-f" "-") script)))
+                      (list "--single-transaction" "-f" "-") script
+                      :label "intervention.rebuild")))
         (pcase result
           (`(ok . ,_)
            (list :total (length events)

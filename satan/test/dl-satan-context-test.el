@@ -212,6 +212,46 @@ When FAILED is non-nil the directory name carries the `.FAILED' suffix."
       (should-not (string-match-p "# Recent SATAN runs" prompt)))))
 
 ;; ---------------------------------------------------------------------
+;; Tick budget — enrich.resonance is optional (Phase 5)
+;; ---------------------------------------------------------------------
+
+(ert-deftest dl-satan-context/enrich-resonance-budget-skip-and-passthrough ()
+  "Phase 5 — `dl-satan-run-enrich' sheds the OPTIONAL resonance stage
+under an exhausted tick budget, substituting the honest
+`budget-skipped' fallback the renderer self-suppresses.  Both the
+no-accumulator and the bound-but-unbudgeted paths run the real
+derive (`gate-skip' here), proving the passthrough is intact."
+  (cl-letf (((symbol-function 'dl-satan-motive-read)
+             (lambda (&rest _) '(:motive nil))))
+    ;; percept with no handles/sources → real derive yields `gate-skip'
+    (let ((prepare (list :percept (list :handles nil :handle_sources nil))))
+      ;; (a) exhausted budget → optional stage skips → honest fallback
+      (let* ((dl-satan-trace--current
+              (list :t0 (- (float-time) 100) :budget-ms 1
+                    :stages nil :skipped nil))
+             (res (plist-get (dl-satan-run-enrich (copy-sequence prepare))
+                             :resonance)))
+        (should (eq (plist-get res :status) 'budget-skipped))
+        (should (null (plist-get res :cue)))
+        (should (null (plist-get res :matches)))
+        (should (member "enrich.resonance"
+                        (plist-get dl-satan-trace--current :skipped)))
+        ;; renderer self-suppresses: nil block, no signal
+        (should (null (dl-satan-resonance-render-block
+                       '(("resonance_block_header" . "# Resonance")) res))))
+      ;; (b) no accumulator bound → real derive runs (passthrough)
+      (let* ((dl-satan-trace--current nil)
+             (res (plist-get (dl-satan-run-enrich (copy-sequence prepare))
+                             :resonance)))
+        (should (eq (plist-get res :status) 'gate-skip)))
+      ;; (c) bound but unbudgeted (:budget-ms nil) → real derive runs
+      (let* ((dl-satan-trace--current
+              (list :t0 (float-time) :budget-ms nil :stages nil :skipped nil))
+             (res (plist-get (dl-satan-run-enrich (copy-sequence prepare))
+                             :resonance)))
+        (should (eq (plist-get res :status) 'gate-skip))))))
+
+;; ---------------------------------------------------------------------
 ;; Self-edit context-fn (relocated from dl-satan-test.el monolith)
 ;; ---------------------------------------------------------------------
 

@@ -179,7 +179,8 @@ Optional: JOB-ID (else minted from current time), STATE (default
                  ("context"       . ,(json-serialize (dl-satan-jsonl-prepare (or context '()))))
                  ("allowed"       . ,(json-serialize (dl-satan-jsonl-prepare (or allowed_paths '()))))
                  ("checks"        . ,(json-serialize (dl-satan-jsonl-prepare (or checks '()))))))
-         (result (dl-satan-db-query db dl-satan-patch-store-host dl-satan-patch-store-psql-program sql vars)))
+         (result (dl-satan-db-query db dl-satan-patch-store-host dl-satan-patch-store-psql-program sql vars
+                                    :label "patch.enqueue")))
     (pcase result
       (`(ok . ,_) (cons 'ok id))
       (err err))))

@@ -32,6 +32,7 @@
 (require 'dl-satan-tools-bough)
 (require 'dl-satan-tools-vcs)            ; morning/tick modes reference vcs_log
 (require 'dl-satan-mcp)                   ; dl-satan-mcp--session-active (session gate)
+(require 'dl-satan-trace)                 ; SL-011 tick trace row (VT-1)
 
 ;; Cross-cutter: assertion subject is broker (action-failed audit
 ;; emission); secondary subject is the tools dispatcher's
@@ -502,7 +503,8 @@ Secondary subject: dl-satan-budget (gating policy)."
             (today (format-time-string "%Y%m%dT" now))
             (existing (expand-file-name (concat today "080000-x-eeeeee") root))
             (dl-satan-runs-dir root)
-            (dl-satan-budget-daily-tokens 400000))
+            (dl-satan-budget-daily-tokens 400000)
+            (dl-satan-trace-enabled nil))  ; SL-011: keep the real trace dir clean
        (unwind-protect
            ;; DR-010 §3: perceive now runs UNCONDITIONALLY before the budget
            ;; gate.  This test's subject is the gate, not perception, so stub
@@ -558,7 +560,8 @@ existing transcript) but asserts the perceive artifacts, not the gate."
             (today (format-time-string "%Y%m%dT" now))
             (existing (expand-file-name (concat today "080000-x-eeeeee") root))
             (dl-satan-runs-dir root)
-            (dl-satan-budget-daily-tokens 400000))
+            (dl-satan-budget-daily-tokens 400000)
+            (dl-satan-trace-enabled nil))  ; SL-011: keep the real trace dir clean
        (unwind-protect
            (cl-letf (((symbol-function 'dl-satan-run-perceive)
                       #'dl-satan-broker-test--minimal-perceive))
@@ -599,6 +602,7 @@ pop a desktop alert).  The bundle is verify-clean."
             (dl-satan-runs-dir root)
             (dl-satan-budget-daily-tokens 2500000) ; under ceiling: no spend
             (dl-satan-mcp--session-active t)        ; interactive session open
+            (dl-satan-trace-enabled nil)  ; SL-011: keep the real trace dir clean
             (announced nil))
        (unwind-protect
            (cl-letf (((symbol-function 'dl-satan-run-perceive)
@@ -635,6 +639,137 @@ pop a desktop alert).  The bundle is verify-clean."
                ;; Bundle remains verify-clean.
                (should (eq (dl-satan-audit-verify-run dir) t))))
          (delete-directory root t))))))
+
+;; ---------- VT-1 (SL-011): one tick trace row per dl-satan-broker-run ----------
+
+(defmacro dl-satan-broker-test--with-trace-dir (dir-var &rest body)
+  "Bind `dl-satan-trace-dir' to a fresh temp DIR-VAR, run BODY, clean up."
+  (declare (indent 1))
+  `(let* ((,dir-var (make-temp-file "satan-broker-trace-" t))
+          (dl-satan-trace-dir ,dir-var)
+          (dl-satan-trace-enabled t))
+     (unwind-protect
+         (progn ,@body)
+       (when (file-directory-p ,dir-var)
+         (delete-directory ,dir-var t)))))
+
+(defun dl-satan-broker-test--tick-rows (trace-dir)
+  "Read today's kind:\"tick\" rows written under TRACE-DIR."
+  (let ((file (expand-file-name
+               (format "tick-trace-%s.jsonl" (format-time-string "%Y-%m-%d"))
+               trace-dir)))
+    (cl-remove-if-not
+     (lambda (r) (equal (plist-get r :kind) "tick"))
+     (dl-satan-jsonl-read-file file))))
+
+(defun dl-satan-broker-test--fixture-percept (prepare _mode)
+  "Fixture `dl-satan-percept-build' stub: identity keys only, no evidence."
+  (list :run_id (plist-get prepare :run_id)
+        :time_now (plist-get prepare :time_now)
+        :handles nil
+        :evidence_window nil))
+
+(ert-deftest dl-satan-broker/run-emits-one-tick-row-outcome-spawned ()
+  "VT-1: `dl-satan-trace-with-tick' wraps `dl-satan-broker-run'.
+Exactly ONE kind:\"tick\" row is written, its `outcome' is \"spawned\",
+and its `stages' map carries the perceive-path stage keys.  The real
+`dl-satan-run-perceive' runs (percept-build stubbed to a fixture) so
+the stage wraps inside the shared perceive fn record onto the tick."
+  (dl-satan-broker-test--with-tool-descriptions
+   dl-satan-broker-test--morning-tool-descriptions
+   (lambda ()
+     (dl-satan-broker-test--with-trace-dir trace-dir
+       (let* ((root (make-temp-file "satan-tick-spawn-" t))
+              (dl-satan-runs-dir root)
+              (dl-satan-budget-daily-tokens 2500000) ; under ceiling
+              (dl-satan-mcp--session-active nil))
+         (unwind-protect
+             (cl-letf (((symbol-function 'dl-satan-percept-build)
+                        #'dl-satan-broker-test--fixture-percept)
+                       ((symbol-function 'dl-satan-broker--spawn)
+                        (lambda (_mode prepare _dir)
+                          (plist-get prepare :run_id))))
+               (let* ((run-id (dl-satan-broker-run "morning"))
+                      (ticks (dl-satan-broker-test--tick-rows trace-dir))
+                      (row (car ticks))
+                      (stages (plist-get row :stages)))
+                 (should (= 1 (length ticks)))
+                 (should (equal "spawned" (plist-get row :outcome)))
+                 (should (equal run-id (plist-get row :run_id)))
+                 (should (equal "morning" (plist-get row :mode)))
+                 ;; Perceive-path stages recorded onto the tick accumulator.
+                 (should (plist-member stages :perceive.persist))
+                 (should (plist-member stages :probes.read.curiosity))
+                 (should (plist-member stages :probes.read.content))
+                 (should (plist-member stages :probes.read.wpm))))
+           (delete-directory root t)))))))
+
+(ert-deftest dl-satan-broker/run-tick-row-outcome-perceive-failed ()
+  "VT-1: a perceive error stamps `outcome' \"perceive_failed\" on the tick row."
+  (dl-satan-broker-test--with-tool-descriptions
+   dl-satan-broker-test--morning-tool-descriptions
+   (lambda ()
+     (dl-satan-broker-test--with-trace-dir trace-dir
+       (let* ((root (make-temp-file "satan-tick-perc-" t))
+              (dl-satan-runs-dir root)
+              (dl-satan-budget-daily-tokens 2500000)
+              (dl-satan-mcp--session-active nil))
+         (unwind-protect
+             (cl-letf (((symbol-function 'dl-satan-run-perceive)
+                        (lambda (&rest _) (error "sensor exploded")))
+                       ((symbol-function 'dl-satan-broker--announce-failure)
+                        (lambda (&rest _) nil)))
+               (dl-satan-broker-run "morning")
+               (let ((ticks (dl-satan-broker-test--tick-rows trace-dir)))
+                 (should (= 1 (length ticks)))
+                 (should (equal "perceive_failed"
+                                (plist-get (car ticks) :outcome)))))
+           (delete-directory root t)))))))
+
+(ert-deftest dl-satan-broker/run-tick-row-outcome-session-blocked ()
+  "VT-1: an active interactive session stamps `outcome' \"session_blocked\"."
+  (dl-satan-broker-test--with-tool-descriptions
+   dl-satan-broker-test--morning-tool-descriptions
+   (lambda ()
+     (dl-satan-broker-test--with-trace-dir trace-dir
+       (let* ((root (make-temp-file "satan-tick-sess-" t))
+              (dl-satan-runs-dir root)
+              (dl-satan-budget-daily-tokens 2500000)
+              (dl-satan-mcp--session-active t))
+         (unwind-protect
+             (cl-letf (((symbol-function 'dl-satan-run-perceive)
+                        #'dl-satan-broker-test--minimal-perceive))
+               (dl-satan-broker-run "morning")
+               (let ((ticks (dl-satan-broker-test--tick-rows trace-dir)))
+                 (should (= 1 (length ticks)))
+                 (should (equal "session_blocked"
+                                (plist-get (car ticks) :outcome)))))
+           (delete-directory root t)))))))
+
+(ert-deftest dl-satan-broker/run-tick-row-outcome-budget-denied ()
+  "VT-1: an over-ceiling day stamps `outcome' \"budget_denied\"."
+  (dl-satan-broker-test--with-tool-descriptions
+   dl-satan-broker-test--morning-tool-descriptions
+   (lambda ()
+     (dl-satan-broker-test--with-trace-dir trace-dir
+       (let* ((root (make-temp-file "satan-tick-bud-" t))
+              (now (current-time))
+              (today (format-time-string "%Y%m%dT" now))
+              (existing (expand-file-name (concat today "080000-x-eeeeee") root))
+              (dl-satan-runs-dir root)
+              (dl-satan-budget-daily-tokens 400000)
+              (dl-satan-mcp--session-active nil))
+         (unwind-protect
+             (cl-letf (((symbol-function 'dl-satan-run-perceive)
+                        #'dl-satan-broker-test--minimal-perceive))
+               (dl-satan-broker-test--write-transcript
+                existing (list (dl-satan-broker-test--usage-record 500000)))
+               (dl-satan-broker-run "morning")
+               (let ((ticks (dl-satan-broker-test--tick-rows trace-dir)))
+                 (should (= 1 (length ticks)))
+                 (should (equal "budget_denied"
+                                (plist-get (car ticks) :outcome)))))
+           (delete-directory root t)))))))
 
 ;; ---------- VT-perceive-pure (DR-010 §5) ----------
 

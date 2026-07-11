@@ -87,16 +87,18 @@
 (defvar dl-satan-sway-test--swaymsg-calls nil)
 
 (defmacro dl-satan-sway-test--with-stub (&rest body)
-  "Run BODY with `call-process' + `dl-satan-intervention-create' stubbed.
-Captures swaymsg argv into `…--swaymsg-calls' and intervention kwargs
-into `…--captured'."
+  "Run BODY with `dl-satan-trace-call' + `dl-satan-intervention-create' stubbed.
+swaymsg is now routed through `dl-satan-trace-call' (ledgered + bounded),
+so the seam is that call, not raw `call-process'.  Captures the LOGICAL
+swaymsg argv (trace-call's ARGS, wrapper-free) into `…--swaymsg-calls'
+and intervention kwargs into `…--captured'."
   (declare (indent 0))
   `(let ((dl-satan-sway-test--swaymsg-calls nil)
          (dl-satan-sway-test--captured '()))
-     (cl-letf (((symbol-function 'call-process)
-                (lambda (_prog _infile _dest _display &rest args)
+     (cl-letf (((symbol-function 'dl-satan-trace-call)
+                (lambda (_program args &rest _)
                   (push args dl-satan-sway-test--swaymsg-calls)
-                  0))
+                  (list :exit 0 :stdout "" :timed-out nil)))
                ((symbol-function 'dl-satan-intervention-create)
                 (lambda (&rest args)
                   (push args dl-satan-sway-test--captured)
