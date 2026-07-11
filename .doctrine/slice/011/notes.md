@@ -81,8 +81,28 @@ points. Only design-sanctioned direct git is `dl-satan-tools-vcs.el:64`
 `--git-repo-p` (read-only `rev-parse --git-dir`, inline `GIT_OPTIONAL_LOCKS=0`,
 design §2-exempt). Async daemon NOTIFY streamers (attribute/patch listeners)
 are `make-process` of custom rust binaries, not psql, not per-tick chokes.
-Everything else swept is rg/fd/calendar/logger/harness-child. VH-1 (live tick +
-git-status loop) remains a HUMAN gate — slice must not conclude until signed.
+Everything else swept is rg/fd/calendar/logger/harness-child.
+
+## PHASE-07 VH-1 live run (2026-07-11) + FINDING-1 (ledger fix)
+
+Real `dl-satan-broker-run "tick-pulse"` in the live image → **tick row perfect**
+(full attributable stage map, budget fields, `outcome:"spawned"`, `skipped:[]`).
+`with-tick` binds correctly; the transient "0 tick rows / run_id:{}" scare was
+background-daemon activity outside any tick (correct pass-through).
+
+**FINDING-1 (VH-1, confirmed + fixed):** the subprocess ledger was LOSSY —
+`json-serialize` throws `json-value-p` on a **unibyte** argv string (a
+`payload={…—…}` psql persist arg carrying raw UTF-8 bytes), swallowed by the
+never-fail-the-tick writer → row silently dropped. Root cause was pre-existing
+in the shared `dl-satan-jsonl-prepare` (symbols/alists coerced, unibyte strings
+not); SL-011's ledger was the first caller to feed it unibyte argv at volume.
+Fix (corrective on `dispatch/011`): add
+`((and (stringp v) (not (multibyte-string-p v))) (decode-coding-string v 'utf-8))`
++ 3 tests. `jsonl.el` + test declared design-target. Multibyte strings pass
+through untouched. Awaits live re-verify before PHASE-07 conclude.
+
+**FOLLOW-UP (cosmetic):** unbound-tick subprocess rows render `"run_id":{}`
+(nil→`{}`) not `null` — backlog, not slice-blocking.
 
 ## Selectors
 
