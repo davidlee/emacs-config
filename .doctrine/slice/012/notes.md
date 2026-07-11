@@ -97,3 +97,46 @@ phase onward.
 Copy-not-move: `.emacs.d/satan/` and `/workspace/satan/satan/` now co-exist.
 **No edits to the `.emacs.d` copy** until PHASE-04 cutover, or edits must be
 replayed into the package (PHASE-04 EN-2 audits the window closed).
+
+## PHASE-01 execution results (2026-07-12, resumed)
+
+Re-cut gate run, `SATAN_DB_HOST=127.0.0.1 just check` in `/workspace/satan`
+(supabase up at `127.0.0.1:54322`). Exit 0.
+
+- **Lint**: 65/65 `{"ok":true}` (satan/*.el). GREEN.
+- **ERT**: `Ran 361 tests, 294 as expected, 64 unexpected, 3 skipped`.
+- **All 64 unexpected are coupling-blocked** (PHASE-03), zero boundary
+  regressions:
+  - 63 = **Class B** self-location (unmigrated test DBs — migration dir anchored
+    to `user-emacs-directory`): memory-store/renormalize/migrate (28),
+    intervention (16), pattern (14), patch-store (8), trace-ex2 (1 DB-write).
+  - 1 = **Class A** dl-notes cascade: `trace-ex2` also pulls `dl-satan-context`
+    which hard-`require`s `dl-notes-paths` (file-missing). Same PHASE-03 fix.
+  - Histogram by module: memory 28, intervention 16, pattern 14, patch 8, trace 1.
+  - **0 failures outside the 5 DB-backed modules** → non-coupling suites
+    (resonance, sensor, trace-stage, context-render, tools, protocol) all pass.
+    Re-cut VA-1 satisfied.
+- 3 skipped = `memory-grammar/db-sync-*` (`skip-unless`, expected).
+- Full log: scratchpad `gate.log` (disposable).
+
+**T13** — `satan/test/dl-secret-test.el` dropped (`git rm`); it `require`d the
+config-owned `dl-secret`. Test dir 62 → 61.
+
+**T8 (flake gptel harness)** — re-enabled the 3 commented blocks in
+`/workspace/satan/flake.nix`: `satanGptelHarness` (mkDerivation from
+`./satan/harness`), `satanGptelJailOptions`, `satan-jailed-gptel-harness`
+(exported via `jailPkgs`→`packages`). Diff proven **pure comment-toggle**
+(every changed line token-identical modulo indent + `#`). Src `./satan/harness`
+present + tracked (9 files). Config-jail defs (jailed-pi/claude/opencode/dirge)
+left intact per user ownership.
+- **VA-3 live `nix` eval NOT runnable in-sandbox** — no `nix` binary present
+  (same class as PHASE-04 host-only steps). Static half done (pure-toggle proof
+  + src-exists + tracked). **Live eval host-deferred.**
+
+**T10 diff-audit (VA-4)** — dest tree vs D1 manifest: all counts match
+(satan/*.el 65, test 61, harness 9, bin 4, memory 7, protocol 1, patterns.eld 1,
+docs 39, locate-paren 1, satan-test 1). GREEN.
+
+**`.envrc` note (reconcile/PHASE-04):** satan `.envrc` = `JAIL_WORKSPACE_DEPS`
+(notes/.emacs.d/flakes) + `use flake . --impure`; lacks the config `.envrc`'s
+`DOCKER_HOST`. Flag when wiring host consumer.
