@@ -36,6 +36,18 @@ standalone Elisp package as a prerequisite to future selective extractions.
    `satan-notes-root` defcustom (paths derived below it), set by the
    consuming config.
 
+   *(Axis-1 of the config-root decoupling — user notes data.)*
+
+3b. **Resolve config-root self-location coupling (Axis-2, design D10).** SATAN
+   resolves its own code/data via `(expand-file-name "satan/…"
+   user-emacs-directory)` — which breaks the moment it is standalone (and breaks
+   the shipped package once `~/.emacs.d/satan/` is deleted). Introduce a
+   `satan--root` self-location defconst (resolved from `load-file-name`) and
+   re-anchor package-owned paths to it; re-default the config-shaped path knobs
+   (`tools-docs-roots` drops `docs/emacs`, `direnv-dir` → repo root). Proven by
+   PHASE-01 (64 ERT failures from unmigrated test DBs). See
+   `mem.fact.satan.package-self-location-coupling`.
+
 4. **Add proper ELPA package boilerplate:**
    - `satan.el` entry point (renamed from `dl-satan.el`)
    - Package headers (`;;; satan.el --- ...`), `Package-Version`, `Package-Requires`
@@ -74,7 +86,10 @@ standalone Elisp package as a prerequisite to future selective extractions.
 
 - Publishing to MELPA or any public package archive
 - Changing SATAN's behaviour, invariants, or test expectations
-- Consolidating defcustoms (130 scattered → single `satan-custom.el`) — deferred
+- **Full** defcustom consolidation (130 scattered → `satan-custom.el`) — deferred.
+  D10 creates `satan-custom.el` as a leaf home for the *decouple* surfaces only
+  (`satan--root`, `satan-notes-root`, `satan-notes-path`, `satan-journal-today`);
+  the wholesale consolidation of the other ~126 defcustoms stays out of scope.
 
 ## Summary
 
@@ -89,7 +104,7 @@ green in both repos. Runs after SL-011 closes (design D9).
 ## Follow-Ups
 
 - IMP-006..009 (selective daemon extractions) — easier now that SATAN is a package
-- Deferred: defcustom consolidation (`satan-custom.el`)
+- Deferred: **full** defcustom consolidation (`satan-custom.el` now exists for the decouple surfaces only)
 - Deferred: rename `my/` interactive commands inside SATAN (may be design-time decision)
 - `/reviewing-memory` pass + boot-sector re-seat after the move (17 memories
   reference `dl-satan-*` / `.emacs.d/satan` paths)

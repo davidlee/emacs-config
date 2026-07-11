@@ -68,7 +68,14 @@ references update with the sweep (RV-010 F-7). The rename gate
 (`rg 'dl-satan-'` / `rg 'my/satan-'` → empty) runs **repo-wide**, harness and
 protocol fixtures included, not just code/tests/bin/docs.
 
-### D4 — Coupling: `dl-notes-paths` → defcustoms
+### D4 — Coupling: config-root assumptions → defcustoms (Axis-1: notes)
+
+> **Reframed 2026-07-12 (design revision).** The extraction severs config-root
+> coupling along **two** axes: **Axis-1** — user *notes* data (`dl-notes-root`,
+> this decision) — and **Axis-2** — the package's own *self-location* and
+> config-shaped path defaults (**D10**). PHASE-01 proved Axis-2 breaks the
+> *shipped* package (not just tests). Both decouple surfaces share one leaf
+> module, `satan/satan-custom.el` (see D10). This decision covers Axis-1.
 
 **Actual coupling surface (verified 2026-07-10, re-verified via RV-010 F-3):**
 **13 production files** consume `dl-notes-*` symbols — 10 with a hard
@@ -82,8 +89,8 @@ sensor-wpm` — they rely on another module having loaded the feature). Symbols:
 convert with the rest. The decouple gate is consumer-based
 (`rg 'dl-notes-' → empty` repo-wide), not require-based.
 
-Two new surfaces in the satan package (`satan/satan.el` or dedicated
-`satan/satan-custom.el`):
+Two new surfaces in the leaf module `satan/satan-custom.el` (D10 — also home to
+`satan--root`):
 
 ```elisp
 (defcustom satan-notes-root "~/notes"
@@ -295,6 +302,107 @@ snapshots, not gates. If SL-011 is descoped or stalls, `/consult` before
 reordering: running SL-012 first invalidates SL-011's design (paths, symbol
 names) and forces its rewrite.
 
+### D10 — Package self-location + config-root defaults (Axis-2)
+
+**Added 2026-07-12 (design revision).** PHASE-01 crossed the repo boundary and
+exposed a second config-root coupling axis the design missed. The package
+resolves its *own* code and data via `(expand-file-name "satan/…"
+user-emacs-directory)`. That holds only while SATAN is a subdirectory of the
+config; standalone it points at a non-existent tree — and it breaks the
+**shipped** package (PHASE-04 deletes `~/.emacs.d/satan/`, dangling every such
+path). Proven symptom: batch tests never migrate their DBs
+(`user-emacs-directory` = `~/.emacs.d` ≠ the repo) →
+`function memory_show_trace does not exist` → 64 ERT failures. See
+`mem.fact.satan.package-self-location-coupling`. RV-010 **F-1** half-saw this
+but scoped the fix to the test runner only; it is endemic in production.
+
+**Taxonomy.** The 6 sites (`rg 'user-emacs-directory' satan/*.el` + one `~/.emacs.d/`
+hardcode) split by *meaning*, and only the first group is genuine self-location:
+
+- **Axis-2a — self-location** (data/source shipped *inside* the package).
+- **Axis-2b — config-shaped defaults** that merely *point at* the config root;
+  each needs a distinct call, not a blind re-anchor.
+
+Not in Axis-2: `dl-satan-self-edit-mind-roots` (`dl-satan-context.el:542`) rides
+`dl-notes-root` — that is model-facing notes content = **Axis-1 (D4)**. The
+mind/mech split is deliberate: *mech* = the package's own machinery
+(self-location, D10), *mind* = the notes corpus (D4). Doc-comment `.emacs.d`
+references (`attribute-render.el:12`, `memory.el:7`, `context.el:611`, …) are
+prose, not defaults — they sweep with the PHASE-02 docs pass, not here.
+
+**Mechanism — self-location root.** A new leaf module `satan/satan-custom.el`
+(zero satan-deps) is the home for **both** decouple surfaces — D4's notes
+defcustoms *and* D10's `satan--root`:
+
+```elisp
+(defconst satan--root
+  (file-name-directory
+   (or load-file-name buffer-file-name (locate-library "satan-custom")))
+  "Directory holding SATAN's elisp and shipped data (memory/migrations, patterns.eld).
+Package plumbing — internal, resolved at load; not user-configurable.")
+```
+
+`load-file-name` for any satan module resolves to `…/satan/satan-custom.el`, so
+`satan--root` is the **elisp directory** (`…/satan/`) — the canonical ELPA
+self-location idiom. Data files ship as subdirs of it (`memory/`, `patterns.eld`)
+and travel with an ELPA install; `docs/` is a repo-root sibling, reached
+`../docs`. The `(or load-file-name buffer-file-name …)` chain covers batch/`require`
+load, interactive `eval-buffer`, and a `locate-library` fallback.
+
+**Naming.** `satan--root` (double-dash, `defconst`) — internal package plumbing,
+read across modules but never set. `defconst` signals not-configurable, `--`
+signals not-user-facing. Convention documented in `satan-custom.el` commentary
+so future modules anchor to it rather than reintroducing `user-emacs-directory`.
+
+**Load ordering.** defcustom defaults evaluate at module load, so `satan--root`
+must exist first. Every anchoring module gains `(require 'satan-custom)`.
+
+**Axis-2a — re-anchor to `satan--root` (mechanical):**
+
+| Site | From | To |
+|---|---|---|
+| `dl-satan-memory-migrate.el:26` (`…-migrate-directory`) | `(expand-file-name "satan/memory/migrations/" user-emacs-directory)` | `(expand-file-name "memory/migrations/" satan--root)` |
+| `dl-satan-pattern.el:44` (`…-pattern-file`) | `(expand-file-name "satan/patterns.eld" user-emacs-directory)` | `(expand-file-name "patterns.eld" satan--root)` |
+| `dl-satan-context.el:535` (`…-self-edit-mech-roots`) | `(list (expand-file-name "satan" user-emacs-directory))` | `(list satan--root)` |
+
+**Axis-2b — config-shaped defaults, per-site (approved "fix all"):**
+
+| Site | From | To | Rationale |
+|---|---|---|---|
+| `dl-satan-tools-docs.el:35` (`…-docs-roots`) | `'("docs/satan" "docs/emacs")` rel. `user-emacs-directory` | `'("docs")` rel. `(expand-file-name "../docs" satan--root)` | pkg docs only; **`docs/emacs` is config-owned — dropped**. `--resolve-roots` (l.129) re-anchors its `expand-file-name` base accordingly |
+| `dl-satan-broker.el:56` (`…-direnv-dir`) | `(expand-file-name user-emacs-directory)` | `(file-name-directory (directory-file-name satan--root))` (pkg repo root) | the jailed harness sources the *package* repo's `.envrc`, not the config's |
+| `dl-satan-tools-vcs.el:24` (`…-search-roots`) | `'("~/dev/" "~/.emacs.d/" "~/flakes/")` | **unchanged**; docstring notes user-tunable | user's repo-*search* list, not self-location; `~/.emacs.d/` still resolves post-extraction |
+
+**Adversarial review (2026-07-12).**
+- *direnv-dir default* — verified the satan repo root carries an `.envrc`
+  (`use flake . --impure` + `JAIL_WORKSPACE_DEPS`), so the repo-root default
+  resolves and `envrc--export` fires. **Caveat:** the config `.envrc` also
+  exports `DOCKER_HOST` (podman socket) which the satan repo `.envrc` lacks; if
+  the jailed harness needs it, add it to the satan repo `.envrc` at PHASE-04
+  wiring / reconcile. Design default stands.
+- *`../docs` anchor is not ELPA-relocatable* — from a real ELPA package dir,
+  `../docs` resolves to the ELPA parent, not the corpus. Accepted: D5 installs
+  via load-path checkout (`~/dev/satan/satan`), not ELPA, and doc indexing is a
+  dev/runtime feature, not shipped-package-critical. `satan--root`-anchored
+  *data* (migrations, `patterns.eld`) *is* ELPA-safe; docs is the lone exception,
+  recorded so a future ELPA push relocates the corpus under `satan--root`.
+- *count-pinning* — the "64 failures" is a PHASE-01 measurement, not an exit
+  gate; the gate is behavioural (migrate paths resolve → test DBs migrate).
+
+**Manifest note (not design-tier).** `test/dl-secret-test.el` requires
+`dl-secret` — a config-owned module SATAN only soft-deps (`my/op-read-env`). It
+should not have moved into the package; drop it during the plan/PHASE re-scope.
+
+**Ownership & ordering (plan-facing).** Both axes are semantic and belong
+**after** the PHASE-02 rename (so the sweep doesn't rewrite fresh call sites).
+Recommendation: fold Axis-2 into the current PHASE-03, renamed "Decouple
+config-root assumptions" covering both axes. The plan revision also re-cuts the
+PHASE-01/02 **green gate**: "full ERT green" is unsatisfiable for a
+copy-verbatim / defer-decouple phase (green needs both axes severed) → *lint
+green + suite loads & runs across the boundary + suites not blocked by the two
+axes pass; coupling-blocked suites known-red until the decouple phase*. Full
+green only from the decouple phase onward.
+
 ## Current vs target behaviour
 
 **Before:**
@@ -308,7 +416,9 @@ names) and forces its rewrite.
 - `init.el` → `(use-package satan :custom …)`
 - SATAN is a standalone package in its own repo
 - Symbols: `satan-*`, interactive: `satan-*`
-- Two defcustoms (`satan-notes-root`, `satan-journal-today`) replace `dl-notes-paths`
+- Two defcustoms (`satan-notes-root`, `satan-journal-today`) replace `dl-notes-paths` (Axis-1)
+- `satan--root` self-location defconst; package data/source/docs resolve off it, not `user-emacs-directory` (Axis-2, D10)
+- `satan/satan-custom.el` leaf module homes both decouple surfaces
 
 ## Verification
 
@@ -316,6 +426,10 @@ names) and forces its rewrite.
 - `just check` green in `/workspace/satan` (full ERT suite — count unpinned per
   D9, lint, byte-compile)
 - `dl-sleipnir-doctor` SATAN checks pass (mode registry, budget, memory DB, sensors, patch)
+- Self-location decoupled (D10):
+  - `rg 'user-emacs-directory' satan/*.el` empty in satan repo (doc-comments swept too)
+  - `satan--root` resolves to the elisp dir; `memory-migrate`/`pattern`/`self-edit-mech` paths resolve under it
+  - `tools-docs` default excludes `docs/emacs`; the migrate-driven ERT failures clear (the "64" is a PHASE-01 snapshot, not a gate)
 - Symbol rename complete:
   - `rg 'dl-satan-' satan/` empty in satan repo
   - `rg 'my/satan-' satan/` empty in satan repo
