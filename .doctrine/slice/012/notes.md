@@ -140,3 +140,8 @@ docs 39, locate-paren 1, satan-test 1). GREEN.
 **`.envrc` note (reconcile/PHASE-04):** satan `.envrc` = `JAIL_WORKSPACE_DEPS`
 (notes/.emacs.d/flakes) + `use flake . --impure`; lacks the config `.envrc`'s
 `DOCKER_HOST`. Flag when wiring host consumer.
+
+## Carried to PHASE-04 host / reconcile (not runnable in sandbox)
+- **VA-3 live `nix` flake eval** — `nix eval --impure /workspace/satan#packages.x86_64-linux.satan-jailed-gptel-harness` (+ `satan-gptel-harness` builds from `./satan/harness`). Static-verified in PHASE-01 (pure comment-toggle, src tracked); live eval runs on host. User decision 2026-07-12.
+- **Untracked memory** `mem.fact.satan.package-self-location-coupling` — git-add at reconcile.
+- **`.envrc` DOCKER_HOST** gap vs config `.envrc` — resolve when wiring host consumer.
