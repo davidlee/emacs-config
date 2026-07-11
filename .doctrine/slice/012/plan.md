@@ -31,10 +31,10 @@ move.
 - PHASE-02 is the pure-mechanical sweep (D3). Glob-driven, count-independent;
   its gates are the `rg`-empty invariants, so it absorbs whatever SL-011
   landed (D9). Docs and bin scripts rename here too — same mechanical class.
-- PHASE-03 is the only behavioural change (D4). Kept out of the sweep so its
-  diff is small and reviewable: a semantic bug in path derivation must not
-  hide inside a thousand-line rename diff. New ERT coverage (VT-1) lands here
-  — the path surface is the one genuinely new code in the slice.
+- PHASE-03 is the only behavioural change (D4 **+ D10**). Kept out of the sweep
+  so its diff is small and reviewable: a semantic bug in path derivation must
+  not hide inside a thousand-line rename diff. New ERT coverage (VT-1, VT-2)
+  lands here — the path surface is the one genuinely new code in the slice.
 - PHASE-04 is the only phase that touches consumers: config repo, `~/flakes`,
   host machine state (hook symlink, home-manager switch). Everything with a
   human-verifiable runtime consequence concentrates here (VH-1..3), so the
@@ -43,9 +43,31 @@ move.
 **Order of 02 before 03**: rename first means the decouple phase edits final
 symbol names; done the other way, the sweep would rewrite the just-written
 defcustom call sites. Mechanical before semantic keeps each diff attributable.
+Both config-root axes (D4 notes + D10 self-location) belong *after* the rename
+for the same reason — they land together in PHASE-03.
 
 **SL-011 gate (D9)** lives in PHASE-01 EN-1: closed, or an explicit `/consult`
 waiver — not silently reordered.
+
+## Revision 2026-07-12 — cascading from design D10 (Axis-2 self-location)
+
+PHASE-01 crossed the repo boundary and proved a second config-root coupling
+axis the original design missed (`user-emacs-directory` self-location; 64 ERT
+failures from unmigrated test DBs). Design revision D10 answers it. Plan deltas:
+
+1. **PHASE-03 folds Axis-2** (renamed "Decouple config-root assumptions"). It
+   was already the semantic phase for the notes decouple (D4); the
+   self-location fix is the same shape — path resolution, no tool/mode
+   semantics — and shares the same leaf module (`satan-custom.el`). One phase,
+   two axes, one small reviewable diff. Appended EX-4..EX-7, VT-2, VA-3.
+2. **Green gate re-cut (PHASE-01/02 VA-1).** "Full ERT green" is unsatisfiable
+   before the decouple: green needs the test DBs migrated, which needs the
+   self-location fix. The pre-decouple gate is now *lint green + suite
+   loads/runs across the boundary + non-coupling suites pass*; coupling-blocked
+   suites are known-red until PHASE-03, where VA-1 reaches full green. Criterion
+   ids unchanged; text corrected to match design-proven reality.
+3. **`dl-secret-test.el` dropped** (PHASE-01 EX-7) — it requires the
+   config-owned `dl-secret`, was copied in error (D10 manifest note).
 
 ## Notes
 
