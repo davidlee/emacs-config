@@ -132,8 +132,8 @@ return-shape contract:
 |---|---|---|---|
 | `dl-satan-db-query` / `-psql` | `call-process[-region]` → `trace-call :stdin sql :label CALLER` | `dl-satan-db-timeout-seconds` (5) | existing `(error . msg)`; timeout msg explicit |
 | `evidence--git-output` + `--git-state` rev-parse | `trace-call :env '("GIT_OPTIONAL_LOCKS=0") :cwd default-directory` | `dl-satan-memory-evidence-git-timeout-seconds` (3) | nil-on-nonzero as today; additionally `git_state` gains `:timed_out t` when any sub-call hit the deadline — a timeout must not read as a clean repo |
-| `evidence--bough-call` | `trace-call` | `dl-satan-bough-timeout-seconds` (5) | existing attempt/ok counters → `bough_status` degraded |
-| `dl-satan-tools-sway--call` | `trace-call` | `dl-satan-tools-sway-timeout-seconds` (2) | existing tool error return |
+| `dl-satan-bough--invoke` (tools-bough.el) | `trace-call` — combined stdout+stderr | `dl-satan-bough-timeout-seconds` (5) | existing attempt/ok counters → `bough_status` degraded |
+| `dl-satan-sway--swaymsg` (tools-sway.el) | `trace-call` | `dl-satan-sway-timeout-seconds` (2) | existing tool error return |
 
 **Timeout scope consequences (owned explicitly):**
 - The db timeout applies to **every** `dl-satan-db` caller, including
@@ -240,12 +240,12 @@ not a slow probe.
 | `satan/dl-satan-trace.el` | **new** — accumulator, 3 macros, subprocess ledger, `trace-call`, budget check, JSONL append |
 | `satan/dl-satan-db.el` | `-query`/`-psql` → `trace-call`; timeout defcustom |
 | `satan/dl-satan-memory-evidence.el` | `--git-output`/`--git-state` → `trace-call` + `GIT_OPTIONAL_LOCKS=0`; stage macros in `assemble-with-bounds`; optional-stage macro on bough_recent/day + content |
-| `satan/dl-satan-tools-bough.el` | `--bough-call` → `trace-call` |
+| `satan/dl-satan-tools-bough.el` | `dl-satan-bough--invoke` → `trace-call` (combined stdout+stderr) |
 | `satan/dl-satan-tools-sway.el` | swaymsg → `trace-call` |
 | `satan/dl-satan-tools-vcs.el` | read-only git → `GIT_OPTIONAL_LOCKS=0` env |
 | `satan/dl-satan-broker.el` | `broker-run` body in `with-tick`; spawn-side stage macros; outcome stamping |
 | `satan/dl-satan-context.el` | `enrich.resonance` optional; `recent_runs` optional; `enrich.motive` stage |
-| `satan/dl-satan-patch-worktree.el` (+ runner) | `--assert-owned` guard + `trace-call` routing |
+| `satan/dl-satan-patch-worktree.el` | `--assert-owned` guard + `trace-call` routing. patch-runner needs no change — its git routes through `--git` |
 | `satan/test/…` | new suites: trace, trace-call, budget-skip, confinement; touched: db, evidence |
 
 ~25 new ert tests; all pure/subprocess-mock except `trace-call` integration

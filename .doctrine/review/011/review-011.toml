@@ -1,0 +1,70 @@
+id    = 11
+slug  = "reconciliation-review-of-sl-011"
+title = "reconciliation review of SL-011"
+# no status — a review's status is DERIVED from its findings (ADR-007 D-C8), so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "reconciliation"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+
+[target]                   # the outbound `reviews` edge (ADR-004): RV-NNN ──reviews──▶ <ref>
+ref   = "SL-011"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "minor"
+title = "design §2 names choke sites by shorthand; impl routed the real fns"
+detail = "design.md §2 named 'evidence--bough-call' and 'tools-sway--call' (defcustom 'dl-satan-tools-sway-timeout-seconds'). Real subprocess sites are dl-satan-bough--invoke (tools-bough.el) and dl-satan-sway--swaymsg (tools-sway.el); defcustom follows file prefix dl-satan-sway-timeout-seconds. Impl routed the REAL sites — intent (bound the subprocess) met; design prose is stale."
+disposition = "verified"
+response = "Observation confirmed; impl routed the real subprocess sites. design.md §2 prose is stale — reconcile brief: per-slice direct edit to name dl-satan-bough--invoke / dl-satan-sway--swaymsg + dl-satan-sway-timeout-seconds."
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "minor"
+title = "design §5 predicted a patch-runner edit; runner needed none"
+detail = "design §5 listed dl-satan-patch-runner.el as a code-impact target (+runner: assert-owned + trace-call). PHASE-06 found the runner has NO direct git — all patch git routes through dl-satan-patch-worktree--git, which now carries the confinement guard + ledger routing. Selector undelivered (conformance). Runner is subsumed, not missed."
+disposition = "verified"
+response = "Confirmed; runner subsumed by patch-worktree--git (guard+ledger). Reconcile brief: per-slice design §5 edit to note runner needs no direct change; drop/annotate the undelivered patch-runner selector."
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "minor"
+title = "bough choke merges stderr into stdout"
+detail = "dl-satan-bough--invoke previously captured stderr to a temp file and preferred it in the error message. trace-call returns a single combined (call-process DEST t) stream, so bough error text may now include stdout+stderr. No VT asserts exact bough error text (VT only checks bough_status degradation)."
+disposition = "tolerated"
+response = "Consciously accepted: bough error text may combine stdout+stderr. No VT/consumer asserts exact bough error text; bough_status degradation path unchanged. Rationale recorded in notes.md F-P03-c."
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "major"
+title = "subprocess ledger dropped rows on unibyte non-ASCII payloads (VH-1)"
+detail = "VH-1 live run: json-serialize threw json-value-p on a unibyte argv string (payload={...—...} psql persist arg with raw UTF-8 bytes); trace writer swallowed it -> ledger row silently dropped. Root cause pre-existing in dl-satan-jsonl-prepare (no unibyte-string coercion). Fixed in-slice: added (decode-coding-string v 'utf-8) branch + 3 tests; jsonl.el declared design-target."
+disposition = "fix-now"
+response = "Fixed within the slice during VH-1: dl-satan-jsonl-prepare gains unibyte->utf-8 coercion (+3 ert tests); landed on dispatch/011 (corrective import). Ledger no longer drops non-ASCII payload rows. just check green 1026/1035."
+
+[[finding]]
+id = "F-5"
+status = "verified"
+severity = "nit"
+title = "unbound-tick subprocess rows render run_id as {} not null"
+detail = "trace-subprocess emits :run_id nil when no accumulator is bound; jsonl-prepare renders nil as {} (empty object) rather than null. Cosmetic; phase-3 reader can handle. Filed IMP-015."
+disposition = "tolerated"
+response = "Cosmetic; deferred to IMP-015. Unbound-tick rows are background-daemon activity; run_id null-vs-{} does not affect tick rows or the reader's correctness."
+
+[[finding]]
+id = "F-6"
+status = "verified"
+severity = "minor"
+title = "verify-vt UNATTRIBUTABLE for 7 VTs after refresh-base merge"
+detail = "slice verify-vt marks 7 VTs UNATTRIBUTABLE (keyword present, test file 'not modified by this slice') — a diff-attribution artifact of the refresh-base MERGE, not a coverage gap. Tests ARE delivered (508 insertions across 5 test files vs trunk) and green (just check 1026/1035, 0 unexpected). Keywords budget-skipped/assert-owned confirmed present."
+disposition = "aligned"
+response = "No coverage gap: tests delivered (508 insertions vs trunk) and green; UNATTRIBUTABLE is a refresh-base-merge diff-attribution artifact. Keywords present in the named test files. Agent-attested."
+
+# Findings are append-only `[[finding]]` tables, added by `review raise` (PHASE-03).
+# Empty here at creation — a fresh review is Active, awaiting the raiser (D-C8).
