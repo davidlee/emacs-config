@@ -166,3 +166,48 @@ ERT 361/64/3 identical to PHASE-01 (no regression). EX-1..6 met. Collision rule
 (D3 delta) applied: satan-renormalize-memory, satan-show-migrate-status.
 VA-2 re-cut into plan.toml (corollary of D10). PHASE-04 carry: post-commit
 install-hint comment still cites ~/.emacs.d/satan.
+
+## PHASE-03 executed (2026-07-12) — GREEN (satan a4fc0c0)
+
+Both config-root axes severed. New leaf `satan/satan-custom.el` (satan--root
+defconst + satan-notes-root/satan-journal-today defcustoms + satan-notes-path/
+satan-notes-today helpers; owns `(defgroup satan …)`). EX-1..7 met; VT-1/VT-2
+green (9 tests, satan-custom-test.el). `SATAN_DB_HOST=127.0.0.1 just check`
+**exit 0 — 1033 run, 1017 pass, 0 unexpected, 16 skipped** (was 361/64 — the 40
+LOADERR files now load). VA-1 full green; VA-2/VA-3 rg gates empty.
+
+### Design/plan gaps found (reconcile carries)
+- **F-1 — 3rd hidden coupling, `dl-denote-journal`.** context.el + tools-org.el
+  hard-`require`'d it (config-owned, `~/.emacs.d/org/`, provider of
+  `my/journal--*`). Plan decouple list named only dl-notes-paths. D4's journal
+  design dictated the fix (today→`satan-journal-today` injection; weekly→soft
+  `declare-function`). Both requires dropped. **Plan file-list under-counted.**
+- **F-2 — latent missing `(require 'calendar)`** in satan-memory-evidence.el;
+  only ever loaded transitively via dl-denote-journal→denote→calendar. Dropping
+  F-1 exposed 29 `calendar-absolute-from-gregorian` void-function failures.
+  Added the require (package self-containment, same class as PHASE-01 gap#1).
+- **F-3 — test-side self-location bug:** satan-pattern-test.el hardcoded
+  `user-emacs-directory` for patterns.eld → repointed to `satan-pattern-file`.
+  (satan-tools-docs-test.el also references user-emacs-directory but passes —
+  low-pri, flagged.)
+- **F-4 — STALE .elc trap:** a manual batch-byte-compile left 66 `.elc` that
+  `require` loaded over edited `.el`, masking F-2. `rm satan/**/*.elc` before
+  re-running; the batch runner loads `.el`, never leave stray `.elc`.
+
+### /consult resolution (user, 2026-07-12)
+- **F-5 → applied:** justfile `test` recipe gains `-L ./satan/test` so a test
+  file requiring a sibling test file's **macro** (`satan-intervention-test--with-db`)
+  resolves at load (fixes 2 load-order failures). Pre-existing harness gap,
+  surfaced only once these tests un-blocked. **Touches the harness (PHASE-02/04
+  adjacent).**
+- **F-6 → corpus-guard (option a):** 7 corpus-integration tests read the
+  host-only `~/notes/satan/` model-facing corpus (framing/scaffold/tick-pulse +
+  tool-description `.md` under `satan-tools-descriptions-dir`), by design not in
+  the package (D4/POL). Added `satan-context-test--corpus-p` helper +
+  `skip-unless` (mirrors the DB skip-unless idiom) → green in sandbox (skipped)
+  and host (exercised). New durable test idiom.
+
+### PHASE-04 host carries (unchanged)
+Live nix eval (VA-3); satan-git-post-commit install-hint still cites
+~/.emacs.d/satan; satan `.envrc` lacks DOCKER_HOST. `.emacs.d/satan/` still
+untouched (dual-presence; cutover in PHASE-04).
