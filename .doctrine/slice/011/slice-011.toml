@@ -141,6 +141,11 @@ selector = "satan/test/dl-satan-jsonl-test.el"
 intent = "design-target"
 note = "VH-1 hardening: wire-prep unibyte-string coercion so the subprocess ledger doesn't drop non-ASCII payload rows"
 
+[[selector]]
+selector = "CHANGELOG.md"
+intent = "design-target"
+note = "PHASE-07 EX-3: CHANGELOG note for SL-011"
+
 # STRUCTURAL relations are uniform `[[relation]]` rows, never a typed
 # `[relationships]` axis (SL-048 "the cut"). Slices carry no typed STRUCTURAL
 # relation axes — the `[relationships]` table above holds only the dep/seq payload
