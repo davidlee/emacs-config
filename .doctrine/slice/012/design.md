@@ -68,6 +68,27 @@ references update with the sweep (RV-010 F-7). The rename gate
 (`rg 'dl-satan-'` / `rg 'my/satan-'` → empty) runs **repo-wide**, harness and
 protocol fixtures included, not just code/tests/bin/docs.
 
+**Delta 2026-07-12 (PHASE-02 phase-plan /consult) — collision rule.** Blunt
+`my/satan-X → satan-X` collides where a `dl-satan-X` lib function of the same
+base name already claims `satan-X`. Repo-wide there are exactly **2** hard
+collisions, both in `dl-satan-memory-migrate.el`, both the impl+interactive-
+wrapper pattern (tested lib fn returns data; thin `my/` command messages/prints,
+no external callers):
+
+| Lib fn (keeps `satan-X`) | Colliding `my/` command → new name |
+|---|---|
+| `dl-satan-memory-renormalize` → `satan-memory-renormalize` | `my/satan-memory-renormalize` → `satan-renormalize-memory` |
+| `dl-satan-memory-migrate-status` → `satan-memory-migrate-status` | `my/satan-memory-migrate-status` → `satan-show-migrate-status` |
+
+**Rule:** when a `my/satan-X` interactive command collides with a `dl-satan-X`
+lib function, the **lib keeps `satan-X`** (it is the tested public API) and the
+**command takes an imperative verb-first name** (`satan-<verb>-<object>`). The
+other 20 `my/satan-*` commands map cleanly to `satan-*` and are unaffected. EX-3
+(`rg 'my/satan-'` empty) still holds — the 2 commands lose the `my/` prefix too,
+just to a verb-first name. Feature/function name coexistence (e.g. file
+`satan-tick.el` provides feature `satan-tick` while `satan-tick` is also the
+command) is harmless in elisp (distinct symbol cells) and needs no rule.
+
 ### D4 — Coupling: config-root assumptions → defcustoms (Axis-1: notes)
 
 > **Reframed 2026-07-12 (design revision).** The extraction severs config-root

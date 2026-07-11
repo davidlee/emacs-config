@@ -145,3 +145,15 @@ docs 39, locate-paren 1, satan-test 1). GREEN.
 - **VA-3 live `nix` flake eval** — `nix eval --impure /workspace/satan#packages.x86_64-linux.satan-jailed-gptel-harness` (+ `satan-gptel-harness` builds from `./satan/harness`). Static-verified in PHASE-01 (pure comment-toggle, src tracked); live eval runs on host. User decision 2026-07-12.
 - **Untracked memory** `mem.fact.satan.package-self-location-coupling` — git-add at reconcile.
 - **`.envrc` DOCKER_HOST** gap vs config `.envrc` — resolve when wiring host consumer.
+
+## PHASE-02 phase-plan: rename-collision design gap (resolved /consult 2026-07-12)
+Blunt `my/satan-* → satan-*` (D3) hard-collides with same-base `dl-satan-*` lib
+fns for exactly 2 symbols (both `dl-satan-memory-migrate.el`, impl+wrapper): the
+interactive wrapper defun would clobber the tested lib fn. Rule appended to D3:
+lib keeps `satan-X`; colliding command → verb-first name.
+- `my/satan-memory-renormalize` → `satan-renormalize-memory`
+- `my/satan-memory-migrate-status` → `satan-show-migrate-status`
+Wrappers have no external callers; blast radius = 2 defuns + docstrings. Other 20
+`my/satan-*` commands map cleanly. EX-2/EX-3 gates unchanged.
+Surface measured: `dl-satan-` ~10719 hits (4128 prod/65 files, 5926 test/61,
+655 docs, 2 bin, 2 harness) + 65+61+1 file renames; `my/satan-` 87/25 files.
