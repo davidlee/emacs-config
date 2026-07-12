@@ -19,6 +19,7 @@
 
 (require 'dl-notes-paths)
 (require 'org-ql)
+(require 'cl-lib)
 
 (defvar my/review-stale-days 7
   "Days a WAITING item must be untouched before it counts as stale.
@@ -27,6 +28,7 @@ Used by `my/review-stale' and `my/review-work-stale'.")
 (defun my/review--notes-files ()
   "Return the personal Org files / dirs that the review queries scan."
   (list dl-notes-inbox-file
+         dl-notes-protocol-file
          dl-notes-projects-dir
          dl-notes-areas-dir
          dl-notes-sources-dir
@@ -71,6 +73,56 @@ TITLE labels the org-ql buffer."
   (other-window 1)
   (org-ql-search files '(todo "WAITING") :title title))
 
+(defun my/review--org-files-in (dirs)
+  "All .org files directly under the existing members of DIRS."
+  (cl-loop for dir in dirs
+           when (file-directory-p dir)
+           append (directory-files dir t "\\.org\\'")))
+
+(defun my/review--journal-files ()
+  "Return the personal journal + weekly .org files scanned for open items."
+  (my/review--org-files-in (list dl-notes-journal-dir dl-notes-weekly-dir)))
+
+(defun my/review--work-journal-files ()
+  "Return the work journal + weekly .org files scanned for open items."
+  (my/review--org-files-in
+   (list dl-notes-work-journal-dir dl-notes-work-weekly-dir)))
+
+(defun my/review--durable-dirs ()
+  "Personal durable-note class dirs (promotion targets)."
+  (list dl-notes-projects-dir dl-notes-areas-dir
+        dl-notes-sources-dir dl-notes-slips-dir))
+
+(defun my/review--work-durable-dirs ()
+  "Work durable-note class dirs."
+  (list dl-notes-work-projects-dir dl-notes-work-areas-dir
+        dl-notes-work-sources-dir dl-notes-work-slips-dir))
+
+(defun my/review--journal-open (files title)
+  "Show open (not-done) headings across FILES via `org-ql', labelled TITLE."
+  (org-ql-search files '(todo) :title title))
+
+(defun my/review--recent-note-files (dirs n)
+  "Return the N most-recently-modified .org files across DIRS, newest first."
+  (let ((files (my/review--org-files-in dirs)))
+    (seq-take
+     (sort files (lambda (a b)
+                   (time-less-p
+                    (file-attribute-modification-time (file-attributes b))
+                    (file-attribute-modification-time (file-attributes a)))))
+     n)))
+
+(defun my/review--recent-notes (dirs title)
+  "Open Dired on the newest durable notes across DIRS.
+Explicit-file-list Dired rooted at `dl-notes-root' (design D7); paths are
+made relative to the root.  TITLE names the empty case."
+  (let ((files (my/review--recent-note-files dirs 30)))
+    (if files
+        (dired (cons dl-notes-root
+                     (mapcar (lambda (f) (file-relative-name f dl-notes-root))
+                             files)))
+      (message "%s: no notes found" title))))
+
 ;; Personal review surfaces.
 
 (defun my/review-inbox ()
@@ -98,6 +150,21 @@ in its subtree falls within the window."
                  `(and (todo "WAITING")
                        (not (ts :from ,(my/review--stale-cutoff))))
                  :title (format "Stale WAITING (>%d days)" my/review-stale-days)))
+
+(defun my/review-journal-open ()
+  "Show open (not-done) journal + weekly headings via `org-ql'."
+  (interactive)
+  (my/review--journal-open (my/review--journal-files) "Open journal items"))
+
+(defun my/review-protocol ()
+  "Open `protocol.org' and jump to the first TODO heading for triage."
+  (interactive)
+  (my/review--open-inbox dl-notes-protocol-file))
+
+(defun my/review-recent-notes ()
+  "Dired the newest durable notes across the personal class dirs."
+  (interactive)
+  (my/review--recent-notes (my/review--durable-dirs) "Recent notes"))
 
 (defun my/review-references-retained ()
   "Find references retained but not yet triaged (`status: raw').
@@ -135,6 +202,17 @@ Ripgrep — works across .org / .md / .html references."
                  `(and (todo "WAITING")
                        (not (ts :from ,(my/review--stale-cutoff))))
                  :title (format "Stale work WAITING (>%d days)" my/review-stale-days)))
+
+(defun my/review-work-journal-open ()
+  "Work-scope variant of `my/review-journal-open'."
+  (interactive)
+  (my/review--journal-open (my/review--work-journal-files)
+                           "Open work journal items"))
+
+(defun my/review-work-recent-notes ()
+  "Work-scope variant of `my/review-recent-notes'."
+  (interactive)
+  (my/review--recent-notes (my/review--work-durable-dirs) "Recent work notes"))
 
 (defun my/review-work-references-retained ()
   "Find work references retained but not yet triaged (`status: raw')."

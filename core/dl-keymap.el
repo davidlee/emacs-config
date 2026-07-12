@@ -286,6 +286,9 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 
 (my/bind my-notes-review-map "i" #'my/review-inbox                  "inbox")
 (my/bind my-notes-review-map "I" #'my/review-intake                 "intake (dired)")
+(my/bind my-notes-review-map "j" #'my/review-journal-open           "journal open items")
+(my/bind my-notes-review-map "p" #'my/review-protocol               "protocol inbox")
+(my/bind my-notes-review-map "n" #'my/review-recent-notes           "recent notes")
 (my/bind my-notes-review-map "w" #'my/review-weekly                 "weekly + waiting")
 (my/bind my-notes-review-map "s" #'my/review-stale                  "stale waiting")
 (my/bind my-notes-review-map "r" #'my/review-references-retained    "refs: raw")
@@ -314,6 +317,8 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 
 (my/bind my-notes-work-review-map "i" #'my/review-work-inbox                "inbox")
 (my/bind my-notes-work-review-map "I" #'my/review-work-intake               "intake")
+(my/bind my-notes-work-review-map "j" #'my/review-work-journal-open         "journal open items")
+(my/bind my-notes-work-review-map "n" #'my/review-work-recent-notes         "recent notes")
 (my/bind my-notes-work-review-map "w" #'my/review-work-weekly               "weekly + waiting")
 (my/bind my-notes-work-review-map "s" #'my/review-work-stale                "stale waiting")
 (my/bind my-notes-work-review-map "r" #'my/review-work-references-retained  "refs: raw")

@@ -68,3 +68,47 @@ Verify in live Emacs (not batch):
 Nix note: the new `dl-denote-promote.el` + init require need `home-manager
 switch` (+ `nix flake update pub` / `direnv reload` for the devshell emacs)
 to load at runtime in the real editor — see PHASE-01 wiring findings above.
+
+## PHASE-03 — Review gap-fill
+
+### Done (2026-07-12)
+
+TDD red→green. VT-1 (journal-open) + VT-2 (recent-note-files) 2/2 green in
+batch. Shipped in `dl-review.el`: `my/review-journal-open` /
+`-work-journal-open` (org-ql `(todo)`), `my/review-protocol`,
+`my/review-recent-notes` / `-work-recent-notes` (explicit-file-list Dired,
+D7), plus pure seams `my/review--org-files-in`, `my/review--journal-files`
+(+work), `my/review--durable-dirs` (+work), `my/review--recent-note-files`.
+`dl-notes-protocol-file` defconst added; both capture templates deduped onto
+it (EX-1). protocol.org added to `my/review--notes-files` (EX-3). Bound:
+`C-c n v {j,p,n}` personal, `C-c n W v {j,n}` work.
+
+Findings worth keeping:
+
+- **`org-ql-select` does NOT expand directories** — it opens a dir as a Dired
+  buffer and yields nothing ("No headings in buffer … dired-mode"). Only the
+  higher-level `org-ql-search` expands dirs. Design §5.2 implied
+  `my/review--journal-files` returns dirs (like `--notes-files`); corrected to
+  return concrete `.org` files via `my/review--org-files-in`, which also DRYs
+  `--recent-note-files`. Files always work for both org-ql entry points.
+- **VA-1 nuance**: one `protocol.org` string remains outside
+  `dl-notes-paths.el` — a docstring reference in `my/review-protocol`,
+  mirroring the sibling `my/review-inbox` docstring (`` `inbox.org' ``). No
+  code path *literal* remains (`rg '"protocol\.org"'` clean). VA-1 satisfied.
+- **No home-manager switch** needed: all edits are to already-loaded `.el`
+  (no new package); the new `dl-review-test.el` is not wired into init. Live
+  reload is `M-x eval-buffer` / restart. Contrast PHASE-02.
+- **Gate is still vacuous** (ISS-007): org suites off `dl-test-suite-dirs`.
+  Real VT signal came from the batch runner, not `just check`.
+
+### VH-1 handoff (user's live e2e — PENDING)
+
+Verify in live Emacs (after `eval-buffer` of the four edited files, or a
+restart — no rebuild needed):
+1. `C-c n v j` → org-ql buffer lists open (TODO/NEXT/…) journal + weekly
+   headings; DONE excluded. `C-c n W v j` does the work compartment.
+2. `C-c n v p` → opens `protocol.org` at first TODO.
+3. `C-c n v n` → Dired of newest durable notes (projects/areas/sources/slips),
+   newest first. `C-c n W v n` the work variant.
+4. which-key shows "journal open items" / "protocol inbox" / "recent notes"
+   on the new keys.

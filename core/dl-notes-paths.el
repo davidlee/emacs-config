@@ -29,6 +29,7 @@ elsewhere the canonical ~/notes path is used.")
 
 ;; Personal compartment.
 (defconst dl-notes-inbox-file       (my/notes-path "inbox.org"))
+(defconst dl-notes-protocol-file    (my/notes-path "protocol.org"))
 (defconst dl-notes-intake-dir       (my/notes-path "intake"))
 (defconst dl-notes-journal-dir      (my/notes-path "journal"))
 (defconst dl-notes-weekly-dir       (my/notes-path "weekly"))

@@ -117,7 +117,7 @@ Result:
 
      ;; these last two are for https://github.com/sprig/org-capture-extension
      ("p" "Protocol" entry
-       (file+headline ,(my/notes-path "protocol.org") "Inbox")
+       (file+headline ,dl-notes-protocol-file "Inbox")
        (function ,(my/capture-body
                     "* %^{Title|%:description}"
                     "Source: %:link"
@@ -131,7 +131,7 @@ Result:
        :empty-lines 1)
 
      ("L" "Protocol Link" entry
-       (file+headline ,(my/notes-path "protocol.org") "Inbox")
+       (file+headline ,dl-notes-protocol-file "Inbox")
        (function ,(my/capture-body
                     "* %? [[%:link][%(my/sanitize-link-description \"%:description\")]]"
                     "Captured: %U"
