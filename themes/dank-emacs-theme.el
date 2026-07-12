@@ -21,96 +21,96 @@
 (deftheme dank-emacs "Enhanced theme using Matugen variables with dank16 color integration.")
 
 ;; Define all the color variables (replaced by template processor)
-(let* ((bg "#1c1f26")
-      (err "#f8467a")  ; Red from dank16
+(let* ((bg "#16161d")
+      (err "#e86892")  ; Red from dank16
       (err-container "#8c1d18")
-      (on-background "#d3dae3")
+      (on-background "#dcd7ba")
       (on-err "#601410")
       (on-err-container "#f9dedc")
-      (on-primary "#ffffff")
-      (on-primary-container "#d3dae3")
-      (on-secondary "#ffffff")
-      (on-secondary-container "#d3dae3")
-      (on-surface "#d3dae3")
-      (on-surface-variant "#afb5bd")
-      (on-tertiary "#ffffff")
-      (on-tertiary-container "#d3dae3")
-      (outline-color "#4b8cd8")
-      (outline-variant "#2d323d")
-      (primary "#4b8cd8")
-      (primary-container "#2b72c5")
-      (secondary "#6e87b0")
-      (secondary-container "#323743")
+      (on-primary "#1f1f28")
+      (on-primary-container "#dcd7ba")
+      (on-secondary "#1f1f28")
+      (on-secondary-container "#dcd7ba")
+      (on-surface "#dcd7ba")
+      (on-surface-variant "#c8c093")
+      (on-tertiary "#1f1f28")
+      (on-tertiary-container "#dcd7ba")
+      (outline-color "#dcd7ba")
+      (outline-variant "#2a2a37")
+      (primary "#7fb4ca")
+      (primary-container "#223249")
+      (secondary "#938aa9")
+      (secondary-container "#2d4f67")
       (shadow "#000000")
-      (surface "#1d2027")
-      (surface-container "#323743")
-      (surface-container-high "#3c4252")
-      (surface-container-highest "#323743")
-      (surface-container-low "#1d2027")
-      (surface-container-lowest "#1c1f26")
-      (surface-variant "#2d323d")
-      (tertiary "#6e87b0")
-      (tertiary-container "#323743")
+      (surface "#1f1f28")
+      (surface-container "#2d4f67")
+      (surface-container-high "#2d4f67")
+      (surface-container-highest "#2d4f67")
+      (surface-container-low "#1f1f28")
+      (surface-container-lowest "#16161d")
+      (surface-variant "#2a2a37")
+      (tertiary "#938aa9")
+      (tertiary-container "#2d4f67")
 
       ;; Enhanced dank16 colors for better syntax highlighting
-      (dank-red "#f8467a")          ; Bright red
-      (dank-red-alt "#ff82a7")      ; Alternative red
-      (dank-green "#4ad85e")        ; Vibrant green
-      (dank-green-bright "#8aff9a") ; Bright green
-      (dank-yellow "#fff547")       ; Warm yellow
-      (dank-yellow-bright "#fff88a") ; Bright yellow
-      (dank-blue "#4687e0")         ; Blue-green
-      (dank-magenta "#002e64")      ; Teal-magenta
-      (dank-cyan "#4b8cd8")         ; Bright cyan
-      (dank-cyan-bright "#69a6ed") ; Brightest cyan
-      (dank-cyan-dark "#8ac0ff")   ; Dark cyan
-      (dank-teal "#b4d6ff")        ; Dark teal
-      (dank-fg "#d1d9e2")           ; Light foreground
-      (dank-gray "#7e848c")         ; Gray
-      (dank-white "#f6faff")       ; White
+      (dank-red "#e86892")          ; Bright red
+      (dank-red-alt "#ff9fbe")      ; Alternative red
+      (dank-green "#65ca70")        ; Vibrant green
+      (dank-green-bright "#9df2a7") ; Bright green
+      (dank-yellow "#fcf371")       ; Warm yellow
+      (dank-yellow-bright "#fff9a5") ; Bright yellow
+      (dank-blue "#6aa6bf")         ; Blue-green
+      (dank-magenta "#1d4a5d")      ; Teal-magenta
+      (dank-cyan "#7fb4ca")         ; Bright cyan
+      (dank-cyan-bright "#98c9de") ; Brightest cyan
+      (dank-cyan-dark "#bcebff")   ; Dark cyan
+      (dank-teal "#d4f2ff")        ; Dark teal
+      (dank-fg "#c7d0d4")           ; Light foreground
+      (dank-gray "#798083")         ; Gray
+      (dank-white "#f8fdff")       ; White
 
       ;; Map success colors to green
-      (success "#4ad85e")
-      (on-success "#ffffff")
-      (success-container "#323743")
-      (on-success-container "#d3dae3")
+      (success "#65ca70")
+      (on-success "#1f1f28")
+      (success-container "#2d4f67")
+      (on-success-container "#dcd7ba")
 
       ;; Map fixed colors
-      (primary-fixed "#2b72c5")
-      (primary-fixed-dim "#4b8cd8")
-      (secondary-fixed "#6e87b0")
-      (secondary-fixed-dim "#6e87b0")
-      (tertiary-fixed "#6e87b0")
-      (tertiary-fixed-dim "#6e87b0")
-      (on-primary-fixed "#ffffff")
-      (on-primary-fixed-variant "#ffffff")
-      (on-secondary-fixed "#ffffff")
-      (on-secondary-fixed-variant "#ffffff")
-      (on-tertiary-fixed "#ffffff")
-      (on-tertiary-fixed-variant "#ffffff")
+      (primary-fixed "#223249")
+      (primary-fixed-dim "#7fb4ca")
+      (secondary-fixed "#938aa9")
+      (secondary-fixed-dim "#938aa9")
+      (tertiary-fixed "#938aa9")
+      (tertiary-fixed-dim "#938aa9")
+      (on-primary-fixed "#1f1f28")
+      (on-primary-fixed-variant "#1f1f28")
+      (on-secondary-fixed "#1f1f28")
+      (on-secondary-fixed-variant "#1f1f28")
+      (on-tertiary-fixed "#1f1f28")
+      (on-tertiary-fixed-variant "#1f1f28")
 
       ;; Map inverse colors
-      (inverse-on-surface "#d3dae3")
-      (inverse-primary "#4b8cd8")
-      (inverse-surface "#2b2f38")
+      (inverse-on-surface "#1f1f28")
+      (inverse-primary "#c84053")
+      (inverse-surface "#f2ecbc")
 
       ;; Terminal colors from dank16
-      (term0 "#1d2027")
-      (term1 "#f8467a")
-      (term2 "#4ad85e")
-      (term3 "#fff547")
-      (term4 "#4687e0")
-      (term5 "#002e64")
-      (term6 "#4b8cd8")
-      (term7 "#d1d9e2")
-      (term8 "#7e848c")
-      (term9 "#ff82a7")
-      (term10 "#8aff9a")
-      (term11 "#fff88a")
-      (term12 "#69a6ed")
-      (term13 "#8ac0ff")
-      (term14 "#b4d6ff")
-      (term15 "#f6faff"))
+      (term0 "#1f1f28")
+      (term1 "#e86892")
+      (term2 "#65ca70")
+      (term3 "#fcf371")
+      (term4 "#6aa6bf")
+      (term5 "#1d4a5d")
+      (term6 "#7fb4ca")
+      (term7 "#c7d0d4")
+      (term8 "#798083")
+      (term9 "#ff9fbe")
+      (term10 "#9df2a7")
+      (term11 "#fff9a5")
+      (term12 "#98c9de")
+      (term13 "#bcebff")
+      (term14 "#d4f2ff")
+      (term15 "#f8fdff"))
 
   (custom-theme-set-faces
    'dank-emacs
