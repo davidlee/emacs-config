@@ -126,3 +126,40 @@ by write surface.
 ### No-action (recorded, not carried)
 - **F-5** (aligned) — regression fixed + tested in-flight; no write-back.
 - **F-6** (tolerated) — history cosmetic; no rewrite.
+
+## Reconciliation Outcome
+
+No governance/spec REV needed — no finding touched an ADR, policy, standard,
+spec, or requirement. All write-backs were per-slice direct edit or knowledge
+(memory). Findings stay `verified`; remediation recorded here.
+
+### Direct edits applied
+- **design.md § D4** (RV-012 F-1): appended a dated PHASE-03 delta documenting the
+  third config-root coupling the inventory missed — `dl-denote-journal`
+  (hard-`require`d in `context.el` + `tools-org.el`, both dropped: today→
+  `satan-journal-today` injection, weekly→`declare-function`) plus the latent
+  `(require 'calendar)` self-containment fix in `satan-memory-evidence.el`. The
+  decouple gate now reads `rg 'dl-notes-' → empty` AND no residual
+  `dl-denote-journal` require. **plan.toml not edited** — its PHASE-03 criteria are
+  immutable and reference design D4's surface, which now tells the truth.
+
+### Knowledge (memory) writes
+- **mem.signpost.satan.orientation** (RV-012 F-3): rewrote the body to
+  post-extraction truth — code home `~/dev/satan`, `satan-*` namespace, entry
+  `satan/satan.el`, `satan--root` self-location + `satan-custom.el` decouple leaf,
+  flattened `docs/`, updated file map/invariants/DRY names, added the `~`-expansion
+  invariant. `updated` → 2026-07-12; wikilinks re-resolved (2 resolved, 0 dangling).
+- **mem.fact.satan.package-self-location-coupling** (RV-012 F-4): **already
+  tracked** — `git ls-files` confirms it is committed; the "untracked" carry was
+  resolved by an earlier commit. No-op.
+
+### Backlog (owned work)
+- **CHR-001** (RV-012 F-2): minted during audit harvest — flip `~/flakes` satan
+  input `path:` → `github:davidlee/satan` after the satan repo is pushed. Linked
+  `related SL-012`. Open; gated on `git push`.
+
+### No-action (recorded, not carried)
+- **RV-012 F-5** (aligned): D4 tilde-root regression fixed + tested in-flight; no write-back.
+- **RV-012 F-6** (tolerated): history cosmetic; no rewrite.
+
+Reconcile pass complete — every brief item resolved, no half-applied REV. Handoff to /close.

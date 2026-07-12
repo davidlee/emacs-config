@@ -110,6 +110,20 @@ sensor-wpm` — they rely on another module having loaded the feature). Symbols:
 convert with the rest. The decouple gate is consumer-based
 (`rg 'dl-notes-' → empty` repo-wide), not require-based.
 
+**Delta 2026-07-12 (PHASE-03 execution, RV-012 F-1) — third config-root
+coupling.** The Axis-1 coupling surface above enumerated only `dl-notes-paths`.
+Execution found a *third* config-root coupling the inventory missed: `context.el`
+and `tools-org.el` also hard-`require`d **`dl-denote-journal`** (config-owned,
+provider of `my/journal--*`). Both requires were dropped — the *today* path
+resolves through the designed `satan-journal-today` injection; the *weekly* path
+degrades to a `declare-function` soft-dep. Dropping the require then exposed a
+latent missing **`(require 'calendar)`** in `satan-memory-evidence.el` (only ever
+loaded transitively via `dl-denote-journal → denote → calendar`; 29
+`calendar-absolute-from-gregorian` void-function failures until added — same
+package-self-containment class as the PHASE-01 linter fix). The decouple gate is
+therefore `rg 'dl-notes-' → empty` **and** no residual `dl-denote-journal`
+require, repo-wide.
+
 Two new surfaces in the leaf module `satan/satan-custom.el` (D10 — also home to
 `satan--root`):
 
