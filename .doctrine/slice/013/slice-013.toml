@@ -1,7 +1,7 @@
 id = 13
 slug = "note-promotion-review"
 title = "Note-system revival: subtree promotion + review views"
-status = "started"
+status = "reconcile"
 created = "2026-07-12"
 updated = "2026-07-12"
 tags = []
@@ -9,6 +9,38 @@ tags = []
 [relationships]
 needs = []                      # slice→work hard prerequisite
 after = []                      # slice→work soft sequence: { to, rank }
+
+[[selector]]
+selector = "org/dl-denote-promote.el"
+intent = "design-target"
+
+[[selector]]
+selector = "org/dl-denote-promote-test.el"
+intent = "design-target"
+
+[[selector]]
+selector = "org/dl-review.el"
+intent = "design-target"
+
+[[selector]]
+selector = "org/dl-review-test.el"
+intent = "design-target"
+
+[[selector]]
+selector = "core/dl-notes-paths.el"
+intent = "design-target"
+
+[[selector]]
+selector = "org/dl-org-capture.el"
+intent = "design-target"
+
+[[selector]]
+selector = "core/dl-keymap.el"
+intent = "design-target"
+
+[[selector]]
+selector = "init.el"
+intent = "design-target"
 
 # STRUCTURAL relations are uniform `[[relation]]` rows, never a typed
 # `[relationships]` axis (SL-048 "the cut"). Slices carry no typed STRUCTURAL

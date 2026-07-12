@@ -1,0 +1,34 @@
+id    = 13
+slug  = "sl-013-audit-note-system-revival-promote-review-views"
+title = "SL-013 audit: note-system revival (promote + review views)"
+# no status — a review's status is DERIVED from its findings (ADR-007 D-C8), so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "reconciliation"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+
+[target]                   # the outbound `reviews` edge (ADR-004): RV-NNN ──reviews──▶ <ref>
+ref   = "SL-013"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "minor"
+title = "design.md §5.2 stale: journal-files documented as dirs, ships as concrete .org files"
+detail = "Expected (design §5.2 / §5.1): `my/review--journal-files ()` returns journal + weekly *dirs* (parallel to `my/review--notes-files`, which the org-ql queries scan as dirs). Observed (dl-review.el:82-89): it returns concrete .org files via the new `my/review--org-files-in` seam. Reason (notes PHASE-03): `org-ql-select` does NOT expand a directory — it opens the dir as a Dired buffer and yields nothing; only the higher-level `org-ql-search` expands dirs. `my/review-journal-open` calls `org-ql-search` but the shared seam also feeds `--recent-note-files` which needs files, so files is the correct common return. Code is right; the authored design prose is stale. Per-slice direct-edit fix for /reconcile."
+disposition = "verified"
+response = "Confirmed. design.md §5.2/§5.1 describe my/review--journal-files as returning dirs; shipped returns concrete .org files (dl-review.el:82-89) because org-ql-select does not expand dirs. Code is correct — the design prose is stale. Remediation delegated to /reconcile as a per-slice direct edit (see Reconciliation Brief). No code change in audit scope."
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "major"
+title = "just check gate vacuous: all SL-013 VT signal came from the batch runner, not the required gate"
+detail = "Expected (design §9 gate; every phase EX-4): 'just check green' as the commit gate proving the VT criteria. Observed: `just check` => 'PASS 0/0 passed' — it scans only `dl-test-suite-dirs` = ('lisp/test'), which SL-012's satan extraction emptied; the org ERT suites (dl-denote-promote-test.el, dl-review-test.el) were never registered there. The gate is vacuously green and carries ZERO SL-013 signal. Real VT evidence (9/9) was obtained only by invoking the batch runner directly on the two org suites during this audit. Root cause fully documented in ISS-007 (open). Coverage re-anchoring is out of SL-013 scope, but the verification basis of every phase's EX-4 is weaker than the plan implies."
+disposition = "tolerated"
+response = "Accepted drift. Gate vacuity is pre-existing infra debt from SL-012's satan extraction (emptied lisp/test); org suites were never on dl-test-suite-dirs. Fully tracked in ISS-007 (open); coverage re-anchoring is out of SL-013 scope. SL-013's VT criteria were independently demonstrated 9/9 via direct batch-runner invocation this audit, so the work is verified despite the blind gate. Standing risk carried in Synthesis; no reconcile write."
+
+# Findings are append-only `[[finding]]` tables, added by `review raise` (PHASE-03).
+# Empty here at creation — a fresh review is Active, awaiting the raiser (D-C8).
