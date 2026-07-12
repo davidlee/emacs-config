@@ -7,6 +7,12 @@
 (use-package denote
   :custom
   (denote-directory dl-notes-root)
+  ;; denote re-walks the whole `denote-directory' tree, uncached, on every
+  ;; id->path resolution (link-follow, backlinks).  `notes/satan/' holds ~10k
+  ;; model-facing files that are never denote notes; without this, following a
+  ;; single `denote:' link stats all of them (~10s, fans up).  Prune the satan
+  ;; tree as a path segment — a note named `…-satan.org' is unaffected.
+  (denote-excluded-directories-regexp (rx (or bos "/") "satan" (or eos "/")))
   (denote-known-keywords
     '("pkm" "writing" "reading" "project" "area" "source" "slip"
        "reference" "index" "journal" "weekly" "emacs"

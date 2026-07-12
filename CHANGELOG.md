@@ -2,6 +2,20 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-07-12 — chore: denote link-follow perf (exclude satan tree)
+
+Following a `denote:` link stalled ~10s (fans up). Root cause: denote re-walks
+the entire `denote-directory` tree, uncached, on every id→path resolution
+(`denote--directory-all-files-recursively`), and `~/notes/satan/` holds ~10k
+model-facing files that are never denote notes. `denote-excluded-directories-regexp`
+was nil, so nothing was pruned.
+
+- **`org/dl-denote.el`** — set `denote-excluded-directories-regexp` to prune the
+  `satan` path segment `(rx (or bos "/") "satan" (or eos "/"))`. Cuts the scan
+  from ~10k files to the note corpus; a note named `…-satan.org` is unaffected.
+- Surfaced by SL-013 VH (retrieval was dead before, so nobody paid the tax);
+  fix is denote global config, outside the slice's promote/review code.
+
 ## 2026-07-12 — SL-013 PHASE-03: review gap-fill
 
 Revive three dead review surfaces; dedupe the `protocol.org` path.
