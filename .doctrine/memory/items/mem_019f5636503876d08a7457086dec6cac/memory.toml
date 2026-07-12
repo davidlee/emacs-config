@@ -1,0 +1,43 @@
+memory_uid = "mem_019f5636503876d08a7457086dec6cac"
+memory_key = "mem.fact.emacs.denote-scan-cost"
+schema_version = 1
+lifespan = "semantic"
+memory_type = "fact"
+status = "active"
+title = "denote scans the whole denote-directory tree uncached per id-resolution; exclude bulk non-note dirs"
+summary = "denote re-walks the entire denote-directory tree (uncached, :follow-symlinks) on every denote: link-follow/backlink; prune non-note dirs via denote-excluded-directories-regexp"
+created = "2026-07-12"
+updated = "2026-07-12"
+
+[scope]
+paths = ["org/dl-denote.el", "core/dl-notes-paths.el"]
+globs = []
+commands = []
+tags = ["emacs", "denote", "performance", "notes"]
+workspace = "default"
+repo = "github.com/davidlee/emacs-config"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "ccbb9733996c6018cbf882deb87d30c5efa85ccc"
+ref_name = "refs/heads/main"
+checkout_state_id = "2ce768fd957b9a97e099ef6a214cd1bfe4a75487bb03b5222abd3a0572dd25ed"
+base_commit = "4086acf981d0a5a0a92e4ea7b1f8603a911cb2a1"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "medium"
+weight = 0
+
