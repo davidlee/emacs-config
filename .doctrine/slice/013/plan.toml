@@ -1,0 +1,81 @@
+# Implementation plan for SL-013 — the authored, durable phase plan.
+#
+# This is the single source of each phase's objective, criteria, verification,
+# and links. Runtime status lives separately under .doctrine/state/ (phase
+# tracking) — never record progress here. Hand-edit freely: the tool reads this
+# file but does not rewrite it.
+schema  = "doctrine.plan.overview"
+version = 1
+slice   = "SL-013"
+
+[specs]                          # empty in v1 — no spec/requirement registry yet
+primary       = []
+collaborators = []
+
+[requirements]
+targets      = []
+dependencies = []
+
+[[phase]]
+id        = "PHASE-01"
+name      = "Wiring + pure promote scaffolding"
+objective = "Create org/dl-denote-promote.el (use-package denote-org :commands, declare-function, my/denote-promote-targets, pure stub helper) and its test file; TDD the pure parts; git add new files and run home-manager switch so denote-org exists at runtime."
+entrance_criteria = [
+  { id = "EN-1", text = "Design SL-013 locked; working tree clean at branch point" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "dl-denote-promote.el loads pre- and post-switch without error (lazy denote-org)" },
+  { id = "EX-2", text = "my/denote-promote-targets derives all 10 class dirs from dl-notes-*-dir defconsts" },
+  { id = "EX-3", text = "home-manager switch completed; (require 'denote-org) succeeds in the new emacs env" },
+  { id = "EX-4", text = "just check green; zero byte-compile warnings; paren gate clean" },
+]
+verification = [
+  { id = "VT-1", expects = "stub helper returns level-preserving org heading with denote link for levels 1-3", test_file = "org/dl-denote-promote-test.el", keywords = ["my/denote-promote--stub"], waived = false },
+  { id = "VT-2", expects = "targets alist contains slips/sources/references/projects/areas for both realms", test_file = "org/dl-denote-promote-test.el", keywords = ["my/denote-promote-targets"], waived = false },
+  { id = "VH-1", expects = "home-manager switch run and new emacs env verified (denote-org present)" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-02"
+name      = "Promote command"
+objective = "TDD my/denote-promote-subtree: pin denote-org-extract-org-subtree behaviour (OQ-1) in the first red test, wrap it with curated-dir prompt + let-bound denote-directory, insert stub at origin, bind C-c n p."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-01 complete: denote-org loadable (EX-3)" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "promote at point creates note in chosen class dir, removes subtree, leaves level-preserving stub with resolving denote: ID" },
+  { id = "EX-2", text = "quit at target prompt aborts cleanly, origin buffer untouched" },
+  { id = "EX-3", text = "C-c n p bound on my-notes-map with which-key label" },
+  { id = "EX-4", text = "just check green; zero byte-compile warnings; paren gate clean" },
+]
+verification = [
+  { id = "VT-1", expects = "end-to-end promote in temp denote-directory: note created in chosen dir, subtree gone, stub present, tags carried to keywords; suite skip-unless denote-org", test_file = "org/dl-denote-promote-test.el", keywords = ["my/denote-promote-subtree", "skip-unless"], waived = false },
+  { id = "VT-2", expects = "prompt-quit path leaves origin buffer byte-identical", test_file = "org/dl-denote-promote-test.el", keywords = ["quit"], waived = false },
+  { id = "VH-1", expects = "promote a real journal subtree end-to-end in live emacs; link resolves via denote-backlinks" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-03"
+name      = "Review gap-fill"
+objective = "Add dl-notes-protocol-file, dedupe capture templates onto it, extend dl-review.el with journal-open / protocol / recent-notes views (+ work mirrors), bind under C-c n v and C-c n W v, cover with new dl-review-test.el."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-01 complete (new-file nix wiring pattern established); independent of PHASE-02" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "dl-notes-protocol-file defconst exists; dl-org-capture.el templates reference it (literal duplicated path removed)" },
+  { id = "EX-2", text = "my/review-journal-open, my/review-protocol, my/review-recent-notes (+ work mirrors for journal/recent) implemented and bound (v j / v p / v n)" },
+  { id = "EX-3", text = "protocol.org included in my/review--notes-files scan set" },
+  { id = "EX-4", text = "just check green; zero byte-compile warnings; paren gate clean" },
+]
+verification = [
+  { id = "VT-1", expects = "journal-open query returns exactly planted open-keyword headings (TODO/NEXT in, DONE out) from temp corpus", test_file = "org/dl-review-test.el", keywords = ["my/review-journal-open", "org-ql-select"], waived = false },
+  { id = "VT-2", expects = "recent-note-files returns durable-dir org files sorted mtime desc, capped at N", test_file = "org/dl-review-test.el", keywords = ["my/review--recent-note-files"], waived = false },
+  { id = "VA-1", expects = "no remaining literal protocol.org path outside dl-notes-paths.el (rg sweep)" },
+  { id = "VH-1", expects = "each new view surfaces a known-planted item in live emacs; which-key labels read sensibly" },
+]
+specs        = []
+requirements = []
