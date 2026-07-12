@@ -1,0 +1,42 @@
+memory_uid = "mem_019f55016e4b7080a9e93ed7b47ab38d"
+memory_key = "mem.fact.emacs.package-wiring-two-emacsen"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "Emacs package wiring: manual list, two emacsen, devshell lags"
+summary = "Manual package list in ~/flakes/pub/emacs.nix; home profile + lock-pinned devshell both consume it; devshell lags until nix flake update pub + direnv reload"
+created = "2026-07-12"
+updated = "2026-07-12"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = []
+workspace = "default"
+repo = "github.com/davidlee/emacs-config"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "commit"
+commit = "64d1b1ccae6de8f464634cd61ec9c66762153a19"
+tree = "849ecaed1943dfad7b272db74995d57ff759c1c0"
+ref_name = "refs/heads/main"
+checkout_state_id = ""
+base_commit = "64d1b1ccae6de8f464634cd61ec9c66762153a19"
+verified_sha = ""
+normalizer = ""
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "none"
+weight = 0
+
