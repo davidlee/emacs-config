@@ -106,7 +106,8 @@ the honest limit of this slice.
 (defun my/denote-promote--stub (level id title) ...) ; pure: stub heading string
 
 ;; dl-review.el additions
-(defun my/review--journal-files () ...)        ; journal + weekly dirs, realm-parameterised if cheap
+(defun my/review--org-files-in (dirs) ...)     ; concrete .org files directly under existing DIRS
+(defun my/review--journal-files () ...)        ; journal + weekly .org FILES (via --org-files-in), not dirs — org-ql-select won't expand a dir
 (defun my/review-journal-open () ...)
 (defun my/review-work-journal-open () ...)
 (defun my/review-protocol () ...)
@@ -242,3 +243,9 @@ Adversarial self-pass (2026-07-12), findings integrated:
 - RN-5 marker semantics on deletion (markers collapse to deletion start)
   confirmed compatible with stub insertion point (§5.4).
 - RN-6 no `dl-review-test.el` exists; named as new file in §9.
+- RN-7 (reconcile, RV-013 F-1) §5.2 first documented `my/review--journal-files`
+  as returning *dirs* (mirroring `--notes-files`). `org-ql-select` does **not**
+  expand a directory — it opens the dir as a Dired buffer and yields nothing;
+  only `org-ql-search` expands dirs. Shipped returns concrete `.org` files via
+  the new `my/review--org-files-in` seam, which also DRYs `--recent-note-files`.
+  Prose aligned to code; the implementation is canonical.

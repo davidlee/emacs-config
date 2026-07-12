@@ -126,3 +126,29 @@ gate a clean `/close`, not the audit→reconcile move. Steps in
   write them.
 - F-2 (vacuous `just check`) is tolerated and tracked in ISS-007 — no reconcile
   write; a note only.
+
+## Reconciliation Outcome
+
+### Direct edits applied
+- **design.md §5.2** (RV-013 F-1): interface comment for `my/review--journal-files`
+  changed from "journal + weekly dirs" to "concrete `.org` FILES (via
+  `--org-files-in`), not dirs"; added the `my/review--org-files-in` seam to the
+  listed interfaces. **design.md §10 RN-7** added recording the rationale
+  (`org-ql-select` does not expand a directory). Prose aligned to shipped code;
+  the implementation is canonical.
+
+### REVs completed
+- None. No governance/spec item in the brief — zero ADR/policy/standard/spec
+  contradiction.
+
+### Withdrawn / tolerated
+- RV-013 F-2: tolerated — `just check` vacuity is pre-existing infra debt tracked
+  in ISS-007; SL-013 VT proven independently 9/9 via the batch runner. Rationale
+  in the finding disposition. No reconcile write.
+
+### Deferred to /close (not reconcile writes)
+- Two VH gates (PHASE-02 promote live e2e — needs `home-manager switch`;
+  PHASE-03 views live e2e — `eval-buffer`, no rebuild) remain PENDING and gate a
+  clean close. Steps in `.doctrine/slice/013/notes.md`.
+
+Reconcile pass complete — handoff to /close.
