@@ -47,19 +47,24 @@ the Nix integration.
 ## Architecture
 
 ```
-~/flakes/modules/home/emacs.nix    nix wiring (emacsWithPackagesFromUsePackage)
+~/flakes/pub/emacs.nix             THE package list (manual, emacsWithPackages)
+~/flakes/modules/home/emacs.nix    home-manager module (imports pub/emacs.nix)
+~/.emacs.d/flake.nix               devshell; emacs via `pub` path-flake input
 ~/.emacs.d/early-init.el           loads dl-path.el, sets package-archives nil
 ~/.emacs.d/core/dl-path.el         load-path, exec-path, trusted-content, direnv
 ~/.emacs.d/init.el                 main config
 ~/.emacs.d/{core,apps,lang,lisp,editing,completion,org,dev}/*.el
 ```
 
-The Nix wrapper (`emacs-unstable-pgtk` overlaid by `emacs-overlay`) parses every
-`.el` file under `configDirs` (listed in `emacs.nix`) and installs each
-`(use-package NAME …)` it finds. **No package archives are configured at runtime**
-(`package-archives nil` in `early-init.el`); MELPA is not available from inside
-Emacs. To get a new package: add a `use-package` form, `git add` the file, run
-`home-manager switch`.
+Packages are a **manual list** in `~/flakes/pub/emacs.nix`
+(`emacsWithPackages`) — nothing parses `use-package` forms. **No package
+archives are configured at runtime** (`package-archives nil` in
+`early-init.el`); MELPA is not available from inside Emacs (exception:
+`package-vc-selected-packages` installs `:vc` stanzas into `~/.emacs.d/elpa`).
+To get a new package: add it to the list in `~/flakes/pub/emacs.nix`, run
+`home-manager switch` (home profile), and refresh the devshell emacs too:
+`nix flake update pub` in `~/.emacs.d` + `direnv reload`. Two emacsen, one
+list — the devshell one runs tests/CI and lags until the lock is bumped.
 
 The user's systemd `services.emacs` unit is **disabled** — the server is started
 from `init.el`.

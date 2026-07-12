@@ -65,6 +65,7 @@
             socat
             bun
             codex
+            helix
           ]
           ++ [doctrine-pkg];
 

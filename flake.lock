@@ -739,8 +739,8 @@
         ]
       },
       "locked": {
-        "lastModified": 1783481684,
-        "narHash": "sha256-ijvrIvMy1oQKgqP39mPbi2oeKgylDQlNE1+d/9cBoPg=",
+        "lastModified": 1783819768,
+        "narHash": "sha256-7RunBlTcLgxCQ+frkEGDminnr9r7SrpJlynvsOYCPcM=",
         "path": "/home/david/flakes/pub",
         "type": "path"
       },
