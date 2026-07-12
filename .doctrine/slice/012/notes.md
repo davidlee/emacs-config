@@ -211,3 +211,65 @@ LOADERR files now load). VA-1 full green; VA-2/VA-3 rg gates empty.
 Live nix eval (VA-3); satan-git-post-commit install-hint still cites
 ~/.emacs.d/satan; satan `.envrc` lacks DOCKER_HOST. `.emacs.d/satan/` still
 untouched (dual-presence; cutover in PHASE-04).
+
+## PHASE-04 executed on HOST — STAGE 1 done (2026-07-12), staged with user
+
+Host-only phase. User-approved staging: stage 1 = reversible edits + machine
+gates (this pass); stage 2 = home-manager switch + delete + VH-1/2/3 with human.
+
+**Entrance:** EN-1 ✓ (PHASE-03 green, satan a4fc0c0). EN-2 ✓ dual-presence
+CLEAN — config `satan/` last edit 196676e (07-11) predates package seed b2f0da1
+(07-12 00:32); working tree clean under satan/. No un-replayed edits.
+
+**Decisions locked with user:**
+- **D-A2 harness provisioning (OQ-1/EX-4):** config flake fully stripped of
+  satan; jailed-satan-gptel-harness provisioned via `~/flakes` home.packages
+  from the `satan` flake input → `~/.nix-profile/bin` (on broker exec-path,
+  direnv-independent). `~/flakes` satan input is `path:` (local-ahead; flip to
+  `github:davidlee/satan` after push).
+- **D-JF:** check recipe `-L` fix + `-L ~/dev/satan/satan`; dead db-init/
+  check-interactive removed; hello-satan kept (user).
+- **D-DT:** doctor test rewritten in-place to renamed interface.
+
+**Landed (3 repos):**
+- config `~/.emacs.d` @ **ebe4a1e** — dl-path (D5), init.el use-package satan
+  :ensure nil :demand t (D4), dl-test suite dirs, doctor + doctor-test rename,
+  Justfile (EX-8), flake.nix satan strip (EX-4).
+- satan `~/dev/satan` @ **012097e** — .envrc DOCKER_HOST (D10 caveat),
+  post-commit install-hint path (+ user's README).
+- flakes `~/flakes` @ **0fc4af97** — satan input + satan.nix home.packages +
+  ExecStart repoint.
+
+**Machine gates GREEN:**
+- VA-1 `just check` 10/10 (doctor suite resolves renamed pkg via external -L).
+- VA-2 config flake evals clean; package set = 7 non-satan jails, both satan
+  entries gone.
+- VA-3 `nix build ~/dev/satan#…satan-jailed-gptel-harness` →
+  `/nix/store/npr1ra9…-jailed-satan-gptel-harness` (src ./satan/harness, ruff
+  check + wrapper all pass). **Closes the PHASE-01 host-deferred VA-3 carry.**
+
+**Corrections to prior findings:**
+- satan repo DOES have origin `git@github.com:davidlee/satan.git`; local-ahead
+  of origin/main (a4fc0c0 unpushed) — so `github:` input would be stale; `path:`
+  correct until user pushes.
+- `homeModules.satan` IS imported by `modules/home/Sleipnir.nix:34` (satan.nix
+  "not imported in phase 1" comment was stale — fixed).
+- `emacs.nix` a non-issue: satan never in the emacsWithPackagesFromUsePackage
+  scan set {core,apps,lang,lisp,editing,completion}; satan elisp self-contained
+  (subr-x + own modules). No emacs.nix / extraEmacsPackages change.
+
+**Left untouched (user WIP, not mine):** config `flake.nix` +helix hunk (staged
+only my satan hunks via filtered `git apply --cached`); satan `flake.nix`
++subagents line; `~/flakes` niri/zsh/util edits.
+
+### STAGE 2 remaining (needs human — NOT done)
+1. Re-link `~/.config/git/hooks/post-commit` → `~/dev/satan/satan/bin/…` (EX-6).
+2. `home-manager switch` (VH-2).
+3. Delete `~/.emacs.d/satan/` + `docs/satan/`; rg 'dl-satan-' zero outside
+   .doctrine/.spec-driver/CHANGELOG (EX-5/VA-3 gate).
+4. CHANGELOG entry (EX-7 — deferred to keep stage-1 honest).
+5. VH-1 boot + `M-x satan-run morning`; VH-3 doctor checks; VH-2 systemd +
+   test-commit hook fires segment row. NB trusted-content: satan now a checkout
+   dir (untrusted) — verify no breakage.
+6. Then `doctrine slice status 12 audit` → /audit → /reconcile (carries F-1..F-6
+   + this stage's carries: github flip after push, stale orientation memory).
