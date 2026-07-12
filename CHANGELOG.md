@@ -2,6 +2,17 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-07-12 — SATAN extraction: `satan/` and `docs/satan/` deleted
+
+SATAN moved out to its own package (`davidlee/satan`). Deleted the in-tree
+copy (`satan/`, `docs/satan/`) from `.emacs.d`.
+
+- Verified before delete: only gitignored content under `satan/` was build
+  cruft (`dl-satan-run.elc`, two `__pycache__/` dirs) — no untracked source.
+  `docs/satan/` had zero gitignored/untracked files; all 39 docs already
+  tracked and present verbatim (module-prefix rename `dl-satan-` → `satan-`
+  aside) in the package's `docs/`. Nothing stranded.
+
 ## 2026-07-11 — SL-011: SATAN tick performance — observe and bound
 
 Bounded and instrumented the perception tick so a slow probe can no longer hang it silently.
