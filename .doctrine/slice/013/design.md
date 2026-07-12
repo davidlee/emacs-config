@@ -83,7 +83,7 @@ the existing `dl-notes-*-dir` defconsts, not re-derived.
 |---|---|---|
 | `my/review-journal-open` | org-ql `(todo)` over journal + weekly dirs | `C-c n v j` |
 | `my/review-protocol` | `my/review--open-inbox` on `dl-notes-protocol-file` | `C-c n v p` |
-| `my/review-recent-notes` | dired on explicit file list: durable-dir org files sorted by mtime desc, newest 30 | `C-c n v n` |
+| `my/review-recent-notes` | dired on explicit file list (`(dired (cons dl-notes-root FILES))`, paths relative to root): durable-dir org files sorted by mtime desc, newest 30 | `C-c n v n` |
 
 Work variants where the compartment exists: `my/review-work-journal-open`
 (`C-c n W v j`), `my/review-work-recent-notes` (`C-c n W v n`). protocol.org
@@ -92,8 +92,10 @@ no work variant.
 
 `dl-notes-protocol-file` defconst added to `core/dl-notes-paths.el`;
 `dl-org-capture.el` templates switch to the var (removes the duplicated
-literal). protocol.org joins `my/review--notes-files` so the stale view scans
-it too.
+literal). protocol.org joins `my/review--notes-files`; note the stale view
+only surfaces todo-keyworded entries, so plain protocol captures are drained
+via `my/review-protocol` (open + triage), not the WAITING report — that is
+the honest limit of this slice.
 
 ### 5.2 Interfaces & Contracts
 
@@ -176,7 +178,10 @@ extract signals (no subtree at point) — guard first with
   keeps provenance; outline structure intact. User-confirmed.
 - D4 **New module** `dl-denote-promote.el` rather than growing `dl-denote.el`
   (pure config) — the command has logic + tests; module stays single-purpose.
-  The `(use-package denote-org)` form lives in the new module.
+  The `(use-package denote-org :commands (denote-org-extract-org-subtree))`
+  form lives in the new module — `:commands` keeps the load lazy so requiring
+  `dl-denote-promote` pre-switch (tests, byte-compile) does not hard-fail on
+  the missing package; `declare-function` + `skip-unless` cover the rest.
 - D5 **Extend `dl-review.el`** for views — it owns review queries; adding a
   parallel module would be the exact parallel-implementation smell.
 - D6 **`(todo)` org-ql predicate** for journal open items — matches any
@@ -201,9 +206,9 @@ extract signals (no subtree at point) — guard first with
 
 ## 9. Quality Engineering & Validation
 
-TDD red/green/refactor. Tests in `org/dl-denote-promote-test.el` and
-extensions to review coverage, following `dl-denote-journal-test.el`
-conventions (batch-runnable, fixture macros).
+TDD red/green/refactor. Tests in new `org/dl-denote-promote-test.el` and new
+`org/dl-review-test.el` (none exists today), following
+`dl-denote-journal-test.el` conventions (batch-runnable, fixture macros).
 
 - VT promote: temp `denote-directory` fixture; assertions — note file created
   in chosen class dir, subtree gone from origin, stub present at same level
@@ -221,4 +226,19 @@ conventions (batch-runnable, fixture macros).
 
 ## 10. Review Notes
 
-(adversarial pass pending)
+Adversarial self-pass (2026-07-12), findings integrated:
+
+- RN-1 `(dired (cons NAME files))` claim was wrong — first element is the
+  default-directory, not a label. Fixed §5.1: root = `dl-notes-root`,
+  relative paths.
+- RN-2 bare `(use-package denote-org)` requires at load → pre-switch
+  hard-fail for tests/byte-compile. Fixed §5.1/D4: `:commands` autoload.
+- RN-3 protocol.org entries are plain headings, so putting the file in the
+  stale-WAITING scan buys little; drain path is `my/review-protocol`.
+  Limitation named in §5.1.
+- RN-4 curated target list includes work class dirs (10 entries), a widening
+  of the user-approved "5 personal dirs" answer — justified by scope's
+  "work parity where it falls out free"; flagging rather than hiding it.
+- RN-5 marker semantics on deletion (markers collapse to deletion start)
+  confirmed compatible with stub insertion point (§5.4).
+- RN-6 no `dl-review-test.el` exists; named as new file in §9.
