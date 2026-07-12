@@ -1,0 +1,70 @@
+id    = 12
+slug  = "sl-012-conformance-audit-3-repo-satan-extraction-vs-designplangovernance"
+title = "SL-012 conformance audit: 3-repo SATAN extraction vs design/plan/governance"
+# no status — a review's status is DERIVED from its findings (ADR-007 D-C8), so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "reconciliation"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "auditor"
+responder = "author"
+
+[target]                   # the outbound `reviews` edge (ADR-004): RV-NNN ──reviews──▶ <ref>
+ref   = "SL-012"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "major"
+title = "Design decouple inventory omits dl-denote-journal — 3rd config-root coupling axis"
+detail = "Expected: design.md D4 decouple table enumerates every config-root coupling severed. Observed: it lists only (require 'dl-notes-paths) across 6 files (design.md:55,103); ZERO mention of dl-denote-journal. PHASE-03 found context.el + tools-org.el ALSO hard-require dl-denote-journal (config-owned, provider of my/journal--*) and had to drop both requires (today->satan-journal-today injection; weekly->declare-function soft dep). Dropping it also exposed a latent missing (require 'calendar) in satan-memory-evidence.el (29 void-function failures). Design/plan decouple inventory under-counted the coupling surface. Canon does not tell the truth. Ref notes.md F-1/F-2 (PHASE-03)."
+disposition = "verified"
+response = "Observation confirmed: design.md decouple table (§ D4) names only dl-notes-paths; dl-denote-journal is a genuine 3rd config-root coupling the inventory missed, plus the transitive (require 'calendar). Not a code defect — the code is correct (both requires dropped, journal injected, calendar required). Design/plan prose must enumerate the full coupling surface. Delegated to /reconcile (per-slice direct edit to design.md D4 + plan file-list)."
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "major"
+title = "flakes satan input pinned path: (host-local), not github: — non-reproducible"
+detail = "Expected: ~/flakes satan input references the canonical origin (git@github.com:davidlee/satan.git) for a reproducible build. Observed: input is path: (local-ahead of origin; a4fc0c0 + later commits unpushed). Correct WHILE unpushed, but a standing divergence: must flip to github:davidlee/satan once the satan repo is pushed. Owned future work gated on an external act (git push). Ref notes.md Stage-2 carry + PHASE-04:230,254."
+disposition = "follow-up"
+response = "Correct while unpushed; wrong once origin/main catches up. Not fixable in audit scope (needs git push + ~/flakes edit, host+network). Owned future work -> backlog item minted at harvest; flip path: -> github:davidlee/satan after push."
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "major"
+title = "mem.signpost.satan.orientation encodes pre-extraction file map"
+detail = "Expected: the SATAN orientation signpost reflects the shipped reality. Observed: it describes ~/.emacs.d/satan/ as the code home, dl-satan-* symbol names, '56 files', the pre-rename layer/file map, 'psql is only DB interface / 10 files' — all pre-extraction. Post-cutover the code lives at ~/dev/satan under satan-* names; the map misdirects any future agent. Knowledge-truth write delegated to reconcile/record-memory. Ref notes.md /audit carry."
+disposition = "verified"
+response = "Confirmed stale. Post-extraction the signpost lies about location, names, file map. Rewrite delegated to /reconcile via /record-memory (mem.signpost.satan.orientation: ~/dev/satan home, satan-* names, current layer/file map, satan--root self-location)."
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "minor"
+title = "mem.fact.satan.package-self-location-coupling untracked (cited by design D10)"
+detail = "Expected: a memory referenced by locked canon (design.md:337 D10) is tracked. Observed: the memory file is untracked pending git-add. Small housekeeping; resolve at reconcile. Ref notes.md:146,321."
+disposition = "verified"
+response = "Confirmed untracked. Trivial housekeeping delegated to /reconcile: git-add mem.fact.satan.package-self-location-coupling so canon's D10 reference resolves to tracked knowledge."
+
+[[finding]]
+id = "F-5"
+status = "verified"
+severity = "minor"
+title = "D4 tilde-root latent regression in 2 subprocess consumers — found + fixed + tested live"
+detail = 'Expected: satan-notes-root (defcustom default literal "~/notes") reaches call-process expanded. Observed: two consumers fed the raw ~-prefixed root straight to call-process (which does NOT expand ~): @satan scan root + notes_recent fd base-dir; both silently bailed. All other consumers wrap in (expand-file-name "satan/…" root) which expands the base -> blast radius exactly 2. Fixed live post-cutover: satan 0452f9c + 14963de, each shipping a regression test (satan-tools-atsatan-test.el +10, satan-tools-notes-test.el +10) at the tilde seam. No outstanding remediation — recorded for the ledger.'
+disposition = "aligned"
+response = "Resolved in-flight. Blast radius correctly scoped (exactly the 2 raw-root consumers); fixed satan 0452f9c + 14963de, each with a regression test at the call-process tilde seam. No outstanding remediation, no coverage gap."
+
+[[finding]]
+id = "F-6"
+status = "verified"
+severity = "nit"
+title = "History hygiene: 3 duplicate delete-satan commits + interleaved SL-013 in PHASE-04 window"
+detail = "Observed: config repo carries 3 identical 'chore: delete satan (moved to davidlee/satan)' commits (20200c0, a03b3de, 063f5c8) and a full unrelated SL-013 slice (6878026..f081cbb) interleaved during the PHASE-04 window. Untidy but harmless; history already pushed. Context for audit, not a defect to remediate."
+disposition = "tolerated"
+response = "Consciously accepted. Duplicate delete commits + interleaved SL-013 are cosmetic; history already pushed/shared, so a rewrite carries more risk than the untidiness costs. No remediation."
+
+# Findings are append-only `[[finding]]` tables, added by `review raise` (PHASE-03).
+# Empty here at creation — a fresh review is Active, awaiting the raiser (D-C8).
