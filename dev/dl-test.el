@@ -27,7 +27,7 @@
 
 (require 'ert)
 
-(defvar dl-test-suite-dirs '("satan/test" "lisp/test")
+(defvar dl-test-suite-dirs '("lisp/test")
   "Directories (relative to `user-emacs-directory') scanned for ERT files.
 A file is a test file when its name ends in \"-test.el\" or begins
 with \"test-\".")

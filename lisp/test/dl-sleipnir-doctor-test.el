@@ -8,14 +8,14 @@
 ;;
 ;; Run from CLI:
 ;;   emacs --batch \
-;;     -L ~/.emacs.d/core -L ~/.emacs.d/satan -L ~/.emacs.d/lisp \
+;;     -L ~/.emacs.d/core -L ~/dev/satan/satan -L ~/.emacs.d/lisp \
 ;;     -L ~/.emacs.d/lisp/test \
 ;;     -l dl-sleipnir-doctor-test.el -f ert-run-tests-batch-and-exit
 
 (require 'ert)
 (require 'cl-lib)
 (require 'json)
-(require 'dl-satan-memory-evidence)
+(require 'satan-memory-evidence)
 (require 'dl-sleipnir-doctor)
 
 ;; ---------------------------------------------------------------------
@@ -49,18 +49,18 @@
 ;; ---------------------------------------------------------------------
 
 (defmacro dl-sleipnir-doctor-test--with-behaviour-dir (&rest body)
-  "Eval BODY with `dl-satan-tools-activity-dir' bound to a fresh tmp tree.
+  "Eval BODY with `satan-tools-activity-dir' bound to a fresh tmp tree.
 `segments/' and `current/' subdirs are created; the tree is deleted on
 exit."
   (declare (indent 0))
-  `(let* ((dl-satan-tools-activity-dir
+  `(let* ((satan-tools-activity-dir
            (file-name-as-directory (make-temp-file "sleipnir-sensors-" t))))
      (unwind-protect
          (progn
-           (make-directory (expand-file-name "segments" dl-satan-tools-activity-dir) t)
-           (make-directory (expand-file-name "current" dl-satan-tools-activity-dir) t)
+           (make-directory (expand-file-name "segments" satan-tools-activity-dir) t)
+           (make-directory (expand-file-name "current" satan-tools-activity-dir) t)
            ,@body)
-       (delete-directory dl-satan-tools-activity-dir t))))
+       (delete-directory satan-tools-activity-dir t))))
 
 (defun dl-sleipnir-doctor-test--iso (secs-ago)
   "ISO-8601 (local-offset) timestamp SECS-AGO seconds before now."
@@ -72,7 +72,7 @@ exit."
   (let ((path (expand-file-name
                (format "segments/%s-%s.jsonl" kind
                        (format-time-string "%Y-%m-%d"))
-               dl-satan-tools-activity-dir))
+               satan-tools-activity-dir))
         (start (dl-sleipnir-doctor-test--iso (+ end-secs-ago 60)))
         (end (dl-sleipnir-doctor-test--iso end-secs-ago)))
     (with-temp-file path
@@ -82,7 +82,7 @@ exit."
 (defun dl-sleipnir-doctor-test--write-current (mtime-secs-ago)
   "Write current/sway.json with mtime MTIME-SECS-AGO seconds before now."
   (let ((path (expand-file-name "current/sway.json"
-                                dl-satan-tools-activity-dir)))
+                                satan-tools-activity-dir)))
     (with-temp-file path
       (insert (json-encode (list :app "x" :title "y"))))
     (set-file-times path (time-subtract (current-time) mtime-secs-ago))
@@ -116,7 +116,7 @@ exit."
 (ert-deftest dl-sleipnir-doctor/sensors-mild-stale-is-warn ()
   (let ((sleipnir-doctor-sensor-stale-crit-minutes 120)
         ;; segment-stale ceiling is 30m; 40m old → stale but well under crit.
-        (dl-satan-memory-evidence-segment-stale-seconds 1800))
+        (satan-memory-evidence-segment-stale-seconds 1800))
     (dl-sleipnir-doctor-test--with-behaviour-dir
       (dl-sleipnir-doctor-test--write-current 10)
       (dl-sleipnir-doctor-test--write-segment "browser" 10)

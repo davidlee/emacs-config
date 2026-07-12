@@ -64,7 +64,15 @@
 (require 'dl-denote-templates)
 (require 'dl-denote-journal)
 (unless (eq system-type 'darwin)
-  (require 'dl-satan))
+  (use-package satan
+    :ensure nil
+    :demand t
+    :custom
+    (satan-notes-root "~/notes")
+    (satan-journal-today
+     (lambda ()
+       (my/journal--ensure-today)
+       (my/journal--today-file dl-notes-journal-dir "journal")))))
 (require 'dl-org-ql)
 (require 'dl-review)
 (require 'dl-org-roam)

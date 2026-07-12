@@ -4,25 +4,25 @@
 (require 'json)
 (require 'subr-x)
 
-(declare-function dl-satan-mode-check-tool-references "dl-satan-mode" ())
-(declare-function dl-satan-budget-today-total "dl-satan-budget" (runs-dir &optional time))
-(declare-function dl-satan-budget-exceeded-p "dl-satan-budget" (runs-dir &optional time))
-(declare-function dl-satan-memory-store-recent "dl-satan-memory-store" (&rest args))
-(declare-function dl-satan-broker-run-dirs-for-date "dl-satan-broker" (runs-dir date-prefix))
-(declare-function dl-satan-broker--failure-streak-count "dl-satan-broker" (runs-dir))
-(declare-function dl-satan-broker--run-id-from-leaf "dl-satan-broker" (name))
-(declare-function dl-satan-patch-runner-active-p "dl-satan-patch-runner" ())
-(declare-function dl-satan-patch-store-list "dl-satan-patch-store" (&rest args))
-(declare-function dl-satan-memory-evidence--current-window-status "dl-satan-memory-evidence" (path now))
-(declare-function dl-satan-memory-evidence--segments-status "dl-satan-memory-evidence" (path start end limit now))
+(declare-function satan-mode-check-tool-references "satan-mode" ())
+(declare-function satan-budget-today-total "satan-budget" (runs-dir &optional time))
+(declare-function satan-budget-exceeded-p "satan-budget" (runs-dir &optional time))
+(declare-function satan-memory-store-recent "satan-memory-store" (&rest args))
+(declare-function satan-broker-run-dirs-for-date "satan-broker" (runs-dir date-prefix))
+(declare-function satan-broker--failure-streak-count "satan-broker" (runs-dir))
+(declare-function satan-broker--run-id-from-leaf "satan-broker" (name))
+(declare-function satan-patch-runner-active-p "satan-patch-runner" ())
+(declare-function satan-patch-store-list "satan-patch-store" (&rest args))
+(declare-function satan-memory-evidence--current-window-status "satan-memory-evidence" (path now))
+(declare-function satan-memory-evidence--segments-status "satan-memory-evidence" (path start end limit now))
 (declare-function eglot--managed-servers "eglot" ())
 (declare-function jsonrpc-running-p "jsonrpc" (conn))
 
-(defvar dl-satan-runs-dir)
-(defvar dl-satan-budget-daily-tokens)
-(defvar dl-satan-patch-runner-enabled)
-(defvar dl-satan-patch-worktree-root)
-(defvar dl-satan-tools-activity-dir)
+(defvar satan-runs-dir)
+(defvar satan-budget-daily-tokens)
+(defvar satan-patch-runner-enabled)
+(defvar satan-patch-worktree-root)
+(defvar satan-tools-activity-dir)
 (defvar dl-notes-root)
 (defvar dl-notes-inbox-file)
 (defvar org-roam-db-location)
@@ -81,14 +81,14 @@ left the observer unable to confirm any intraday intervention."
    (t                 (format "%.1fd ago" (/ seconds 86400.0)))))
 
 (defun sleipnir-doctor--satan-available-p ()
-  (and (featurep 'dl-satan-broker) (boundp 'dl-satan-runs-dir)))
+  (and (featurep 'satan-broker) (boundp 'satan-runs-dir)))
 
 (defun sleipnir-doctor--satan-patch-available-p ()
-  (and (featurep 'dl-satan-patch-store) (featurep 'dl-satan-patch-runner)))
+  (and (featurep 'satan-patch-store) (featurep 'satan-patch-runner)))
 
 (defun sleipnir-doctor--sensors-available-p ()
-  (and (featurep 'dl-satan-memory-evidence)
-       (boundp 'dl-satan-tools-activity-dir)))
+  (and (featurep 'satan-memory-evidence)
+       (boundp 'satan-tools-activity-dir)))
 
 ;; ---------------------------------------------------------------------------
 ;; Emacs core
@@ -121,24 +121,24 @@ left the observer unable to confirm any intraday intervention."
 ;; ---------------------------------------------------------------------------
 
 (defun sleipnir-doctor--satan-mode-registry ()
-  (if (not (fboundp 'dl-satan-mode-check-tool-references))
+  (if (not (fboundp 'satan-mode-check-tool-references))
       (sleipnir-doctor--check "SATAN" "mode-registry" "OK" "not loaded")
     (condition-case err
         (progn
-          (dl-satan-mode-check-tool-references)
+          (satan-mode-check-tool-references)
           (sleipnir-doctor--check "SATAN" "mode-registry" "OK" "consistent"))
       (error
        (sleipnir-doctor--check "SATAN" "mode-registry" "CRIT"
                                (error-message-string err))))))
 
 (defun sleipnir-doctor--satan-budget ()
-  (if (not (and (fboundp 'dl-satan-budget-today-total)
-                (fboundp 'dl-satan-budget-exceeded-p)))
+  (if (not (and (fboundp 'satan-budget-today-total)
+                (fboundp 'satan-budget-exceeded-p)))
       (sleipnir-doctor--check "SATAN" "budget" "OK" "not loaded")
-    (let* ((total (dl-satan-budget-today-total dl-satan-runs-dir))
-           (exceeded (dl-satan-budget-exceeded-p dl-satan-runs-dir))
-           (ceiling (and (boundp 'dl-satan-budget-daily-tokens)
-                         dl-satan-budget-daily-tokens)))
+    (let* ((total (satan-budget-today-total satan-runs-dir))
+           (exceeded (satan-budget-exceeded-p satan-runs-dir))
+           (ceiling (and (boundp 'satan-budget-daily-tokens)
+                         satan-budget-daily-tokens)))
       (sleipnir-doctor--check
        "SATAN" "budget"
        (if exceeded "WARN" "OK")
@@ -149,9 +149,9 @@ left the observer unable to confirm any intraday intervention."
          (format "%dk tokens (no ceiling)" (/ total 1000)))))))
 
 (defun sleipnir-doctor--satan-memory-db ()
-  (if (not (fboundp 'dl-satan-memory-store-recent))
+  (if (not (fboundp 'satan-memory-store-recent))
       (sleipnir-doctor--check "SATAN" "memory-db" "OK" "not loaded")
-    (let ((result (dl-satan-memory-store-recent :limit 1)))
+    (let ((result (satan-memory-store-recent :limit 1)))
       (pcase (car result)
         ('ok    (sleipnir-doctor--check "SATAN" "memory-db" "OK" "connected"))
         ('error (sleipnir-doctor--check "SATAN" "memory-db" "CRIT"
@@ -163,7 +163,7 @@ left the observer unable to confirm any intraday intervention."
   (if (not (sleipnir-doctor--satan-available-p))
       (sleipnir-doctor--check "SATAN" "today-runs" "OK" "not loaded")
     (let* ((prefix (format-time-string "%Y%m%dT"))
-           (dirs (dl-satan-broker-run-dirs-for-date dl-satan-runs-dir prefix))
+           (dirs (satan-broker-run-dirs-for-date satan-runs-dir prefix))
            (total (length dirs))
            (failed (cl-count-if
                     (lambda (d)
@@ -182,9 +182,9 @@ left the observer unable to confirm any intraday intervention."
        (format "%d runs, %d ok, %d failed (%d%%)" total succeeded failed pct)))))
 
 (defun sleipnir-doctor--satan-failure-streak ()
-  (if (not (fboundp 'dl-satan-broker--failure-streak-count))
+  (if (not (fboundp 'satan-broker--failure-streak-count))
       (sleipnir-doctor--check "SATAN" "failure-streak" "OK" "not loaded")
-    (let ((streak (dl-satan-broker--failure-streak-count dl-satan-runs-dir)))
+    (let ((streak (satan-broker--failure-streak-count satan-runs-dir)))
       (sleipnir-doctor--check
        "SATAN" "failure-streak"
        (cond ((>= streak 5) "CRIT")
@@ -195,13 +195,13 @@ left the observer unable to confirm any intraday intervention."
 (defun sleipnir-doctor--satan-last-tick ()
   (if (not (sleipnir-doctor--satan-available-p))
       (sleipnir-doctor--check "SATAN" "last-tick" "OK" "not loaded")
-    (let* ((link (expand-file-name "most-recent" dl-satan-runs-dir))
+    (let* ((link (expand-file-name "most-recent" satan-runs-dir))
            (target (and (file-symlink-p link)
                         (file-name-nondirectory
                          (directory-file-name (file-truename link)))))
            (run-id (and target
-                        (if (fboundp 'dl-satan-broker--run-id-from-leaf)
-                            (dl-satan-broker--run-id-from-leaf target)
+                        (if (fboundp 'satan-broker--run-id-from-leaf)
+                            (satan-broker--run-id-from-leaf target)
                           target)))
            (ts (and run-id
                     (string-match
@@ -252,7 +252,7 @@ classifier would.  Worst sensor sets the overall status."
   (if (not (sleipnir-doctor--sensors-available-p))
       (sleipnir-doctor--check "SATAN" "sensors" "OK" "not loaded")
     (let* ((now (current-time))
-           (root dl-satan-tools-activity-dir)
+           (root satan-tools-activity-dir)
            (today (format-time-string "%Y-%m-%d" now))
            ;; Wide window: segment freshness is decided on the newest
            ;; entry's age, independent of these bounds; they only shape
@@ -262,15 +262,15 @@ classifier would.  Worst sensor sets the overall status."
            (probes
             (list
              (cons "current"
-                   (car (dl-satan-memory-evidence--current-window-status
+                   (car (satan-memory-evidence--current-window-status
                          (expand-file-name "current/sway.json" root) now)))
              (cons "focus"
-                   (car (dl-satan-memory-evidence--segments-status
+                   (car (satan-memory-evidence--segments-status
                          (expand-file-name
                           (format "segments/focus-%s.jsonl" today) root)
                          start end 1 now)))
              (cons "browser"
-                   (car (dl-satan-memory-evidence--segments-status
+                   (car (satan-memory-evidence--segments-status
                          (expand-file-name
                           (format "segments/browser-%s.jsonl" today) root)
                          start end 1 now)))))
@@ -292,10 +292,10 @@ classifier would.  Worst sensor sets the overall status."
 (defun sleipnir-doctor--patch-runner ()
   (if (not (sleipnir-doctor--satan-patch-available-p))
       (sleipnir-doctor--check "Patch" "runner" "OK" "not loaded")
-    (let* ((enabled (and (boundp 'dl-satan-patch-runner-enabled)
-                         dl-satan-patch-runner-enabled))
-           (active (and (fboundp 'dl-satan-patch-runner-active-p)
-                        (dl-satan-patch-runner-active-p))))
+    (let* ((enabled (and (boundp 'satan-patch-runner-enabled)
+                         satan-patch-runner-enabled))
+           (active (and (fboundp 'satan-patch-runner-active-p)
+                        (satan-patch-runner-active-p))))
       (sleipnir-doctor--check
        "Patch" "runner" "OK"
        (format "%s%s"
@@ -303,9 +303,9 @@ classifier would.  Worst sensor sets the overall status."
                (if active (format ", active: %s" active) ""))))))
 
 (defun sleipnir-doctor--patch-queue ()
-  (if (not (fboundp 'dl-satan-patch-store-list))
+  (if (not (fboundp 'satan-patch-store-list))
       (sleipnir-doctor--check "Patch" "queue" "OK" "not loaded")
-    (let ((result (dl-satan-patch-store-list :state "queued")))
+    (let ((result (satan-patch-store-list :state "queued")))
       (pcase (car result)
         ('ok
          (let ((n (length (cdr result))))
@@ -317,9 +317,9 @@ classifier would.  Worst sensor sets the overall status."
                                  (format "query failed: %s" (cdr result))))))))
 
 (defun sleipnir-doctor--patch-pending-review ()
-  (if (not (fboundp 'dl-satan-patch-store-list))
+  (if (not (fboundp 'satan-patch-store-list))
       (sleipnir-doctor--check "Patch" "pending-review" "OK" "not loaded")
-    (let ((result (dl-satan-patch-store-list :state "needs_review")))
+    (let ((result (satan-patch-store-list :state "needs_review")))
       (pcase (car result)
         ('ok
          (let ((n (length (cdr result))))
@@ -331,14 +331,14 @@ classifier would.  Worst sensor sets the overall status."
                                  (format "query failed: %s" (cdr result))))))))
 
 (defun sleipnir-doctor--patch-worktrees ()
-  (if (not (and (boundp 'dl-satan-patch-worktree-root)
-                (file-directory-p dl-satan-patch-worktree-root)))
+  (if (not (and (boundp 'satan-patch-worktree-root)
+                (file-directory-p satan-patch-worktree-root)))
       (sleipnir-doctor--check "Patch" "worktrees" "OK" "not configured")
-    (let* ((entries (directory-files dl-satan-patch-worktree-root nil "\\`[^.]"))
+    (let* ((entries (directory-files satan-patch-worktree-root nil "\\`[^.]"))
            (dirs (cl-remove-if-not
                   (lambda (e)
                     (file-directory-p
-                     (expand-file-name e dl-satan-patch-worktree-root)))
+                     (expand-file-name e satan-patch-worktree-root)))
                   entries))
            (n (length dirs)))
       (sleipnir-doctor--check "Patch" "worktrees"

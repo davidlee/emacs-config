@@ -17,7 +17,7 @@ used:
 # chokepoint guard refuses the production socket loudly.
 check:
   @emacs --batch -Q --init-directory="{{justfile_directory()}}" \
-    -L core -L lisp -L org -L editing -L completion -L apps -L lang -L dev -L satan -L satan/test -L lisp/test \
+    -L core -L lisp -L org -L editing -L completion -L apps -L lang -L dev -L lisp/test -L ~/dev/satan/satan \
     -l dev/dl-test.el \
     --eval '(princ (dl-test-run-suite))' 2>&1 | tee /dev/stderr | grep -q PASS
 
@@ -30,29 +30,11 @@ db-stop:
 db-status:
   supabase status
 
-db-init db="satan_memory_test":
-  #!/usr/bin/env bash
-  set -euo pipefail
-  cd "{{justfile_directory()}}"
-  dropdb --if-exists --maintenance-db=postgres "{{db}}"
-  createdb --maintenance-db=postgres "{{db}}"
-  emacs --batch -Q --init-directory="{{justfile_directory()}}" \
-    -L satan \
-    -l satan/dl-satan-memory-migrate.el \
-    --eval '(let ((dl-satan-memory-migrate-host (or (getenv "SATAN_DB_HOST") "127.0.0.1"))) (dl-satan-memory-migrate-apply "{{db}}"))'
-
-# Run the ERT suite in the live Emacs server, redirecting DB tests to
-# the test DB via a let-binding on dl-satan-db-host-override.
-# The redirect lasts only the suite's dynamic extent; the live
-# broker's production connection is untouched.
-check-interactive:
-  @emacsclient --eval '(let ((dl-satan-db-host-override (or (getenv "SATAN_DB_HOST") "127.0.0.1"))) (dl-test-run-suite))' | tee /dev/stderr | grep -q PASS
-
 clean:
   @find ~/.emacs.d -name '*.elc' -delete
 
 wc:
-  @find ~/.emacs.d/{core,lisp,dev,lang,editing,completion,apps,org,satan} -name '*.el' | xargs wc -l ;
+  @find ~/.emacs.d/{core,lisp,dev,lang,editing,completion,apps,org} -name '*.el' | xargs wc -l ;
 
 hello-satan:
   emacsclient -e "(my/hello-satan)"
