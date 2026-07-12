@@ -8,14 +8,13 @@
 ;; Bound to `C-c n p' in `core/dl-keymap.el'.
 
 (require 'dl-notes-paths)
+(require 'org)
 
 (use-package denote-org
   :commands (denote-org-extract-org-subtree))
 
 (declare-function denote-org-extract-org-subtree "denote-org")
 (declare-function denote-retrieve-filename-identifier "denote")
-(declare-function denote-retrieve-front-matter-title-value "denote")
-(declare-function denote-filetype-heuristics "denote")
 
 (defvar my/denote-promote-targets
   (mapcar (lambda (dir)
@@ -42,6 +41,45 @@ Left behind at the extraction site so the origin keeps provenance."
           (if (string-empty-p title)
               (format "[[denote:%s]]" id)
             (format "[[denote:%s][%s]]" id title))))
+
+;;;###autoload
+(defun my/denote-promote-subtree ()
+  "Promote the Org subtree at point to a durable denote note.
+Prompt for a curated class dir (`my/denote-promote-targets'), extract the
+subtree into a new denote note there via `denote-org-extract-org-subtree',
+save it, and leave a level-preserving stub heading at the origin linking the
+new note.  Quitting the prompt aborts before any mutation, so the origin
+buffer is left untouched."
+  (interactive)
+  (unless (derived-mode-p 'org-mode)
+    (user-error "Not an Org buffer"))
+  (when (org-before-first-heading-p)
+    (user-error "Point is not within a subtree"))
+  (let* ((targets my/denote-promote-targets)
+         (label   (completing-read "Promote to: " targets nil t))
+         (dir     (or (cdr (assoc label targets))
+                      (user-error "No target directory for %S" label)))
+         (origin  (current-buffer))
+         (level   (org-current-level))
+         (heading (org-get-heading t t t t))
+         (marker  (copy-marker (org-entry-beginning-position))))
+    ;; Extract leaves the new note buffer current, possibly unsaved
+    ;; (`denote-save-buffers' defaults nil), so save it and read the ID from
+    ;; its filename — the title comes from the pre-call HEADING, not disk.
+    (let* ((note-buffer
+            (let ((denote-prompts nil)
+                  (denote-directory dir))
+              (denote-org-extract-org-subtree)
+              (current-buffer)))
+           (id (denote-retrieve-filename-identifier
+                (buffer-file-name note-buffer))))
+      (with-current-buffer note-buffer
+        (save-buffer))
+      (with-current-buffer origin
+        (goto-char marker)
+        (insert (my/denote-promote--stub level id heading) "\n"))
+      (set-marker marker nil)
+      (switch-to-buffer origin))))
 
 (provide 'dl-denote-promote)
 ;;; dl-denote-promote.el ends here

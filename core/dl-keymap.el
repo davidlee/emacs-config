@@ -256,6 +256,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-notes-map "j" #'my/journal-note                   "journal today")
 (my/bind my-notes-map "w" #'my/weekly-note                    "weekly")
 (my/bind my-notes-map "n" #'denote                            "new note")
+(my/bind my-notes-map "p" #'my/denote-promote-subtree         "promote subtree")
 (my/bind my-notes-map "f" #'consult-notes                     "find note (Phase 5)")
 (my/bind my-notes-map "s" #'consult-notes-search-in-all-notes "search notes (Phase 5)")
 (my/bind my-notes-map "l" #'org-store-link                    "store link")

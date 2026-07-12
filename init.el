@@ -63,6 +63,7 @@
 (require 'dl-denote)
 (require 'dl-denote-templates)
 (require 'dl-denote-journal)
+(require 'dl-denote-promote)
 (unless (eq system-type 'darwin)
   (use-package satan
     :ensure nil

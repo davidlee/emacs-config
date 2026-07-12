@@ -2,6 +2,25 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-07-12 — SL-013 PHASE-02: subtree promotion command
+
+One-keystroke promotion of an Org subtree to a durable denote note.
+
+- **`org/dl-denote-promote.el`** — `my/denote-promote-subtree` (`C-c n p`):
+  prompts for a curated class dir (`my/denote-promote-targets`, 10 durable
+  personal+work dirs), extracts the subtree via `denote-org-extract-org-subtree`
+  into a new denote note there, saves it, and leaves a level-preserving stub
+  heading `*… → [[denote:ID][title]]` at the origin. Quit-at-prompt aborts
+  cleanly; wraps upstream rather than reimplementing title/keyword derivation.
+- Tests: `org/dl-denote-promote-test.el` — e2e (note created, subtree gone,
+  stub links the ID, tags → keywords) + quit-byte-identical, `skip-unless`
+  denote-org. 7/7 green.
+- **Gate fallout (SL-012 satan extraction):** removed orphan
+  `lisp/test/dl-sleipnir-doctor-test.el` — it hard-required the deleted
+  `satan-memory-evidence`, LOADERR-aborting the whole `just check` harness. The
+  gate now scans an empty `lisp/test/` (org suites were never in its scan
+  path); filed **ISS-007** to re-anchor coverage.
+
 ## 2026-07-12 — SATAN extraction: `satan/` and `docs/satan/` deleted
 
 SATAN moved out to its own package (`davidlee/satan`). Deleted the in-tree
