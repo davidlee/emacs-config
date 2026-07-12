@@ -273,3 +273,51 @@ only my satan hunks via filtered `git apply --cached`); satan `flake.nix`
    dir (untrusted) — verify no breakage.
 6. Then `doctrine slice status 12 audit` → /audit → /reconcile (carries F-1..F-6
    + this stage's carries: github flip after push, stale orientation memory).
+
+### STAGE 2 COMPLETE (host, 2026-07-12)
+All Stage-2 items above done on the host. Every PHASE-04 exit + verification met.
+
+**Host actions (VH-1/2/3, OQ-1):**
+1. EX-6 post-commit hook re-linked → `~/dev/satan/satan/bin/…`; `home-manager
+   switch` applied; satan systemd units start on new ExecStart (VH-2). Test commit
+   fired the re-linked hook → git-activity segment row appended.
+2. `~/.emacs.d/satan/` + `docs/satan/` deleted (EN-2 pre-delete diff: only
+   gitignored build cruft — `dl-satan-run.elc`, 2 `__pycache__/` — no stranded
+   source; docs all tracked verbatim in package).
+3. VH-1 boot green: `M-x satan-run` morning ran jail→model→tool→DB end-to-end.
+   VH-3 doctor SATAN checks pass on the renamed interface. OQ-1 jail mount
+   resolved — binds byte-identical pre/post cutover.
+4. EX-7 CHANGELOG entry landed (`cfda3ee`).
+
+**Live regression found + fixed (D4 tilde-root, NOT in plan):** two `satan-notes-root`
+consumers fed the raw `~`-prefixed root straight to a subprocess (`call-process`),
+which does not expand `~`. Every other consumer wraps in `(expand-file-name
+"satan/…" root)` (expands the base), so blast radius = these two only.
+- satan `0452f9c` — expand `~` in `@satan` scan root before `call-process`.
+- satan `14963de` — expand `~` in `notes_recent` `fd` base-directory.
+Live-verified post-fix: `notes_recent` returns 3 files; tick scans `~/notes/intake`
+and acts on a directive (previously bailed "nothing acted on").
+
+**EX-5 gate closure (literal exemption `.doctrine/ .spec-driver/ CHANGELOG.md`):**
+- `dev/dl-test.el:7` stale comment `dl-satan-db-host-override` → `satan-db-host-override`
+  (no live binding of the old name; VA-1 already green — cosmetic drift only).
+- Orphaned satan review artifacts relocated to the satan repo (`8fba96e`): the
+  `review/` corpus (15 files) + root `CODE_REVIEW.md`, `CODE_REVIEW_PROMPT.{ARCHITECT,RESEARCHER}.md`.
+  These reviewed now-extracted code and pointed at the deleted `docs/satan/refactor/`.
+- Gate now literally zero hits outside the exempt set. Config tree clean.
+
+**History hygiene for /audit (context, not blockers):**
+- Three identical `chore: delete satan (moved to davidlee/satan)` commits
+  (20200c0, a03b3de, 063f5c8) — untidy but harmless.
+- A full **SL-013** slice (6 commits, `6878026`..`f081cbb`) landed interleaved in
+  the config repo during the PHASE-04 window — unrelated to SL-012.
+
+**Stage-2 delta registry (cross-repo, textual — this slice spans 3 repos):**
+- config `~/.emacs.d` — `ebe4a1e` (wiring) → `cfda3ee` (CHANGELOG + dl-test fix + deletes).
+- satan `~/dev/satan` — `0452f9c`, `14963de` (regressions), `8fba96e` (review relocate).
+- flakes `~/flakes` — Stage-1 `0fc4af97` (satan input + satan.nix + ExecStart);
+  host `home-manager switch` applied it.
+
+Carries into /audit: F-1..F-6 (see plan RV-010) + github-input flip after
+`git push` of the satan repo (`path:` correct until pushed) + stale SATAN
+orientation memory (post-extraction file map).
