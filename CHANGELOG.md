@@ -2,6 +2,27 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-07-12 — SL-013 PHASE-03: review gap-fill
+
+Revive three dead review surfaces; dedupe the `protocol.org` path.
+
+- **`org/dl-review.el`** — `my/review-journal-open` (+ work) surfaces open
+  (not-done) journal + weekly headings via org-ql `(todo)`; `my/review-protocol`
+  opens `protocol.org` at the first TODO; `my/review-recent-notes` (+ work)
+  Direds the newest durable notes (projects/areas/sources/slips) as an explicit
+  file list. New pure seams: `my/review--org-files-in`, `--journal-files`,
+  `--durable-dirs`, `--recent-note-files`. `protocol.org` joined the scanned
+  notes set.
+- **`core/dl-notes-paths.el`** — `dl-notes-protocol-file` defconst; both
+  org-protocol capture templates in `dl-org-capture.el` deduped onto it.
+- Bindings: `C-c n v {j,p,n}` (personal), `C-c n W v {j,n}` (work).
+- Tests: `org/dl-review-test.el` — VT-1 journal-open keyword filter (TODO/NEXT
+  in, DONE out), VT-2 recent-note-files mtime order + N-cap. 2/2 green (batch;
+  org suites are off the `just check` scan path per ISS-007).
+- Gotcha: `org-ql-select` does **not** expand directories (opens them as
+  Dired) — journal-files returns concrete `.org` files, unlike `--notes-files`
+  which feeds `org-ql-search`.
+
 ## 2026-07-12 — SL-013 PHASE-02: subtree promotion command
 
 One-keystroke promotion of an Org subtree to a durable denote note.

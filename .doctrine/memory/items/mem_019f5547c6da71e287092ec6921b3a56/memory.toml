@@ -1,0 +1,41 @@
+memory_uid = "mem_019f5547c6da71e287092ec6921b3a56"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "org-ql-select does not expand directories; org-ql-search does"
+summary = "org-ql-select yields nothing on a dir arg (opens it as Dired); pass concrete .org files. Only the higher-level org-ql-search expands directories."
+created = "2026-07-12"
+updated = "2026-07-12"
+
+[scope]
+paths = ["org/dl-review.el"]
+globs = ["org/*.el"]
+commands = []
+tags = ["org-ql", "notes-review"]
+workspace = "default"
+repo = "github.com/davidlee/emacs-config"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "c827b9decb768775bb7b6b9d6f0c4dabc4b2f227"
+ref_name = "refs/heads/main"
+checkout_state_id = "a43ce92c881ca46cb994c65303f378f400dad39ecf3b8d01d1d3f03606542827"
+base_commit = "c0be92ea338d144b28dd106154e3ffef5916eba6"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "medium"
+weight = 0
+
