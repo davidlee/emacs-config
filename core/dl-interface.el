@@ -141,7 +141,7 @@
 (custom-set-variables
   '(zoom-window-mode-line-color "#005500"))
 
-(use-package persp-mode)
+;; (use-package persp-mode)
 
 (setopt scroll-conservatively 100)
 

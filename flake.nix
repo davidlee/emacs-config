@@ -6,15 +6,10 @@
     flake-parts.url = "github:hercules-ci/flake-parts";
     devshell.url = "github:numtide/devshell";
     emacs-overlay.url = "https://github.com/nix-community/emacs-overlay/archive/master.tar.gz";
-    emacs-config = {
-      url = "path:.";
-      flake = false;
-    };
     pub = {
       url = "path:/home/david/flakes/pub";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.emacs-overlay.follows = "emacs-overlay";
-      inputs.emacs-config.follows = "emacs-config";
     };
     llm-agents.url = "github:numtide/llm-agents.nix";
     doctrine.url = "github:davidlee/doctrine";
@@ -52,6 +47,8 @@
           else {};
         doctrine-pkg = doctrine.packages.${system}.default;
         wrappedEmacs = inputs.pub.packages.${system}.emacs;
+        pi-dev = jailLib.agentsByName.pi;
+        claude = jailLib.agentsByName.claude;
         projectPkgs = with pkgs;
           [
             zigPackage
@@ -67,7 +64,7 @@
             codex
             helix
           ]
-          ++ [doctrine-pkg];
+          ++ [doctrine-pkg claude pi-dev];
 
         mcpJailOptions = with jailLib.combinators; [
           # expose SATAN MCP
@@ -131,24 +128,28 @@
             profile = "research";
             extraPkgs = projectPkgs;
             extraOptions = apiKeyJailOptions;
+            subagents = ["pi" "dirge" "claude"];
             inherit workspaceDeps;
           };
           jailed-opencode = jailLib.makeJailedOpencode {
             profile = "specDev";
             extraPkgs = projectPkgs;
             extraOptions = jailEnvOptions;
+            subagents = ["pi" "dirge" "claude"];
             inherit workspaceDeps;
           };
           jailed-claude = jailLib.makeJailedClaude {
             profile = "specDev";
             extraPkgs = projectPkgs;
             extraOptions = jailEnvOptions;
+            subagents = ["pi" "dirge" "claude"];
             inherit workspaceDeps;
           };
           jailed-dirge = jailLib.makeJailedDirge {
             profile = "specDev";
             extraPkgs = projectPkgs;
             extraOptions = apiKeyJailOptions;
+            subagents = ["pi" "dirge" "claude"];
             inherit workspaceDeps;
           };
           # jailed-codex = jailLib.makeJailedCodex {

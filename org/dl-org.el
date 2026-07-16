@@ -17,6 +17,8 @@
   (org-return-follows-link t)
   (org-use-speed-commands t)
   (org-log-done 'time)
+  (org-blank-before-new-entry '((heading . nil) (plain-list-item . nil)))
+
   ;; (org-ellipsis "  ")
   (org-catch-invisible-edits 'show-and-error)
   (org-special-ctrl-a/e t)

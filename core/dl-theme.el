@@ -21,28 +21,32 @@
     (load-theme theme t)
     (message "Loaded theme: %s" theme)))
 
-(use-package doom-themes
-  ;;  :bind
-  ;;(("<f5>" . my--rotate-themes))
-  :custom
-  ;; Global settings (defaults)
-  (doom-themes-enable-bold t)   ; if nil, bold is universally disabled
-  (doom-themes-enable-italic t) ; if nil, italics is universally disabled
-  ;; for treemacs users
-  (doom-themes-treemacs-theme "doom-one") ; use "doom-colors" for less minimal icon theme
+;;(load-theme 'nano)
+(load-theme 'doom-gruvbox)
 
-  ;; Enable flashing mode-line on errors
-  (doom-themes-visual-bell-config)
-  ;; Enable custom neotree theme (nerd-icons must be installed!)
-  (doom-themes-neotree-config)
-  ;; or for treemacs users
-  (doom-themes-treemacs-config)
-  ;; Corrects (and improves) org-mode's native fontification.
-  (doom-themes-org-config)
-  :config
-  (load-theme 'doom-one t))
+;; borked for now: emacs new face-cycle validator vs doom-themes base
 
-(global-set-key (kbd "<f5>") #'my--rotate-themes)
+;; (use-package doom-themes
+;;   ;;  :bind
+;;   ;;(("<f5>" . my--rotate-themes))
+;;   :custom
+;;   ;; Global settings (defaults)
+;;   (doom-themes-enable-bold t)   ; if nil, bold is universally disabled
+;;   (doom-themes-enable-italic t) ; if nil, italics is universally disabled
+;;   ;; for treemacs users
+;;   (doom-themes-treemacs-theme "doom-one") ; use "doom-colors" for less minimal icon theme
+
+;;   ;; Enable flashing mode-line on errors
+;;   (doom-themes-visual-bell-config)
+;;   ;; Enable custom neotree theme (nerd-icons must be installed!)
+;;   (doom-themes-neotree-config)
+;;   ;; or for treemacs users
+;;   (doom-themes-treemacs-config)
+;;   ;; Corrects (and improves) org-mode's native fontification.
+;;   (doom-themes-org-config)
+;;   :config
+;;   (load-theme 'doom-one t))
+;; (global-set-key (kbd "<f5>") #'my--rotate-themes)
 
 ;; New frames inherit `default-frame-alist' bg/fg before the theme
 ;; paints them — leaves a black flash (or worse, a permanently black

@@ -34,7 +34,7 @@
   (visible-bell t)
   (load-prefer-newer t)
   (backup-by-copying t)
-  (frame-inhibit-implied-resize t)
+  ;; (frame-inhibit-implied-resize t)
   (read-file-name-completion-ignore-case t)
   (read-buffer-completion-ignore-case t)
   (completion-ignore-case t)

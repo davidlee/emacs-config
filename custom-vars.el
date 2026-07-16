@@ -5,7 +5,15 @@
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(custom-safe-themes
-    '("088cd6f894494ac3d4ff67b794467c2aa1e3713453805b93a8bcb2d72a0d1b53"
+    '("77fff78cc13a2ff41ad0a8ba2f09e8efd3c7e16be20725606c095f9a19c24d3d"
+       "456697e914823ee45365b843c89fbc79191fdbaff471b29aad9dcbe0ee1d5641"
+       "1781e8bccbd8869472c09b744899ff4174d23e4f7517b8a6c721100288311fa5"
+       "f64189544da6f16bab285747d04a92bd57c7e7813d8c24c30f382f087d460a33"
+       "0325a6b5eea7e5febae709dab35ec8648908af12cf2d2b569bedc8da0a3a81c1"
+       "aec7b55f2a13307a55517fdf08438863d694550565dee23181d2ebd973ebd6b8"
+       "d12b1d9b0498280f60e5ec92e5ecec4b5db5370d05e787bc7cc49eae6fb07bc0"
+       "1daec3fc7fdff13fb0ad8eacf86e2e497ae9e7f893802ca8f95daae1bb775d70"
+       "088cd6f894494ac3d4ff67b794467c2aa1e3713453805b93a8bcb2d72a0d1b53"
        "4d5d11bfef87416d85673947e3ca3d3d5d985ad57b02a7bb2e32beaf785a100e"
        "d481904809c509641a1a1f1b1eb80b94c58c210145effc2631c1a7f2e4a2fdf4"
        "3613617b9953c22fe46ef2b593a2e5bc79ef3cc88770602e7e569bbd71de113b"
@@ -18,7 +26,7 @@
  '(dl-shpool-known-sessions '(".emacs.d" "hris" "team" "claude"))
  '(org-timeblock-current-time-indicator t)
  '(org-timeblock-span 1)
- '(package-selected-packages '(eca super-save))
+ '(package-selected-packages '(eca ox-hugo super-save))
  '(package-vc-selected-packages
     '((eca :url "https://github.com/editor-code-assistant/eca-emacs")
        (repeat-fu :url

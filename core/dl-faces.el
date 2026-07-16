@@ -22,8 +22,6 @@
      (dejavu-mono . "DejaVu Sans Mono")
      (geist . "Geist Mono")
 
-
-
      ;; Sans
 
      (inter . "Inter Regular")
@@ -51,9 +49,10 @@
      (header . monaspace-neon)
      (tab . monaspace-argon)
      (line-number . zedmono)
-     (org-body . et-book)
+     ;; (org-body . et-book)
+     (org-body . monolisa)
      (org-code . mono)
-     (org-heading . et-book)))
+     (org-heading . inter)))
 
 (defun my/set-font-role (role font)
   "Set font ROLE to FONT and reapply fonts."

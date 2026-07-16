@@ -41,6 +41,14 @@ Returned path is abbreviated (\"~/...\") so it matches what
 (add-to-list 'exec-path "~/.local/bin")
 (setenv "PATH" (concat "~/.nix-profile/bin:" (getenv "PATH")))
 
+;; Pin the subprocess shell to a POSIX shell. `shell-file-name' defaults to
+;; $SHELL, which is now nushell; nushell ships builtin `find'/`grep' that
+;; shadow the POSIX tools and reject their flags (e.g. `find -H'), breaking
+;; `project--files-in-directory', `grep', `compile', and any
+;; `shell-command'. Nushell can still be the interactive login shell — Emacs
+;; only needs POSIX syntax for the strings it shells out.
+(setq shell-file-name (or (executable-find "bash") "/bin/sh"))
+
 (require 'use-package-ensure-system-package)
 
 ;;(use-package direnv
