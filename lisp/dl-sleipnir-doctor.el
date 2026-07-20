@@ -263,7 +263,7 @@ classifier would.  Worst sensor sets the overall status."
             (list
              (cons "current"
                    (car (satan-memory-evidence--current-window-status
-                         (expand-file-name "current/sway.json" root) now)))
+                         (expand-file-name "current/desktop.json" root) now)))
              (cons "focus"
                    (car (satan-memory-evidence--segments-status
                          (expand-file-name
