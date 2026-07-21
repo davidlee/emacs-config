@@ -48,7 +48,13 @@ Breaks the latent doom-themes-base inheritance cycle Emacs 30 rejects."
             (setcar (cdr clause)
                     (plist-put plist :inherit 'gnus-group-news-1-empty))))))
     (put 'gnus-group-news-low-empty 'theme-face spec)
-    (face-spec-recalc 'gnus-group-news-low-empty nil)))
+    ;; At init gnus is not loaded, so the face has no defface yet even
+    ;; though doom has stamped its `theme-face' — `face-spec-recalc'
+    ;; would signal "Invalid face".  The corrected spec above is what
+    ;; breaks the cycle; it applies when gnus defines and realises the
+    ;; face later.  Only recalc now if the face already exists.
+    (when (facep 'gnus-group-news-low-empty)
+      (face-spec-recalc 'gnus-group-news-low-empty nil))))
 
 (add-hook 'enable-theme-functions #'my/break-doom-gnus-face-cycle)
 (my/break-doom-gnus-face-cycle)
