@@ -24,7 +24,34 @@
 ;;(load-theme 'nano)
 (load-theme 'doom-gruvbox)
 
-;; borked for now: emacs new face-cycle validator vs doom-themes base
+;; doom-themes-base defines `gnus-group-news-low-empty' to inherit
+;; `gnus-group-news-low', while Emacs' builtin defface has news-low
+;; inherit news-low-empty.  Together that is an inheritance cycle, which
+;; Emacs 30's face validator (`face-spec-set-2' / the C face realizer)
+;; now rejects — it aborts `make-frame' (C-x 5 2) with
+;;   "Face inheritance results in inheritance cycle: gnus-group-news-low".
+;; It is an upstream doom-themes bug (every other gnus-group-news-N-empty
+;; face inherits an -empty peer; only -low-empty points at the non-empty
+;; face).  A higher-priority `user' override does NOT help — the
+;; validator walks doom's own theme-face entry regardless of priority —
+;; so repoint that entry in place, across every enabled theme's spec, to
+;; the -empty peer.  Runs after each theme enable so `my--rotate-themes'
+;; is covered too.
+(defun my/break-doom-gnus-face-cycle (&rest _)
+  "Repoint `gnus-group-news-low-empty' off `gnus-group-news-low'.
+Breaks the latent doom-themes-base inheritance cycle Emacs 30 rejects."
+  (when-let ((spec (get 'gnus-group-news-low-empty 'theme-face)))
+    (dolist (theme-entry spec)
+      (dolist (clause (cadr theme-entry))
+        (let ((plist (cadr clause)))
+          (when (eq (plist-get plist :inherit) 'gnus-group-news-low)
+            (setcar (cdr clause)
+                    (plist-put plist :inherit 'gnus-group-news-1-empty))))))
+    (put 'gnus-group-news-low-empty 'theme-face spec)
+    (face-spec-recalc 'gnus-group-news-low-empty nil)))
+
+(add-hook 'enable-theme-functions #'my/break-doom-gnus-face-cycle)
+(my/break-doom-gnus-face-cycle)
 
 ;; (use-package doom-themes
 ;;   ;;  :bind

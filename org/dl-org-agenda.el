@@ -62,6 +62,19 @@ restart.  Idempotent."
 
 (my/org-agenda-refresh-files)
 
+;; The list above is a load-time snapshot of the notes tree.  Denote
+;; mints a fresh journal file each day, so by the time you open the
+;; agenda or org-timeblock the snapshot is stale and today's file is
+;; absent — the view silently shows nothing for today.  Refresh before
+;; the entry points that consult `org-agenda-files' (the walk over the
+;; operational notes dirs is sub-second and idempotent).
+(defun my/org-agenda--refresh-advice (&rest _)
+  "Recompute agenda file lists before an agenda/timeblock view opens."
+  (my/org-agenda-refresh-files))
+
+(dolist (fn '(org-agenda org-timeblock org-timeblock-list))
+  (advice-add fn :before #'my/org-agenda--refresh-advice))
+
 (setq org-agenda-custom-commands
   '(("p" "Personal agenda"
       ((agenda "")

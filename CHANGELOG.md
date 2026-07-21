@@ -2,6 +2,43 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-07-22 — fix: stale org-agenda-files hid today from org-timeblock
+
+`M-x org-timeblock` showed "No data" despite a scheduled block today. Not an
+org-timeblock bug — `my/org-agenda-refresh-files` ran once at load
+(`org/dl-org-agenda.el`), snapshotting the notes tree. Denote mints a fresh
+journal file each day, so the day's file was absent from `org-agenda-files`
+until restart/manual refresh; org-timeblock reads that list and missed today.
+
+- **`org/dl-org-agenda.el`** — `my/org-agenda--refresh-advice` refreshes the
+  file lists `:before` `org-agenda`, `org-timeblock`, and `org-timeblock-list`
+  open (walk is sub-second and idempotent). Views are always current.
+
+## 2026-07-22 — fix: doom-themes gnus face inheritance cycle breaks make-frame
+
+`C-x 5 2` (make-frame) aborted with "Face inheritance results in inheritance
+cycle: gnus-group-news-low". Root cause: `doom-themes-base` defines
+`gnus-group-news-low-empty` to inherit `gnus-group-news-low`, while Emacs'
+builtin defface has `news-low` inherit `news-low-empty` — a latent cycle Emacs
+30's new face validator (`face-spec-set-2` / C realizer) now rejects. Upstream
+doom bug: every other `gnus-group-news-N-empty` face inherits an `-empty` peer;
+only `-low-empty` points at the non-empty face.
+
+- **`core/dl-theme.el`** — `my/break-doom-gnus-face-cycle` repoints the offending
+  entry to `gnus-group-news-1-empty` in place across every enabled theme's
+  `theme-face` spec (a higher-priority `user` override does not help — the
+  validator walks doom's own entry regardless of priority). Hooked on
+  `enable-theme-functions` so `my--rotate-themes` is covered too.
+
+## 2026-07-17 — simplify the development flake
+
+- Replaced flake-parts and numtide devshell with direct `genAttrs` outputs and
+  `pkgs.mkShell`; retained the `d`, `sdr`, `jpi`, `jcl`, and `jail-zsh`
+  command wrappers as Nix packages.
+- Kept the portable shell on `aarch64-darwin` while restricting jailed agent
+  packages and commands to Linux, fixing the Darwin `agentsByName` evaluation
+  failure.
+
 ## 2026-07-12 — chore: denote link-follow perf (exclude satan tree)
 
 Following a `denote:` link stalled ~10s (fans up). Root cause: denote re-walks
