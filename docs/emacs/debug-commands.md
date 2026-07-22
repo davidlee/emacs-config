@@ -23,6 +23,12 @@ cd ~/flakes && home-manager switch --flake .#david
 emacsclient --eval '(boundp (quote trusted-content))'
 emacsclient --eval '(getenv "LIBRARY_PATH")'
 
-# Reset native-comp cache after a failed compile leaves .eln.tmp files
-rm ~/.emacs.d/eln-cache/30.2-*/*.tmp
+# Purge stale native-comp (.eln) generations — the cure for recurring SIGSEGVs
+# (jump-to-garbage crashes) after emacs rebuilds. Keeps the live gen, drops the
+# rest. See trap 5 in traps.md. Wired into `just home-switch` automatically.
+just clean-eln
+
+# Confirm a crash was a native-comp segfault (not a hang) and see the frame:
+coredumpctl list | grep emacs
+coredumpctl info <PID>   # look for the crashing .eln in the stack trace
 ```

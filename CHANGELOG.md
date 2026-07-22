@@ -2,6 +2,25 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-07-22 — fix: recurring Emacs SIGSEGV from stale eln-cache generations
+
+"Emacs locks up while typing" was not a hang — `coredumpctl` showed a recurring
+**SIGSEGV** (2 in 2 days) with `ip == fault-address`: emacs jumped into a
+garbage pointer and executed it. Crash frame was a `corfu-auto` native lambda
+(completion-as-you-type) firing on a keystroke. Root cause: the user
+`eln-cache` had accumulated **7 native-comp ABI generations / 94 MB** across two
+major versions (3× 30.2 incl. a 585-file `.eln.tmp` storm, 4× 31.0.90) —
+`home-manager switch` mints a new gen per rebuild and never purges the old ones,
+leaving mismatched `.eln` landmines.
+
+- Purged all stale gens (94 MB → 2 MB), kept the live `31.0.90-0bc1d9c6`.
+- **`Justfile`** — new `clean-eln` recipe: purges stale gens, keeps the live
+  gen + anything touched in the last week (devshell safety). Folded into
+  `clean` and run at the tail of `home-switch` so it can never re-accumulate.
+- **`docs/emacs/traps.md`** (trap 5), **`debug-commands.md`**, **`AGENTS.md`**
+  — documented the trap and the `coredumpctl` diagnosis path; replaced the stale
+  `rm 30.2-*/*.tmp` hint.
+
 ## 2026-07-22 — fix: stale org-agenda-files hid today from org-timeblock
 
 `M-x org-timeblock` showed "No data" despite a scheduled block today. Not an

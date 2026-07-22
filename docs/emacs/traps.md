@@ -66,3 +66,20 @@ buffer-file-truename)` before matching, so it compares `~/.emacs.d/foo/bar.el`
 against your trusted entries via `string-prefix-p`. Entries built from
 `expand-file-name` (`/home/david/...`) never match. Wrap in
 `abbreviate-file-name` — see `core/dl-path.el:my/expand-emacs-dir`.
+
+## 5. Stale `eln-cache` generations SIGSEGV the editor
+
+Every emacs rebuild mints a new native-comp ABI dir under
+`~/.emacs.d/eln-cache/<version>-<hash>/`. `home-manager switch` **never removes
+the old ones**, so they accumulate (seen in the wild: 7 gens / 94 MB across two
+major versions, incl. a 585-file `.eln.tmp` storm from a died compile). When a
+mismatched or partial `.eln` is executed, emacs jumps to a garbage address and
+**SIGSEGVs** — presents as a "lock-up while typing" (a native lambda, e.g.
+`corfu-auto`, firing on a keystroke) that ends in a crash, not a true deadlock.
+
+Diagnose: `coredumpctl info <PID>` — `Signal: 11 (SEGV)`, and a stack frame in a
+`*.eln` under the user cache. `ip == fault-address` = executed a bad pointer.
+
+Fix / prevent: `just clean-eln` purges stale gens (keeps the live one); it runs
+automatically at the tail of `just home-switch`. eln-cache is fully regenerable,
+so purging only costs a one-time background recompile.
