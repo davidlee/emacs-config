@@ -2,7 +2,11 @@
 
 (use-package corfu
   :custom
-  (corfu-auto t)
+  ;; corfu-auto disabled: a capf recursing on every keystroke overflowed the
+  ;; bytecode/native stack -> SIGSEGV ("locks up while typing"). Auto-popup
+  ;; drove the per-keystroke trigger. Completion still on TAB. Re-enable once
+  ;; the recursing capf is identified/fixed. See CHANGELOG 2026-07-22.
+  (corfu-auto nil)
   (corfu-cycle t)
   :config
   (global-corfu-mode))
