@@ -3,8 +3,6 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    flake-parts.url = "github:hercules-ci/flake-parts";
-    devshell.url = "github:numtide/devshell";
     emacs-overlay.url = "https://github.com/nix-community/emacs-overlay/archive/master.tar.gz";
     pub = {
       url = "path:/home/david/flakes/pub";
@@ -17,205 +15,212 @@
   };
 
   outputs = inputs @ {
-    flake-parts,
+    nixpkgs,
     doctrine, # doctrine
     zig-overlay, # for building ghostel
     ...
-  }:
-    flake-parts.lib.mkFlake {inherit inputs;} {
-      imports = [
-        inputs.devshell.flakeModule
+  }: let
+    systems = [
+      "x86_64-linux"
+      "aarch64-darwin"
+    ];
+
+    mkSystem = system: let
+      pkgs = import nixpkgs {inherit system;};
+      inherit (pkgs) lib stdenv;
+      isLinux = stdenv.isLinux;
+      zigPackage = zig-overlay.packages.${system}."default";
+
+      jailLib =
+        if isLinux
+        then
+          inputs.pub.lib.${system}.mkJailedAgents {
+            inherit (inputs) llm-agents;
+            gitIdentity = {
+              authorName = "David Lee's clanker";
+              authorEmail = "clanker+dav@davlee.com";
+              committerName = "David Lee";
+              committerEmail = "dav@davlee.com";
+            };
+          }
+        else {};
+      doctrine-pkg = doctrine.packages.${system}.default;
+      wrappedEmacs = inputs.pub.packages.${system}.emacs;
+      projectPkgs = with pkgs;
+        [
+          zigPackage
+          nodejs
+          just
+          postgresql_18
+          supabase-cli
+          wrappedEmacs
+          emacsclient-commands
+          sqlite
+          socat
+          bun
+          codex
+          helix
+        ]
+        ++ [doctrine-pkg]
+        ++ lib.optionals isLinux [
+          jailLib.agentsByName.claude
+          jailLib.agentsByName.pi
+        ];
+
+      mcpJailOptions = with jailLib.combinators; [
+        # expose SATAN MCP
+        (try-readwrite "/run/user/1000/satan/mcp/mcp.sock")
+        (try-fwd-env "XDG_RUNTIME_DIR")
+        (try-fwd-env "SATAN_MCP_SOCKET")
+        # (allow arbitrary elisp execution):
+        (try-readwrite "/run/user/1000/emacs/server")
       ];
 
-      systems = [
-        "x86_64-linux"
-        "aarch64-darwin"
+      apiKeyJailOptions = with jailLib.combinators; [
+        (try-fwd-env "OPENROUTER_API_KEY")
+        (ro-bind "/usr/bin/env" "/usr/bin/env")
+        pulse
+        (try-readonly "/mnt/500G/home/david/.local/share/Steam/friends/voice_hang_up.wav")
       ];
 
-      perSystem = {
-        pkgs,
-        system,
-        ...
-      }: let
-        inherit (pkgs) lib stdenv;
-        isLinux = stdenv.isLinux;
-        zigPackage = zig-overlay.packages.${system}."default";
+      supabaseJailOptions = with jailLib.combinators; [
+        (try-fwd-env "DOCKER_HOST")
+        (try-readwrite "/run/user/1000/podman/podman.sock")
+        (set-env "SATAN_DB_HOST" "127.0.0.1")
+        (set-env "PGHOST" "127.0.0.1")
+        (set-env "PGPORT" "54322")
+        (set-env "PGUSER" "postgres")
+        (set-env "PGPASSWORD" "postgres")
+      ];
 
-        jailLib =
-          if isLinux
-          then inputs.pub.lib.${system}.mkJailedAgents {inherit (inputs) llm-agents;}
-          else {};
-        doctrine-pkg = doctrine.packages.${system}.default;
-        wrappedEmacs = inputs.pub.packages.${system}.emacs;
-        pi-dev = jailLib.agentsByName.pi;
-        claude = jailLib.agentsByName.claude;
-        projectPkgs = with pkgs;
-          [
-            zigPackage
-            nodejs
-            just
-            postgresql_18
-            supabase-cli
-            wrappedEmacs
-            emacsclient-commands
-            sqlite
-            socat
-            bun
-            codex
-            helix
-          ]
-          ++ [doctrine-pkg claude pi-dev];
+      jailEnvOptions = apiKeyJailOptions ++ supabaseJailOptions ++ mcpJailOptions;
+      # workspaceDeps = [ "/home/david/.emacs.d/" ];
+      workspaceDeps = [
+        "/home/david/flakes/"
+        "/home/david/notes/"
+        "/home/david/.local/state/behaviour/"
+        "/home/david/dev/satan-attrd/"
+        "/home/david/dev/satan-patcher/"
+        "/home/david/dev/panopticon/"
+      ];
 
-        mcpJailOptions = with jailLib.combinators; [
-          # expose SATAN MCP
-          (try-readwrite "/run/user/1000/satan/mcp/mcp.sock")
-          (try-fwd-env "XDG_RUNTIME_DIR")
-          (try-fwd-env "SATAN_MCP_SOCKET")
-          # (allow arbitrary elisp execution):
-          (try-readwrite "/run/user/1000/emacs/server")
-        ];
+      # SATAN harness + jail options moved to the standalone satan repo
+      # flake (~/dev/satan) at SL-012 PHASE-04. The jailed harness is
+      # provisioned onto PATH via ~/flakes home.packages, not from here.
 
-        apiKeyJailOptions = with jailLib.combinators; [
-          (try-fwd-env "OPENROUTER_API_KEY")
-          (ro-bind "/usr/bin/env" "/usr/bin/env")
-        ];
-
-        supabaseJailOptions = with jailLib.combinators; [
-          (try-fwd-env "DOCKER_HOST")
-          (try-readwrite "/run/user/1000/podman/podman.sock")
-          (set-env "SATAN_DB_HOST" "127.0.0.1")
-          (set-env "PGHOST" "127.0.0.1")
-          (set-env "PGPORT" "54322")
-          (set-env "PGUSER" "postgres")
-          (set-env "PGPASSWORD" "postgres")
-        ];
-
-        jailEnvOptions = apiKeyJailOptions ++ supabaseJailOptions ++ mcpJailOptions;
-        # workspaceDeps = [ "/home/david/.emacs.d/" ];
-        workspaceDeps = [
-          "/home/david/flakes/"
-          "/home/david/notes/"
-          "/home/david/.local/state/behaviour/"
-          "/home/david/dev/satan-attrd/"
-          "/home/david/dev/satan-patcher/"
-          "/home/david/dev/panopticon/"
-        ];
-
-        # SATAN harness + jail options moved to the standalone satan repo
-        # flake (~/dev/satan) at SL-012 PHASE-04. The jailed harness is
-        # provisioned onto PATH via ~/flakes home.packages, not from here.
-
-        jailPkgs = lib.optionalAttrs isLinux {
-          jailed-pi = jailLib.makeJailedPi {
-            profile = "specDev";
-            allowSelfAsSubagent = true;
-            maxSubagentDepth = 2;
-            extraPkgs = projectPkgs;
-            extraOptions = jailEnvOptions;
-            inherit workspaceDeps;
-            # Patch-agent adapter pre-resolves op:// refs via
-            # `my/op-read-env' (Emacs session cache) and exports the
-            # plaintext into `process-environment' before spawning, so
-            # skip the outer `op run' wrapper that would prompt
-            # biometric per launch.  `passApiKeysFromEnv = true' keeps
-            # the bwrap `--setenv VAR "$VAR"' forwarding so the
-            # caller-side env still flows into the jail.
-            useOpEnv = false;
-            passApiKeysFromEnv = true;
-          };
-          jailed-pi-research = jailLib.makeJailedPi {
-            name = "pi-research";
-            profile = "research";
-            extraPkgs = projectPkgs;
-            extraOptions = apiKeyJailOptions;
-            subagents = ["pi" "dirge" "claude"];
-            inherit workspaceDeps;
-          };
-          jailed-opencode = jailLib.makeJailedOpencode {
-            profile = "specDev";
-            extraPkgs = projectPkgs;
-            extraOptions = jailEnvOptions;
-            subagents = ["pi" "dirge" "claude"];
-            inherit workspaceDeps;
-          };
-          jailed-claude = jailLib.makeJailedClaude {
-            profile = "specDev";
-            extraPkgs = projectPkgs;
-            extraOptions = jailEnvOptions;
-            subagents = ["pi" "dirge" "claude"];
-            inherit workspaceDeps;
-          };
-          jailed-dirge = jailLib.makeJailedDirge {
-            profile = "specDev";
-            extraPkgs = projectPkgs;
-            extraOptions = apiKeyJailOptions;
-            subagents = ["pi" "dirge" "claude"];
-            inherit workspaceDeps;
-          };
-          # jailed-codex = jailLib.makeJailedCodex {
-          #   profile = "specDev";
-          #   extraPkgs = projectPkgs;
-          #   extraOptions = jailEnvOptions;
-          #   inherit workspaceDeps;
-          # };
-          # jailed-zero = jailLib.makeJailedZerostack {
-          #   profile = "specDev";
-          #   extraPkgs = projectPkgs;
-          #   extraOptions = jailEnvOptions;
-          #   inherit workspaceDeps;
-          # };
-          jailed-shell = jailLib.makeJailedAgent {
-            name = "shell";
-            agent = pkgs.zsh;
-            profile = "specDev";
-            extraPkgs = projectPkgs;
-            subagents = ["pi" "dirge" "claude"];
-            extraOptions = jailEnvOptions;
-          };
-          bubblewrap = pkgs.bubblewrap;
+      jailPkgs = lib.optionalAttrs isLinux {
+        jailed-pi = jailLib.makeJailedPi {
+          profile = "specDev";
+          allowSelfAsSubagent = true;
+          maxSubagentDepth = 2;
+          extraPkgs = projectPkgs;
+          extraOptions = jailEnvOptions;
+          inherit workspaceDeps;
+          # Patch-agent adapter pre-resolves op:// refs via
+          # `my/op-read-env' (Emacs session cache) and exports the
+          # plaintext into `process-environment' before spawning, so
+          # skip the outer `op run' wrapper that would prompt
+          # biometric per launch.  `passApiKeysFromEnv = true' keeps
+          # the bwrap `--setenv VAR "$VAR"' forwarding so the
+          # caller-side env still flows into the jail.
+          useOpEnv = false;
+          passApiKeysFromEnv = true;
         };
-      in {
-        _module.args.pkgs = import inputs.nixpkgs {
-          inherit system;
+        jailed-pi-research = jailLib.makeJailedPi {
+          name = "pi-research";
+          profile = "research";
+          extraPkgs = projectPkgs;
+          extraOptions = apiKeyJailOptions;
+          subagents = ["pi" "dirge" "claude"];
+          inherit workspaceDeps;
+        };
+        jailed-opencode = jailLib.makeJailedOpencode {
+          profile = "specDev";
+          extraPkgs = projectPkgs;
+          extraOptions = jailEnvOptions;
+          subagents = ["pi" "dirge" "claude"];
+          inherit workspaceDeps;
+        };
+        jailed-claude = jailLib.makeJailedClaude {
+          profile = "specDev";
+          extraPkgs = projectPkgs;
+          extraOptions = jailEnvOptions;
+          subagents = ["pi" "dirge" "claude"];
+          inherit workspaceDeps;
+        };
+        jailed-dirge = jailLib.makeJailedDirge {
+          profile = "specDev";
+          extraPkgs = projectPkgs;
+          extraOptions = apiKeyJailOptions;
+          subagents = ["pi" "dirge" "claude"];
+          inherit workspaceDeps;
+        };
+        # jailed-codex = jailLib.makeJailedCodex {
+        #   profile = "specDev";
+        #   extraPkgs = projectPkgs;
+        #   extraOptions = jailEnvOptions;
+        #   inherit workspaceDeps;
+        # };
+        # jailed-zero = jailLib.makeJailedZerostack {
+        #   profile = "specDev";
+        #   extraPkgs = projectPkgs;
+        #   extraOptions = jailEnvOptions;
+        #   inherit workspaceDeps;
+        # };
+        jailed-shell = jailLib.makeJailedAgent {
+          name = "shell";
+          agent = pkgs.zsh;
+          profile = "specDev";
+          extraPkgs = projectPkgs;
+          subagents = ["pi" "dirge" "claude"];
+          extraOptions = jailEnvOptions;
+        };
+        bubblewrap = pkgs.bubblewrap;
+      };
+
+      mkCommand = name: text:
+        pkgs.writeShellApplication {
+          inherit name text;
         };
 
-        packages = lib.optionalAttrs isLinux jailPkgs;
+      portableCommands = [
+        (mkCommand "d" ''
+          exec doctrine "$@"
+        '')
+        (mkCommand "sdr" ''
+          exec spec-driver "$@"
+        '')
+      ];
 
-        devshells.default = {
-          packages = projectPkgs ++ lib.optionals isLinux (lib.attrValues jailPkgs);
-          commands = [
-            {
-              name = "d";
-              command = "doctrine $@";
-            }
-            {
-              name = "sdr";
-              help = "spec-driver";
-              command = "spec-driver $@";
-            }
+      linuxCommands = lib.optionals isLinux [
+        (mkCommand "jpi" ''
+          exec op run -- jailed-pi "$@"
+        '')
+        (mkCommand "jcl" ''
+          case "''${1:-}" in
+            marketplace|update|config|mcp) exec jailed-claude "$@" ;;
+            *) exec jailed-claude --dangerously-skip-permissions "$@" ;;
+          esac
+        '')
+        (mkCommand "jail-zsh" ''
+          exec jailed-shell "$@"
+        '')
+      ];
+    in {
+      packages = lib.optionalAttrs isLinux jailPkgs;
 
-            {
-              name = "jpi";
-              help = "op run -- jailed-pi $@";
-              command = "op run -- jailed-pi $@";
-            }
-            {
-              name = "jcl";
-              help = "jailed-claude (--dangerously-skip-permissions for interactive)";
-              command = ''
-                case "''${1:-}" in
-                  marketplace|update|config|mcp) jailed-claude "$@" ;;
-                  *) jailed-claude --dangerously-skip-permissions "$@" ;;
-                esac
-              '';
-            }
-            {
-              name = "jail-zsh";
-              help = "jailed shell (zsh) in pi's context";
-              command = "jailed-shell $@";
-            }
-          ];
-        };
+      devShell = pkgs.mkShell {
+        packages =
+          projectPkgs
+          ++ lib.optionals isLinux (lib.attrValues jailPkgs)
+          ++ portableCommands
+          ++ linuxCommands;
       };
     };
+
+    perSystem = nixpkgs.lib.genAttrs systems mkSystem;
+  in {
+    packages = nixpkgs.lib.mapAttrs (_: value: value.packages) perSystem;
+    devShells = nixpkgs.lib.mapAttrs (_: value: {default = value.devShell;}) perSystem;
+  };
 }
