@@ -30,6 +30,9 @@
 ;; (add-to-list 'warning-suppress-types '(comp))
 
 (add-to-list 'default-frame-alist '(internal-border-width . 10))
+;; pgtk draws its own GTK CSD titlebar; the compositor's prefer-no-csd
+;; hint isn't honoured, so drop decorations ourselves (initial frame).
+(add-to-list 'default-frame-alist '(undecorated . t))
 (setq underline-minimum-offset 3)
 (setq x-use-underline-position-properties nil)
 (setq x-underline-at-descent-line t)            ; Prettier underlines

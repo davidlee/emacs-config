@@ -31,6 +31,8 @@
   (default-frame-alist '((fullscreen . maximised)
                           (vertical-scroll-bars . nil)
                           (horizontal-scroll-bars . nil)
+                          ;; pgtk draws GTK CSD titlebar; drop it (all frames)
+                          (undecorated . t)
 
                           ;; Setting the face in here prevents flashes of
                           ;; color as the theme gets activated
