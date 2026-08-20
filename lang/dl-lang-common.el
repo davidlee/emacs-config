@@ -45,4 +45,10 @@
        "\\\\" "://"))
   (global-ligature-mode t))
 
+;;
+;; others
+;;
+(use-package slim-mode)
+
 (provide 'dl-lang-common)
+;;; dl-lang-common.el ends here
