@@ -60,6 +60,7 @@
           bun
           codex
           helix
+          gdb # debugging emacs
         ]
         ++ [doctrine-pkg]
         ++ lib.optionals isLinux [
