@@ -3,7 +3,10 @@
 
 (defun my/pixel-scroll-setup ()
   (interactive)
-  (setq pixel-scroll-precision-large-scroll-height 1)
+  ;; Leave `pixel-scroll-precision-large-scroll-height' at its nil default:
+  ;; large jumps snap instantly instead of interpolating. Setting it low (was
+  ;; 1) made every big scroll animate, and interpolating a huge jump can fail
+  ;; to converge -> infinite redisplay loop / 100% CPU hang.
   (setq pixel-scroll-precision-interpolation-factor 1))
 
 (use-package emacs
