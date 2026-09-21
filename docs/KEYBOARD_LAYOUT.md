@@ -1,4 +1,8 @@
-# Eyelash Corne Layout Description
+# Layout Description
+
+The layout below is defined once, in `config/keymap.dtsi`, and shared by every
+board. See [Boards](#boards) for how each board maps it onto its own physical
+key positions. The reference geometry is the eyelash corne.
 
 Split columnar-stagger keyboard. 3x6 grid + 3 thumb keys per side. Volume encoder (left, inner bottom), 4-way joystick + push button (right, inner bottom). Gallium alpha layout, not QWERTY.
 
@@ -170,3 +174,108 @@ QWERTY alpha, adjusted for columnar stagger (WASD at ESDF physical position). No
 | Combo idle (fast) | 20ms |
 | lt/mt tapping-term | 190ms |
 | lt/mt quick-tap | 160ms |
+
+## Boards
+
+`config/keymap.dtsi` holds all six layers as chunks of bindings. Each board
+keymap defines a `KEYMAP_LAYER` macro that arranges those chunks into its own
+physical key order, then includes `base.keymap`:
+
+| Argument | Size | Contents |
+|----------|------|----------|
+| `name` | — | layer name, also the display name |
+| `TOP_L` `TOP_R` | 6 + 6 | top row |
+| `MID_L` `MID_R` | 6 + 6 | home row |
+| `BOT_L` `BOT_R` | 6 + 6 | bottom row |
+| `THU_L` `THU_R` | 3 + 3 | thumbs |
+| `JS_U` `JS_L` `JS_B` `JS_R` `JS_D` | 5 | 5-way joystick |
+| `ENC_B` | 1 | encoder push button |
+| `SENSORS` | — | `sensor-bindings` for encoder rotation |
+
+Position labels (`LT0`..`RB5`, `LH0`..`LH2`, `RH0`..`RH2`) come from a
+`zmk-helpers/key-labels/` header, so combos and home row mods are written once
+against symbolic positions. `config/key_positions.h` derives `KEYS_L`,
+`KEYS_R` and `THUMBS` from those labels; the outer pinky column is excluded
+because those keys are mod-taps, not home row mods.
+
+Hardware differences are declared by the board keymap as `CONFIG_WIRELESS`,
+`CONFIG_RGB` and `CONFIG_EXT_POWER`. `&bt`, `&rgb_ug` and `&ext_power` only
+link when the matching Kconfig symbol is set, so `defines.h` degrades their
+aliases to `&none` on boards that lack the hardware — that is what makes the
+one SYS layer safe to share between a wireless corne and a wired planck.
+
+Board keymaps must **not** include `zmk-helpers/helper.h` themselves: its
+`#pragma once` would make `base.keymap`'s later include a no-op, leaving ZMK's
+native (unwrapped) `ZMK_MACRO` in force and breaking the devicetree parse.
+
+### eyelash_corne — reference
+
+`zmk-helpers/key-labels/eyelash42.h`. 42 keys plus encoder button (`LEC`) and
+joystick (`JS0`..`JS4`), which take the `ENC_B` / `JS_*` arguments directly.
+
+### planck_rev6 — 4x12 ortho
+
+`zmk-helpers/key-labels/4x12.h`, all-1u physical layout, USB only, no RGB, no
+switched power rail, no encoder populated (so `SENSORS` is dropped).
+
+```
+  0   1   2   3   4   5 │  6   7   8   9  10  11     LT5 .. LT0 │ RT0 .. RT5
+ 12  13  14  15  16  17 │ 18  19  20  21  22  23     LM5 .. LM0 │ RM0 .. RM5
+ 24  25  26  27  28  29 │ 30  31  32  33  34  35     LB5 .. LB0 │ RB0 .. RB5
+ 36  37  38  39  40  41 │ 42  43  44  45  46  47     LH5 LH4 LH3 LH2 LH1 LH0 │ RH0 RH1 RH2 RH3 RH4 RH5
+```
+
+Rows 1–3 are key-for-key identical to the corne. The corne's thumbs land on
+`LH2 LH1 LH0` / `RH0 RH1 RH2`, i.e. the six inner keys of the bottom row, which
+keeps every thumb reach the same.
+
+That leaves six outer bottom-row keys with no corne counterpart. They stand in
+for the hardware the planck does not have, so they follow the joystick and
+encoder button per layer:
+
+| Position | Argument | DEF | NUM | NAV |
+|----------|----------|-----|-----|-----|
+| 36 (`LH5`) | `ENC_B` | Play/Pause | — | — |
+| 37 (`LH4`) | `JS_U` | ↑ | mouse up | scroll up |
+| 38 (`LH3`) | `JS_B` | Return | click | click |
+| 45 (`RH3`) | `JS_L` | ← | mouse left | scroll left |
+| 46 (`RH4`) | `JS_D` | ↓ | mouse down | scroll down |
+| 47 (`RH5`) | `JS_R` | → | mouse right | scroll right |
+
+Provisional: functionally faithful, but the arrow cluster ends up split across
+both hands. Reshuffle in `planck_rev6.keymap` — it is one macro line.
+
+To use the planck's optional encoder, set `CONFIG_EC11=y` plus
+`CONFIG_EC11_TRIGGER_GLOBAL_THREAD=y` in `planck_rev6.conf`, add an overlay
+enabling the `encoder` node, and pass `SENSORS` through in `KEYMAP_LAYER`.
+
+### glove80 — 80 keys
+
+`zmk-helpers/key-labels/glove80.h`, split (`glove80_lh` central, `glove80_rh`
+peripheral), wireless, RGB underglow and a switched power rail, no encoder or
+joystick (so the last seven `KEYMAP_LAYER` arguments are dropped).
+
+Key positions run 0..79 in this order — note the bottom row is split by the
+thumb cluster:
+
+```
+  0 ..  9   ceiling row      (5 + 5)
+ 10 .. 21   number row       (6 + 6)
+ 22 .. 33   top row          → TOP_L TOP_R
+ 34 .. 45   home row         → MID_L MID_R
+ 46 .. 51   left bottom      → BOT_L
+ 52 .. 57   upper thumbs     (3 + 3)
+ 58 .. 63   right bottom     → BOT_R
+ 64 .. 68   left floor row   (5)
+ 69 .. 74   lower thumbs     → THU_L THU_R
+ 75 .. 79   right floor row  (5)
+```
+
+The corne's 42 keys map straight onto the three alpha rows and the lower thumb
+row; the generated devicetree is identical to the corne's on all 42 positions,
+on every layer, for both halves. The remaining 38 keys — ceiling row, number
+row, upper thumbs, both floor rows — are `&none` on every layer.
+
+Dropping the joystick arguments also drops the arrow cluster (DEF), mouse
+cursor (NUM) and scrolling (NAV) that lived on it. There is plenty of dead
+real estate to move them to; the floor rows are the obvious candidates.

@@ -18,7 +18,6 @@
 (use-package ghostel
   :ensure nil
   :vc (:url "https://github.com/dakra/ghostel"
-        :lisp-dir "lisp"
         :rev :newest))
 
 

@@ -61,5 +61,6 @@ wc:
 
 hello-satan:
   emacsclient -e "(my/hello-satan)"
-  cd ~/notes && jpi -e .pi/extensions/satan.ts
+  cd ~/notes
+  jpi
 
