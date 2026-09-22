@@ -2,6 +2,29 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-09-22 — fix: agent-shell ACP adapters unreachable from a sway-launched Emacs
+
+`agent-shell--start: Executable "codex-acp" not found`. Two causes, one shape.
+`agent-shell-openai-codex-acp-command` defaults to a bare `codex-acp`, which has
+no nixpkgs derivation and no `codex` subcommand to stand in for it. Underneath
+that, the ACP adapters come from three package managers and the systemd user
+environment carries only one: `~/.npm-global/bin` (claude-agent-acp, opencode)
+and `~/go/bin` (goose, crush) are added by `~/nushell/config.nu`, which a
+sway-launched Emacs never runs — the same failure mode `dl-secret.el` solves for
+`env.zsh` env vars. Adapters resolved in a devshell Emacs and nowhere else.
+
+- **`apps/dl-agent-shell.el`** — codex-acp runs via `npx -y
+  @agentclientprotocol/codex-acp`; it carries its own `@openai/codex` dependency
+  so nothing needs `codex` on `exec-path`. Auth left on `:login t` (ChatGPT
+  subscription — a subscription carries no API credits). `agent-shell-agent-configs`
+  now filters to agents whose adapter is installed, upstream's own idiom: the
+  default list offers 21, and choosing an absent one *is* this error. 5 of 21 offered.
+- **`core/dl-path.el`** — `my/exec-dirs` replaces three `add-to-list` calls and
+  the hand-built PATH string; one list feeds both `exec-path` (keeps `~/…`, Emacs
+  expands it) and `$PATH` (`expand-file-name`'d, because `call-process` and every
+  child process take a leading tilde literally — the old
+  `"~/.nix-profile/bin:"` prefix was dead weight). Adds the npm and go dirs.
+
 ## 2026-09-22 — gptel: three providers, keys resolved off-argv
 
 `apps/dl-gptel.el` configured one OpenRouter backend and nothing else. Now

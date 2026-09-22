@@ -36,10 +36,32 @@ Returned path is abbreviated (\"~/...\") so it matches what
 ;;   :config
 ;;   (exec-path-from-shell-initialize))
 
-(add-to-list 'exec-path "~/.nix-profile/bin")
-(add-to-list 'exec-path "/run/current-system/sw/bin")
-(add-to-list 'exec-path "~/.local/bin")
-(setenv "PATH" (concat "~/.nix-profile/bin:" (getenv "PATH")))
+(defvar my/exec-dirs
+  '("~/.nix-profile/bin"
+     "/run/current-system/sw/bin"
+     "~/.local/bin"
+     ;; The systemd user environment carries none of the below, and a
+     ;; sway-launched Emacs runs no shell init — so the `path add' lines in
+     ;; ~/nushell/config.nu and the exports in ~/.config/zsh/env.zsh reach
+     ;; an Emacs started from a terminal and nothing else. Same shape as the
+     ;; problem `dl-secret.el' solves for env vars. ACP adapters for
+     ;; agent-shell live here (claude-agent-acp, opencode under npm; goose,
+     ;; crush under go); the symptom when they are missing is
+     ;; `agent-shell--start: Executable "X" not found'.
+     "~/.npm-global/bin"
+     "~/go/bin")
+  "Directories to prepend to `exec-path' and $PATH, in priority order.")
+
+;; `exec-path' keeps the "~/..." form — Emacs expands it, and abbreviated
+;; entries stay readable. $PATH cannot: `call-process' and every child
+;; process treat a leading tilde literally, so an unexpanded entry there is
+;; dead weight. One list, both consumers, no drift.
+(dolist (dir (reverse my/exec-dirs))
+  (add-to-list 'exec-path dir))
+
+(setenv "PATH" (string-join (append (mapcar #'expand-file-name my/exec-dirs)
+                              (list (getenv "PATH")))
+                 path-separator))
 
 ;; Pin the subprocess shell to a POSIX shell. `shell-file-name' defaults to
 ;; $SHELL, which is now nushell; nushell ships builtin `find'/`grep' that
