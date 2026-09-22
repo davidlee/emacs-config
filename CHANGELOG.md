@@ -2,6 +2,35 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-09-22 — gptel: three providers, keys resolved off-argv
+
+`apps/dl-gptel.el` configured one OpenRouter backend and nothing else. Now
+OpenAI direct, DeepSeek direct, and OpenRouter, each resolving its key at
+request time. Note `gptel--get-api-key` does *not* fall back to `gptel-api-key`
+for a backend whose `:key` is nil — that fallback only works because gptel's
+built-in backend stores the *symbol* — so every backend carries an explicit key.
+
+Secrets stay off argv: `my/op-key` puts only the `op://` ref on `op`'s command
+line, and gptel sends requests via `curl --config -` over stdin, so the
+`Authorization` header never reaches `/proc/<pid>/cmdline`. The one `-H`-on-argv
+path in gptel is the dry-run "copy curl command" command. `OPENAI_ALT_API_KEY` is
+deliberately *not* declared in `env.zsh`, so it never enters `process-environment`
+and no child can inherit it.
+
+- **`lisp/dl-secret.el`** — `my/op-key` derives the ref from `my/op-key-vault` by
+  the convention `op://VAULT/<ID>_API_KEY/credential`, shared with
+  `~/nushell/keys.nu` and `~/flakes/pub/jailed-agents.nix`. A new provider needs
+  no declaration.
+- **`apps/dl-gptel.el`** — OpenAI on `/v1/responses` (every frontier model in
+  `gptel--openai-models` carries the `responses-api` capability, and that default
+  list already tracks the live catalogue, so no hand-maintained models). DeepSeek
+  on gptel's own list, for its capability/cost metadata. OpenRouter keeps its
+  curated list minus `openai/*`, which would otherwise bill the wrong key.
+  `gptel-model` pinned so a nil value stops warning on first send.
+- Note: the OpenAI account behind the alt key has **no API credits**
+  (`insufficient_quota`) — a ChatGPT subscription is not API credit. OpenRouter
+  stays the default backend; the OpenAI backend is wired and idle.
+
 ## 2026-07-22 — fix: recurring Emacs SIGSEGV from stale eln-cache generations
 
 "Emacs locks up while typing" was not a hang — `coredumpctl` showed a recurring
