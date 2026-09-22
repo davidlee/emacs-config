@@ -8,9 +8,9 @@
 (declare-function satan-budget-today-total "satan-budget" (runs-dir &optional time))
 (declare-function satan-budget-exceeded-p "satan-budget" (runs-dir &optional time))
 (declare-function satan-memory-store-recent "satan-memory-store" (&rest args))
-(declare-function satan-broker-run-dirs-for-date "satan-broker" (runs-dir date-prefix))
+(declare-function satan-run-dirs-for-date "satan-run" (runs-dir date-prefix))
 (declare-function satan-broker--failure-streak-count "satan-broker" (runs-dir))
-(declare-function satan-broker--run-id-from-leaf "satan-broker" (name))
+(declare-function satan-run--id-from-leaf "satan-run" (name))
 (declare-function satan-patch-runner-active-p "satan-patch-runner" ())
 (declare-function satan-patch-store-list "satan-patch-store" (&rest args))
 (declare-function satan-memory-evidence--current-window-status "satan-memory-evidence" (path now))
@@ -163,7 +163,7 @@ left the observer unable to confirm any intraday intervention."
   (if (not (sleipnir-doctor--satan-available-p))
       (sleipnir-doctor--check "SATAN" "today-runs" "OK" "not loaded")
     (let* ((prefix (format-time-string "%Y%m%dT"))
-           (dirs (satan-broker-run-dirs-for-date satan-runs-dir prefix))
+           (dirs (satan-run-dirs-for-date satan-runs-dir prefix))
            (total (length dirs))
            (failed (cl-count-if
                     (lambda (d)
@@ -200,8 +200,8 @@ left the observer unable to confirm any intraday intervention."
                         (file-name-nondirectory
                          (directory-file-name (file-truename link)))))
            (run-id (and target
-                        (if (fboundp 'satan-broker--run-id-from-leaf)
-                            (satan-broker--run-id-from-leaf target)
+                        (if (fboundp 'satan-run--id-from-leaf)
+                            (satan-run--id-from-leaf target)
                           target)))
            (ts (and run-id
                     (string-match

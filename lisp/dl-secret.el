@@ -40,31 +40,54 @@ or nil. Forces `:require \\='(:secret)' so partial matches are dropped."
 (defvar my/op--cache (make-hash-table :test 'equal)
   "Session cache mapping op:// refs to resolved plaintext.")
 
+(defvar my/op-read-context nil
+  "Short label naming what is requesting a secret, or nil.
+
+Bound by callers around `my/op-read'.  The 1Password dialog attests only
+the requesting desktop app (e.g. `.ghostty-wrapped'), never the code path
+that caused it, and `op' has no flag for passing a reason — so this is the
+only place a consumer can name itself.")
+
+(defun my/op--announce (ref)
+  "Announce that REF is about to be resolved, naming `my/op-read-context'.
+
+Called only on a cache miss, which is the only case that can raise a
+1Password prompt.  Best-effort throughout: a missing D-Bus session or
+notification daemon must never break a secret read."
+  (ignore-errors
+    (require 'notifications)
+    (notifications-notify
+     :title "1Password read"
+     :body (format "%s → %s" (or my/op-read-context "emacs") ref)
+     :timeout 4000)))
+
 (defun my/op-read (ref &optional refresh)
   "Resolve a 1Password REF (op://vault/item/field) to its plaintext value.
 Cached for the Emacs session. With non-nil REFRESH, bypass the cache.
 Signals an error if `op' is missing, unauthenticated, or the ref is bad."
   (or (and (not refresh) (gethash ref my/op--cache))
-      (let* ((stderr-file (make-temp-file "op-stderr-"))
-              (status nil)
-              (stdout
-                (unwind-protect
-                  (with-output-to-string
-                    (with-current-buffer standard-output
-                      (setq status
-                        (call-process my/op-cli nil
-                          (list standard-output stderr-file)
-                          nil "read" "--no-newline" ref))))
-                  (when (file-exists-p stderr-file)
-                    (let ((err (with-temp-buffer
-                                 (insert-file-contents stderr-file)
-                                 (string-trim (buffer-string)))))
-                      (delete-file stderr-file)
-                      (unless (eq status 0)
-                        (error "op read %s failed (%s): %s" ref status err))))))
-              (val (string-trim stdout)))
-        (puthash ref val my/op--cache)
-        val)))
+      (progn
+        (my/op--announce ref)
+        (let* ((stderr-file (make-temp-file "op-stderr-"))
+                (status nil)
+                (stdout
+                  (unwind-protect
+                    (with-output-to-string
+                      (with-current-buffer standard-output
+                        (setq status
+                          (call-process my/op-cli nil
+                            (list standard-output stderr-file)
+                            nil "read" "--no-newline" ref))))
+                    (when (file-exists-p stderr-file)
+                      (let ((err (with-temp-buffer
+                                   (insert-file-contents stderr-file)
+                                   (string-trim (buffer-string)))))
+                        (delete-file stderr-file)
+                        (unless (eq status 0)
+                          (error "op read %s failed (%s): %s" ref status err))))))
+                (val (string-trim stdout)))
+          (puthash ref val my/op--cache)
+          val))))
 
 (defun my/op-read-env (var &optional refresh)
   "Return the value of environment variable VAR.
