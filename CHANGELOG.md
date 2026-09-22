@@ -2,6 +2,44 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-09-22 — fix: savehist lockups — `command-history` carrying magit's cache
+
+Emacs froze for a minute at a time while typing, every few minutes. gdb on the
+live process found the main thread pegged at 100% of a core with *zero*
+syscalls — never reaching the point of polling the keyboard, which is why
+keystrokes vanished:
+
+    savehist-autosave → savehist-save → savehist--reload
+      ├── load <81 MB savehist-file>
+      └── savehist--merge → delete-dups → gethash → equal → internal_equal_1 …
+
+`~/.emacs.d/history` had reached **81 MB**, of which `command-history` was
+81,321,029 bytes — 99.97%. `command-history` records every interactive call
+with its full argument list, and `magit`'s interactive spec passes
+`magit--refresh-cache`: megabytes of shared-structure, propertized git output.
+A handful of `M-x magit` calls is all it takes.
+
+Two things made it unbounded rather than merely large:
+
+- `savehist--merge` (Emacs 30+, which reconciles history across concurrent
+  sessions) applies **no length cap**. `call-interactively` trims
+  `command-history` to `history-length`; the next merge re-inflates it. 15,922
+  entries were live against a `history-length` of 80.
+- `savehist--reload` skips the merge unless another process has touched the
+  file. Two Emacsen were running — the `emacs.service` daemon and a standalone
+  GUI — so each instance's 5-minute save saw the other's write and paid the
+  full `delete-dups` every time. A single Emacs would mostly have skipped it.
+
+- **`completion/dl-completion.el`** — `savehist-ignored-variables` set to
+  `'(command-history)`. Upstream `savehist.el` ships that exact value as its
+  commented-out example, which is a fair signal about how well-worn this trap
+  is. `:custom` is applied before `:init`, so it lands before `savehist-mode`.
+
+`savehist-ignored-variables` filters the *save* path only — `savehist--reload`
+`load`s the file, re-executing the giant `setq` — so the 81 MB `command-history`
+form was also spliced out of `~/.emacs.d/history` by hand, taking it to 23,435
+bytes with all 57 history variables intact.
+
 ## 2026-09-22 — fix: emacsclient frames open on XWayland, not Wayland
 
 Every frame from the systemd `emacs.service` daemon came up with pure-GTK Emacs'
