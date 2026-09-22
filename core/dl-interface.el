@@ -37,10 +37,11 @@
                           ;; pgtk draws GTK CSD titlebar; drop it (all frames)
                           (undecorated . t)
 
-                          ;; Setting the face in here prevents flashes of
-                          ;; color as the theme gets activated
-                          (background-color . "#000000")
-                          (foreground-color . "#ffffff")
+                          ;; No bg/fg here: a daemon has no graphical frame
+                          ;; when init runs, so nothing overwrites a hardcoded
+                          ;; pair and every client frame opens black on white,
+                          ;; theme or no theme.  `my/sync-frame-colors-to-theme'
+                          ;; (dl-theme.el) keeps these in step with the theme.
                           (ns-appearance . dark)
                           (ns-transparent-titlebar . t)))
 

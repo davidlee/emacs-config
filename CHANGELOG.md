@@ -2,6 +2,44 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-09-22 — fix: emacsclient frames open on XWayland, not Wayland
+
+Every frame from the systemd `emacs.service` daemon came up with pure-GTK Emacs'
+"unsupported under the X Window System" warning. emacsclient forwards its own
+`$DISPLAY` — `:0`, courtesy of xwayland-satellite — and `server.el` hands that
+name straight to `make-frame-on-display`. GDK cannot reach a Wayland socket
+named `:0`, so it falls back to the X11 backend without a word; the daemon ended
+up with a `GdkX11Display` terminal.
+
+- **`core/dl-core.el`** — `dl-core--prefer-wayland-display`, an `:around` advice
+  on `server-create-window-system-frame`, substitutes the *client's*
+  `$WAYLAND_DISPLAY` (`wayland-0`) for the display name when the build is pgtk.
+  tty clients and genuine X clients are untouched. Fixes every caller at once —
+  keybinds, desktop files, `$EDITOR`, `org-protocol` — rather than one wrapper
+  per launcher. Verified: the daemon's only terminal is now
+  `("wayland-0" "GdkWaylandDisplay")`.
+
+Two theme bugs surfaced behind it, both the same shape — a daemon has no
+graphical frame while init runs, so anything that reads colours then reads the
+initial terminal's.
+
+- **`core/dl-interface.el`** — `default-frame-alist` no longer hardcodes
+  `#000000`/`#ffffff`. That pair was an anti-flash measure, overwritten at init
+  by `my/sync-frame-colors-to-theme` in a normal Emacs; in a daemon nothing
+  overwrites it and *every* client frame opened black on white with gruvbox
+  syntax colours on top. doom-gruvbox's `default` spec is display-class
+  conditional (`min-colors 257` → `#282828`, `min-colors 256` → `#282828`,
+  `16` → `unspecified`), so with the pair gone both GUI and terminal frames
+  paint themselves correctly and there is nothing to flash.
+- **`core/dl-theme.el`** — `my/sync-frame-colors-to-theme` now no-ops unless
+  the selected frame is graphical. Run from a daemon's initial terminal it
+  copied that frame's `unspecified-bg` sentinel into `default-frame-alist`,
+  and `make-frame` then died with `(error "Undefined color" "unspecified-bg")`
+  — the daemon accepted `emacsclient -c` and silently returned 1.
+
+Outside this repo: `~/.config/umbriel/apps.toml` binds Ctrl+Alt+Shift+Grave to
+`emacsclient -n -c --alternate-editor=` instead of a second full `emacs`.
+
 ## 2026-09-22 — fix: agent-shell ACP adapters unreachable from a sway-launched Emacs
 
 `agent-shell--start: Executable "codex-acp" not found`. Two causes, one shape.

@@ -46,7 +46,7 @@ Breaks the latent doom-themes-base inheritance cycle Emacs 30 rejects."
         (let ((plist (cadr clause)))
           (when (eq (plist-get plist :inherit) 'gnus-group-news-low)
             (setcar (cdr clause)
-                    (plist-put plist :inherit 'gnus-group-news-1-empty))))))
+              (plist-put plist :inherit 'gnus-group-news-1-empty))))))
     (put 'gnus-group-news-low-empty 'theme-face spec)
     ;; At init gnus is not loaded, so the face has no defface yet even
     ;; though doom has stamped its `theme-face' — `face-spec-recalc'
@@ -86,11 +86,17 @@ Breaks the latent doom-themes-base inheritance cycle Emacs 30 rejects."
 ;; frame in some daemons).  Sync the alist to the active theme after
 ;; each load so subsequent frames open in the right colours.
 (defun my/sync-frame-colors-to-theme (&rest _)
-  "Copy current `default' face bg/fg into `default-frame-alist'."
-  (let ((bg (face-background 'default nil t))
-         (fg (face-foreground 'default nil t)))
-    (when bg (setf (alist-get 'background-color default-frame-alist) bg))
-    (when fg (setf (alist-get 'foreground-color default-frame-alist) fg))))
+  "Copy current `default' face bg/fg into `default-frame-alist'.
+Only a graphical frame is trusted to report them: a daemon's initial
+terminal answers with the theme's tty clause — black on white, or the
+sentinel `unspecified-bg', which kills `make-frame' outright with
+\"Undefined color\" — and that would then override the theme on every
+graphical frame the daemon goes on to create."
+  (when (display-graphic-p)
+    (let ((bg (face-background 'default nil t))
+          (fg (face-foreground 'default nil t)))
+      (when bg (setf (alist-get 'background-color default-frame-alist) bg))
+      (when fg (setf (alist-get 'foreground-color default-frame-alist) fg)))))
 
 (add-hook 'enable-theme-functions #'my/sync-frame-colors-to-theme)
 (my/sync-frame-colors-to-theme)

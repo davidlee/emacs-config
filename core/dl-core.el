@@ -47,8 +47,30 @@
   (load custom-file 'noerror 'nomessage)
 
   :init
-  (server-start)
+  ;; systemd service is running - no need to start our own server
+  ;; (server-start)
+
   (require 'org-protocol)) ; emacsclient
+
+;; emacsclient forwards its own $DISPLAY (":0", courtesy of xwayland-satellite)
+;; and server.el passes that name straight to `make-frame-on-display'.  GDK
+;; cannot reach a Wayland socket called ":0", so it silently falls back to X11
+;; and pure-GTK Emacs warns that the configuration is unsupported.  Name the
+;; client's Wayland display instead; tty and real X clients are untouched.
+(defun dl-core--prefer-wayland-display (create display nowait proc parent-id
+                                               &optional parameters)
+  "Call CREATE with the client's Wayland display in place of DISPLAY."
+  (let ((wayland (and (featurep 'pgtk)
+                      (getenv-internal "WAYLAND_DISPLAY"
+                                       (process-get proc 'env)))))
+    (funcall create
+             (if (and wayland (string-prefix-p "wayland-" wayland))
+                 wayland
+               display)
+             nowait proc parent-id parameters)))
+
+(advice-add 'server-create-window-system-frame
+            :around #'dl-core--prefer-wayland-display)
 
 ;; Show the help buffer after startup
 ;; (add-hook 'after-init-hook 'help-quick))
