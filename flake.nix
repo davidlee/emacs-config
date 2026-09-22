@@ -48,8 +48,8 @@
       wrappedEmacs = inputs.pub.packages.${system}.emacs;
       projectPkgs = with pkgs;
         [
-          zigPackage
-          nodejs
+          zigPackage # ghostel compile
+          nodejs_latest # acp
           just
           postgresql_18
           supabase-cli
@@ -132,28 +132,44 @@
           profile = "research";
           extraPkgs = projectPkgs;
           extraOptions = apiKeyJailOptions;
-          subagents = ["pi" "dirge" "claude"];
+          subagents = [
+            "pi"
+            "dirge"
+            "claude"
+          ];
           inherit workspaceDeps;
         };
         jailed-opencode = jailLib.makeJailedOpencode {
           profile = "specDev";
           extraPkgs = projectPkgs;
           extraOptions = jailEnvOptions;
-          subagents = ["pi" "dirge" "claude"];
+          subagents = [
+            "pi"
+            "dirge"
+            "claude"
+          ];
           inherit workspaceDeps;
         };
         jailed-claude = jailLib.makeJailedClaude {
           profile = "specDev";
           extraPkgs = projectPkgs;
           extraOptions = jailEnvOptions;
-          subagents = ["pi" "dirge" "claude"];
+          subagents = [
+            "pi"
+            "dirge"
+            "claude"
+          ];
           inherit workspaceDeps;
         };
         jailed-dirge = jailLib.makeJailedDirge {
           profile = "specDev";
           extraPkgs = projectPkgs;
           extraOptions = apiKeyJailOptions;
-          subagents = ["pi" "dirge" "claude"];
+          subagents = [
+            "pi"
+            "dirge"
+            "claude"
+          ];
           inherit workspaceDeps;
         };
         # jailed-codex = jailLib.makeJailedCodex {
@@ -173,7 +189,11 @@
           agent = pkgs.zsh;
           profile = "specDev";
           extraPkgs = projectPkgs;
-          subagents = ["pi" "dirge" "claude"];
+          subagents = [
+            "pi"
+            "dirge"
+            "claude"
+          ];
           extraOptions = jailEnvOptions;
         };
         bubblewrap = pkgs.bubblewrap;
@@ -212,10 +232,7 @@
 
       devShell = pkgs.mkShell {
         packages =
-          projectPkgs
-          ++ lib.optionals isLinux (lib.attrValues jailPkgs)
-          ++ portableCommands
-          ++ linuxCommands;
+          projectPkgs ++ lib.optionals isLinux (lib.attrValues jailPkgs) ++ portableCommands ++ linuxCommands;
       };
     };
 

@@ -4,8 +4,7 @@
 
 Blessed be the GNU
 
-This is my .emacs.d, swollen with experiments in personal motivated reasoning
-agents.
+This is my .emacs.d, swollen with experiments in personal motivated reasoning agents.
 
 ```text
 Curiosity      [####      ]

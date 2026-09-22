@@ -71,13 +71,14 @@
     :custom
     (satan-notes-root "~/notes")
     (satan-journal-today
-     (lambda ()
-       (my/journal--ensure-today)
-       (my/journal--today-file dl-notes-journal-dir "journal")))))
+      (lambda ()
+        (my/journal--ensure-today)
+        (my/journal--today-file dl-notes-journal-dir "journal")))))
 (require 'dl-org-ql)
 (require 'dl-review)
 (require 'dl-org-roam)
-(require 'dl-org-gcal)
+(
+  require 'dl-org-gcal)
 
 ;; Language support
 (require 'dl-elisp)
