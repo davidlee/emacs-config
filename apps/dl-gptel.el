@@ -27,9 +27,12 @@ uses the same account rather than falling through to auth-source."
   ;; in `gptel--openai-models' carries the `responses-api' capability, and
   ;; that default list already tracks the live catalogue — nothing to
   ;; hand-maintain here.
-  (gptel-make-openai-responses "openai"
-    :key #'dl-gptel-openai-key
-    :stream t)
+  ;;(gptel-make-openai-responses "_openai-api-key"
+  ;;  :key #'dl-gptel-openai-key
+  ;;  :stream t)
+  ;;(setq gptel-api-key #'dl-gptel-openai-key)
+
+
 
   ;; Models default to gptel's own DeepSeek list, which carries the
   ;; capability/cost metadata the menu needs.  Two of its ids are labelled
@@ -39,7 +42,8 @@ uses the same account rather than falling through to auth-source."
     :key (lambda () (my/op-key "DEEPSEEK"))
     :stream t)
 
-  (setq gptel-api-key #'dl-gptel-openai-key))
+  (setq gptel-model 'gpt-5.6-terra
+    gptel-backend (gptel-make-openai-oauth "openai-sub")))
 
 (use-package gptel-openrouter
   :ensure nil
@@ -84,10 +88,12 @@ uses the same account rather than falling through to auth-source."
 
                    ;;
                    ))))
-  (setq gptel-backend dl-gptel-openrouter)
+  ;; (setq gptel-backend dl-gptel-openrouter)
   ;; Pinned only to stop gptel warning on first send: a nil `gptel-model'
   ;; falls back to (car models) anyway, but does it via `display-warning'.
-  (setq gptel-model 'deepseek/deepseek-flash))
+  ;;(setq gptel-model 'deepseek/deepseek-flash)
+
+  )
 
 (provide 'dl-gptel)
 ;;; dl-gptel.el ends here

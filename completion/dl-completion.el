@@ -55,12 +55,8 @@
   :custom
   (savehist-save-minibuffer-history t)
   ;; `command-history' records each interactive call with its full argument
-  ;; list.  `magit' takes `magit--refresh-cache' as an argument -- megabytes of
-  ;; shared-structure, propertized git output -- so a handful of entries bloat
-  ;; the history file without bound.  `savehist--merge' then re-reads and
-  ;; `delete-dups'es the lot on every autosave, pegging a core for minutes and
-  ;; applying no length cap, which is how it outgrew `history-length'.
-  ;; Upstream savehist.el ships this exact value as its commented-out example.
+  ;; list.  `magit's `magit--refresh-cache' = Mb of cruft, which `savehist--merge'
+  ;; chokes on. Upstream savehist.el ships this exact value as its commented-out example.
   (savehist-ignored-variables '(command-history)))
 
 ;; Remember recent files.
