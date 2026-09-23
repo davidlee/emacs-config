@@ -10,6 +10,8 @@ pub's pin, and `codex` comes from it too (was nixpkgs'). `.envrc` uses
 `~/flakes/pub` live via `--override-input` — bumping agents is
 `nix flake update llm-agents` in pub, no lock churn here. Template:
 `~/flakes/_templates/agents/_envrc`.
+`pub` is now locked from `github:davidlee/nix-config?dir=flakes/pub`, not an
+absolute `path:` that breaks on other machines; the helper overrides it locally.
 
 ## 2026-09-23 — fix: direnv no longer freezes Emacs on stale flakes
 

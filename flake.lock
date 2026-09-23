@@ -596,14 +596,19 @@
         ]
       },
       "locked": {
-        "lastModified": 1790123467,
-        "narHash": "sha256-OsesJTkmw/W+LYJ9CvpNRkSX2qxPrXY/A8wy7rm4wB0=",
-        "path": "/home/david/flakes/pub",
-        "type": "path"
+        "dir": "flakes/pub",
+        "lastModified": 1790123529,
+        "narHash": "sha256-BGGQc0DdJ2PwUrnZmdoJj+qp8yzzer35YG5L03y1Yas=",
+        "owner": "davidlee",
+        "repo": "nix-config",
+        "rev": "6bf9955dc7d1cbfc150ab7b75d6d2da9d849bd78",
+        "type": "github"
       },
       "original": {
-        "path": "/home/david/flakes/pub",
-        "type": "path"
+        "dir": "flakes/pub",
+        "owner": "davidlee",
+        "repo": "nix-config",
+        "type": "github"
       }
     },
     "root": {

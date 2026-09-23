@@ -5,7 +5,7 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     emacs-overlay.url = "https://github.com/nix-community/emacs-overlay/archive/master.tar.gz";
     pub = {
-      url = "path:/home/david/flakes/pub";
+      url = "github:davidlee/nix-config?dir=flakes/pub";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.emacs-overlay.follows = "emacs-overlay";
     };
