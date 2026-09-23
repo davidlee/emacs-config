@@ -129,6 +129,32 @@ Cached per session; with non-nil REFRESH, bypass the cache."
   (interactive)
   (clrhash my/op--cache))
 
+(defun my/op-session-p ()
+  "Non-nil when a 1Password CLI session is live.
+
+Probes with `op whoami', which never raises the authorization dialog:
+signed out, it exits 1 at once.  The dialog belongs to establishing a
+session, not to a read inside one, so this answers \"would a read
+prompt?\" without risking the prompt.  A missing `op' binary signals."
+  (eq 0 (call-process my/op-cli nil nil nil "whoami")))
+
+(defun my/satan-credential (op &rest args)
+  "1Password backend for SATAN's credential seam (`satan-credential-function').
+
+OP is one of:
+  lookup REF          cached plaintext or nil; never runs `op'
+  session-p           `my/op-session-p'
+  read REF CONTEXT    `my/op-read' with `my/op-read-context' bound to
+                      CONTEXT; may prompt; signals on failure
+  forget REF          evict REF alone from `my/op--cache'"
+  (pcase op
+    ('lookup (gethash (car args) my/op--cache))
+    ('session-p (my/op-session-p))
+    ('read (let ((my/op-read-context (cadr args)))
+             (my/op-read (car args))))
+    ('forget (remhash (car args) my/op--cache))
+    (_ (error "my/satan-credential: unknown op %S" op))))
+
 (defun my/scrub-op-refs-env (env)
   "Drop any KEY=op://… entries from ENV (a `process-environment' list).
 

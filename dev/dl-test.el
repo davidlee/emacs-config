@@ -27,6 +27,11 @@
 
 (require 'ert)
 
+;; `emacs -Q' never loads dl-core, where the live config sets this.
+;; Without it a stale gitignored .elc beside an edited .el is loaded
+;; instead, and the suite tests old code.
+(setq load-prefer-newer t)
+
 (defvar dl-test-suite-dirs '("lisp/test")
   "Directories (relative to `user-emacs-directory') scanned for ERT files.
 A file is a test file when its name ends in \"-test.el\" or begins

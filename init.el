@@ -71,6 +71,8 @@
     :custom
     (satan-notes-root "~/notes")
     (satan-mcp-enabled t)
+    ;; 1Password backend (dl-secret.el, required below; resolved at call time).
+    (satan-credential-function #'my/satan-credential)
     (satan-journal-today
       (lambda ()
         (my/journal--ensure-today)
