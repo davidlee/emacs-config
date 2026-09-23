@@ -2,6 +2,13 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-09-23 — nix: `~/flakes/pub` renamed to `~/flakes/agents`
+
+The jailed-agents flake is now `flakes/agents`; `flakes/pub` is a shim that
+re-exports it, so this repo's `pub` input keeps working unmigrated. `.envrc`
+uses `use flake_local pub:agents emacs` (input `pub`, live from
+`~/flakes/agents`), and `just home-switch` updates the host's `agents` input.
+
 ## 2026-09-23 — nix: wrapped Emacs split out of pub
 
 The package list moved from `~/flakes/pub/emacs.nix` to `~/flakes/emacs/`, a
