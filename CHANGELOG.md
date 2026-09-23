@@ -10,6 +10,9 @@ flake meant for general use — no longer drags in emacs-overlay. The devshell
 takes it as the `emacs` input with no `follows`, so this repo and satan share
 one Emacs build; `.envrc` reads both live (`use flake_local pub emacs`), which
 retires the "devshell lags until the lock is bumped" step.
+The host home profile now takes the same `emacs` flake (justfile switch
+targets override it with the checkout), so host and devshell run one
+derivation, and `~/flakes` dropped its own emacs-overlay.
 
 ## 2026-09-23 — agents: one llm-agents pin, in pub
 

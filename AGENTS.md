@@ -49,7 +49,7 @@ the Nix integration.
 ```
 ~/flakes/emacs/emacs.nix           THE package list (manual, emacsWithPackages)
 ~/flakes/emacs/flake.nix           exports it as packages.default (own pins)
-~/flakes/modules/home/emacs.nix    home-manager module (imports emacs/emacs.nix)
+~/flakes/modules/home/emacs.nix    home-manager module (inputs.emacs's package)
 ~/.emacs.d/flake.nix               devshell; emacs via the `emacs` flake input
 ~/.emacs.d/early-init.el           loads dl-path.el, sets package-archives nil
 ~/.emacs.d/core/dl-path.el         load-path, exec-path, trusted-content, direnv
@@ -63,10 +63,11 @@ archives are configured at runtime** (`package-archives nil` in
 `early-init.el`); MELPA is not available from inside Emacs (exception:
 `package-vc-selected-packages` installs `:vc` stanzas into `~/.emacs.d/elpa`).
 To get a new package: add it to the list in `~/flakes/emacs/emacs.nix`, run
-`home-manager switch` (home profile); the devshell emacs follows on the next
-`direnv reload` — `.envrc`'s `use flake_local pub emacs` reads `~/flakes/emacs`
-live, bypassing `flake.lock`. Two emacsen, one list (different pins, separate
-builds). Plain `nix develop` / CI use the lock: `nix flake update emacs`.
+`just home-switch` (home profile; it overrides the `emacs` input with the
+checkout), and `direnv reload` here (`.envrc`'s `use flake_local pub emacs`
+reads `~/flakes/emacs` live, bypassing `flake.lock`). Host and devshell run
+**one derivation** — same list, same pins. Plain `nix develop` / CI / darwin
+without the justfile use their locks: `nix flake update emacs`.
 
 The user's systemd `services.emacs` unit is **disabled** — the server is started
 from `init.el`.

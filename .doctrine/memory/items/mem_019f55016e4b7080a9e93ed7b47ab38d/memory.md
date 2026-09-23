@@ -14,9 +14,11 @@ exports it as `packages.default` with its own nixpkgs/emacs-overlay pins
 ## Two consumers, one list
 
 1. **Home profile emacs** (`~/.nix-profile/bin/emacs`): via
-   `~/flakes/modules/home/shared/emacs.nix` (imports `../../../emacs/emacs.nix`
-   with the host's pkgs — a separate build from the devshell's).
-   Refresh: `just home-switch`.
+   `~/flakes/modules/home/shared/emacs.nix` → `inputs.emacs` (the same flake;
+   locked from GitHub for darwin, overridden with the checkout by `just
+   home-switch` / `home-build` / `darwin-switch`). Same derivation as the
+   devshell's — one build (since 2026-09-23).
+   Refresh: `just home-switch` (from `~/flakes`).
 2. **Devshell emacs** (what `just check` / batch ert use; direnv puts it on
    PATH in `~/.emacs.d`): the `emacs` flake input. `.envrc` runs
    `use flake_local pub emacs`, which overrides the input with

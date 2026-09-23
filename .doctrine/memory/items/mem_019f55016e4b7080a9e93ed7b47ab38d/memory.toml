@@ -4,7 +4,7 @@ schema_version = 1
 memory_type = "fact"
 status = "active"
 title = "Emacs package wiring: manual list, two emacsen, devshell lags"
-summary = "Manual package list in ~/flakes/emacs/emacs.nix; home profile imports it, devshell reads the emacs flake live via direnv `use flake_local pub emacs` (lock only for plain nix develop/CI)"
+summary = "Manual package list in ~/flakes/emacs/emacs.nix (its own flake); host home profile and devshell run one derivation — host via justfile override, devshell via direnv `use flake_local pub emacs`"
 created = "2026-07-12"
 updated = "2026-09-23"
 
