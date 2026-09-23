@@ -133,6 +133,27 @@
         "type": "github"
       }
     },
+    "emacs": {
+      "inputs": {
+        "emacs-overlay": "emacs-overlay_2",
+        "nixpkgs": "nixpkgs_8"
+      },
+      "locked": {
+        "dir": "flakes/emacs",
+        "lastModified": 1790124894,
+        "narHash": "sha256-bK5j0NIZMwPVr8e49QRfPm3L/APsWGKCSUepwY+U7Sc=",
+        "owner": "davidlee",
+        "repo": "nix-config",
+        "rev": "7ea143a4ff275b1a692ea3633636cda8c585ed41",
+        "type": "github"
+      },
+      "original": {
+        "dir": "flakes/emacs",
+        "owner": "davidlee",
+        "repo": "nix-config",
+        "type": "github"
+      }
+    },
     "emacs-overlay": {
       "inputs": {
         "nixpkgs": "nixpkgs_4",
@@ -335,7 +356,7 @@
       "inputs": {
         "bun2nix": "bun2nix_2",
         "flake-parts": "flake-parts_3",
-        "nixpkgs": "nixpkgs_9",
+        "nixpkgs": "nixpkgs_10",
         "systems": "systems_4",
         "treefmt-nix": "treefmt-nix_2"
       },
@@ -417,6 +438,22 @@
       }
     },
     "nixpkgs_10": {
+      "locked": {
+        "lastModified": 1790055231,
+        "narHash": "sha256-QpXotokGh5eeMG1Njiuh27oP0rK6t5+cMp7ymXSs7mc=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "b6c98e9e6633ee64753b594ff4a5febf0367fc00",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixpkgs-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "nixpkgs_11": {
       "locked": {
         "lastModified": 1771043024,
         "narHash": "sha256-O1XDr7EWbRp+kHrNNgLWgIrB0/US5wvw9K6RERWAj6I=",
@@ -546,16 +583,16 @@
     },
     "nixpkgs_9": {
       "locked": {
-        "lastModified": 1790055231,
-        "narHash": "sha256-QpXotokGh5eeMG1Njiuh27oP0rK6t5+cMp7ymXSs7mc=",
+        "lastModified": 1790046670,
+        "narHash": "sha256-MYiI+CzL0tuWgRPjGsKCDHqYs2T3OzMlMQWOYWG0qso=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "b6c98e9e6633ee64753b594ff4a5febf0367fc00",
+        "rev": "6774f7bc253789b113a4f39285dc0fa100abeacc",
         "type": "github"
       },
       "original": {
         "owner": "NixOS",
-        "ref": "nixpkgs-unstable",
+        "ref": "nixos-unstable",
         "repo": "nixpkgs",
         "type": "github"
       }
@@ -585,9 +622,6 @@
     },
     "pub_2": {
       "inputs": {
-        "emacs-overlay": [
-          "emacs-overlay"
-        ],
         "flake-utils": "flake-utils_2",
         "jail-nix": "jail-nix_2",
         "llm-agents": "llm-agents_2",
@@ -597,11 +631,11 @@
       },
       "locked": {
         "dir": "flakes/pub",
-        "lastModified": 1790123529,
-        "narHash": "sha256-BGGQc0DdJ2PwUrnZmdoJj+qp8yzzer35YG5L03y1Yas=",
+        "lastModified": 1790124894,
+        "narHash": "sha256-bK5j0NIZMwPVr8e49QRfPm3L/APsWGKCSUepwY+U7Sc=",
         "owner": "davidlee",
         "repo": "nix-config",
-        "rev": "6bf9955dc7d1cbfc150ab7b75d6d2da9d849bd78",
+        "rev": "7ea143a4ff275b1a692ea3633636cda8c585ed41",
         "type": "github"
       },
       "original": {
@@ -614,8 +648,8 @@
     "root": {
       "inputs": {
         "doctrine": "doctrine",
-        "emacs-overlay": "emacs-overlay_2",
-        "nixpkgs": "nixpkgs_8",
+        "emacs": "emacs",
+        "nixpkgs": "nixpkgs_9",
         "pub": "pub_2",
         "zig-overlay": "zig-overlay"
       }
@@ -761,7 +795,7 @@
     "zig-overlay": {
       "inputs": {
         "flake-compat": "flake-compat",
-        "nixpkgs": "nixpkgs_10",
+        "nixpkgs": "nixpkgs_11",
         "systems": "systems_5"
       },
       "locked": {

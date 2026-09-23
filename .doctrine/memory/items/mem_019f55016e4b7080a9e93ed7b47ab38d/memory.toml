@@ -4,9 +4,9 @@ schema_version = 1
 memory_type = "fact"
 status = "active"
 title = "Emacs package wiring: manual list, two emacsen, devshell lags"
-summary = "Manual package list in ~/flakes/pub/emacs.nix; home profile + lock-pinned devshell both consume it; devshell lags until nix flake update pub + direnv reload"
+summary = "Manual package list in ~/flakes/emacs/emacs.nix; home profile imports it, devshell reads the emacs flake live via direnv `use flake_local pub emacs` (lock only for plain nix develop/CI)"
 created = "2026-07-12"
-updated = "2026-07-12"
+updated = "2026-09-23"
 
 [scope]
 paths = []

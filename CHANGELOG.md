@@ -2,6 +2,15 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-09-23 — nix: wrapped Emacs split out of pub
+
+The package list moved from `~/flakes/pub/emacs.nix` to `~/flakes/emacs/`, a
+flake of its own (nixpkgs + emacs-overlay pins), so pub — the jailed-agents
+flake meant for general use — no longer drags in emacs-overlay. The devshell
+takes it as the `emacs` input with no `follows`, so this repo and satan share
+one Emacs build; `.envrc` reads both live (`use flake_local pub emacs`), which
+retires the "devshell lags until the lock is bumped" step.
+
 ## 2026-09-23 — agents: one llm-agents pin, in pub
 
 Dropped this flake's own `llm-agents` input; `mkJailedAgents` now defaults to
