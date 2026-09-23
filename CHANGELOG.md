@@ -2,6 +2,16 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-09-23 — satan: 1Password backend for SATAN's credential seam (SL-018)
+
+`dl-secret.el` adds `my/op-session-p`, a probe using `op whoami` that never
+prompts, and `my/satan-credential`, a four-op backend (`lookup` / `session-p` /
+`read` / `forget`). `init.el` sets `satan-credential-function` to it. Nothing
+reads the variable until SATAN's credential gate lands, so there is no behaviour
+change yet. `dev/dl-test.el` now sets `load-prefer-newer`: under `emacs -Q` a
+stale gitignored `.elc` was shadowing its edited `.el`. The first suite,
+`lisp/test/dl-secret-test.el`, adds 8 tests. Before it, `just check` ran 0.
+
 ## 2026-09-23 — satan: MCP server enabled at startup
 
 `init.el` sets `satan-mcp-enabled` in the `use-package satan` block.
