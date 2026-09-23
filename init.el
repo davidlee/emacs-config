@@ -70,6 +70,7 @@
     :demand t
     :custom
     (satan-notes-root "~/notes")
+    (satan-mcp-enabled t)
     (satan-journal-today
       (lambda ()
         (my/journal--ensure-today)

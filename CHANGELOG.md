@@ -2,6 +2,12 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-09-23 — satan: MCP server enabled at startup
+
+`init.el` sets `satan-mcp-enabled` in the `use-package satan` block.
+`just hello-satan` calls `satan-mcp-start` directly (now idempotent upstream);
+the ad-hoc `my/hello-satan` is gone from the satan package.
+
 ## 2026-09-23 — nix: `~/flakes/pub` renamed to `~/flakes/agents`
 
 The jailed-agents flake is now `flakes/agents`; `flakes/pub` is a shim that

@@ -60,7 +60,7 @@ wc:
   @find ~/.emacs.d/{core,lisp,dev,lang,editing,completion,apps,org} -name '*.el' | xargs wc -l ;
 
 hello-satan:
-  emacsclient -e "(my/hello-satan)"
+  emacsclient -e "(satan-mcp-start)"
   cd ~/notes
   jpi
 
