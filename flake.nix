@@ -58,6 +58,7 @@
           socat
           bun
           (jailLib.unjailed.codex or codex) # llm-agents build on linux
+          (jailLib.unjailed.claude)
           helix
           gdb # debugging emacs
         ]
