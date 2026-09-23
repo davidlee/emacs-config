@@ -9,7 +9,6 @@
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.emacs-overlay.follows = "emacs-overlay";
     };
-    llm-agents.url = "github:numtide/llm-agents.nix";
     doctrine.url = "github:davidlee/doctrine";
     zig-overlay.url = "github:mitchellh/zig-overlay";
   };
@@ -35,7 +34,6 @@
         if isLinux
         then
           inputs.pub.lib.${system}.mkJailedAgents {
-            inherit (inputs) llm-agents;
             gitIdentity = {
               authorName = "David Lee's clanker";
               authorEmail = "clanker+dav@davlee.com";
@@ -58,7 +56,7 @@
           sqlite
           socat
           bun
-          codex
+          (jailLib.unjailed.codex or codex) # llm-agents build on linux
           helix
           gdb # debugging emacs
         ]

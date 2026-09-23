@@ -2,6 +2,15 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-09-23 — agents: one llm-agents pin, in pub
+
+Dropped this flake's own `llm-agents` input; `mkJailedAgents` now defaults to
+pub's pin, and `codex` comes from it too (was nixpkgs'). `.envrc` uses
+`use flake_pub` (direnv stdlib helper in `~/flakes`), which reads
+`~/flakes/pub` live via `--override-input` — bumping agents is
+`nix flake update llm-agents` in pub, no lock churn here. Template:
+`~/flakes/_templates/agents/_envrc`.
+
 ## 2026-09-23 — fix: direnv no longer freezes Emacs on stale flakes
 
 `envrc-async` defaulted to nil, so opening a file in a project whose flake had
