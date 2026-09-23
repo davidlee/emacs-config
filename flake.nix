@@ -3,8 +3,8 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    pub = {
-      url = "github:davidlee/nix-config?dir=flakes/pub";
+    agents = {
+      url = "github:davidlee/nix-config?dir=flakes/agents";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     # Wrapped Emacs (the manual package list). Own pins, no follows, so
@@ -34,7 +34,7 @@
       jailLib =
         if isLinux
         then
-          inputs.pub.lib.${system}.mkJailedAgents {
+          inputs.agents.lib.${system}.mkJailedAgents {
             gitIdentity = {
               authorName = "David Lee's clanker";
               authorEmail = "clanker+dav@davlee.com";
