@@ -77,7 +77,13 @@ Returned path is abbreviated (\"~/...\") so it matches what
 ;;  :config
 ;; (direnv-mode))
 
+;; `envrc-async' defaults to nil: block until direnv finishes. A stale
+;; flake (nix rebuild) then freezes the main thread for minutes. Wait
+;; briefly so fast envs still land before mode hooks (eglot etc.), then
+;; let direnv finish in the background.
 (use-package envrc
+  :custom
+  (envrc-async 3)
   :config
   (envrc-global-mode))
 

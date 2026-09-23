@@ -2,6 +2,15 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-09-23 — fix: direnv no longer freezes Emacs on stale flakes
+
+`envrc-async` defaulted to nil, so opening a file in a project whose flake had
+changed blocked the main thread for the whole nix rebuild inside
+`direnv export`. Now `3`: wait up to 3s (fast envs still land before mode
+hooks), then let direnv finish in the background and apply on completion.
+Caveat: slow envs arrive after hooks like eglot have started —
+`eglot-reconnect` once `envrc-show-log` shows it's done.
+
 ## 2026-09-22 — fix: savehist lockups — `command-history` carrying magit's cache
 
 Emacs froze for a minute at a time while typing, every few minutes. gdb on the
