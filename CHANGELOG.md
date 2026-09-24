@@ -2,6 +2,17 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-09-24 — satan: byte-compile the checkout at startup
+
+Typing lagged every 5s: SATAN's tank timer refreshed a buried `*satan-tank*`
+buffer, running uncompiled evidence assembly on the main thread (~52% CPU
++ ~33% GC while typing). Upstream satan `ad1a5a3` skips refreshes while the
+tank is hidden. `dl-satan.el` adds `dl-satan--compile-stale`, which
+byte-compiles any SATAN `.el` whose `.elc` is missing or older before `use-package
+satan` loads it. Nothing compiled the git checkout before this. A run with nothing
+stale costs ~1ms, and native-comp JIT (automatic native compilation) picks up the
+`.elc` files.
+
 ## 2026-09-23 — satan: 1Password backend for SATAN's credential seam (SL-018)
 
 `dl-secret.el` adds `my/op-session-p`, a probe using `op whoami` that never
