@@ -26,7 +26,7 @@
  '(dl-shpool-known-sessions '(".emacs.d" "hris" "team" "claude"))
  '(org-timeblock-current-time-indicator t)
  '(org-timeblock-span 1)
- '(package-selected-packages '(eca ox-hugo super-save))
+ '(package-selected-packages '(diff-hl eca ox-hugo super-save))
  '(package-vc-selected-packages
     '((eca :url "https://github.com/editor-code-assistant/eca-emacs")
        (repeat-fu :url

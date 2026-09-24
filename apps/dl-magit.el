@@ -17,11 +17,14 @@
   :bind (("C-x g" . magit-status))
   :hook (git-commit-mode . my/git-commit-disable-ws-butler))
 
-;; (use-package diff-hl
-;;   :hook ((prog-mode text-mode) . diff-hl-mode)
-;;   :config
-;;   (require 'diff-hl-flydiff)
-;;   (diff-hl-flydiff-mode))
+(use-package diff-hl
+  :hook ((dired-mode . diff-hl-dired-mode)
+          ((prog-mode text-mode) . diff-hl-mode))
+  :config
+  (global-diff-hl-mode 1)
+  (diff-hl-flydiff-mode 1)
+  (unless (display-graphic-p)
+    (diff-hl-margin-mode 1)))
 
 (use-package git-modes
   :defer t)
