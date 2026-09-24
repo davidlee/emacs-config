@@ -2,6 +2,19 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-09-24 — persist: autosave consolidated onto super-save
+
+Removed the hand-rolled autosave in `dl-persist.el`. It had
+`my/save-buffer-on-focus-change` on `buffer-list-update-hook`, which fires
+whenever any buffer is created or killed. cape-dabbrev and completion preview
+create and kill temp buffers on each keystroke, so the hook saved the buffer
+being typed in mid-typing. The config now sets super-save options instead,
+with the same behaviour: save all file buffers on a window switch, on focus
+loss, and after 30s idle, skipping remote files and commit / with-editor
+buffers. Its window switches come from `window-buffer-change-functions`, so
+temp-buffer churn never triggers a save. `lisp/test/dl-persist-test.el` adds 2
+tests.
+
 ## 2026-09-24 — satan: byte-compile the checkout at startup
 
 Typing lagged every 5s: SATAN's tank timer refreshed a buried `*satan-tank*`

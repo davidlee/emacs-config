@@ -82,53 +82,24 @@
 ;; --------------------------------------------------------------------------------
 ;; AUTOSAVE -- aggressively
 ;;
-(defun my/save-buffer-on-focus-change ()
-  "Save the previously current file buffer when switching buffers."
-  (when-let* ((buf (other-buffer (current-buffer) t)))
-    (when (buffer-live-p buf)
-      (with-current-buffer buf
-        (my/save-buffer-if-reasonable)))))
-
-(defun my/save-buffer-if-reasonable ()
-  "Save current buffer if it is a normal modified file buffer."
-  (when (and buffer-file-name
-          (buffer-modified-p)
-          (file-writable-p buffer-file-name)
-          ;; Avoid saving remote/TRAMP buffers automatically.
-          (not (file-remote-p buffer-file-name))
-          ;; Avoid saving temporary/special buffers.
-          (not (string-prefix-p " " (buffer-name)))
-          ;; Never autosave in-progress commit messages or other
-          ;; with-editor sessions; the user hasn't finished composing.
-          (not (derived-mode-p 'git-commit-mode 'with-editor-mode)))
-    (save-buffer)))
-
-(defun my/save-all-file-buffers ()
-  "Save all reasonable file buffers."
-  (dolist (buf (buffer-list))
-    (with-current-buffer buf
-      (my/save-buffer-if-reasonable))))
-
-;;; Save after idle time
-
-(defvar my/auto-save-idle-timer nil)
-
-(defun my/auto-save-after-idle ()
-  "Save all reasonable file buffers after idle time."
-  (my/save-all-file-buffers))
-
-(setq my/auto-save-idle-timer
-  (run-with-idle-timer 30 t #'my/auto-save-after-idle))
-
-;; Autosave Aggressively
-;; Save visited files on buffer/window/frame focus loss.
-(add-hook 'buffer-list-update-hook #'my/save-buffer-on-focus-change)
-(add-function :after after-focus-change-function
-  (lambda (&rest _) (my/save-all-file-buffers)))
+;; Save every modified file buffer on window buffer switch, frame focus
+;; loss, and 30s idle.  Switches come from `window-buffer-change-functions',
+;; so temp-buffer churn (dabbrev, completion preview) never triggers a save.
+(defun my/autosave-composing-p ()
+  "Non-nil in an in-progress commit message or other with-editor session."
+  (or (bound-and-true-p git-commit-mode)
+    (bound-and-true-p with-editor-mode)))
 
 (use-package super-save
   :ensure t
+  :custom
+  (super-save-all-buffers t)
+  (super-save-auto-save-when-idle t)
+  (super-save-idle-duration 30)
+  (super-save-remote-files nil)
   :config
+  (add-to-list 'super-save-predicates
+    (lambda () (not (my/autosave-composing-p))) t)
   (super-save-mode +1))
 
 ;; --------------------------------------------------------------------------------
