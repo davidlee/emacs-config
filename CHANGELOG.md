@@ -2,6 +2,17 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-09-24 — magit: commit buffers always get the diff
+
+A `git commit` from a terminal (emacsclient as the git editor) opened
+`COMMIT_EDITMSG` via a stale `use-package git-commit :mode` entry. That loaded
+only `git-commit`, never `magit-commit`, so no diff was shown and `C-c C-d`
+failed with `void-function magit-commit-message-buffer`. `dl-magit.el` now
+idle-loads magit (`:defer 1`) and drops the `git-commit` stanza, so magit's own
+setup handles every git message file. Also: removed the eager
+`(use-package transient)`, deferred `git-modes`, and moved the ediff `setq`s
+into `use-package ediff :custom` (zero byte-compile warnings).
+
 ## 2026-09-24 — persist: autosave consolidated onto super-save
 
 Removed the hand-rolled autosave in `dl-persist.el`. It had
