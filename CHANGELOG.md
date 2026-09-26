@@ -2,6 +2,18 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-09-26 — project: `project-find-file` no longer hangs
+
+`my/project-try-local` (from when `.emacs.d` lived in the `~/.git` repo)
+claimed any `flake.nix`/`.project` dir as a non-VC project, overriding
+`project-try-vc`. ELPA `project-0.12.0` lists non-VC projects with `find -L`,
+which followed `.direnv/flake-inputs` and `notes → ~/notes` into ~2.4M files and
+symlink loops, hanging Emacs. The `project-vc-extra-root-markers` setting meant
+to cover this was inside a `(when …)` under `:custom` and never applied.
+Removed the workaround and set the markers properly: roots still stop at the
+marker, and listing uses `git ls-files` (656 files, ~0.1s). Tests in
+`lisp/test/dl-project-test.el`.
+
 ## 2026-09-24 — magit: commit buffers always get the diff
 
 A `git commit` from a terminal (emacsclient as the git editor) opened
