@@ -2,6 +2,15 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-09-29 — eca: model pinned client-side
+
+`~/.config/eca/config.json` named its default as a bare `deepseek-v4-pro`;
+eca wants `provider/model`, and an unmatched id silently falls back to its
+built-in default — Anthropic, at API rates. The config now says
+`deepseek/deepseek-flash` (declared in `providers.deepseek.models`), and
+`dl-eca.el` pins `eca-chat-custom-model` to the same, so server-config drift
+can't change the model. The pin also overrides the in-chat model picker.
+
 ## 2026-09-29 — eca: sandboxed server; PATH and exec-path agree
 
 The eca server binary (`~/.emacs.d/eca/eca`, gitignored, used via

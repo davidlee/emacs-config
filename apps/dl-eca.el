@@ -60,7 +60,11 @@ expose all of home."
 (use-package eca
   :ensure t
   :defer t
-  :vc (:url "https://github.com/editor-code-assistant/eca-emacs" :rev :newest))
+  :vc (:url "https://github.com/editor-code-assistant/eca-emacs" :rev :newest)
+  :custom
+  ;; Pin the model client-side: an unmatched server `defaultModel' silently
+  ;; falls back to eca's built-in default (Anthropic, at API rates).
+  (eca-chat-custom-model "deepseek/deepseek-flash"))
 
 (provide 'dl-eca)
 ;;; dl-eca.el ends here
