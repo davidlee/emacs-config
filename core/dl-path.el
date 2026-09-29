@@ -38,6 +38,9 @@ Returned path is abbreviated (\"~/...\") so it matches what
 
 (defvar my/exec-dirs
   '("~/.nix-profile/bin"
+     ;; setuid/setgid wrappers (op, sudo) must shadow their raw binaries
+     ;; in sw/bin: the raw `op' cannot reach the 1Password desktop app.
+     "/run/wrappers/bin"
      "/run/current-system/sw/bin"
      "~/.local/bin"
      ;; The systemd user environment carries none of the below, and a
@@ -50,18 +53,20 @@ Returned path is abbreviated (\"~/...\") so it matches what
      ;; `agent-shell--start: Executable "X" not found'.
      "~/.npm-global/bin"
      "~/go/bin")
-  "Directories to prepend to `exec-path' and $PATH, in priority order.")
+  "Directories to prepend to $PATH and `exec-path', in priority order.")
 
-;; `exec-path' keeps the "~/..." form — Emacs expands it, and abbreviated
-;; entries stay readable. $PATH cannot: `call-process' and every child
-;; process treat a leading tilde literally, so an unexpanded entry there is
-;; dead weight. One list, both consumers, no drift.
-(dolist (dir (reverse my/exec-dirs))
-  (add-to-list 'exec-path dir))
+(defun dl-path-prepend (dirs path)
+  "Return PATH with DIRS moved to the front, in order, without duplicates.
+DIRS are expanded: child processes take a leading tilde literally."
+  (string-join (delete-dups (append (mapcar #'expand-file-name dirs)
+                                    (split-string path path-separator t)))
+               path-separator))
 
-(setenv "PATH" (string-join (append (mapcar #'expand-file-name my/exec-dirs)
-                              (list (getenv "PATH")))
-                 path-separator))
+;; $PATH is the one source; `exec-path' is derived from it (the way Emacs
+;; builds it at startup), so Emacs and its children resolve the same binary.
+(setenv "PATH" (dl-path-prepend my/exec-dirs (getenv "PATH")))
+(setq exec-path (append (parse-colon-path (getenv "PATH"))
+                        (list exec-directory)))
 
 ;; Pin the subprocess shell to a POSIX shell. `shell-file-name' defaults to
 ;; $SHELL, which is now nushell; nushell ships builtin `find'/`grep' that

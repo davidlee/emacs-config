@@ -2,6 +2,25 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-09-29 — eca: sandboxed server; PATH and exec-path agree
+
+The eca server binary (`~/.emacs.d/eca/eca`, gitignored, used via
+`eca-custom-command`) had gone missing; nothing reinstalls it once a custom
+command is set. It now runs as `jailed-eca` — the Nix-pinned llm-agents build
+in a bubblewrap jail (`~/flakes/modules/home/linux/eca.nix`), with keys via
+`op run`. `dl-eca.el` starts it from the first workspace root (the jail binds
+its cwd) and stops sending Emacs' pid (invisible in the jail's pid namespace,
+so the server's liveness probe exited at once). Fallback:
+`M-x eca-install-server`.
+
+`dl-path.el` prepended `my/exec-dirs` to $PATH unconditionally but only
+`add-to-list`ed them to `exec-path`, so the two disagreed:
+`/run/current-system/sw/bin` sat ahead of `/run/wrappers/bin` in $PATH only,
+and children got the raw `op` (no 1Password desktop access) instead of the
+setgid wrapper. $PATH is now the single source (`dl-path-prepend`, deduped),
+`exec-path` derives from it, and `/run/wrappers/bin` precedes sw/bin. Tests in
+`lisp/test/dl-path-test.el`.
+
 ## 2026-09-26 — project: `project-find-file` no longer hangs
 
 `my/project-try-local` (from when `.emacs.d` lived in the `~/.git` repo)
