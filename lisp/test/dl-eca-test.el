@@ -29,4 +29,23 @@
     (should-error (dl-eca--run-in-first-root '("jailed-eca") nil)
                   :type 'user-error)))
 
+(ert-deftest dl-eca/toggle-switches-launch-settings ()
+  "Toggling the jail swaps the server command, wrapper and pid probe together."
+  (let ((vars '(dl-eca-jailed eca-custom-command
+                eca-process-wrapper-function eca-send-process-id)))
+    (let ((saved (mapcar #'default-value vars)))
+      (unwind-protect
+          (progn
+            (customize-set-variable 'dl-eca-jailed t)
+            (dl-eca-toggle-jail)
+            (should-not dl-eca-jailed)
+            (should (equal eca-custom-command '("op" "run" "--" "eca" "server")))
+            (should-not eca-process-wrapper-function)
+            (should eca-send-process-id)
+            (dl-eca-toggle-jail)
+            (should (equal eca-custom-command '("jailed-eca" "server")))
+            (should (eq eca-process-wrapper-function #'dl-eca--run-in-first-root))
+            (should-not eca-send-process-id))
+        (cl-mapc #'set-default vars saved)))))
+
 ;;; dl-eca-test.el ends here
