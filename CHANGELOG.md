@@ -2,6 +2,24 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-09-29 — gptel: agent tools; read-only shell runs unprompted
+
+gptel-agent (`:vc`) supplies the tools; `agents/` adds two agent presets
+(`general`, `lean`), and a `default` gptel preset (openai-sub, gpt-5.6-terra)
+picks the working set plus gptel-agent's `introspection` category (elisp
+docs, source, manuals — unprompted except `variable_value`).
+
+gptel-agent's Bash tool asks before every command. `dl-gptel-readonly.el`
+replaces its `:confirm` with a predicate: a pipeline of allowlisted reference
+programs (rg, fd, git log/diff/show/…, ls, cat, …) runs unprompted; any other
+shell syntax (`;`, `&&`, redirection, `$`, globs, braces), unlisted program,
+or write/exec option (`fd -x`, `rg --pre`, `find -exec`, `sort -o`,
+`git diff --output`, abbreviated or clustered) asks. It parses words itself:
+`split-string-shell-command` splits on quoted `;`/`|`, so it can disagree
+with bash. The preset's system prompt lists the allowlist (generated from
+it), since the Bash description steers the model away from shell searches.
+Tests in `lisp/test/dl-gptel-readonly-test.el`.
+
 ## 2026-09-29 — eca: model pinned client-side
 
 `~/.config/eca/config.json` named its default as a bare `deepseek-v4-pro`;

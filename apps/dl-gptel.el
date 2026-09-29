@@ -11,6 +11,7 @@
 ;;; Code:
 
 (require 'dl-secret)
+(require 'dl-gptel-readonly)
 
 (defvar dl-gptel-openrouter nil
   "The OpenRouter backend, or nil before `gptel-openrouter' has loaded.")
@@ -43,7 +44,19 @@ uses the same account rather than falling through to auth-source."
     :stream t)
 
   (setq gptel-model 'gpt-5.6-terra
-    gptel-backend (gptel-make-openai-oauth "openai-sub")))
+    gptel-backend (gptel-make-openai-oauth "openai-sub"))
+
+  (gptel-make-preset 'default
+    :description "general emacs assistant"
+    :backend "openai-sub"
+    :model 'gpt-5.6-terra
+    :system (concat "you're an advanced assistant for emacs knowledge work and coding. Stay in a tight, iterative loop with the user: concise responses, bounded tasks, not autonomous agentic execution.\n\n"
+              (dl-gptel-readonly-system-note))
+    ;; "introspection": gptel-agent's elisp reference tools (docs, source,
+    ;; manuals); all run unprompted except variable_value.
+    :tools '("Glob" "Grep" "Read" "Insert" "Edit" "Write" "Eval" "Bash"
+             "introspection")) ;; no Agent
+  ) ;; this lets us use GPT subscription.
 
 (use-package gptel-openrouter
   :ensure nil
@@ -87,13 +100,24 @@ uses the same account rather than falling through to auth-source."
                    xiaomi/mimo-v2.6-flash
 
                    ;;
-                   ))))
-  ;; (setq gptel-backend dl-gptel-openrouter)
-  ;; Pinned only to stop gptel warning on first send: a nil `gptel-model'
-  ;; falls back to (car models) anyway, but does it via `display-warning'.
-  ;;(setq gptel-model 'deepseek/deepseek-flash)
+                   )))))
 
-  )
+;;
+;; Tools
+;;
+
+(use-package gptel-agent
+  :vc ( :url "https://github.com/karthink/gptel-agent"
+        :rev :newest)
+  :config
+  (setq gptel-agent-dirs
+    (cons (expand-file-name "agents/" user-emacs-directory)
+      gptel-agent-dirs))
+  (gptel-agent-update)
+  (require 'gptel-agent-tools-introspection)
+  ;; Bash asks before every command by default; read-only ones needn't.
+  (setf (gptel-tool-confirm (gptel-get-tool "Bash"))
+    #'dl-gptel-bash-needs-confirm-p))
 
 (provide 'dl-gptel)
 ;;; dl-gptel.el ends here
