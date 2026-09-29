@@ -10,8 +10,9 @@ command is set. It now runs as `jailed-eca` — the Nix-pinned llm-agents build
 in a bubblewrap jail (`~/flakes/modules/home/linux/eca.nix`), with keys via
 `op run`. `dl-eca.el` starts it from the first workspace root (the jail binds
 its cwd) and stops sending Emacs' pid (invisible in the jail's pid namespace,
-so the server's liveness probe exited at once). Fallback:
-`M-x eca-install-server`.
+so the server's liveness probe exited at once). It refuses a workspace root
+at or above `~` (the jail would get read-write access to all of home).
+Fallback: `M-x eca-install-server`.
 
 `dl-path.el` prepended `my/exec-dirs` to $PATH unconditionally but only
 `add-to-list`ed them to `exec-path`, so the two disagreed:

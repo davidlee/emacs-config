@@ -16,12 +16,17 @@
 ;; `eca-custom-command' to ("op" "run" "--" <that path> "server").
 
 (defun dl-eca--run-in-first-root (command roots)
-  "Return COMMAND prefixed to run from the first of ROOTS."
-  (when (cdr roots)
-    (display-warning 'eca (format "jailed-eca binds only %s" (car roots))))
-  (if roots
-      (append (list "env" "-C" (expand-file-name (car roots))) command)
-    command))
+  "Return COMMAND prefixed to run from the first of ROOTS.
+Without ROOTS, run from `default-directory'.  Signal `user-error' if
+that directory contains ~: the jail binds it read-write, which would
+expose all of home."
+  (let ((root (or (car roots) default-directory)))
+    (when (file-in-directory-p "~" root)
+      (user-error "Refusing to jail eca with %s as workspace; start it from a project"
+                  root))
+    (when (cdr roots)
+      (display-warning 'eca (format "jailed-eca binds only %s" root)))
+    (append (list "env" "-C" (expand-file-name root)) command)))
 
 (use-package eca
   :ensure t
