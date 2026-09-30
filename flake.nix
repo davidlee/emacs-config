@@ -28,7 +28,7 @@
     mkSystem = system: let
       pkgs = import nixpkgs {inherit system;};
       inherit (pkgs) lib stdenv;
-      isLinux = stdenv.isLinux;
+      isLinux = stdenv.hostPlatform.isLinux;
       zigPackage = zig-overlay.packages.${system}."default";
 
       jailLib =
