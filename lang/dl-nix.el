@@ -18,8 +18,6 @@ type-check attribute paths under `config.*' and offer documentation."
       (:nixpkgs
        (:expr ,(format "import (builtins.getFlake \"%s\").inputs.nixpkgs { }"
                        flake))
-       :formatting
-       (:command ["alejandra"])
        :options
        (:nixos
         (:expr ,(format
@@ -33,9 +31,20 @@ type-check attribute paths under `config.*' and offer documentation."
 (defun dl-nix-set-workspace-config ()
   (setq-local eglot-workspace-configuration (dl-nix-nixd-config)))
 
+(defvar eglot-ignored-server-capabilities)
+
+(defun dl-nix-leave-formatting-to-apheleia ()
+  "Hide nixd's formatting so eglot's save hook leaves it to apheleia."
+  (require 'eglot)                      ; this hook can run before eglot-ensure
+  (setq-local eglot-ignored-server-capabilities
+              (append '(:documentFormattingProvider
+                        :documentRangeFormattingProvider)
+                      eglot-ignored-server-capabilities)))
+
 (use-package nix-mode
   :mode ("\\.nix\\'" "\\.nix.in\\'")
-  :hook (nix-mode . dl-nix-set-workspace-config))
+  :hook ((nix-mode . dl-nix-set-workspace-config)
+         (nix-mode . dl-nix-leave-formatting-to-apheleia)))
 
 (use-package nix-drv-mode
   :ensure nix-mode

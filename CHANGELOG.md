@@ -2,6 +2,16 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-09-30 — nix: apheleia owns formatting, with alejandra
+
+Saving a `.nix` file ran two formatters: eglot's save hook (nixd, configured
+for alejandra), then apheleia (default `nixfmt`), which won. Now apheleia
+formats nix with alejandra, matching `~/flakes`' treefmt, and nix buffers
+ignore nixd's formatting capability so eglot stays out. The eglot save hook
+only formats when the server offers formatting. Other languages still get
+both formatters on save; worth picking one owner per language later.
+Tests in `lisp/test/dl-nix-test.el`, `lisp/test/dl-eglot-test.el`.
+
 ## 2026-09-30 — C-f1 belongs to ghostel
 
 `core/dl-keybind.el` bound C-<f1> to `help-command` while `apps/dl-term.el`

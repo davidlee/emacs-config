@@ -5,8 +5,12 @@
   (and (bound-and-true-p eglot--managed-mode)
        (ignore-errors (eglot-current-server))))
 
+(declare-function eglot-server-capable "eglot")
+
 (defun my/eglot-format-buffer-if-connected ()
-  (when (my/eglot-connected-p)
+  "Format via the server, unless it lacks (or we ignore) formatting."
+  (when (and (my/eglot-connected-p)
+             (eglot-server-capable :documentFormattingProvider))
     (eglot-format-buffer)))
 
 (defun my/eglot-organize-imports-if-connected ()

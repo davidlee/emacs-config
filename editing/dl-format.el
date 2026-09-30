@@ -17,6 +17,10 @@
 
 (use-package apheleia
   :config
+  ;; Match the flake's treefmt (alejandra), not apheleia's default nixfmt.
+  (setf (alist-get 'alejandra apheleia-formatters) '("alejandra" "--quiet" "-")
+        (alist-get 'nix-mode apheleia-mode-alist) 'alejandra
+        (alist-get 'nix-ts-mode apheleia-mode-alist) 'alejandra)
   (apheleia-global-mode +1))
 
 (provide 'dl-format)
