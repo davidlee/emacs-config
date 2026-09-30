@@ -20,6 +20,15 @@
   :vc (:url "https://github.com/dakra/ghostel"
         :rev :newest))
 
+(use-package popterm
+  :config
+  (setq
+    popterm-backend        'ghostel
+    popterm-display-method 'window ;; | 'posframe | 'fullscreen
+    popterm-scope          'project ;; | 'frame | 'dedicated | nil
+    popterm-auto-cd        t)
+  :bind
+  ("C-M-` " . popterm-toggle)) ;; note: conflict with popper-mode toggle
 
 (provide 'dl-ghostel)
 ;;; dl-ghostel.el ends here

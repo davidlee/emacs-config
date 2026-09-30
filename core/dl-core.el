@@ -2,8 +2,6 @@
 
 ;; https://github.com/rougier/nano-emacs/blob/master/nano-defaults.el
 
-(require 'package-vc)
-
 (use-package emacs
   :ensure nil
   :custom

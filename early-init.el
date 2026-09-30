@@ -1,9 +1,13 @@
 ;;; early-init.el --- Emacs pre-init -*- lexical-binding: t; -*-
 
-;; Packages are provided by nix (emacsWithPackagesFromUsePackage).
-;; after adding a new use-package declaration:
-;; -- ensure file is known to git (staged or committed previously)
-;; -- cd ~/flakes && just home-switch
+;; Package sources:
+;; -- nix (default): add the package to the list in ~/flakes/emacs/emacs.nix,
+;;    then `cd ~/flakes && just home-switch'. use-package never downloads:
+;;    `package-archives' is nil, so a package missing from the list fails
+;;    to load.
+;; -- package-vc: a `:vc' use-package stanza clones into ~/.emacs.d/elpa
+;;    at runtime, for packages not in nixpkgs or needing a writable dir
+;;    (see dl-ghostel.el). `package-initialize' below activates them.
 
 (setq my/debug-startup nil)
 

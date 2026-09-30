@@ -13,6 +13,47 @@
 (require 'dl-secret)
 (require 'dl-gptel-readonly)
 
+(use-package macher
+  :custom
+  ;; The org UI has structured conversations and nice content folding.
+  (macher-action-buffer-ui 'org)
+
+  :hook
+  ;; Set up action buffer behavior to your liking.  Alternately, do
+  ;; this more generally in your `gptel-mode-hook'.
+  (macher-action-buffer-setup
+    . (lambda  ()
+        ;; Auto-scroll responses.
+        (setq-local window-point-insertion-type t)
+        ;; Wrap lines.
+        (visual-line-mode 1)))
+
+  :config
+  ;; Recommended - register macher tools and presets with gptel.
+  (macher-install)
+
+  ;; Recommended - enable macher infrastructure for tools/prompts in
+  ;; any buffer.  (Actions and presets will still work without this.)
+  (macher-enable)
+
+  ;; Adjust buffer positioning to taste.
+  ;; (add-to-list
+  ;;  'display-buffer-alist
+  ;;  '("\\*macher:.*\\*"
+  ;;    (display-buffer-in-side-window)
+  ;;    (side . bottom)))
+  ;; (add-to-list
+  ;;  'display-buffer-alist
+  ;;  '("\\*macher-patch:.*\\*"
+  ;;    (display-buffer-in-side-window)
+  ;;    (side . right)))
+  )
+
+(use-package gptel
+  :config
+  ;; Optional - set up macher as soon as gptel is loaded.
+  (require 'macher))
+
 (defvar dl-gptel-openrouter nil
   "The OpenRouter backend, or nil before `gptel-openrouter' has loaded.")
 
@@ -22,47 +63,35 @@ Also the value of `gptel-api-key', so gptel's built-in OpenAI backend
 uses the same account rather than falling through to auth-source."
   (my/op-key "OPENAI_ALT"))
 
+;;
+;; LOAD GPTEL
+;;
 (use-package gptel
   :config
-  ;; Responses (/v1/responses), not chat completions: every frontier model
-  ;; in `gptel--openai-models' carries the `responses-api' capability, and
-  ;; that default list already tracks the live catalogue — nothing to
-  ;; hand-maintain here.
-  ;;(gptel-make-openai-responses "_openai-api-key"
-  ;;  :key #'dl-gptel-openai-key
-  ;;  :stream t)
-  ;;(setq gptel-api-key #'dl-gptel-openai-key)
-
-
-
-  ;; Models default to gptel's own DeepSeek list, which carries the
-  ;; capability/cost metadata the menu needs.  Two of its ids are labelled
-  ;; DEPRECATED upstream and no longer appear in /v1/models; the live pair
-  ;; is deepseek-flash and deepseek-v4-pro.
   (gptel-make-deepseek "deepseek"
     :key (lambda () (my/op-key "DEEPSEEK"))
     :stream t)
 
   (setq gptel-model 'gpt-5.6-terra
-    gptel-backend (gptel-make-openai-oauth "openai-sub"))
+    gptel-backend (gptel-make-openai-oauth "openai-sub")))
 
-  (gptel-make-preset 'default
-    :description "general emacs assistant"
-    :backend "openai-sub"
-    :model 'gpt-5.6-terra
-    :system (concat "you're an advanced assistant for emacs knowledge work and coding. Stay in a tight, iterative loop with the user: concise responses, bounded tasks, not autonomous agentic execution.\n\n"
-              (dl-gptel-readonly-system-note))
-    ;; "introspection": gptel-agent's elisp reference tools (docs, source,
-    ;; manuals); all run unprompted except variable_value.
-    :tools '("Glob" "Grep" "Read" "Insert" "Edit" "Write" "Eval" "Bash"
-             "introspection")) ;; no Agent
-  ) ;; this lets us use GPT subscription.
+(gptel-make-preset 'default
+  :description "general emacs assistant"
+  :backend "openai-sub"
+  :model 'gpt-5.6-terra
+  :system (concat "you're an advanced assistant for emacs knowledge work and coding. Stay in a tight, iterative loop with the user: concise responses, bounded tasks, not autonomous agentic execution.\n\n"
+            (dl-gptel-readonly-system-note))
+  ;; "introspection": gptel-agent's elisp reference tools (docs, source,
+  ;; manuals); all run unprompted except variable_value.
+  :tools '("Glob" "Grep" "Read" "Insert" "Edit" "Write" "Eval" "Bash"
+            "introspection")) ;; no Agent ;; this lets us use GPT subscription.
 
 (use-package gptel-openrouter
   :ensure nil
   :vc (:url "https://github.com/darcamo/gptel-openrouter.git")
   :after gptel
   :config
+  (require 'macher)
   ;; The default backend, set below: OpenRouter routes everything, and its
   ;; own key is the one with credit on it.
   ;;

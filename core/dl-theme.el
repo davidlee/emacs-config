@@ -1,5 +1,15 @@
 ;;; dl-theme.el --- Theme settings -*- lexical-binding: t; -*-
 
+(use-package standard-themes
+  :init
+  (standard-themes-take-over-modus-themes-mode 1)
+  :bind
+  ;; ()
+  :config
+  (setq modus-themes-mixed-fonts t)
+  (setq modus-themes-italic-constructs t)
+  (modus-themes-load-theme 'standard-dark))
+
 (defvar my--themes
   '(doom-one doom-gruvbox doom-nord doom-material doom-ayu-dark
      doom-zenburn doom-one-light doom-one doom-acario-light
@@ -22,7 +32,7 @@
     (message "Loaded theme: %s" theme)))
 
 ;;(load-theme 'nano)
-(load-theme 'doom-gruvbox)
+;; (load-theme 'doom-gruvbox)
 
 ;; doom-themes-base defines `gnus-group-news-low-empty' to inherit
 ;; `gnus-group-news-low', while Emacs' builtin defface has news-low
@@ -94,7 +104,7 @@ sentinel `unspecified-bg', which kills `make-frame' outright with
 graphical frame the daemon goes on to create."
   (when (display-graphic-p)
     (let ((bg (face-background 'default nil t))
-          (fg (face-foreground 'default nil t)))
+           (fg (face-foreground 'default nil t)))
       (when bg (setf (alist-get 'background-color default-frame-alist) bg))
       (when fg (setf (alist-get 'foreground-color default-frame-alist) fg)))))
 

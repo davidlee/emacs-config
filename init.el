@@ -76,6 +76,9 @@
 (require 'dl-markdown)
 (require 'dl-lang-common)
 (require 'dl-nix)
+(require 'dl-typst)
+(require 'dl-nushell)
+
 
 ;; Apps
 (require 'dl-term)
