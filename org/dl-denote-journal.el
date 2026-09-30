@@ -620,7 +620,7 @@ Intended for use in `find-file-hook'."
 ;; Bindings (`C-c n j', `C-c n w', `C-c n W j', `C-c n W w', etc.) live
 ;; in `core/dl-keymap.el' under `my-notes-map' and `my-notes-work-map'.
 ;; The global `<f1>' shortcut for `my/journal-quick-capture' lives in
-;; `core/dl-keybind.el' (which also relocates `help-command' to C-<f1>).
+;; `core/dl-keybind.el'.
 
 (provide 'dl-denote-journal)
 ;;; dl-denote-journal.el ends here

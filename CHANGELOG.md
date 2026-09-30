@@ -2,6 +2,14 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-09-30 — C-f1 belongs to ghostel
+
+`core/dl-keybind.el` bound C-<f1> to `help-command` while `apps/dl-term.el`
+bound it to `my/ghostel-toggle`; load order picked the winner. The help
+binding is gone — help lives on C-h. (Related, outside this repo:
+`~/flakes/modules/home/linux/nudge/` nudges toward Emacs and `<f1>` journal
+capture from panopticon window history.)
+
 ## 2026-09-29 — gptel: agent tools; read-only shell runs unprompted
 
 gptel-agent (`:vc`) supplies the tools; `agents/` adds two agent presets
