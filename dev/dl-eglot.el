@@ -1,11 +1,15 @@
 ;;; dl-eglot.el --- EGLOT LSP setup -*- lexical-binding: t; -*-
 
+(declare-function eglot-current-server "eglot")
+(declare-function eglot-server-capable "eglot")
+(declare-function eglot-format-buffer "eglot")
+(declare-function eglot-code-action-organize-imports "eglot")
+(declare-function jsonrpc--log-event "jsonrpc")
+
 (defun my/eglot-connected-p ()
   "Return non-nil when current buffer has a live Eglot server."
   (and (bound-and-true-p eglot--managed-mode)
        (ignore-errors (eglot-current-server))))
-
-(declare-function eglot-server-capable "eglot")
 
 (defun my/eglot-format-buffer-if-connected ()
   "Format via the server, unless it lacks (or we ignore) formatting."

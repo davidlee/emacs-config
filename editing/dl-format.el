@@ -15,6 +15,8 @@
 (use-package ws-butler
   :hook ((prog-mode text-mode) . ws-butler-mode))
 
+(declare-function apheleia-global-mode "apheleia")
+
 (use-package apheleia
   :config
   ;; Match the flake's treefmt (alejandra), not apheleia's default nixfmt.

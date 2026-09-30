@@ -32,6 +32,7 @@ type-check attribute paths under `config.*' and offer documentation."
   (setq-local eglot-workspace-configuration (dl-nix-nixd-config)))
 
 (defvar eglot-ignored-server-capabilities)
+(defvar eglot-server-programs)
 
 (defun dl-nix-leave-formatting-to-apheleia ()
   "Hide nixd's formatting so eglot's save hook leaves it to apheleia."
