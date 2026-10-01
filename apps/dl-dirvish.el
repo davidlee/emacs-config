@@ -46,7 +46,7 @@
     ("M-b" . dirvish-history-go-backward)
     ("M-e" . dirvish-emerge-menu)))
 
-(declare-function ghostel-exec "ghostel" (buffer program &optional args))
+(autoload 'ghostel-exec "ghostel")   ; ghostel only autoloads its commands
 
 (defun my/file-manager-directory ()
   "Useful starting directory for external file-manager commands."
