@@ -3,14 +3,33 @@
 
 
 ;; ./elpa/lambda-line/lambda-line.el
-(defun dl-modeline--prepend-user-mode (composed)
-  "Prepend `lambda-line-user-mode' output to a composed lambda-line string.
+(defvar lambda-line--selected-window)
+(defvar lambda-line-user-mode)
+
+(defvar dl-modeline-segments nil
+  "Functions prepended, in order, to the lambda-line after the user mode.
+Each returns a mode-line string, or nil to add nothing.  lambda-line
+ignores `global-mode-string', so modules showing state there register
+a segment here too.")
+
+(defun dl-modeline-window-active-p ()
+  "Non-nil when the window being drawn is the active one.
+Mode-line `:eval' forms run with `selected-window' bound to the window
+being drawn; lambda-line caches the truly active one in
+`lambda-line--selected-window'.  Without lambda-line, every window is."
+  (or (not (boundp 'lambda-line--selected-window))
+    (eq (selected-window) lambda-line--selected-window)))
+
+(defun dl-modeline--prepend-segments (composed)
+  "Prepend `lambda-line-user-mode' and `dl-modeline-segments' to COMPOSED.
 Applied at the `lambda-line-compose' return — injecting earlier (e.g.
 into `lambda-line-mode-name') gets wiped because compose calls
-`(propertize SEGMENT 'face …)' which strips per-character faces set by
-the user-mode renderer (e.g. `meow-indicator')."
-  (if (functionp lambda-line-user-mode)
-    (concat (funcall lambda-line-user-mode) composed)
+`(propertize SEGMENT \\='face …)' which strips per-character faces set by
+the segment renderers (e.g. `meow-indicator')."
+  (concat
+    (mapconcat #'funcall
+      (cons (if (functionp lambda-line-user-mode) lambda-line-user-mode #'ignore)
+        dl-modeline-segments))
     composed))
 
 ;; `lambda-line-compose' is margin-naive in two places:
@@ -117,7 +136,7 @@ the user-mode renderer (e.g. `meow-indicator')."
   (lambda-line-user-mode #'dl-meow-indicator) ;; show meow state in modeline(greys out when inactive)
   :config
   (advice-add 'lambda-line-compose :filter-return
-    #'dl-modeline--prepend-user-mode)
+    #'dl-modeline--prepend-segments)
   ;; activate lambda-line
   (lambda-line-mode)
   ;; set divider line in footer

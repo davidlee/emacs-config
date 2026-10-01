@@ -2,6 +2,20 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-10-01 — org-iw session in lambda-line
+
+org-iw shows its session (`IW[queue: title]`) in `global-mode-string`,
+which the tab bar renders but lambda-line ignores, so the bottom bar showed
+nothing. `dl-modeline-segments` is a new list of functions prepended to the
+lambda-line (after the meow indicator); `org/dl-org-iw.el` adds one that
+shows the session in the active window only. It calls the private
+`org-iw--mode-line` until org-iw publishes a session string (IMP-001).
+`dl-modeline-window-active-p` replaces the copy in `dl-meow-indicator`.
+Also: `org-iw-exclude-regexp` was `~/notes/archive/`, which never matches
+a true name, so the archive was scanned; now `/notes/archive/`. Removed a
+pasted README settings block that `:config` silently overrode.
+Tests in `lisp/test/dl-modeline-test.el`.
+
 ## 2026-09-30 — nix: apheleia owns formatting, with alejandra
 
 Saving a `.nix` file ran two formatters: eglot's save hook (nixd, configured

@@ -1,6 +1,7 @@
 ;;; dl-meow.el --- Meow modal bindings -*- lexical-binding: t; -*-
 
 (require 'dl-keymap)
+(require 'dl-modeline)
 
 ;; Meow indicator face attrs live in `core/dl-faces.el' (with
 ;; `enable-theme-functions' wiring) — single source of truth for face
@@ -11,15 +12,11 @@
   "Face for the meow state indicator in inactive modelines.")
 
 (defun dl-meow-indicator ()
-  "Wrap `meow-indicator', greying it out in inactive modelines.
-Mode-line `:eval' forms run with `selected-window' bound to the window
-being drawn; lambda-line caches the truly active one in
-`lambda-line--selected-window'. Mismatch ⇒ inactive."
+  "Wrap `meow-indicator', greying it out in inactive modelines."
   (let ((s (meow-indicator)))
     (if (and (stringp s)
           (not (string-empty-p s))
-          (boundp 'lambda-line--selected-window)
-          (not (eq (selected-window) lambda-line--selected-window)))
+          (not (dl-modeline-window-active-p)))
       (propertize (substring-no-properties s)
         'face 'dl-meow-indicator-inactive)
       s)))
