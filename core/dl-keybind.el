@@ -13,9 +13,19 @@
   (global-set-key (kbd "C-M-<down>")  #'windmove-down)
   (global-set-key (kbd "C-M-<right>") #'windmove-right))
 
-;; Tab-bar + buffer chords.
-(keymap-global-set "s-<prior>"   'tab-bar-switch-to-next-tab)
-(keymap-global-set "s-<next>"    'tab-bar-switch-to-prev-tab)
+;; Tab chords: M-PgUp/PgDn walk tab-bar tabs (layouts), C-PgUp/PgDn walk
+;; this window's tab-line (buffers).  Super+PgUp/PgDn belong to the
+;; compositor (umbriel workspaces).  These shadow Emacs defaults:
+;;   M-PgUp/PgDn  `scroll-other-window-down' / `-window' (still C-M-S-v / C-M-v)
+;;   C-PgUp/PgDn  `scroll-right' / `scroll-left'          (still C-x > / C-x <)
+;; ghostel lets them through via `ghostel-keymap-exceptions'
+;; (apps/dl-ghostel.el).  s-{ / s-} also walk tab-bar tabs.
+(keymap-global-set "M-<prior>"   'tab-bar-switch-to-prev-tab)
+(keymap-global-set "M-<next>"    'tab-bar-switch-to-next-tab)
+(keymap-global-set "C-<prior>"   'tab-line-switch-to-prev-tab)
+(keymap-global-set "C-<next>"    'tab-line-switch-to-next-tab)
+(keymap-global-set "s-{"         'tab-bar-switch-to-prev-tab)
+(keymap-global-set "s-}"         'tab-bar-switch-to-next-tab)
 (keymap-global-set "M-s-<prior>" 'switch-to-next-buffer)
 (keymap-global-set "M-s-<next>"  'switch-to-prev-buffer)
 

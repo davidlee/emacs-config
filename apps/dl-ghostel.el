@@ -18,7 +18,13 @@
 (use-package ghostel
   :ensure nil
   :vc (:url "https://github.com/dakra/ghostel"
-        :rev :newest))
+        :rev :newest)
+  :custom
+  ;; Upstream's list, plus the tab chords (core/dl-keybind.el) so they
+  ;; switch tabs here too; the terminal no longer sees C-/M-PgUp/PgDn.
+  (ghostel-keymap-exceptions
+    '("C-c" "C-x" "C-u" "C-h" "M-x" "M-:" "C-\\"
+       "C-<prior>" "C-<next>" "M-<prior>" "M-<next>")))
 
 (use-package popterm
   :config

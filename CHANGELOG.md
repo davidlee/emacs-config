@@ -2,6 +2,16 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-10-01 — tab chords: M-PgUp/PgDn tab-bar, C-PgUp/PgDn tab-line
+
+Super+PgUp/PgDn never reached Emacs (umbriel workspaces), so tab-bar
+switching moves to M-PgUp/PgDn (direction fixed: PgUp is previous) and
+C-PgUp/PgDn walks the window's tab-line. s-{ / s-} are global now, not
+only meow-normal, so they work in org and ghostel. ghostel lets all four
+PgUp/PgDn chords through via `ghostel-keymap-exceptions`. Shadowed
+defaults (scroll other window, horizontal scroll) are listed in
+`core/dl-keybind.el`.
+
 ## 2026-10-01 — project layouts saved per tab, not on a timer
 
 project-x's 10-minute timer saved whichever project was current — at
