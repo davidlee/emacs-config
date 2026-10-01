@@ -81,10 +81,11 @@ Exited sessions stay listed with an `ended' field; they are skipped."
            (split-string output "\n" t))))
 
 (defun dl-zmx-sessions ()
-  "Return running zmx sessions, as alists of fields."
+  "Return running zmx sessions, as alists of fields.
+stderr is discarded: with no sessions, zmx reports that there."
   (dl-zmx--parse-sessions
    (with-output-to-string
-     (call-process dl-zmx-command nil standard-output nil "list"))))
+     (call-process dl-zmx-command nil (list standard-output nil) nil "list"))))
 
 (defun dl-zmx--session-dir (session)
   "Return SESSION's working directory, or nil if not reported."

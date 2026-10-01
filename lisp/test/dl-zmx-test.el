@@ -62,6 +62,17 @@
 (ert-deftest dl-zmx/parse-sessions-empty-output ()
   (should (null (dl-zmx--parse-sessions ""))))
 
+(ert-deftest dl-zmx/sessions-ignore-stderr ()
+  "With no sessions, `zmx list' explains itself on stderr."
+  (let ((dl-zmx-command (make-temp-file "zmx-stub")))
+    (unwind-protect
+        (progn
+          (with-temp-file dl-zmx-command
+            (insert "#!/bin/sh\necho 'no sessions found in /run/zmx' >&2\n"))
+          (set-file-modes dl-zmx-command #o700)
+          (should (null (dl-zmx-sessions))))
+      (delete-file dl-zmx-command))))
+
 (ert-deftest dl-zmx/session-dir-from-cwd-url ()
   (should (equal (dl-zmx--session-dir '((cwd . "file://h/srv/my%20dir")))
                  "/srv/my dir/"))

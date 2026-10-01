@@ -48,6 +48,10 @@ buffer, or reattaches in a new one (no labels: they only apply on create).
 Removed `apps/dl-shpool.el` and its `C-c m` bindings: zmx covers attach,
 list and kill; restore and force-attach weren't worth porting.
 
+Fix: with no sessions running, `zmx list` writes `no sessions found …`
+to stderr, which `call-process` merged into the parsed output —
+`substring: Wrong type argument`. stderr is now discarded.
+
 ## 2026-10-01 — gptel: composable presets
 
 Presets move to `apps/dl-gptel-presets.el`, one table, short names
