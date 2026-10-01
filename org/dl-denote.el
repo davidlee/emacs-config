@@ -11,7 +11,9 @@
     '("pkm" "writing" "reading" "project" "area" "source" "slip"
        "reference" "index" "journal" "weekly" "emacs"
        "idea" "draft" "meeting" "person" "work"
-       "work-relevant" "work-adjacent" "management" "technical-leadership"))
+       "rust" "zig" "cli"
+       "management" "leadership" "architecture" "tech" "ai"
+       "satan" "doctrine" "admin"))
   (denote-infer-keywords t)
   (denote-sort-keywords t)
   (denote-file-type 'org)
@@ -19,7 +21,7 @@
 
 (use-package denote-explore) ; todo setup
 
-(defun my/denote-kill-link-to-current-file (&optional id-only)
+(defun my/denote-kill-linAk-to-current-file (&optional id-only)
   "Copy a denote link for the current buffer's file to the kill-ring.
 With prefix arg ID-ONLY, omit the title and store the bare `[[denote:ID]]'."
   (interactive "P")
