@@ -2,6 +2,13 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-10-01 — tab-line chords move to C-M-PgUp/PgDn
+
+C-PgUp/PgDn are terminal paging keys in ghostty, so ghostel gives them
+back to the terminal and Emacs keeps its defaults (`scroll-right` /
+`scroll-left`). tab-line switching moves to the unbound C-M-PgUp/PgDn,
+which ghostel now lets through instead.
+
 ## 2026-10-01 — ghostel: PgUp/PgDn reach the terminal
 
 `pixel-scroll-precision-mode`'s minor-mode map bound PgUp/PgDn to scroll

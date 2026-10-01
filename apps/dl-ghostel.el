@@ -35,10 +35,10 @@ with a copy lacking those keys; wheel scrolling stays smooth."
         :rev :newest)
   :custom
   ;; Upstream's list, plus the tab chords (core/dl-keybind.el) so they
-  ;; switch tabs here too; the terminal no longer sees C-/M-PgUp/PgDn.
+  ;; switch tabs here too; the terminal no longer sees M-/C-M-PgUp/PgDn.
   (ghostel-keymap-exceptions
     '("C-c" "C-x" "C-u" "C-h" "M-x" "M-:" "C-\\"
-       "C-<prior>" "C-<next>" "M-<prior>" "M-<next>"))
+       "M-<prior>" "M-<next>" "C-M-<prior>" "C-M-<next>"))
   :hook (ghostel-mode . dl-ghostel--pass-paging-keys))
 
 (use-package popterm
