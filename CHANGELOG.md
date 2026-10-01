@@ -2,6 +2,14 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-10-01 — ghostel: PgUp/PgDn reach the terminal
+
+`pixel-scroll-precision-mode`'s minor-mode map bound PgUp/PgDn to scroll
+the Emacs window, beating ghostel's major-mode map, so `less`, `man` and
+TUIs never saw them. ghostel buffers now shadow that map with a copy
+lacking those keys (`minor-mode-overriding-map-alist`); wheel scrolling
+stays smooth. Test in `lisp/test/dl-ghostel-test.el`.
+
 ## 2026-10-01 — tab chords: M-PgUp/PgDn tab-bar, C-PgUp/PgDn tab-line
 
 Super+PgUp/PgDn never reached Emacs (umbriel workspaces), so tab-bar
