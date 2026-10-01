@@ -26,8 +26,6 @@
 (keymap-global-set "C-M-<next>"  'tab-line-switch-to-next-tab)
 (keymap-global-set "s-{"         'tab-bar-switch-to-prev-tab)
 (keymap-global-set "s-}"         'tab-bar-switch-to-next-tab)
-(keymap-global-set "M-s-<prior>" 'switch-to-next-buffer)
-(keymap-global-set "M-s-<next>"  'switch-to-prev-buffer)
 
 (global-set-key (kbd "M-/") 'hippie-expand)
 (global-set-key (kbd "C-;") 'iedit-mode)
