@@ -79,6 +79,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (defvar-keymap my-eval-map        :name "eval")
 (defvar-keymap my-term-map        :name "term")
 (defvar-keymap my-fold-map        :name "fold")
+(defvar-keymap my-org-iw-map      :name "org-iw")
 
 ;; Bind prefix maps globally under C-c <letter>.
 (define-key global-map (kbd "C-c f") my-file-map)
@@ -88,6 +89,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (define-key global-map (kbd "C-c p") my-project-map)
 (define-key global-map (kbd "C-c j") my-jump-map)
 (define-key global-map (kbd "C-c g") my-git-map)
+(define-key global-map (kbd "C-c i") my-org-iw-map)
 (define-key global-map (kbd "C-c n") my-notes-map)
 (define-key global-map (kbd "C-c o") my-org-map)
 (define-key global-map (kbd "C-c t") my-toggle-map)
@@ -391,6 +393,10 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-toggle-map "=" #'aggressive-indent-mode           "aggressive-indent")
 (my/bind my-toggle-map "E" #'my/eglot-toggle                  "eglot")
 
+(my/bind my-org-iw-map "c" #'org-iw-continue    "org-iw-continue")
+(my/bind my-org-iw-map "a" #'org-iw-add         "org-iw-add")
+(my/bind my-org-iw-map "v" #'org-iw-visit-next  "org-iw-visit-next")
+(my/bind my-org-iw-map "q" #'org-iw-end-session "org-iw-end-session")
 
 
 

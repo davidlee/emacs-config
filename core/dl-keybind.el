@@ -61,7 +61,6 @@
 (global-set-key (kbd "C-M--") #'my/global-text-scale-increase)
 (global-set-key (kbd "C-S-0") #'my/global-text-scale-reset)
 
-
 (global-unset-key (kbd "C-z"))
 (global-set-key (kbd "C-z")   'undo-fu-only-undo)
 (global-set-key (kbd "C-S-z") 'undo-fu-only-redo)
@@ -106,6 +105,7 @@ Window resize: _<left>_/_<right>_ width  _<up>_/_<down>_ height  _=_ balance  _q
           bindings))
       keymap)
     (nreverse bindings)))
+
 
 ;; Discovery cheatsheet:
 ;;   C-h k        describe-key

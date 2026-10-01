@@ -38,6 +38,8 @@ with a copy lacking those keys; wheel scrolling stays smooth."
   ;; Upstream's list, plus the tab chords (core/dl-keybind.el) so they
   ;; switch tabs here too, and S-PgUp/PgDn so they page the scrollback,
   ;; as in ghostty.  The terminal no longer sees these.
+  (xterm-extra-capabilities '(getSelection setSelection)) ;; make selection work / OSC 52
+  (select-enable-clipboard t)
   (ghostel-keymap-exceptions
     '("C-c" "C-x" "C-u" "C-h" "M-x" "M-:" "C-\\"
        "C-<prior>" "C-<next>" "M-<prior>" "M-<next>"

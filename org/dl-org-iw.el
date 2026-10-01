@@ -11,7 +11,11 @@
   (org-iw-queues '(("ARTICLES" :name "Articles")
                     ("LEARN" :name "Learn")
                     ("READ" :name "Read")
-                    ("DO" :name "Do"))))
+                    ("DO" :name "Do" :placements
+                      (("Next" (after 1))
+                        ("Halfway" (percent 50))
+                        ("Last" end))
+                      :default "Next"))))
 
 (defvar org-iw--session)
 (declare-function org-iw--mode-line "org-iw")
