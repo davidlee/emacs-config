@@ -2,6 +2,14 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-10-01 — tab and paging chords match ghostty
+
+The previous entry assumed C-PgUp/PgDn page in ghostty; they switch its
+tabs, and S-PgUp/PgDn page its scrollback. So C-PgUp/PgDn now walk
+tab-bar tabs everywhere (M-PgUp/PgDn and s-{ / s-} still do), and in
+ghostel S-PgUp/PgDn page the scrollback, which is buffer text. tab-line
+stays on C-M-PgUp/PgDn.
+
 ## 2026-10-01 — tab-line chords move to C-M-PgUp/PgDn
 
 C-PgUp/PgDn are terminal paging keys in ghostty, so ghostel gives them

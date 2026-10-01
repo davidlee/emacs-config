@@ -13,13 +13,16 @@
   (global-set-key (kbd "C-M-<down>")  #'windmove-down)
   (global-set-key (kbd "C-M-<right>") #'windmove-right))
 
-;; Tab chords: M-PgUp/PgDn walk tab-bar tabs (layouts), C-M-PgUp/PgDn
-;; walk this window's tab-line (buffers).  Super+PgUp/PgDn belong to the
-;; compositor (umbriel workspaces); C-PgUp/PgDn stay with terminals, as
-;; in ghostty.  M-PgUp/PgDn shadow `scroll-other-window-down' /
-;; `scroll-other-window' (still C-M-S-v / C-M-v); C-M-PgUp/PgDn were free.
+;; Tab chords: C-PgUp/PgDn walk tab-bar tabs (layouts), as in ghostty;
+;; M-PgUp/PgDn and s-{ / s-} do too.  C-M-PgUp/PgDn walk this window's
+;; tab-line (buffers).  Super+PgUp/PgDn belong to the compositor (umbriel
+;; workspaces).  These shadow Emacs defaults:
+;;   C-PgUp/PgDn  `scroll-right' / `scroll-left'          (still C-x > / C-x <)
+;;   M-PgUp/PgDn  `scroll-other-window-down' / `-window' (still C-M-S-v / C-M-v)
 ;; ghostel lets them through via `ghostel-keymap-exceptions'
-;; (apps/dl-ghostel.el).  s-{ / s-} also walk tab-bar tabs.
+;; (apps/dl-ghostel.el).
+(keymap-global-set "C-<prior>"   'tab-bar-switch-to-prev-tab)
+(keymap-global-set "C-<next>"    'tab-bar-switch-to-next-tab)
 (keymap-global-set "M-<prior>"   'tab-bar-switch-to-prev-tab)
 (keymap-global-set "M-<next>"    'tab-bar-switch-to-next-tab)
 (keymap-global-set "C-M-<prior>" 'tab-line-switch-to-prev-tab)

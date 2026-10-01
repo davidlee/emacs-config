@@ -16,6 +16,7 @@
 ;; inside the repo, not at the root.  package-vc writes autoloads /
 ;; load-path entries based on this.
 (defvar pixel-scroll-precision-mode-map)
+(defvar ghostel-mode-map)
 
 (defun dl-ghostel--pass-paging-keys ()
   "Send PgUp/PgDn to the terminal in this buffer.
@@ -35,11 +36,18 @@ with a copy lacking those keys; wheel scrolling stays smooth."
         :rev :newest)
   :custom
   ;; Upstream's list, plus the tab chords (core/dl-keybind.el) so they
-  ;; switch tabs here too; the terminal no longer sees M-/C-M-PgUp/PgDn.
+  ;; switch tabs here too, and S-PgUp/PgDn so they page the scrollback,
+  ;; as in ghostty.  The terminal no longer sees these.
   (ghostel-keymap-exceptions
     '("C-c" "C-x" "C-u" "C-h" "M-x" "M-:" "C-\\"
-       "M-<prior>" "M-<next>" "C-M-<prior>" "C-M-<next>"))
-  :hook (ghostel-mode . dl-ghostel--pass-paging-keys))
+       "C-<prior>" "C-<next>" "M-<prior>" "M-<next>"
+       "C-M-<prior>" "C-M-<next>" "S-<prior>" "S-<next>"))
+  :hook (ghostel-mode . dl-ghostel--pass-paging-keys)
+  ;; The scrollback is buffer text, so paging it is a window scroll.
+  ;; Bound in the parent map: the semi-char map is rebuilt on change.
+  :bind (:map ghostel-mode-map
+          ("S-<prior>" . scroll-down-command)
+          ("S-<next>"  . scroll-up-command)))
 
 (use-package popterm
   :config
