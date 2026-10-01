@@ -395,7 +395,8 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 ;; Gallium alpha positions → meow-normal bindings
 ;; b:block l:line  d:del  c:chg  v:visit    j:join y:save  o:C-c  u:undo ,:thing
 ;; n:srch  r:repl  t:till s:kill g:cancel   p:yank h:←word a:appd e:word→ i:ins
-;; x:—     q:quit  m:—    w:mark z:pop      k:—    f:find  ':rpt  ;:rev  .:thing
+;; x:grow  q:quit  m:—    w:mark z:pop      k:—    f:find  ':rpt  ;:rev  .:thing
+;; X:shrink  >/<:indent  C-r:redo  C-o/C-S-o:xref back/forward
 
 (defun my/meow-delete-dwim ()
   "Cut the active selection, or delete one character forward."
@@ -414,6 +415,30 @@ Warns when KEY already has a binding in MAP that differs from CMD."
                 (line-end-position))))
     (meow--select (meow--make-selection '(select . transient) beg end) t)))
 
+(defun my/meow--shift-lines (columns)
+  "Shift the lines the selection touches, or the current line, by COLUMNS.
+A selection ending at a line start excludes that line.  The selection
+stays active so the shift can be repeated."
+  (let* ((beg (if (region-active-p) (region-beginning) (point)))
+         (end (if (region-active-p) (region-end) (point))))
+    (indent-rigidly
+     (save-excursion (goto-char beg) (line-beginning-position))
+     (save-excursion
+       (goto-char end)
+       (when (and (bolp) (> end beg)) (backward-char))
+       (line-end-position))
+     columns)
+    (setq deactivate-mark nil)))
+
+(defun my/meow-indent-right (n)
+  "Shift selected lines right by N times `standard-indent'."
+  (interactive "p")
+  (my/meow--shift-lines (* n standard-indent)))
+
+(defun my/meow-indent-left (n)
+  "Shift selected lines left by N times `standard-indent'."
+  (interactive "p")
+  (my/meow--shift-lines (* (- n) standard-indent)))
 
 (defun meow-setup ()
   (setq meow-cheatsheet-layout meow-cheatsheet-layout-qwerty)
@@ -518,6 +543,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
     '("r" . meow-replace)
     '("R" . meow-swap-grab)
     '("u" . meow-undo)
+    '("C-r" . undo-redo)
     '("U" . meow-undo-in-selection)
     '("p" . meow-yank)
     '("y" . meow-save)
@@ -545,6 +571,10 @@ Warns when KEY already has a binding in MAP that differs from CMD."
     '("g" . meow-cancel-selection)
     '("G" . meow-grab)
     '("j" . meow-join)
+    '("x" . expreg-expand)
+    '("X" . expreg-contract)
+    '(">" . my/meow-indent-right)
+    '("<" . my/meow-indent-left)
     '("z" . meow-pop-selection)
     '(";" . meow-reverse)
 
@@ -558,6 +588,9 @@ Warns when KEY already has a binding in MAP that differs from CMD."
     '("'" . repeat)
     '("!" . consult-buffer)
     '("/" . avy-goto-char-2)
+    ;; Jump back/forward (Helix C-o/C-i; C-i is TAB, so C-S-o).
+    '("C-o"   . xref-go-back)
+    '("C-S-o" . xref-go-forward)
     '("<escape>" . ignore)))
 
 ;; Other

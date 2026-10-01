@@ -521,6 +521,15 @@ Elisp, `C-h k` reports `puni-backward-delete-char` for Backspace and
 `delete-forward-char` for NAV Delete. The old `D` backward-delete alias is
 removed.
 
+## Meow editing gaps (IMP-017)
+
+| Key | Command | Notes |
+|---|---|---|
+| `C-r` | `undo-redo` | Redo after `u`; built-in, pairs with `meow-undo`'s `undo`. |
+| `>` / `<` | `my/meow-indent-right` / `-left` | Shift every line the selection touches (or the current line) by `standard-indent`; selection stays active for repeats. |
+| `x` / `X` | `expreg-expand` / `expreg-contract` | Grow/shrink the selection by syntax (tree-sitter aware). |
+| `C-o` / `C-S-o` | `xref-go-back` / `xref-go-forward` | Jump list for definition jumps only. `C-i` is TAB, hence `C-S-o`. Search/goto-line jumps are not recorded. |
+
 ## Layout
 
 - Gallium split keyboard with home-row arrows on a layer. Directional bindings use `<left>/<down>/<up>/<right>`, not h/j/k/l. Meow normal `h` / `e` move backward / forward by word; `o` opens the `C-c` command map.
