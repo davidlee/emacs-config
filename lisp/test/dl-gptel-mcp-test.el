@@ -10,14 +10,29 @@
 
 (declare-function dl-gptel-mcp-org-connect "dl-gptel-mcp")
 (declare-function dl-gptel-mcp-org-server "dl-gptel-mcp")
+(declare-function dl-gptel-mcp-org-files "dl-gptel-mcp")
+(defvar dl-notes-root)
 
-(defmacro dl-gptel-mcp-test--with-org-server (agenda-file &rest body)
-  "Run BODY with gptel connected to org-mcp over AGENDA-FILE, then tear down.
+(defmacro dl-gptel-mcp-test--with-notes (files &rest body)
+  "Run BODY with `dl-notes-root' bound to a fresh directory holding FILES.
+FILES are paths relative to the root; each is created as a one-task Org
+file.  The directory is deleted afterwards."
+  (declare (indent 1))
+  `(let ((dl-notes-root (file-name-as-directory (make-temp-file "dl-gptel-mcp-test" t))))
+     (unwind-protect
+         (progn
+           (dolist (file ,files)
+             (let ((path (expand-file-name file dl-notes-root)))
+               (make-directory (file-name-directory path) t)
+               (write-region "* TODO Test task\n" nil path)))
+           ,@body)
+       (delete-directory dl-notes-root t))))
+
+(defmacro dl-gptel-mcp-test--with-org-server (&rest body)
+  "Run BODY with gptel connected to org-mcp over the notes, then tear down.
 Serves this Emacs on a private socket for the stdio script's emacsclient
 calls, and isolates gptel's tool registry and the MCP hub."
-  (declare (indent 1))
   `(let ((server-name (format "dl-gptel-mcp-test-%d" (emacs-pid)))
-         (org-agenda-files (list ,agenda-file))
          (org-mcp-allowed-files nil)
          (mcp-hub-servers nil)
          (gptel-tools nil)
@@ -55,20 +70,29 @@ calls, and isolates gptel's tool registry and the MCP hub."
     (should (member "--server-id=org-mcp" args))
     (should (member "--init-function=org-mcp-enable" args))))
 
+(ert-deftest dl-gptel-mcp/org-files-are-the-notes-bar-archives ()
+  "Every Org file under the notes root is in scope, except archives."
+  (skip-unless (locate-library "mcp-hub"))
+  (dl-gptel-mcp-test--with-notes '("inbox.org" "slips/idea.org" "work/journal/day.org"
+                                   "archive/old.org" "work/archive/legacy.org"
+                                   "slips/archived-thought.org" "readme.txt")
+    (should (equal (sort (dl-gptel-mcp-org-files) #'string<)
+                   (mapcar (lambda (file) (expand-file-name file dl-notes-root))
+                           '("inbox.org" "slips/archived-thought.org" "slips/idea.org"
+                             "work/journal/day.org"))))))
+
 (ert-deftest dl-gptel-mcp/org-tools-reach-gptel-and-writes-confirm ()
   "Connecting registers org-mcp's tools; only read-only ones run unprompted."
   (skip-unless (locate-library "mcp-hub"))
-  (let ((agenda (make-temp-file "dl-gptel-mcp-test" nil ".org" "* TODO Test task\n")))
-    (unwind-protect
-        (dl-gptel-mcp-test--with-org-server agenda
-          ;; Registered, not activated: presets choose the active tools.
-          (should-not gptel-tools)
-          (should-not (gptel-tool-confirm (dl-gptel-mcp-test--tool "org-read-outline")))
-          (should (gptel-tool-confirm (dl-gptel-mcp-test--tool "org-add-todo")))
-          (should (gptel-tool-confirm (dl-gptel-mcp-test--tool "org-refile-headline")))
-          (should (string-match-p (regexp-quote agenda)
-                                  (dl-gptel-mcp-test--call "org-get-allowed-files"))))
-      (delete-file agenda))))
+  (dl-gptel-mcp-test--with-notes '("slips/idea.org")
+    (dl-gptel-mcp-test--with-org-server
+      ;; Registered, not activated: presets choose the active tools.
+      (should-not gptel-tools)
+      (should-not (gptel-tool-confirm (dl-gptel-mcp-test--tool "org-read-outline")))
+      (should (gptel-tool-confirm (dl-gptel-mcp-test--tool "org-add-todo")))
+      (should (gptel-tool-confirm (dl-gptel-mcp-test--tool "org-refile-headline")))
+      (should (string-match-p (regexp-quote (expand-file-name "slips/idea.org" dl-notes-root))
+                              (dl-gptel-mcp-test--call "org-get-allowed-files"))))))
 
 (provide 'dl-gptel-mcp-test)
 ;;; dl-gptel-mcp-test.el ends here

@@ -88,7 +88,7 @@ uses the same account rather than falling through to auth-source."
 (autoload 'dl-gptel-mcp-org-connect "dl-gptel-mcp")
 
 (gptel-make-preset 'org
-  :description "default, plus org-mcp tools over the agenda files"
+  :description "default, plus org-mcp tools over ~/notes (bar archives)"
   :parents 'default
   :pre #'dl-gptel-mcp-org-connect
   :tools '(:append ("mcp-org-mcp")))

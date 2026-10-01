@@ -22,6 +22,7 @@
 (require 'mcp-server-lib-commands)
 (require 'org-mcp)
 (require 'server)
+(require 'dl-notes-paths)
 
 (defun dl-gptel-mcp-org-server ()
   "Return the `mcp-hub-servers' entry for org-mcp, served by this Emacs.
@@ -57,9 +58,22 @@ Presets choose the active tools."
     (gptel-mcp-connect (list server) 'sync))
   (dl-gptel-mcp--confirm-writes server))
 
+(defun dl-gptel-mcp-org-files ()
+  "Return the Org files org-mcp may touch: all notes outside an archive/.
+Wider than variable `org-agenda-files', which leaves out slips, backlog and
+reference notes by design: those are not agenda material, but they are
+notes an assistant should read and file into."
+  (seq-remove (lambda (file)
+                (string-match-p "\\(?:\\`\\|/\\)archive/"
+                                (file-relative-name file dl-notes-root)))
+              (directory-files-recursively
+               (expand-file-name dl-notes-root) "\\.org\\'")))
+
 (defun dl-gptel-mcp-org-connect ()
-  "Connect gptel to org-mcp, scoped to the current agenda files."
-  (setq org-mcp-allowed-files (org-agenda-files))
+  "Connect gptel to org-mcp, scoped to the notes as they are now.
+The file list is recomputed on every call, so new notes are seen
+whenever a preset that connects is applied."
+  (setq org-mcp-allowed-files (dl-gptel-mcp-org-files))
   (unless mcp-server-lib--running (mcp-server-lib-start))
   (setf (alist-get "org-mcp" mcp-hub-servers nil nil #'equal)
         (cdr (dl-gptel-mcp-org-server)))

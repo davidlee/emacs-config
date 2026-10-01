@@ -4,9 +4,12 @@ Notable changes to this Emacs config. Loosely dated; not versioned.
 
 ## 2026-10-01 — gptel: org-mcp preset, emcp find-references
 
-New `org` preset: `default` plus org-mcp's 18 tools over the agenda
-files. Its `:pre` connects through mcp.el (`gptel-mcp-connect`, new `mcp`
-package); mcp-server-lib's stdio script relays back into this Emacs over
+New `org` preset: `default` plus org-mcp's 18 tools over every Org
+file in ~/notes outside an `archive/` — wider than the agenda, which
+leaves out slips, backlog and references by design. The list is
+recomputed each time the preset is applied. Its `:pre` connects
+through mcp.el (`gptel-mcp-connect`, new `mcp` package);
+mcp-server-lib's stdio script relays back into this Emacs over
 emacsclient. Tools org-mcp does not mark read-only (add, edit, refile,
 archive, …) ask first — mcp.el drops that hint. Connecting only
 registers the tools: `gptel-mcp-connect` would also switch them on in
