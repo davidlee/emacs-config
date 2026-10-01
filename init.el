@@ -83,7 +83,7 @@
 ;; Apps
 (require 'dl-term)
 (require 'dl-ghostel)
-(require 'dl-shpool)
+(require 'dl-zmx)
 (require 'dl-magit)
 (require 'dl-claude)
 ;; (require 'dl-eaf)

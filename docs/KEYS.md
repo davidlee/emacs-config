@@ -69,7 +69,7 @@ The lint catches what `my/bind`'s collision warning can't: foreign packages that
 | `C-c o` | `my-org-map`     | org — cross-buffer entry points (clocking, refile, heading jump). In-buffer ops stay at Org's `C-c C-<x>`. |
 | `C-c t` | `my-toggle-map`  | toggles |
 | `C-c e` | `my-eval-map`    | eval / elisp (scope ladder over Elisp) |
-| `C-c m` | `my-term-map`    | ghostel + shpool (Meow alias: `SPC M` — see Gotchas) |
+| `C-c m` | `my-term-map`    | ghostel + zmx (Meow alias: `SPC M` — see Gotchas) |
 | `C-c z` | `my-fold-map`    | fold (kirigami dispatcher — routes to outline / hs / treesit-fold) |
 
 ## Fold (`C-c z`)
@@ -399,8 +399,8 @@ the leader alias. `C-c g` always works.
 
 ## Term (`C-c m`)
 
-[ghostel](https://github.com/dakra/ghostel) terminals plus shpool
-session manager (`apps/dl-shpool.el`). `SPC m` is eaten by
+[ghostel](https://github.com/dakra/ghostel) terminals plus zmx
+persistent sessions (`apps/dl-zmx.el`). `SPC m` is eaten by
 `meow-keypad` (M- dispatcher) — use `SPC M` as the leader alias.
 
 | Key | Command | |
@@ -409,16 +409,8 @@ session manager (`apps/dl-shpool.el`). `SPC m` is eaten by
 | `C-c m T` | `my/ghostel-here`          | new ghostel in `default-directory` |
 | `C-c m o` | `ghostel-project`          | new ghostel at project root |
 | `C-c m n` | `ghostel-other`            | next ghostel buffer |
-| `C-c m a` | `my/shpool`                | attach shpool session |
-| `C-c m p` | `my/shpool-project`        | attach project session |
-| `C-c m F` | `my/shpool-force`          | force-attach (steal) |
-| `C-c m r` | `my/shpool-restore`        | restore session set |
-| `C-c m L` | `my/shpool-list`           | list sessions |
-| `C-c m d` | `my/shpool-detach-current` | detach |
-| `C-c m k` | `my/shpool-kill-session`   | kill session |
-| `C-c m +` | `my/shpool-add-current-to-restore` | add to restore set |
-| `C-c m -` | `my/shpool-remove-from-restore`    | remove from restore set |
-| `C-c m f` | `my/shpool-forget-session` | forget session |
+| `C-c m z` | `my/zmx-project`           | project zmx session (new / reattach); also `z` in `C-c p p` |
+| `C-c m Z` | `my/zmx-switch`            | any running zmx session: its buffer, or reattach |
 
 ## Toggle (`C-c t`)
 

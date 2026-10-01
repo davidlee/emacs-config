@@ -51,8 +51,8 @@ in Dired still drops to `wdired-change-to-wdired-mode` (built-in).
 
 ## Yazi / Broot wrappers
 
-`my/file-manager--launch` is the shared shape (same as `apps/dl-shpool.el`'s
-`ghostel-exec` pattern):
+`my/file-manager--launch` is the shared shape (same `ghostel-exec`
+pattern as `apps/dl-zmx.el`):
 
 1. Pick a starting directory — the visited file's directory if any, else
    `default-directory`.

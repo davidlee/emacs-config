@@ -13,9 +13,9 @@ metadata:
 
 | Bucket | Prefix | Example |
 | --- | --- | --- |
-| File / `provide` symbol | `dl-MODULE` | `dl-faces`, `dl-shpool` |
-| Module's public internals (vars, defcustoms, defface, helpers) | `dl-MODULE-name` | `dl-shpool-command`, `dl-meow-indicator-inactive` |
-| Module's private internals | `dl-MODULE--name` | `dl-shpool--attach-args` |
+| File / `provide` symbol | `dl-MODULE` | `dl-faces`, `dl-zmx` |
+| Module's public internals (vars, defcustoms, defface, helpers) | `dl-MODULE-name` | `dl-zmx-command`, `dl-meow-indicator-inactive` |
+| Module's private internals | `dl-MODULE--name` | `dl-zmx--label-safe` |
 | Personal command (user-callable) | `my/name` | `my/apply-fonts`, `my/journal-note` |
 | Helper or variable supporting a `my/` command | `my/name` | `my/font-name`, `my/auto-save-idle-timer` |
 
@@ -23,11 +23,11 @@ Rules of thumb:
 
 - **Role beats file.** A `my/` command living in a `dl-MODULE` file is fine
   (`my/apply-fonts` in `dl-faces.el`).
-- **`my/` propagates through the helper family.** `my/shpool--candidate-status`
-  is correct even though `dl-shpool` is the file — it's plumbing for the
-  `my/shpool*` commands.
+- **`my/` propagates through the helper family.** `my/meow--render-row`
+  is correct even though `dl-meow-cheatsheet` is the file — it's plumbing
+  for the `my/meow*` commands.
 - **Defcustoms are always module-owned** → `dl-MODULE-...`.
-- **Private gets `--`** regardless of bucket (`dl-shpool--attach-args`,
+- **Private gets `--`** regardless of bucket (`dl-zmx--label-safe`,
   `my/foo--helper`).
 
 Grandfathered exceptions:

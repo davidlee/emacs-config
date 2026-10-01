@@ -341,16 +341,8 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-term-map   "T" #'my/ghostel-here                   "ghostel (new, here)")
 (my/bind my-term-map   "o" #'ghostel-project                   "ghostel (project)")
 (my/bind my-term-map   "n" #'ghostel-other                     "ghostel-next")
-(my/bind my-term-map   "a" #'my/shpool                         "attach")
-(my/bind my-term-map   "p" #'my/shpool-project                 "project")
-(my/bind my-term-map   "F" #'my/shpool-force                   "force-attach")
-(my/bind my-term-map   "r" #'my/shpool-restore                 "restore")
-(my/bind my-term-map   "L" #'my/shpool-list                    "list")
-(my/bind my-term-map   "d" #'my/shpool-detach-current          "detach")
-(my/bind my-term-map   "k" #'my/shpool-kill-session            "kill-session")
-(my/bind my-term-map   "+" #'my/shpool-add-current-to-restore  "+restore")
-(my/bind my-term-map   "-" #'my/shpool-remove-from-restore     "-restore")
-(my/bind my-term-map   "f" #'my/shpool-forget-session          "forget")
+(my/bind my-term-map   "z" #'my/zmx-project                    "zmx project")
+(my/bind my-term-map   "Z" #'my/zmx-switch                     "zmx switch")
 
 ;; Fold map -- kirigami routes to active backend (outline / hs / treesit-fold).
 (my/bind my-fold-map   "o" #'kirigami-open-fold      "open")

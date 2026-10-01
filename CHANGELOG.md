@@ -26,6 +26,28 @@ linker rejected `--as-needed`, causing native compilation to fail. Removed
 the flags from the running server and successfully recompiled gptel-openrouter,
 repeat-fu, repeat-fu-preset-meow, otpp, and project-x.
 
+## 2026-10-01 — zmx project terminals
+
+`my/zmx-project` (`C-c m z`, and `z` on the `C-c p p` switch-project
+menu; `apps/dl-zmx.el`): asks for an identifier, completing the
+project's running sessions; opens ghostel buffer `term-PROJECT-ID` at
+the project root running `zmx attach PROJECT-ID nu`. A running session
+is reattached. direnv is left to nu's `pre_prompt` hook.
+
+Sessions start in their own transient systemd scope (`dl-zmx-launcher`):
+zmx's daemon setsids but stays in its parent's cgroup, so under
+`emacs.service` (`KillMode=control-group`) an Emacs restart killed them.
+New sessions carry labels `project=NAME id=ID`; zmx labels allow only
+`[a-zA-Z0-9._-]`, so other characters become `-` in labels and session
+names alike.
+
+`my/zmx-switch` (`C-c m Z`): pick any running session, annotated with
+project label, attached clients and directory; jumps to its `term-…`
+buffer, or reattaches in a new one (no labels: they only apply on create).
+
+Removed `apps/dl-shpool.el` and its `C-c m` bindings: zmx covers attach,
+list and kill; restore and force-attach weren't worth porting.
+
 ## 2026-10-01 — gptel: composable presets
 
 Presets move to `apps/dl-gptel-presets.el`, one table, short names
