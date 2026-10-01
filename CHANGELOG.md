@@ -2,6 +2,16 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-10-01 — project layouts saved per tab, not on a timer
+
+project-x's 10-minute timer saved whichever project was current — at
+startup, the fresh layout over the saved one. Now each otpp tab's project
+layout is saved as the tab is left, and the current one at exit, but never
+over a layout an earlier session saved that this one has not restored
+(restore is still manual: `j` in the project-switch menu). Dropped
+project-x's project detector; `project-vc-extra-root-markers` finds the
+same roots. Tests in `lisp/test/dl-project-test.el`.
+
 ## 2026-10-01 — org-iw session in lambda-line
 
 org-iw shows its session (`IW[queue: title]`) in `global-mode-string`,

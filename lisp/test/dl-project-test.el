@@ -50,5 +50,70 @@ walk that hung Emacs."
                                 (dl-project-test--relative-files sub))))
         (delete-directory elsewhere t)))))
 
+;;; Layout saving (project-x)
+
+(add-to-list 'load-path (expand-file-name "elpa/project-x" user-emacs-directory))
+(require 'project-x)
+
+(defmacro dl-project-test--with-layouts (root &rest body)
+  "Run BODY with ROOT a scratch project and layouts in a scratch file.
+The session starts having restored and saved nothing; restores are
+tracked as in the live config."
+  (declare (indent 1))
+  `(let* ((,root (file-name-as-directory (make-temp-file "dl-project-test-" t)))
+          (project-x-window-list-file (make-temp-file "dl-project-test-layouts-"))
+          (project-x-window-alist nil)
+          (dl-project--owned-layouts nil)
+          (inhibit-message t))
+     (advice-add 'project-x--window-state-restore :around
+                 #'dl-project--note-restore)
+     (unwind-protect
+         (progn (write-region "" nil (expand-file-name ".project" ,root))
+                ,@body)
+       (advice-remove 'project-x--window-state-restore
+                      #'dl-project--note-restore)
+       (delete-directory ,root t)
+       (delete-file project-x-window-list-file))))
+
+(defun dl-project-test--earlier-layout (root)
+  "Give ROOT a layout saved by an earlier session."
+  (project-x--set-session-entry
+   root `((earlier . t) (files) (windows . ,(window-state-get nil t)))))
+
+(defun dl-project-test--earlier-layout-p (root)
+  "Non-nil while ROOT's saved layout is the earlier session's."
+  (alist-get 'earlier (project-x--session-entry root)))
+
+(ert-deftest dl-project/saves-new-layout ()
+  "A project with no saved layout gets one."
+  (dl-project-test--with-layouts root
+    (dl-project--save-layout root)
+    (should (project-x--session-has-window-state-p root))))
+
+(ert-deftest dl-project/keeps-unrestored-layout ()
+  "A layout saved by an earlier session survives until it is restored.
+Otherwise visiting the project without restoring would overwrite it."
+  (dl-project-test--with-layouts root
+    (dl-project-test--earlier-layout root)
+    (dl-project--save-layout root)
+    (should (dl-project-test--earlier-layout-p root))))
+
+(ert-deftest dl-project/saves-over-restored-layout ()
+  "Once restored, a layout is this session's to save over."
+  (dl-project-test--with-layouts root
+    (dl-project-test--earlier-layout root)
+    (project-x--window-state-restore root)
+    (dl-project--save-layout root)
+    (should-not (dl-project-test--earlier-layout-p root))))
+
+(ert-deftest dl-project/keeps-saving-own-layout ()
+  "A layout this session saved stays this session's to save over."
+  (dl-project-test--with-layouts root
+    (dl-project--save-layout root)
+    (project-x--set-session-entry
+     root (cons '(earlier . t) (project-x--session-entry root)))
+    (dl-project--save-layout root)
+    (should-not (dl-project-test--earlier-layout-p root))))
+
 (provide 'dl-project-test)
 ;;; dl-project-test.el ends here
