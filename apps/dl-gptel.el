@@ -81,10 +81,17 @@ uses the same account rather than falling through to auth-source."
   :model 'gpt-5.6-terra
   :system (concat "you're an advanced assistant for emacs knowledge work and coding. Stay in a tight, iterative loop with the user: concise responses, bounded tasks, not autonomous agentic execution.\n\n"
             (dl-gptel-readonly-system-note))
-  ;; "introspection": gptel-agent's elisp reference tools (docs, source,
-  ;; manuals); all run unprompted except variable_value.
   :tools '("Glob" "Grep" "Read" "Insert" "Edit" "Write" "Eval" "Bash"
-            "introspection")) ;; no Agent ;; this lets us use GPT subscription.
+            "introspection"))
+
+;; Autoloaded: mcp.el loads, and org-mcp's server starts, on first use.
+(autoload 'dl-gptel-mcp-org-connect "dl-gptel-mcp")
+
+(gptel-make-preset 'org
+  :description "default, plus org-mcp tools over the agenda files"
+  :parents 'default
+  :pre #'dl-gptel-mcp-org-connect
+  :tools '(:append ("mcp-org-mcp")))
 
 (use-package gptel-openrouter
   :ensure nil
@@ -144,6 +151,9 @@ uses the same account rather than falling through to auth-source."
       gptel-agent-dirs))
   (gptel-agent-update)
   (require 'gptel-agent-tools-introspection)
+  (require 'dl-gptel-emcp)
+  (dolist (tool dl-gptel-emcp-tools)
+    (apply #'gptel-make-tool (dl-gptel-emcp-tool-spec tool)))
   ;; Bash asks before every command by default; read-only ones needn't.
   (setf (gptel-tool-confirm (gptel-get-tool "Bash"))
     #'dl-gptel-bash-needs-confirm-p))

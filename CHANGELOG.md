@@ -2,6 +2,22 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-10-01 — gptel: org-mcp preset, emcp find-references
+
+New `org` preset: `default` plus org-mcp's 18 tools over the agenda
+files. Its `:pre` connects through mcp.el (`gptel-mcp-connect`, new `mcp`
+package); mcp-server-lib's stdio script relays back into this Emacs over
+emacsclient. Tools org-mcp does not mark read-only (add, edit, refile,
+archive, …) ask first — mcp.el drops that hint. Connecting only
+registers the tools: `gptel-mcp-connect` would also switch them on in
+every gptel buffer. The script needs an explicit
+`--server-id=org-mcp`; it would derive "org".
+
+emcp's `find-references` (elisp-refs call sites) joins the
+introspection tools, called in-process — no emcp server. The rest of
+emcp duplicates gptel-agent's introspection. `apps/dl-gptel-mcp.el`,
+`apps/dl-gptel-emcp.el`; tests alongside in `lisp/test/`.
+
 ## 2026-10-01 — tab and paging chords match ghostty
 
 The previous entry assumed C-PgUp/PgDn page in ghostty; they switch its
