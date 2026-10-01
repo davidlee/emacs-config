@@ -3,10 +3,10 @@
 
 ## Mental model
 
-- **Leader**: `C-c <letter>` is the durable prefix. In Meow normal state, `SPC <letter>` and `h <letter>` both mirror it. `C-c f f`, `SPC f f`, and `h f f` all reach `find-file`. `h` is bound directly to `mode-specific-map` (the C-c keymap), so lowercase `g` / `m` work without the capital-letter workaround the `SPC` leader needs.
+- **Leader**: `C-c <letter>` is the durable prefix. In Meow normal state, `SPC <letter>` mirrors it and `o` opens `mode-specific-map` (the `C-c` keymap). `C-c f f`, `SPC f f`, and `o f f` all reach `find-file`. The `o` route permits lowercase `g` / `m` without the capital-letter workaround the `SPC` leader needs.
 - **Editing vs. commands**: Meow normal state stays editing-focused (motions, selection, operators). Commands live under the leader.
 - **Single source of truth**: prefix maps, the `my/bind` helper, the Meow leader mirror, and which-key prefix labels all live in `core/dl-keymap.el`. Package files declare commands (`:commands`) and own their mode-local maps (`:bind (:map foo-mode-map …)` in `:config`).
-- **Discoverability**: `C-h` after a prefix triggers `embark-prefix-help-command`. `describe-keymap RET my-file-map RET` lists a map. `SPC ?` runs `meow-cheatsheet`. `which-key-idle-delay` is `0.3` (see `core/dl-keybind.el`); auto-popups fire after a third of a second of hesitation.
+- **Discoverability**: `C-h` after a prefix triggers `embark-prefix-help-command`. `describe-keymap RET my-file-map RET` lists a map. `SPC ?` runs the Gallium Meow cheatsheet. `which-key-idle-delay` is `0.3` (see `core/dl-keybind.el`); auto-popups fire after a third of a second of hesitation.
 
 ## Policy
 
@@ -507,9 +507,23 @@ Declare autoloads on the source package with `:commands`. Then bind centrally:
 - **`my/bind` override messages**. `my/bind: overriding KEY in MAP: OLD -> NEW` in `*Messages*` means two bindings fight. Resolve at the source.
 - **Meow keypad eats `SPC g` and `SPC m`**. After `SPC`, Meow checks `meow-keypad-meta-prefix` (`m` → M-) and `meow-keypad-ctrl-meta-prefix` (`g` → C-M-) **before** consulting the leader keymap (`meow-keypad.el:485-513`). `c` and `x` are similarly reserved as the `C-c`/`C-x` dispatchers. Workaround: lowercase `C-c g`/`C-c m` work everywhere; in Meow normal state use the capital aliases `SPC G`/`SPC M` (bound in `meow-leader-define-key`) or route via `SPC c g g`.
 
+## Meow deletion
+
+Normal `d` cuts the active selection; with no selection it deletes one
+character forward. Normal `D` extends the selection's right edge to the
+end of its logical line (or selects from point with no selection), without
+deleting; `D d` cuts that text. `l d` selects and cuts a whole
+line. Normal `s` retains Meow's original kill behavior, including its
+kill-to-end-of-line fallback when nothing is selected.
+
+The Backspace thumb key and NAV Delete key keep their existing commands. In
+Elisp, `C-h k` reports `puni-backward-delete-char` for Backspace and
+`delete-forward-char` for NAV Delete. The old `D` backward-delete alias is
+removed.
+
 ## Layout
 
-- Gallium split keyboard with home-row arrows on a layer. Directional bindings use `<left>/<down>/<up>/<right>`, not h/j/k/l. (Meow normal state still uses Meow's default h/j/k/l motions — separate concern.)
+- Gallium split keyboard with home-row arrows on a layer. Directional bindings use `<left>/<down>/<up>/<right>`, not h/j/k/l. Meow normal `h` / `e` move backward / forward by word; `o` opens the `C-c` command map.
 
 ## Deferred
 

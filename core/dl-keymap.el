@@ -397,6 +397,23 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 ;; n:srch  r:repl  t:till s:kill g:cancel   p:yank h:←word a:appd e:word→ i:ins
 ;; x:—     q:quit  m:—    w:mark z:pop      k:—    f:find  ':rpt  ;:rev  .:thing
 
+(defun my/meow-delete-dwim ()
+  "Cut the active selection, or delete one character forward."
+  (interactive)
+  (if (region-active-p)
+      (meow-kill)
+    (meow-delete)))
+
+(defun my/meow-select-to-line-end ()
+  "Extend the selection's right edge to the logical line end."
+  (interactive)
+  (let* ((beg (if (region-active-p) (region-beginning) (point)))
+         (right (if (region-active-p) (region-end) (point)))
+         (end (save-excursion
+                (goto-char right)
+                (line-end-position))))
+    (meow--select (meow--make-selection '(select . transient) beg end) t)))
+
 
 (defun meow-setup ()
   (setq meow-cheatsheet-layout meow-cheatsheet-layout-qwerty)
@@ -495,8 +512,8 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 
     ;; Edit actions.
     '("c" . meow-change)
-    '("d" . meow-delete)
-    '("D" . meow-backward-delete)
+    '("d" . my/meow-delete-dwim)
+    '("D" . my/meow-select-to-line-end)
     '("s" . meow-kill)
     '("r" . meow-replace)
     '("R" . meow-swap-grab)

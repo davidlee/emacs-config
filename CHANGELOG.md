@@ -25,6 +25,12 @@ Restrict GNU linker flags (`-Wl,-O2`, `-Wl,--as-needed`) to Linux in
 linker rejected `--as-needed`, causing native compilation to fail. Removed
 the flags from the running server and successfully recompiled gptel-openrouter,
 repeat-fu, repeat-fu-preset-meow, otpp, and project-x.
+## 2026-10-02 — Meow deletion keys
+
+Normal `d` now cuts a selection or deletes one forward character without
+one. `D` selects through the logical line end, preserving and extending an
+existing selection; `D d` cuts it. The Gallium cheatsheet and key reference
+now reflect these bindings and the current `o` command gateway.
 
 ## 2026-10-01 — zmx project terminals
 
