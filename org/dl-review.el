@@ -2,8 +2,9 @@
 
 ;; Triage commands for the notes corpus.  Two flavours:
 ;;
-;;   1. Navigational  (`my/review-inbox', `my/review-intake',
-;;      `my/review-weekly') — open the right buffer for a review pass.
+;;   1. Navigational  (`my/review-inbox', `my/review-queue',
+;;      `my/review-intake', `my/review-weekly') — open the right buffer
+;;      for a review pass.
 ;;
 ;;   2. Reporting     (`my/review-stale',
 ;;      `my/review-references-retained',
@@ -129,6 +130,18 @@ made relative to the root.  TITLE names the empty case."
   "Open `inbox.org' and jump to the first TODO heading."
   (interactive)
   (my/review--open-inbox dl-notes-inbox-file))
+
+(defun my/review-queue ()
+  "Open `review-queue.org' and jump to the first TODO heading.
+Material found during a corpus sweep that may be worth filing, worked
+a few items at a time.  Each item takes exactly one disposition (filed /
+extracted / routed / discarded) and then leaves the queue.
+
+Deliberately absent from `my/review--notes-files' and from
+`org-agenda-files': a queue is not a commitment, so its TODOs should not
+turn up in the corpus-wide reports or the agenda."
+  (interactive)
+  (my/review--open-inbox dl-notes-review-queue-file))
 
 (defun my/review-intake ()
   "Open Dired on the intake directory, newest first."

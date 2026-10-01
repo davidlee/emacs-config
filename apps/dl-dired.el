@@ -16,6 +16,9 @@
     "-l --almost-all --human-readable --group-directories-first --no-group")
   :config
   ;; Lets `dirvish-side' auto-close its window when opening a file.
+  (add-hook 'dired-load-hook
+    (lambda ()
+      (load "dired-x")))
   (put 'dired-find-alternate-file 'disabled nil))
 
 (use-package diredfl

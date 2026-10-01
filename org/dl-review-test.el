@@ -67,5 +67,44 @@
       (delete-directory da t)
       (delete-directory db t))))
 
+;;; VT-3 — the review queue is addressed from the notes root, not a literal.
+
+(ert-deftest dl-review/review-queue-file-lives-in-notes-root ()
+  "Queue path derives from `dl-notes-root'.
+A literal would silently point at a stale location when the corpus moves
+(jail mount, directory rename) — the failure class that left a vendored
+`denote-roam.el' reading "~/notes/" independently of the paths module."
+  (should (equal dl-notes-review-queue-file
+                 (expand-file-name "review-queue.org" dl-notes-root)))
+  (should (file-name-absolute-p dl-notes-review-queue-file))
+  ;; A queue is not a commitment: it must stay out of the corpus-wide
+  ;; reports.  If this fails, something added it to the scan set.
+  (should-not (member dl-notes-review-queue-file (my/review--notes-files))))
+
+;;; VT-4 — the queue opens at its first TODO heading.
+
+(ert-deftest dl-review/queue-opens-at-first-todo ()
+  "`my/review-queue' jumps past front matter and prose to the first TODO."
+  (let* ((dir (make-temp-file "review-queue-" t))
+         (dl-notes-review-queue-file (expand-file-name "queue.org" dir)))
+    (unwind-protect
+        (progn
+          (with-temp-file dl-notes-review-queue-file
+            (insert "#+title: Journal review queue\n"
+                    "#+filetags: :review:queue:\n\n"
+                    "* How to work it\n"
+                    "Take one or two. Nothing here is urgent.\n\n"
+                    "* Already distilled\n"
+                    "** TODO 05-18  Secrets via op\n"
+                    "** TODO 05-26  Architecting for agents\n"))
+          (my/review-queue)
+          (should (equal (buffer-file-name) dl-notes-review-queue-file))
+          (save-excursion
+            (forward-line 0)
+            (should (looking-at-p "^\\*\\* TODO 05-18"))))
+      (when-let* ((buf (get-file-buffer dl-notes-review-queue-file)))
+        (kill-buffer buf))
+      (delete-directory dir t))))
+
 (provide 'dl-review-test)
 ;;; dl-review-test.el ends here

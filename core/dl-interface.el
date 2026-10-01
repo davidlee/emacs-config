@@ -24,6 +24,7 @@
   (frame-title-format
     '((:eval (or (buffer-file-name) "%b")) " - GNU Emacs at " system-name))
 
+  (tooltip-mode -1)
   (tooltip-use-echo-area t)
 
   (use-file-dialog nil)

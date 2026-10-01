@@ -68,8 +68,8 @@
 (require 'dl-org-ql)
 (require 'dl-review)
 (require 'dl-org-roam)
-(
-  require 'dl-org-gcal)
+(require 'dl-org-gcal)
+(require 'dl-org-iw)
 
 ;; Language support
 (require 'dl-elisp)

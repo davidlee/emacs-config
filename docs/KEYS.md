@@ -148,6 +148,10 @@ Four sub-prefixes under `C-c n`:
 |---|---|---|
 | `C-c n v i` | `my/review-inbox`                  | `inbox.org`, point at first TODO |
 | `C-c n v I` | `my/review-intake`                 | Dired `intake/`, newest first |
+| `C-c n v j` | `my/review-journal-open`           | open (not-done) journal + weekly headings via `org-ql` |
+| `C-c n v p` | `my/review-protocol`               | `protocol.org`, point at first TODO |
+| `C-c n v n` | `my/review-recent-notes`           | Dired on the newest durable notes (30, newest first) |
+| `C-c n v q` | `my/review-queue`                  | `review-queue.org`, point at first TODO |
 | `C-c n v w` | `my/review-weekly`                 | weekly note + side-window of WAITING items |
 | `C-c n v s` | `my/review-stale`                  | WAITING items with no timestamp in `my/review-stale-days` (7) |
 | `C-c n v r` | `my/review-references-retained`    | ripgrep `references/` for `status: raw` |
@@ -178,10 +182,12 @@ Constructors live directly under `W` (not duplicated into `C-c n N`); review sur
 
 Mirrors the personal review set, scoped to work files / dirs.
 
-| Key | Command | |
+| Key | Command | What it surfaces |
 |---|---|---|
 | `C-c n W v i` | `my/review-work-inbox`                | `work/inbox.org` at first TODO |
 | `C-c n W v I` | `my/review-work-intake`               | dired `work/intake/` |
+| `C-c n W v j` | `my/review-work-journal-open`         | open (not-done) work journal + weekly headings |
+| `C-c n W v n` | `my/review-work-recent-notes`         | Dired on the newest work notes (30, newest first) |
 | `C-c n W v w` | `my/review-work-weekly`               | work weekly + WAITING side window |
 | `C-c n W v s` | `my/review-work-stale`                | work WAITING > stale-days |
 | `C-c n W v r` | `my/review-work-references-retained`  | ripgrep work refs `status: raw` |

@@ -10,6 +10,7 @@
 ;;   ~/notes/                  personal corpus root
 ;;     {inbox.org,intake,journal,weekly,projects,areas,sources,slips,
 ;;      references,indexes,attachments,archive}/
+;;     review-queue.org        paced review queue (worked by hand; not a sink)
 ;;     work.org                work dashboard (curated; not a sink)
 ;;     work/                   work compartment (mirrors the class taxonomy
 ;;                             + meetings/ + people/)
@@ -28,19 +29,20 @@ elsewhere the canonical ~/notes path is used.")
          (list dl-notes-root)))
 
 ;; Personal compartment.
-(defconst dl-notes-inbox-file       (my/notes-path "inbox.org"))
-(defconst dl-notes-protocol-file    (my/notes-path "protocol.org"))
-(defconst dl-notes-intake-dir       (my/notes-path "intake"))
-(defconst dl-notes-journal-dir      (my/notes-path "journal"))
-(defconst dl-notes-weekly-dir       (my/notes-path "weekly"))
-(defconst dl-notes-projects-dir     (my/notes-path "projects"))
-(defconst dl-notes-areas-dir        (my/notes-path "areas"))
-(defconst dl-notes-sources-dir      (my/notes-path "sources"))
-(defconst dl-notes-slips-dir        (my/notes-path "slips"))
-(defconst dl-notes-indexes-dir      (my/notes-path "indexes"))
-(defconst dl-notes-references-dir   (my/notes-path "references"))
-(defconst dl-notes-attachments-dir  (my/notes-path "attachments"))
-(defconst dl-notes-archive-dir      (my/notes-path "archive"))
+(defconst dl-notes-inbox-file         (my/notes-path "inbox.org"))
+(defconst dl-notes-protocol-file      (my/notes-path "protocol.org"))
+(defconst dl-notes-review-queue-file  (my/notes-path "review-queue.org"))
+(defconst dl-notes-intake-dir         (my/notes-path "intake"))
+(defconst dl-notes-journal-dir        (my/notes-path "journal"))
+(defconst dl-notes-weekly-dir         (my/notes-path "weekly"))
+(defconst dl-notes-projects-dir       (my/notes-path "projects"))
+(defconst dl-notes-areas-dir          (my/notes-path "areas"))
+(defconst dl-notes-sources-dir        (my/notes-path "sources"))
+(defconst dl-notes-slips-dir          (my/notes-path "slips"))
+(defconst dl-notes-indexes-dir        (my/notes-path "indexes"))
+(defconst dl-notes-references-dir     (my/notes-path "references"))
+(defconst dl-notes-attachments-dir    (my/notes-path "attachments"))
+(defconst dl-notes-archive-dir        (my/notes-path "archive"))
 
 ;; Work compartment.
 (defconst dl-notes-work-file              (my/notes-path "work.org"))

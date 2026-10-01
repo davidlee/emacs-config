@@ -12,6 +12,7 @@ opportunities deferred for later.
 ~/notes/
   inbox.org             text capture queue
   protocol.org          firefox / org-protocol landing
+  review-queue.org      paced review queue (worked by hand; not a sink)
   calendar.org          calendar exports
   work.org              work dashboard (curated; not a sink)
   intake/               raw file/object dump (un-classified)
@@ -180,6 +181,10 @@ C-c n q   org-ql-find                          C-c n m k   denote-rename-file-ke
                                                C-c n m t   denote-rename-file-title
 C-c n v i   my/review-inbox                    (jump to first TODO)
 C-c n v I   my/review-intake                   (dired intake/, newest first)
+C-c n v j   my/review-journal-open             (open journal + weekly items)
+C-c n v p   my/review-protocol                 (protocol inbox, first TODO)
+C-c n v n   my/review-recent-notes             (newest durable notes, dired)
+C-c n v q   my/review-queue                    (jump to first TODO)
 C-c n v w   my/review-weekly                   (weekly note + WAITING side window)
 C-c n v s   my/review-stale                    (WAITING untouched > my/review-stale-days)
 C-c n v r   my/review-references-retained      (ripgrep: status: raw)
@@ -196,6 +201,8 @@ C-c n W q   my/work-org-ql-find                C-c n W S   new work slip
 
 C-c n W v i   my/review-work-inbox                 (jump to first TODO)
 C-c n W v I   my/review-work-intake                (dired work/intake/)
+C-c n W v j   my/review-work-journal-open          (open work journal + weekly items)
+C-c n W v n   my/review-work-recent-notes          (newest work notes, dired)
 C-c n W v w   my/review-work-weekly                (weekly + WAITING side window)
 C-c n W v s   my/review-work-stale                 (work WAITING > stale-days)
 C-c n W v r   my/review-work-references-retained   (ripgrep status: raw)
@@ -232,6 +239,15 @@ Bare Denote-named files at `dl-notes-root` come through
 
 - **Promote only when material earns permanence.** Delete aggressively
   from `inbox.org` and `intake/`. Capture queues are not archives.
+
+- **Journal days are capture too, not archives.** A day earns
+  permanence only by promotion: a claim becomes a `slips/` note, a
+  finding a `sources/` note, a link a `references/` note (via `C-c n p`),
+  an open item a `TODO` heading or a `backlog/` line. A day holding
+  nothing but the template is deletable — the corpus is committed daily,
+  so git is the archive (`git restore --source=<ref> -- journal/`). `just
+  journal-audit` in `~/notes` reports template-only days, thin days
+  worth harvesting first, and junk worth extracting before a prune.
 
 - **Authored vs retained must stay separate.** `references/` is
   retained external content (verbatim). `sources/` is authored
@@ -320,7 +336,7 @@ Concrete next steps if/when the friction is felt:
 
 ## Pointers
 
-- `~/.emacs.d/KEYS.md` — full keymap reference (this doc has only the
+- `~/.emacs.d/docs/KEYS.md` — full keymap reference (this doc has only the
   notes-map subset).
 - `~/.emacs.d/CHANGELOG.md` — phase-by-phase history of the build-out.
 - `~/.emacs.d/AGENTS.md` — agent orientation (links to Nix integration

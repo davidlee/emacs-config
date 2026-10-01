@@ -108,8 +108,11 @@
   (define-key org-timeblock-list-mode-map [remap meow-prev] #'org-timeblock-list-previous-line)
   (define-key org-timeblock-list-mode-map [remap meow-next] #'org-timeblock-list-next-line))
 
-;; (add-hook 'org-mode-hook #'variable-pitch-mode)
-(provide 'dl-org)
+
+;; (use-package org-review
+;;   :bind (:map org-agenda-mode-map
+;; ("C-c C-r" . org-review-insert-last-review)))
+
 
 ;;;;;;;;;;;;;;;;
 ;; cheatsheet ;;
@@ -129,3 +132,7 @@
 ;; M-left/right promote/demote heading
 
 ;;; dl-org.el ends here
+
+
+;; (add-hook 'org-mode-hook #'variable-pitch-mode)
+(provide 'dl-org)

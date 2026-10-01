@@ -284,6 +284,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-notes-manage-map "k" #'denote-rename-file-keywords            "edit keywords")
 (my/bind my-notes-manage-map "t" #'denote-rename-file-title               "retitle")
 
+(my/bind my-notes-review-map "q" #'my/review-queue                  "review queue")
 (my/bind my-notes-review-map "i" #'my/review-inbox                  "inbox")
 (my/bind my-notes-review-map "I" #'my/review-intake                 "intake (dired)")
 (my/bind my-notes-review-map "j" #'my/review-journal-open           "journal open items")

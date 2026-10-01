@@ -38,6 +38,7 @@
   (completion-ignore-case t)
   (confirm-kill-processes nil)
   (use-short-answers t)
+  (remember-data-file "~/notes/remember.txt")
   ;; (ediff-window-setup-function 'ediff-setup-windows-plain)
 
   :config
@@ -56,19 +57,19 @@
 ;; and pure-GTK Emacs warns that the configuration is unsupported.  Name the
 ;; client's Wayland display instead; tty and real X clients are untouched.
 (defun dl-core--prefer-wayland-display (create display nowait proc parent-id
-                                               &optional parameters)
+                                         &optional parameters)
   "Call CREATE with the client's Wayland display in place of DISPLAY."
   (let ((wayland (and (featurep 'pgtk)
-                      (getenv-internal "WAYLAND_DISPLAY"
-                                       (process-get proc 'env)))))
+                   (getenv-internal "WAYLAND_DISPLAY"
+                     (process-get proc 'env)))))
     (funcall create
-             (if (and wayland (string-prefix-p "wayland-" wayland))
-                 wayland
-               display)
-             nowait proc parent-id parameters)))
+      (if (and wayland (string-prefix-p "wayland-" wayland))
+        wayland
+        display)
+      nowait proc parent-id parameters)))
 
 (advice-add 'server-create-window-system-frame
-            :around #'dl-core--prefer-wayland-display)
+  :around #'dl-core--prefer-wayland-display)
 
 ;; Show the help buffer after startup
 ;; (add-hook 'after-init-hook 'help-quick))
@@ -115,6 +116,7 @@
   `((".*" ,emacs-tmp-dir t)))
 (setq auto-save-list-file-prefix
   emacs-tmp-dir)
+
 
 (defun dl-core--make-parent-directory-maybe (filename &optional _wildcards)
   "Create parent directory of FILENAME if it doesn't exist."

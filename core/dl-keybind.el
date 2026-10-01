@@ -8,10 +8,10 @@
 (use-package windmove
   :ensure nil
   :config
-  (global-set-key (kbd "C-s-<left>")  #'windmove-left)
-  (global-set-key (kbd "C-s-<right>") #'windmove-right)
-  (global-set-key (kbd "C-s-<up>")    #'windmove-up)
-  (global-set-key (kbd "C-s-<down>")  #'windmove-down))
+  (global-set-key (kbd "C-M-<left>")  #'windmove-left)
+  (global-set-key (kbd "C-M-<up>")    #'windmove-up)
+  (global-set-key (kbd "C-M-<down>")  #'windmove-down)
+  (global-set-key (kbd "C-M-<right>") #'windmove-right))
 
 ;; Tab-bar + buffer chords.
 (keymap-global-set "s-<prior>"   'tab-bar-switch-to-next-tab)
@@ -20,6 +20,7 @@
 (keymap-global-set "M-s-<next>"  'switch-to-prev-buffer)
 
 (global-set-key (kbd "M-/") 'hippie-expand)
+(global-set-key (kbd "C-;") 'iedit-mode)
 (global-set-key (kbd "M-z") 'zap-up-to-char)
 (global-set-key (kbd "C-x K") 'kill-current-buffer)
 (global-set-key (kbd "C-x C-b") 'ibuffer)

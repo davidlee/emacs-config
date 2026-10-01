@@ -7,5 +7,7 @@
           ("C-h x" . helpful-command)
           ("C-c C-d" . helpful-at-point)))
 
+(use-package tldr)
+
 (provide 'dl-help)
 ;;; dl-help.el ends here
