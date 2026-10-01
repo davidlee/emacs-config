@@ -26,6 +26,22 @@ linker rejected `--as-needed`, causing native compilation to fail. Removed
 the flags from the running server and successfully recompiled gptel-openrouter,
 repeat-fu, repeat-fu-preset-meow, otpp, and project-x.
 
+## 2026-10-01 — gptel: composable presets
+
+Presets move to `apps/dl-gptel-presets.el`, one table, short names
+meant for per-turn `@cookies`. Only roles set the system prompt, so
+mixins stack on any role (`@lib @deep @think …`):
+
+- role: `default`, `lib` (librarian: reading tools + org-mcp, no file
+  or shell writes; does what's asked, no exploring)
+- tools: `org`, `ro` (drops Insert/Edit/Write/Mkdir/Eval/Bash), `web`
+- context: `see` (buffers on screen, bar gptel chats)
+- model: `gpt`, `deep`, `glm`, `gem`
+- effort: `quick`, `think` (merge `reasoning.effort` into the request)
+
+Role prompts can live in `~/notes/prompts/gptel/NAME.org`, read on each
+application (`#+keyword` lines dropped); `lib` is the first.
+
 ## 2026-10-01 — gptel: org-mcp preset, emcp find-references
 
 New `org` preset: `default` plus org-mcp's 18 tools over every Org

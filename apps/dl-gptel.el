@@ -75,23 +75,7 @@ uses the same account rather than falling through to auth-source."
   (setq gptel-model 'gpt-5.6-terra
     gptel-backend (gptel-make-openai-oauth "openai-sub")))
 
-(gptel-make-preset 'default
-  :description "general emacs assistant"
-  :backend "openai-sub"
-  :model 'gpt-5.6-terra
-  :system (concat "you're an advanced assistant for emacs knowledge work and coding. Stay in a tight, iterative loop with the user: concise responses, bounded tasks, not autonomous agentic execution.\n\n"
-            (dl-gptel-readonly-system-note))
-  :tools '("Glob" "Grep" "Read" "Insert" "Edit" "Write" "Eval" "Bash"
-            "introspection"))
-
-;; Autoloaded: mcp.el loads, and org-mcp's server starts, on first use.
-(autoload 'dl-gptel-mcp-org-connect "dl-gptel-mcp")
-
-(gptel-make-preset 'org
-  :description "default, plus org-mcp tools over ~/notes (bar archives)"
-  :parents 'default
-  :pre #'dl-gptel-mcp-org-connect
-  :tools '(:append ("mcp-org-mcp")))
+(require 'dl-gptel-presets)
 
 (use-package gptel-openrouter
   :ensure nil
