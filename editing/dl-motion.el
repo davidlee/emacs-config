@@ -37,6 +37,41 @@
 (use-package git-link) ; https://github.com/sshaw/git-link
 (use-package copy-as-format) ; https://github.com/sshaw/copy-as-format
 
+;; dogears: jump list.  Meow normal `C-o' / `C-S-o' walk it (bound in
+;; `core/dl-keymap.el'); `C-c j l' picks a place by completion.
+;; dogears only records landings (`dogears-functions', :after) and idle
+;; dwells.  A Helix-style jump list also needs the origin, so each
+;; command in `dl-motion-jump-commands' is wrapped to dogear both ends.
+;; Not `push-mark': meow pushes mark on every new selection.
+(defvar dl-motion-jump-commands
+  '(xref-find-definitions xref-find-references
+    consult-line consult-imenu consult-outline consult-ripgrep
+    consult-goto-line consult-mark consult-global-mark
+    avy-goto-char avy-goto-char-2 avy-goto-char-timer
+    avy-goto-line avy-goto-word-1
+    meow-visit beginning-of-buffer end-of-buffer goto-last-change)
+  "Commands whose origin and destination are dogeared.")
+
+(defvar dogears-mode)
+(declare-function dogears-mode "dogears")
+(declare-function dogears-remember "dogears")
+
+(defun dl-motion--dogear-jump (jump &rest args)
+  "Call JUMP with ARGS, dogearing the place left and the place reached.
+Inert unless `dogears-mode' is on."
+  (if (not dogears-mode)
+      (apply jump args)
+    (dogears-remember)
+    (prog1 (apply jump args)
+      (dogears-remember))))
+
+(use-package dogears
+  :demand t
+  :config
+  (dolist (command dl-motion-jump-commands)
+    (advice-add command :around #'dl-motion--dogear-jump))
+  (dogears-mode 1))
+
 ;; SELECTION
 (use-package expand-region)
 

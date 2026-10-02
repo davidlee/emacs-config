@@ -25,6 +25,13 @@ Restrict GNU linker flags (`-Wl,-O2`, `-Wl,--as-needed`) to Linux in
 linker rejected `--as-needed`, causing native compilation to fail. Removed
 the flags from the running server and successfully recompiled gptel-openrouter,
 repeat-fu, repeat-fu-preset-meow, otpp, and project-x.
+## 2026-10-02 — dogears jump list
+
+Meow normal `C-o` / `C-S-o` now walk a dogears jump list instead of xref.
+xref, consult, avy, `v`, `L`, buffer start/end and goto-last-change record
+both where you jumped from and where you landed. `C-c j l` picks a place by
+completion and `C-c j L` opens the sidebar. (IMP-017 follow-up)
+
 ## 2026-10-02 — Meow editing gaps
 
 New normal-state keys:

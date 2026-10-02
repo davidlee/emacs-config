@@ -18,11 +18,28 @@ All four fit on free keys without displacing existing bindings.
 
 ## Known limitations
 
-- The xref jump list only records definition and reference jumps. Searches,
-  `L` (goto-line), and avy jumps are not included. A real jump-list package
-  (e.g. dogears, better-jumper) would be a follow-up if this proves too narrow.
+- ~~The xref jump list only records definition and reference jumps.~~
+  Superseded by dogears; see the follow-up below.
 - In normal state, `C-r` shadows `isearch-backward`. Insert state and the
   global map are unchanged.
+
+## Follow-up: dogears jump list (2026-10-02)
+
+`C-o` / `C-S-o` now run `dogears-back` / `dogears-forward`, replacing xref
+(configured in `editing/dl-motion.el`).
+- dogears records only where a jump lands (`dogears-functions` :after advice)
+  and places idled on. A Helix-style jump list also needs the place jumped
+  from, so `dl-motion--dogear-jump` wraps each command in
+  `dl-motion-jump-commands` with :around advice that records both ends.
+  It does nothing while `dogears-mode` is off.
+- Advising `push-mark` was rejected: `meow--select` pushes mark on every
+  new selection, which would flood the list.
+- `C-c j l` runs `dogears-go` (pick a place by completion); `C-c j L` runs
+  `dogears-sidebar`.
+- Tests are in `lisp/test/dl-motion-test.el`: back after a wrapped jump
+  returns to the origin; nothing is recorded while the mode is off.
+- Not persisted across sessions, and the idle default (5s) is kept. Both can
+  be revisited after daily use.
 
 ## Deferred (from the same review)
 

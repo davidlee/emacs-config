@@ -210,6 +210,8 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-jump-map    "2" #'avy-goto-char-2        "2-char")
 (my/bind my-jump-map    "w" #'avy-goto-word-1        "word")
 (my/bind my-jump-map    "p" #'my/forward-or-backward-sexp "match paren")
+(my/bind my-jump-map    "l" #'dogears-go             "jump list")
+(my/bind my-jump-map    "L" #'dogears-sidebar        "jump list sidebar")
 
 ;; Eval map — scope ladder over Elisp.  Lowercase reads, uppercase prints.
 (my/bind my-eval-map    "e" #'eval-last-sexp              "last sexp")
@@ -396,7 +398,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 ;; b:block l:line  d:del  c:chg  v:visit    j:join y:save  o:C-c  u:undo ,:thing
 ;; n:srch  r:repl  t:till s:kill g:cancel   p:yank h:←word a:appd e:word→ i:ins
 ;; x:grow  q:quit  m:—    w:mark z:pop      k:—    f:find  ':rpt  ;:rev  .:thing
-;; X:shrink  >/<:indent  C-r:redo  C-o/C-S-o:xref back/forward
+;; X:shrink  >/<:indent  C-r:redo  C-o/C-S-o:jump back/forward (dogears)
 
 (defun my/meow-delete-dwim ()
   "Cut the active selection, or delete one character forward."
@@ -589,8 +591,8 @@ stays active so the shift can be repeated."
     '("!" . consult-buffer)
     '("/" . avy-goto-char-2)
     ;; Jump back/forward (Helix C-o/C-i; C-i is TAB, so C-S-o).
-    '("C-o"   . xref-go-back)
-    '("C-S-o" . xref-go-forward)
+    '("C-o"   . dogears-back)
+    '("C-S-o" . dogears-forward)
     '("<escape>" . ignore)))
 
 ;; Other

@@ -41,8 +41,8 @@
                    ("<"     . my/meow-indent-left)
                    ("x"     . expreg-expand)
                    ("X"     . expreg-contract)
-                   ("C-o"   . xref-go-back)
-                   ("C-S-o" . xref-go-forward)))
+                   ("C-o"   . dogears-back)
+                   ("C-S-o" . dogears-forward)))
     (should (eq (lookup-key meow-normal-state-keymap (kbd key)) command))))
 
 (ert-deftest dl-meow-keymap/redo-reverts-meow-undo ()
