@@ -1,6 +1,13 @@
 ;;; dl-interface.el --- UI settings -*- lexical-binding: t; -*-
 
 
+;; Mac Port modifiers: left Option is Meta, Command is Super, and right
+;; Option retains macOS character composition. Linux uses its own defaults.
+(when (eq system-type 'darwin)
+  (setq mac-option-modifier 'meta
+        mac-command-modifier 'super
+        mac-right-option-modifier nil))
+
 (defun my/pixel-scroll-setup ()
   (interactive)
   ;; Leave `pixel-scroll-precision-large-scroll-height' at its nil default:

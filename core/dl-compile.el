@@ -15,10 +15,12 @@
        "-fno-omit-frame-pointer"
        "-fno-finite-math-only")))
 
-(setq native-comp-driver-options
-  (append native-comp-driver-options
-    '("-Wl,-O2"
-       "-Wl,--as-needed")))
+;; These GNU linker options are unsupported by Darwin's linker.
+(when (eq system-type 'gnu/linux)
+  (setq native-comp-driver-options
+    (append native-comp-driver-options
+      '("-Wl,-O2"
+         "-Wl,--as-needed"))))
 
 (use-package compile-angel
   :demand t

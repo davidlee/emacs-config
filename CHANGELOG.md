@@ -2,6 +2,30 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-10-03 — Nu grammar available outside devshells
+
+Bundle only `tree-sitter-nu` with Emacs in `~/flakes/emacs/emacs.nix` for
+Darwin and Linux. Link the built Darwin grammar into the local tree-sitter
+cache for the currently installed Emacs profile; exclude that cache from Git
+so platform-specific binaries are never shared. Other language grammars remain
+with their devshells.
+
+## 2026-10-03 — lambda-line activation and Mac modifiers
+
+Restore lambda-line's explicit package-vc declaration and register its existing
+checkout, so the modeline activates now and on subsequent startups. On Darwin
+only, map left Option to Meta and Command to Super; right Option retains macOS
+character composition. Verified the modifier block leaves Linux settings
+untouched. Grammar provisioning remains with the language devshells.
+
+## 2026-10-03 — native compilation on macOS
+
+Restrict GNU linker flags (`-Wl,-O2`, `-Wl,--as-needed`) to Linux in
+`core/dl-compile.el`, preserving Nix's preloaded compiler paths. Darwin's
+linker rejected `--as-needed`, causing native compilation to fail. Removed
+the flags from the running server and successfully recompiled gptel-openrouter,
+repeat-fu, repeat-fu-preset-meow, otpp, and project-x.
+
 ## 2026-10-01 — gptel: org-mcp preset, emcp find-references
 
 New `org` preset: `default` plus org-mcp's 18 tools over every Org

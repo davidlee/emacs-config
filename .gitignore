@@ -86,3 +86,6 @@ oauth2-auto.plist
 !.doctrine/agents/AGENTS.md
 .doctrine/dispatch/
 .dispatch/
+
+# Machine-local compiled grammars (Darwin/Linux binaries differ).
+/tree-sitter/

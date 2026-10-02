@@ -32,26 +32,26 @@
  '(dl-shpool-known-sessions '(".emacs.d" "hris" "team" "claude"))
  '(org-timeblock-current-time-indicator t)
  '(org-timeblock-span 1)
- '(package-selected-packages nil)
+ '(package-selected-packages '(lambda-line super-save))
  '(package-vc-selected-packages
-   '((gptel-agent :url "https://github.com/karthink/gptel-agent")
-     (eca :url "https://github.com/editor-code-assistant/eca-emacs")
-     (repeat-fu :url
-		"https://codeberg.org/ideasman42/emacs-repeat-fu.git")
+   '((eca :url "https://github.com/editor-code-assistant/eca-emacs")
      (gptel-openrouter :url
 		       "https://github.com/darcamo/gptel-openrouter.git")
+     (claude-code-ide :url
+		      "https://github.com/manzaltu/claude-code-ide.el")
+     (ghostel :url "https://github.com/dakra/ghostel")
      (otpp :url
 	   "https://github.com/abougouffa/one-tab-per-project.git")
      (project-x :url "https://github.com/vmargb/project-x.git")
+     (repeat-fu :url
+		"https://codeberg.org/ideasman42/emacs-repeat-fu.git")
+     (gptel-agent :url "https://github.com/karthink/gptel-agent")
      (lambda-line :url
 		  "https://github.com/Lambda-Emacs/lambda-line.git")
-     (ghostel :url "https://github.com/dakra/ghostel" :lisp-dir "lisp")
      (eaf-markdown-previewer :url
 			     "https://github.com/emacs-eaf/eaf-markdown-previewer.git")
      (eaf :url
-	  "https://github.com/emacs-eaf/emacs-application-framework.git")
-     (claude-code-ide :url
-		      "https://github.com/manzaltu/claude-code-ide.el")))
+	  "https://github.com/emacs-eaf/emacs-application-framework.git")))
  '(safe-local-variable-values '((lexical-bindings . t) (lexical-binding . f)))
  '(zoom-window-mode-line-color "#005500"))
 (custom-set-faces

@@ -116,8 +116,8 @@ the segment renderers (e.g. `meow-indicator')."
               (+ (if (eq backend 'Hg) 2 3) 2))))))))
 
 (use-package lambda-line
-  ;;  :ensure nil
-  ;;  :vc (:url "https://github.com/Lambda-Emacs/lambda-line.git")
+  :ensure nil
+  :vc (:url "https://github.com/Lambda-Emacs/lambda-line.git")
   :custom
 
   ;; (lambda-line-icon-time t) ;; requires ClockFace font (see below)
