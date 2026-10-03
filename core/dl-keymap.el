@@ -278,6 +278,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-notes-new-map "r" #'my/denote-new-reference          "reference")
 (my/bind my-notes-new-map "R" #'my/denote-new-reference-markdown "reference (md)")
 (my/bind my-notes-new-map "i" #'my/denote-new-index      "index")
+(my/bind my-notes-new-map "b" #'my/denote-new-blog-entry "blog entry")
 (my/bind my-notes-new-map "j" #'my/journal-note          "journal today")
 (my/bind my-notes-new-map "w" #'my/weekly-note           "weekly")
 

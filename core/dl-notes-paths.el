@@ -43,6 +43,8 @@ elsewhere the canonical ~/notes path is used.")
 (defconst dl-notes-references-dir     (my/notes-path "references"))
 (defconst dl-notes-attachments-dir    (my/notes-path "attachments"))
 (defconst dl-notes-archive-dir        (my/notes-path "archive"))
+;; Gitignored: symlinks into the blog repo (see `dl-denote-blog').
+(defconst dl-notes-blog-dir           (my/notes-path "blog"))
 
 ;; Work compartment.
 (defconst dl-notes-work-file              (my/notes-path "work.org"))

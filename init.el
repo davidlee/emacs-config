@@ -62,6 +62,7 @@
 (require 'dl-org-links)
 (require 'dl-denote)
 (require 'dl-denote-templates)
+(require 'dl-denote-blog)
 (require 'dl-denote-journal)
 (require 'dl-denote-promote)
 (require 'dl-satan)
