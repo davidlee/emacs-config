@@ -4,7 +4,8 @@
 
 (use-package org-iw
   :load-path "~/dev/org-incremental-writing"
-  :commands (org-iw-add org-iw-visit-next org-iw-continue org-iw-end-session)
+  :commands (org-iw-add org-iw-visit-next org-iw-continue org-iw-end-session
+              org-iw-move org-iw-remove org-iw-list-queue)
   :custom
   (org-iw-sources '("~/notes"))
   (org-iw-exclude-regexp "/notes/archive/") ; matched against true names

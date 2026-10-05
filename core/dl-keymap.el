@@ -388,11 +388,14 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-toggle-map "=" #'aggressive-indent-mode           "aggressive-indent")
 (my/bind my-toggle-map "E" #'my/eglot-toggle                  "eglot")
 
-(my/bind my-org-iw-map "c" #'org-iw-continue    "org-iw-continue")
+;; org-incremental-writing
 (my/bind my-org-iw-map "a" #'org-iw-add         "org-iw-add")
 (my/bind my-org-iw-map "v" #'org-iw-visit-next  "org-iw-visit-next")
+(my/bind my-org-iw-map "c" #'org-iw-continue    "org-iw-continue")
 (my/bind my-org-iw-map "q" #'org-iw-end-session "org-iw-end-session")
-
+(my/bind my-org-iw-map "m" #'org-iw-move        "org-iw-move")
+(my/bind my-org-iw-map "r" #'org-iw-remove      "org-iw-remove")
+(my/bind my-org-iw-map "l" #'org-iw-list-queue  "org-iw-list-queue")
 
 
 ;; Gallium alpha positions → meow-normal bindings
@@ -405,17 +408,17 @@ Warns when KEY already has a binding in MAP that differs from CMD."
   "Cut the active selection, or delete one character forward."
   (interactive)
   (if (region-active-p)
-      (meow-kill)
+    (meow-kill)
     (meow-delete)))
 
 (defun my/meow-select-to-line-end ()
   "Extend the selection's right edge to the logical line end."
   (interactive)
   (let* ((beg (if (region-active-p) (region-beginning) (point)))
-         (right (if (region-active-p) (region-end) (point)))
-         (end (save-excursion
-                (goto-char right)
-                (line-end-position))))
+          (right (if (region-active-p) (region-end) (point)))
+          (end (save-excursion
+                 (goto-char right)
+                 (line-end-position))))
     (meow--select (meow--make-selection '(select . transient) beg end) t)))
 
 (defun my/meow--shift-lines (columns)
@@ -423,14 +426,14 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 A selection ending at a line start excludes that line.  The selection
 stays active so the shift can be repeated."
   (let* ((beg (if (region-active-p) (region-beginning) (point)))
-         (end (if (region-active-p) (region-end) (point))))
+          (end (if (region-active-p) (region-end) (point))))
     (indent-rigidly
-     (save-excursion (goto-char beg) (line-beginning-position))
-     (save-excursion
-       (goto-char end)
-       (when (and (bolp) (> end beg)) (backward-char))
-       (line-end-position))
-     columns)
+      (save-excursion (goto-char beg) (line-beginning-position))
+      (save-excursion
+        (goto-char end)
+        (when (and (bolp) (> end beg)) (backward-char))
+        (line-end-position))
+      columns)
     (setq deactivate-mark nil)))
 
 (defun my/meow-indent-right (n)
