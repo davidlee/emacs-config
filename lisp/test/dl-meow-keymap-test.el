@@ -42,7 +42,18 @@
                    ("x"     . expreg-expand)
                    ("X"     . expreg-contract)
                    ("C-o"   . dogears-back)
-                   ("C-S-o" . dogears-forward)))
+                   ("C-S-o" . dogears-forward)
+                   ("m s"   . my/meow-surround)
+                   ("m d"   . my/meow-surround-delete)
+                   ("m r"   . my/meow-surround-replace)
+                   ("#"     . my/meow-comment-lines)
+                   ("="     . my/meow-reindent-lines)
+                   ("~"     . upcase-dwim)
+                   ("`"     . downcase-dwim)
+                   ("P"     . consult-yank-pop)
+                   ("T"     . meow-till-expand)
+                   ("^"     . back-to-indentation)
+                   ("$"     . move-end-of-line)))
     (should (eq (lookup-key meow-normal-state-keymap (kbd key)) command))))
 
 (ert-deftest dl-meow-keymap/redo-reverts-meow-undo ()
@@ -72,6 +83,72 @@ A linewise selection ending at the next line's start excludes that line."
     (forward-line 1)
     (dl-meow-keymap-test--run 'my/meow-indent-right)
     (should (equal (buffer-string) "a\n  b"))))
+
+(defun dl-meow-keymap-test--selected ()
+  "The selected text."
+  (buffer-substring-no-properties (region-beginning) (region-end)))
+
+(ert-deftest dl-meow-keymap/surround-wraps-selection ()
+  "`m s' wraps the selection in a pair; opener or closer picks the same pair.
+Other characters wrap symmetrically.  The selection stays on the content."
+  (pcase-dolist (`(,char . ,expected) '((?\( . "x (ab) y")
+                                        (?\) . "x (ab) y")
+                                        (?\" . "x \"ab\" y")))
+    (dl-meow-keymap-test--with-buffer "x ab y"
+      (dl-meow-keymap-test--select 3 5)
+      (my/meow-surround char)
+      (should (equal (buffer-string) expected))
+      (should (equal (dl-meow-keymap-test--selected) "ab")))))
+
+(ert-deftest dl-meow-keymap/surround-without-selection-inserts-pair ()
+  "With no selection, `m s' inserts the pair with point inside it."
+  (dl-meow-keymap-test--with-buffer "ab"
+    (forward-char 1)
+    (my/meow-surround ?\[)
+    (should (equal (buffer-string) "a[]b"))
+    (should (= (point) 3))))
+
+(ert-deftest dl-meow-keymap/surround-delete-removes-flanking-pair ()
+  "`m d' deletes the delimiters around an inner selection."
+  (dl-meow-keymap-test--with-buffer "x (ab) y"
+    (dl-meow-keymap-test--select 4 6)
+    (my/meow-surround-delete)
+    (should (equal (buffer-string) "x ab y"))
+    (should (equal (dl-meow-keymap-test--selected) "ab"))))
+
+(ert-deftest dl-meow-keymap/surround-replace-swaps-flanking-pair ()
+  "`m r' replaces the delimiters around an inner selection."
+  (dl-meow-keymap-test--with-buffer "x (ab) y"
+    (dl-meow-keymap-test--select 4 6)
+    (my/meow-surround-replace ?\{)
+    (should (equal (buffer-string) "x {ab} y"))
+    (should (equal (dl-meow-keymap-test--selected) "ab"))))
+
+(ert-deftest dl-meow-keymap/surround-delete-rejects-unpaired-flanks ()
+  "`m d' refuses when the selection is not inside a pair."
+  (dl-meow-keymap-test--with-buffer "x (ab] y"
+    (dl-meow-keymap-test--select 4 6)
+    (should-error (my/meow-surround-delete) :type 'user-error)
+    (should (equal (buffer-string) "x (ab] y"))))
+
+(ert-deftest dl-meow-keymap/comment-toggles-selected-lines ()
+  "`#' comments the lines the selection touches, then uncomments them."
+  (dl-meow-keymap-test--with-buffer "a\nb\nc"
+    (emacs-lisp-mode)
+    (dl-meow-keymap-test--select (point-min) (line-beginning-position 3))
+    (dl-meow-keymap-test--run 'my/meow-comment-lines)
+    (should (equal (buffer-string) ";; a\n;; b\nc"))
+    (should (region-active-p))
+    (dl-meow-keymap-test--run 'my/meow-comment-lines)
+    (should (equal (buffer-string) "a\nb\nc"))))
+
+(ert-deftest dl-meow-keymap/reindent-fixes-selected-lines ()
+  "`=' reindents the lines the selection touches."
+  (dl-meow-keymap-test--with-buffer "(a\nb)"
+    (emacs-lisp-mode)
+    (dl-meow-keymap-test--select (point-min) (point-max))
+    (dl-meow-keymap-test--run 'my/meow-reindent-lines)
+    (should (equal (buffer-string) "(a\n b)"))))
 
 (provide 'dl-meow-keymap-test)
 ;;; dl-meow-keymap-test.el ends here

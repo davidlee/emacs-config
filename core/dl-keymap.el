@@ -401,8 +401,10 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 ;; Gallium alpha positions → meow-normal bindings
 ;; b:block l:line  d:del  c:chg  v:visit    j:join y:save  o:C-c  u:undo ,:thing
 ;; n:srch  r:repl  t:till s:kill g:cancel   p:yank h:←word a:appd e:word→ i:ins
-;; x:grow  q:quit  m:—    w:mark z:pop      k:—    f:find  ':rpt  ;:rev  .:thing
+;; x:grow  q:quit  m:surr w:mark z:pop      k:—    f:find  ':rpt  ;:rev  .:thing
 ;; X:shrink  >/<:indent  C-r:redo  C-o/C-S-o:jump back/forward (dogears)
+;; m:surround (s/d/r)  #:comment  =:reindent  ~/`:up/downcase  P:paste-pick
+;; T:till+  ^/$:line start(text)/end
 
 (defun my/meow-delete-dwim ()
   "Cut the active selection, or delete one character forward."
@@ -421,30 +423,111 @@ Warns when KEY already has a binding in MAP that differs from CMD."
                  (line-end-position))))
     (meow--select (meow--make-selection '(select . transient) beg end) t)))
 
-(defun my/meow--shift-lines (columns)
-  "Shift the lines the selection touches, or the current line, by COLUMNS.
-A selection ending at a line start excludes that line.  The selection
-stays active so the shift can be repeated."
-  (let* ((beg (if (region-active-p) (region-beginning) (point)))
-          (end (if (region-active-p) (region-end) (point))))
-    (indent-rigidly
-      (save-excursion (goto-char beg) (line-beginning-position))
-      (save-excursion
-        (goto-char end)
-        (when (and (bolp) (> end beg)) (backward-char))
-        (line-end-position))
-      columns)
-    (setq deactivate-mark nil)))
+(defun my/meow--line-range ()
+  "Return (BEG . END) spanning the lines the selection touches.
+Without a selection, the current line.  A selection ending at a line
+start (linewise) excludes that line."
+  (let* ((active (region-active-p))
+         (beg (if active (region-beginning) (point)))
+         (end (if active (region-end) (point))))
+    (cons (save-excursion (goto-char beg) (line-beginning-position))
+          (save-excursion
+            (goto-char end)
+            (when (and (bolp) (> end beg)) (backward-char))
+            (line-end-position)))))
+
+(defun my/meow--edit-lines (edit &rest args)
+  "Call EDIT with the selected lines' bounds and ARGS, keeping the selection
+active so the command can repeat."
+  (pcase-let ((`(,beg . ,end) (my/meow--line-range)))
+    (apply edit beg end args))
+  (setq deactivate-mark nil))
 
 (defun my/meow-indent-right (n)
   "Shift selected lines right by N times `standard-indent'."
   (interactive "p")
-  (my/meow--shift-lines (* n standard-indent)))
+  (my/meow--edit-lines #'indent-rigidly (* n standard-indent)))
 
 (defun my/meow-indent-left (n)
   "Shift selected lines left by N times `standard-indent'."
   (interactive "p")
-  (my/meow--shift-lines (* (- n) standard-indent)))
+  (my/meow--edit-lines #'indent-rigidly (* (- n) standard-indent)))
+
+(defun my/meow-comment-lines ()
+  "Toggle comments on the selected lines."
+  (interactive)
+  (my/meow--edit-lines #'comment-or-uncomment-region))
+
+(defun my/meow-reindent-lines ()
+  "Reindent the selected lines per the major mode."
+  (interactive)
+  (my/meow--edit-lines #'indent-region))
+
+;; Surround (Helix `ms' / `md' / `mr'), selection-first: select the
+;; inner text (e.g. `, (' or `, "'), then edit the flanking delimiters.
+(defconst my/meow-surround-pairs
+  '((?\( . ?\)) (?\[ . ?\]) (?\{ . ?\}) (?\< . ?\>))
+  "Asymmetric delimiter pairs.  Any other character pairs with itself.")
+
+(defun my/meow--surround-pair (char)
+  "Return (OPEN . CLOSE) for CHAR, which may be either delimiter."
+  (or (assq char my/meow-surround-pairs)
+      (rassq char my/meow-surround-pairs)
+      (cons char char)))
+
+(defun my/meow--surround-bounds ()
+  "Return the selection's (BEG . END) when a delimiter pair flanks it."
+  (unless (region-active-p)
+    (user-error "Select the text inside the delimiters first"))
+  (let ((beg (region-beginning))
+        (end (region-end)))
+    (unless (and (> beg (point-min))
+                 (< end (point-max))
+                 (equal (my/meow--surround-pair (char-before beg))
+                        (cons (char-before beg) (char-after end))))
+      (user-error "Selection is not inside a delimiter pair"))
+    (cons beg end)))
+
+(defun my/meow-surround (char)
+  "Wrap the selection in the delimiter pair for CHAR.
+The selection stays on the content.  Without one, insert the pair
+with point inside."
+  (interactive "cSurround with: ")
+  (pcase-let ((`(,open . ,close) (my/meow--surround-pair char))
+              (beg (if (region-active-p) (region-beginning) (point)))
+              (end (if (region-active-p) (region-end) (point))))
+    (save-excursion
+      (goto-char end)
+      (insert close)
+      (goto-char beg)
+      ;; Markers at BEG (mark or point) move past OPEN onto the content.
+      (insert-before-markers open)))
+  (setq deactivate-mark nil))
+
+(defun my/meow-surround-delete ()
+  "Delete the delimiter pair around the selection."
+  (interactive)
+  (pcase-let ((`(,beg . ,end) (my/meow--surround-bounds)))
+    (delete-region end (1+ end))
+    (delete-region (1- beg) beg))
+  (setq deactivate-mark nil))
+
+(defun my/meow-surround-replace (char)
+  "Replace the delimiter pair around the selection with CHAR's pair."
+  (interactive "cReplace surround with: ")
+  (pcase-let ((`(,beg . ,end) (my/meow--surround-bounds))
+              (`(,open . ,close) (my/meow--surround-pair char)))
+    ;; In place, so the selection's markers stay put.
+    (subst-char-in-region end (1+ end) (char-after end) close)
+    (subst-char-in-region (1- beg) beg (char-before beg) open))
+  (setq deactivate-mark nil))
+
+(defvar my-surround-map
+  (define-keymap
+    "s" #'my/meow-surround
+    "d" #'my/meow-surround-delete
+    "r" #'my/meow-surround-replace)
+  "Meow normal `m': surround the selection.")
 
 (defun meow-setup ()
   (setq meow-cheatsheet-layout meow-cheatsheet-layout-qwerty)
@@ -552,6 +635,7 @@ stays active so the shift can be repeated."
     '("C-r" . undo-redo)
     '("U" . meow-undo-in-selection)
     '("p" . meow-yank)
+    '("P" . consult-yank-pop)
     '("y" . meow-save)
     '("Y" . meow-sync-grab)
 
@@ -559,6 +643,7 @@ stays active so the shift can be repeated."
     '("f" . meow-find)
     '("F" . meow-find-expand)
     '("t" . meow-till)
+    '("T" . meow-till-expand)
     '("n" . meow-search)
 
     ;; Selection / text objects.
@@ -581,6 +666,13 @@ stays active so the shift can be repeated."
     '("X" . expreg-contract)
     '(">" . my/meow-indent-right)
     '("<" . my/meow-indent-left)
+    '("=" . my/meow-reindent-lines)
+    '("#" . my/meow-comment-lines)
+    '("~" . upcase-dwim)
+    '("`" . downcase-dwim)
+    '("^" . back-to-indentation)
+    '("$" . move-end-of-line)
+    (cons "m" my-surround-map)
     '("z" . meow-pop-selection)
     '(";" . meow-reverse)
 

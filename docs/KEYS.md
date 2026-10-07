@@ -529,6 +529,13 @@ removed.
 | `>` / `<` | `my/meow-indent-right` / `-left` | Shift every line the selection touches (or the current line) by `standard-indent`; selection stays active for repeats. |
 | `x` / `X` | `expreg-expand` / `expreg-contract` | Grow/shrink the selection by syntax (tree-sitter aware). |
 | `C-o` / `C-S-o` | `dogears-back` / `dogears-forward` | Jump list. `C-i` is TAB, hence `C-S-o`. Records both ends of each command in `dl-motion-jump-commands` (xref, consult, avy, `v`, `L`, buffer start/end, last change), plus places idled on for 5s. `C-c j l` / `SPC j l` picks a place by completion; `C-c j L` opens the sidebar. |
+| `=` | `my/meow-reindent-lines` | Reindent the selected lines (or the current line) per the major mode. |
+| `#` | `my/meow-comment-lines` | Toggle comments on the selected lines (or the current line). Selection stays. |
+| `~` / `` ` `` | `upcase-dwim` / `downcase-dwim` | Selection, or the word at point. |
+| `P` | `consult-yank-pop` | Pick from paste history. |
+| `T` | `meow-till-expand` | Till, extending the selection (pairs with `F`). |
+| `^` / `$` | `back-to-indentation` / `move-end-of-line` | Line text start / end. |
+| `m s` / `m d` / `m r` | `my/meow-surround{,-delete,-replace}` | Helix-style surround, selection-first. `m s CHAR` wraps the selection (opener or closer picks the pair; any other char wraps symmetrically). `m d` / `m r CHAR` act on the delimiters flanking an *inner* selection, so select with `, (` / `, "` first; they refuse if the flanks don't pair. |
 
 ## Layout
 

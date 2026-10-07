@@ -35,6 +35,8 @@
     (meow-find . "find")
     (meow-find-expand . "find+")
     (meow-till . "till")
+    (meow-till-expand . "till+")
+    (consult-yank-pop . "pick")
     (meow-back-word . "←word")
     (meow-back-symbol . "←sym")
     (meow-next-word . "word→")
@@ -64,6 +66,11 @@
     (negative-argument . "neg")
     (consult-buffer . "buf-sw")
     (my/forward-or-backward-sexp . "sexp")))
+
+(defvar my/meow-cheatsheet-keymap-labels
+  '((mode-specific-map . "C-c")
+    (my-surround-map . "surr"))
+  "Labels for prefix keymaps bound in normal state, keyed by variable.")
 
 (defconst my/meow--cell-width 7)
 
@@ -96,7 +103,11 @@ Returns nil for unbound keys or commands mapped to nil in the label alist."
     (let ((cmd (lookup-key meow-normal-state-keymap (kbd key))))
       (cond
        ((null cmd) nil)
-       ((keymapp cmd) "C-c")
+       ((keymapp cmd)
+        (cdr (seq-find (lambda (entry)
+                         (and (boundp (car entry))
+                              (eq (symbol-value (car entry)) cmd)))
+                       my/meow-cheatsheet-keymap-labels)))
        ((and (symbolp cmd) (assq cmd my/meow-cheatsheet-labels))
         (alist-get cmd my/meow-cheatsheet-labels))
        ((symbolp cmd)
@@ -210,6 +221,8 @@ Line 1: key (highlighted).  Line 2: command label.  Line 3: shifted label (dim).
         (insert "  !  buf-switch    %  sexp      '  repeat    ;  reverse\n")
         (insert "  ,  inner         .  bounds    [  beg       ]  end      -  neg\n")
         (insert "  >  indent        <  dedent    C-r  redo    C-o / C-S-o  jump ←/→\n")
+        (insert "  =  reindent      #  comment   ~ / `  upcase / downcase\n")
+        (insert "  ^  line text     $  line end  m s/d/r  surround wrap/del/replace\n")
         (goto-char (point-min))
         (special-mode)))
     (pop-to-buffer buf)))

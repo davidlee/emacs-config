@@ -49,6 +49,20 @@ only ever rewrites that line; `date:` and `tags:` stay the blog's.
 `vc-follow-symlinks` is now `t`, so visiting a link edits the blog file.
 `~/notes/blog/` is gitignored in the notes repo.
 
+## 2026-10-07 — Meow editing gaps, part 2
+
+New normal-state keys:
+- `m s` / `m d` / `m r`: surround the selection (wrap / delete / replace)
+- `#`: toggle comments on the selected lines
+- `=`: reindent the selected lines
+- `~` / `` ` ``: upcase / downcase
+- `P`: pick from paste history
+- `T`: till, extending the selection
+- `^` / `$`: line text start / line end
+
+`>` `<` `#` `=` share one helper for "the lines the selection touches".
+(IMP-017)
+
 ## 2026-10-02 — dogears jump list
 
 Meow normal `C-o` / `C-S-o` now walk a dogears jump list instead of xref.

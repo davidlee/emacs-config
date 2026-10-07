@@ -41,11 +41,43 @@ All four fit on free keys without displacing existing bindings.
 - Not persisted across sessions, and the idle default (5s) is kept. Both can
   be revisited after daily use.
 
-## Deferred (from the same review)
+## Follow-up: remaining gaps (2026-10-07)
 
-Surround (`m` free), comment toggle (`meow-comment`), case change, `P` paste
-history, `T` → `meow-till-expand`, first-non-blank, format (`=`),
-and repurposing `s` (now mostly redundant with `d`).
+| Key | Command |
+|---|---|
+| `=` | `my/meow-reindent-lines` |
+| `#` | `my/meow-comment-lines` |
+| `~` / `` ` `` | `upcase-dwim` / `downcase-dwim` |
+| `P` | `consult-yank-pop` |
+| `T` | `meow-till-expand` |
+| `^` / `$` | `back-to-indentation` / `move-end-of-line` |
+| `m s` / `m d` / `m r` | `my/meow-surround`, `-delete`, `-replace` (`my-surround-map`) |
+
+- `my/meow--line-range` and `my/meow--edit-lines` now back `>` `<` `=` `#`:
+  they find the lines the selection touches (excluding the next line for a
+  linewise selection) and keep the selection active afterwards.
+  `meow-indent` and `meow-comment` were rejected. Without a selection,
+  `meow-indent` reindents from point to a possibly stale mark.
+  `meow-comment` runs `comment-dwim`, which adds an end-of-line comment
+  instead of toggling the line.
+- Surround needs no package. `m s` inserts the closer first, then the
+  opener with `insert-before-markers`, so the selection stays on the
+  content. `m r` swaps the delimiters in place (`subst-char-in-region`),
+  so the selection's markers don't move. `m d` / `m r` refuse unless the
+  characters on each side of the selection form a pair, so a `.` (bounds)
+  selection fails loudly instead of deleting the wrong characters.
+  puni's sexp-based commands were not used: the selection-first approach
+  works for every delimiter meow can select inside.
+- `my/meow-command-label` in the cheatsheet no longer labels every prefix
+  keymap "C-c". `my/meow-cheatsheet-keymap-labels` names each one.
+- Not done: case changes (`~`, `` ` ``) drop the selection, as Emacs
+  deactivates the mark after edits. Helix keeps it.
+
+## Still open
+
+- Repurpose `s`. It is mostly redundant with `d`; this is the user's call.
+- Scroll on `C-d` / `C-u`. Skipped because `C-u` is `universal-argument`;
+  `C-v` / `M-v` still work.
 
 ## Implementation notes (2026-10-02)
 
