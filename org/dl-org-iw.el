@@ -5,11 +5,16 @@
 (use-package org-iw
   :load-path "~/dev/org-incremental-writing"
   :commands (org-iw-add org-iw-visit-next org-iw-continue org-iw-end-session
-              org-iw-move org-iw-remove org-iw-list-queue)
+              org-iw-move org-iw-remove org-iw-list-queue org-iw-add-files)
   :custom
   (org-iw-sources '("~/notes"))
   (org-iw-exclude-regexp "/notes/archive/") ; matched against true names
-  (org-iw-queues '(("ARTICLES" :name "Articles")
+  (org-iw-queues '(
+                    ("HABITS" :name "Habits")
+                    ("PROJECTS" :name "Projects")
+                    ("JOURNAL" :name "Journal")
+                    ("WORK-JOURNAL" :name "Work journal")
+                    ("ARTICLES" :name "Articles")
                     ("LEARN" :name "Learn")
                     ("READ" :name "Read")
                     ("DO" :name "Do" :placements
@@ -17,6 +22,24 @@
                         ("Halfway" (percent 50))
                         ("Last" end))
                       :default "Next"))))
+
+(defvar dl-org-iw-journal-queues
+  '(((personal daily) . "JOURNAL")
+     ((work daily) . "WORK-JOURNAL"))
+  "Queue each new journal note joins, by its (REALM TYPE).
+A note whose (REALM TYPE) is absent joins none.")
+
+(defun dl-org-iw--enrol-journal (file realm type)
+  "Add the new journal note FILE to the end of its queue, if any.
+REALM and TYPE choose the queue from `dl-org-iw-journal-queues'.  For
+`my/journal-created-functions': a refusal is reported, not raised, so
+it never interrupts creating the note."
+  (when-let* ((queue (alist-get (list realm type) dl-org-iw-journal-queues
+                       nil nil #'equal)))
+    (with-demoted-errors "org-iw journal enrolment: %S"
+      (org-iw-add-files queue (list file)))))
+
+(add-hook 'my/journal-created-functions #'dl-org-iw--enrol-journal)
 
 (defvar org-iw--session)
 (declare-function org-iw--mode-line "org-iw")

@@ -29,6 +29,7 @@
 
 (require 'dl-notes-paths)
 (declare-function org-with-wide-buffer "org-macs" (&rest body))
+(require 'org-id) ; `org-id-uuid'
 
 (defun my/journal--iso-monday (time)
   "Return TIME shifted back to the Monday of its ISO week."
@@ -57,19 +58,24 @@ Identifier is anchored on the ISO-week Monday."
 
 ;;; Link helpers — realm detection, filename parsing, cross-realm path
 
+(defun my/journal--file-realm (file)
+  "Return (REALM TYPE) for the journal FILE.
+REALM is `personal' or `work'; TYPE is `daily' or `weekly'.
+Returns nil if FILE isn't a known journal path."
+  (cond ((string-prefix-p (expand-file-name dl-notes-journal-dir) file)
+          '(personal daily))
+    ((string-prefix-p (expand-file-name dl-notes-weekly-dir) file)
+      '(personal weekly))
+    ((string-prefix-p (expand-file-name dl-notes-work-journal-dir) file)
+      '(work daily))
+    ((string-prefix-p (expand-file-name dl-notes-work-weekly-dir) file)
+      '(work weekly))))
+
 (defun my/journal--buffer-realm ()
   "Return (REALM TYPE) for the current buffer's journal file.
-REALM is `personal' or `work'; TYPE is `daily' or `weekly'.
-Returns nil if the buffer isn't visiting a known journal path."
+See `my/journal--file-realm'."
   (when-let* ((file (buffer-file-name)))
-    (cond ((string-prefix-p (expand-file-name dl-notes-journal-dir) file)
-            '(personal daily))
-      ((string-prefix-p (expand-file-name dl-notes-weekly-dir) file)
-        '(personal weekly))
-      ((string-prefix-p (expand-file-name dl-notes-work-journal-dir) file)
-        '(work daily))
-      ((string-prefix-p (expand-file-name dl-notes-work-weekly-dir) file)
-        '(work weekly)))))
+    (my/journal--file-realm file)))
 
 (defun my/journal--parse-basename (basename)
   "Parse BASENAME of a denote journal file.
@@ -275,6 +281,27 @@ Does nothing if the buffer isn't a journal file."
     (when (called-interactively-p 'any)
       (message "Not a journal buffer — skipping links"))))
 
+;;; Creation hook
+
+(defvar my/journal-created-functions nil
+  "Abnormal hook run once a new journal note exists on disk.
+Each function is called with the note's FILE, REALM and TYPE, as
+`my/journal--file-realm' names them.  A note written by
+`my/journal--ensure-file' is announced at once; one populated on
+visit, at its first save.")
+
+(defun my/journal--announce-created (file)
+  "Run `my/journal-created-functions' for the new journal FILE."
+  (when-let* ((realm-type (my/journal--file-realm file)))
+    (apply #'run-hook-with-args 'my/journal-created-functions
+      file realm-type)))
+
+(defun my/journal--announce-on-first-save ()
+  "Announce the current buffer's note, then stop watching its saves.
+Buffer-local in `after-save-hook' of a note populated on visit."
+  (remove-hook 'after-save-hook #'my/journal--announce-on-first-save t)
+  (my/journal--announce-created (buffer-file-name)))
+
 ;;; Skeletons
 
 (defun my/journal--day-skeleton (tags &optional time)
@@ -299,12 +326,21 @@ otherwise use `current-time'."
       "#+date:     " (format-time-string "[%Y-%m-%d %a]" monday) "\n\n"
       "* Review\n\n* Projects\n\n* Notes promoted\n\n* Next week\n")))
 
+(defun my/journal--identity-drawer (file)
+  "Return a file-level :ID: drawer for the journal FILE, or \"\".
+A date's personal and work notes share their Denote identifier, which
+identity-by-Denote tools such as org-iw then read as one note.  So a
+work note carries its own :ID:, which they prefer."
+  (if (eq (car (my/journal--file-realm file)) 'work)
+    (format ":PROPERTIES:\n:ID:       %s\n:END:\n" (org-id-uuid))
+    ""))
+
 (defun my/journal--ensure-file (file skeleton)
   "Ensure FILE exists with SKELETON contents; return its path.
 Also inserts a :NAV: drawer with navigation links on creation."
   (unless (file-exists-p file)
     (with-temp-buffer
-      (insert skeleton)
+      (insert (my/journal--identity-drawer file) skeleton)
       ;; Insert :NAV: drawer before the first * heading (or at end)
       (let* ((name (file-name-nondirectory file))
               (parsed (my/journal--parse-basename name))
@@ -318,7 +354,8 @@ Also inserts a :NAV: drawer with navigation links on creation."
               (insert "\n" links))
             (goto-char (point-max))
             (insert "\n" links))))
-      (write-region (point-min) (point-max) file)))
+      (write-region (point-min) (point-max) file))
+    (my/journal--announce-created file))
   file)
 
 (defun my/journal--open (file skeleton)
@@ -326,7 +363,7 @@ Also inserts a :NAV: drawer with navigation links on creation."
 Then update the :NAV: drawer (creates it if missing)."
   (find-file file)
   (when (= (point-max) 1)
-    (insert skeleton))
+    (insert (my/journal--identity-drawer file) skeleton))
   (my/journal--insert-links))
 
 ;; Personal entry points.
@@ -605,7 +642,7 @@ Intended for use in `find-file-hook'."
               (skeleton (if (eq type 'daily)
                           (my/journal--day-skeleton tags time)
                           (my/journal--week-skeleton tags time))))
-        (insert skeleton)
+        (insert (my/journal--identity-drawer (buffer-file-name)) skeleton)
         (when-let* ((links (my/journal--links-string)))
           (goto-char (point-min))
           (if (re-search-forward "^\\* " nil t)
@@ -613,7 +650,8 @@ Intended for use in `find-file-hook'."
               (forward-line -1)
               (insert "\n" links))
             (goto-char (point-max))
-            (insert "\n" links)))))))
+            (insert "\n" links)))
+        (add-hook 'after-save-hook #'my/journal--announce-on-first-save nil t)))))
 
 (add-hook 'find-file-hook #'my/journal--populate-if-empty)
 

@@ -2,6 +2,19 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-10-07 — new journal dailies join org-iw queues
+
+`dl-denote-journal` runs a new abnormal hook, `my/journal-created-functions`
+(FILE REALM TYPE), once a new note exists on disk: straight after
+`my/journal--ensure-file` writes it, or at the first save of a note populated
+on visit. `dl-org-iw` subscribes: personal dailies join `JOURNAL`, work
+dailies `WORK-JOURNAL` (new queue), weeklies none
+(`dl-org-iw-journal-queues`). Firing once per note means a note removed from
+its queue stays out. Work notes now start with a file-level `:ID:` drawer:
+both realms share a date's Denote identifier, which org-iw read as one note
+("ID shared with another entry"). Tests: `org/dl-denote-journal-test.el`
+(hook, identity), `lisp/test/dl-org-iw-test.el` (enrolment).
+
 ## 2026-10-03 — Nu grammar available outside devshells
 
 Bundle only `tree-sitter-nu` with Emacs in `~/flakes/emacs/emacs.nix` for

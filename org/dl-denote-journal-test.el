@@ -272,5 +272,73 @@ Returns nil if there's only one line (i.e. daily notes)."
     (my/journal--populate-if-empty)
     (should (equal (buffer-string) ""))))
 
+;;; Creation hook and work identity
+
+(defmacro dl-denote-journal-test--with-notes (&rest body)
+  "Run BODY with the journal directories under a throwaway notes root.
+`notes' is bound to the root, and `created' collects the arguments of
+each run of `my/journal-created-functions'."
+  (declare (indent 0) (debug t))
+  `(let* ((notes (file-name-as-directory (make-temp-file "notes" t)))
+          (dl-notes-journal-dir (expand-file-name "journal" notes))
+          (dl-notes-weekly-dir (expand-file-name "weekly" notes))
+          (dl-notes-work-journal-dir (expand-file-name "work/journal" notes))
+          (dl-notes-work-weekly-dir (expand-file-name "work/weekly" notes))
+          (created nil)
+          (my/journal-created-functions
+           (list (lambda (&rest args) (push args created)))))
+     (dolist (dir (list dl-notes-journal-dir dl-notes-weekly-dir
+                        dl-notes-work-journal-dir dl-notes-work-weekly-dir))
+       (make-directory dir t))
+     (unwind-protect (progn ,@body)
+       (dolist (buffer (buffer-list))
+         (when (string-prefix-p notes (or (buffer-file-name buffer) ""))
+           (with-current-buffer buffer (set-buffer-modified-p nil))
+           (kill-buffer buffer)))
+       (delete-directory notes t))))
+
+(ert-deftest dl-denote-journal/ensure-file-announces-new-note ()
+  (dl-denote-journal-test--with-notes
+    (let ((file (my/work-journal--ensure-today)))
+      (should (file-exists-p file))
+      (should (equal created (list (list file 'work 'daily)))))))
+
+(defun dl-denote-journal-test--file-id (file)
+  "The :ID: in FILE's file-level property drawer, or nil."
+  (with-temp-buffer
+    (insert-file-contents file)
+    (org-mode)
+    (org-entry-get (point-min) "ID")))
+
+(ert-deftest dl-denote-journal/only-work-notes-get-own-id ()
+  ;; Both realms share a date's Denote identifier; the work note's
+  ;; :ID: tells them apart.
+  (dl-denote-journal-test--with-notes
+    (should-not (dl-denote-journal-test--file-id (my/journal--ensure-today)))
+    (should (dl-denote-journal-test--file-id (my/work-journal--ensure-today)))
+    (let ((file (my/journal--week-file dl-notes-work-weekly-dir
+                                       "work_weekly_journal")))
+      (with-current-buffer (find-file-noselect file)
+        (save-buffer))
+      (should (dl-denote-journal-test--file-id file)))))
+
+(ert-deftest dl-denote-journal/ensure-file-is-silent-for-existing-note ()
+  (dl-denote-journal-test--with-notes
+    (my/journal--ensure-today)
+    (setq created nil)
+    (my/journal--ensure-today)
+    (should-not created)))
+
+(ert-deftest dl-denote-journal/visited-note-announced-on-first-save-only ()
+  (dl-denote-journal-test--with-notes
+    (let ((file (my/journal--today-file dl-notes-journal-dir "journal")))
+      (with-current-buffer (find-file-noselect file)
+        (should-not created)
+        (save-buffer)
+        (should (equal created (list (list file 'personal 'daily))))
+        (insert "more")
+        (save-buffer)
+        (should (= (length created) 1))))))
+
 (provide 'dl-denote-journal-test)
 ;;; dl-denote-journal-test.el ends here
