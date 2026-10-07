@@ -210,31 +210,33 @@ and leave point where it was."
     (should (equal (buffer-string) "foo\nbaz"))
     (should (meow-insert-mode-p))))
 
+(defun dl-meow-keymap-test--replay-keys (command then)
+  "Run COMMAND, then type THEN; return the keys a local C-c @ z binding saw.
+Nil when the binding never ran."
+  (dl-meow-keymap-test--with-buffer ""
+    (let ((map (make-sparse-keymap))
+          (seen nil))
+      (define-key map (kbd "C-c @ z")
+                  (lambda () (interactive) (setq seen (this-command-keys-vector))))
+      (use-local-map map)
+      (dl-meow-keymap-test--run command)
+      (execute-kbd-macro (kbd then))
+      seen)))
+
 (ert-deftest dl-meow-keymap/o-reaches-mode-local-c-c-bindings ()
-  "`o' acts as `C-c', so mode-local `C-c' maps (outline's `C-c @') work."
+  "`o' acts as `C-c', so mode-local `C-c' maps (outline's `C-c @') work.
+The replayed key is recorded, so the echo area and which-key show it."
   (should (eq (lookup-key meow-normal-state-keymap (kbd "o")) 'my/meow-ctrl-c))
   (should (eq (lookup-key meow-motion-state-keymap (kbd "o")) 'my/meow-ctrl-c))
-  (dl-meow-keymap-test--with-buffer ""
-    (let ((map (make-sparse-keymap))
-          (hit nil))
-      (define-key map (kbd "C-c @ z") (lambda () (interactive) (setq hit t)))
-      (use-local-map map)
-      (dl-meow-keymap-test--run 'my/meow-ctrl-c)
-      (execute-kbd-macro (kbd "@ z"))
-      (should hit))))
+  (should (equal (dl-meow-keymap-test--replay-keys 'my/meow-ctrl-c "@ z")
+                 (vconcat (kbd "C-c @ z")))))
 
 (ert-deftest dl-meow-keymap/at-reaches-outline-prefix ()
-  "`@' acts as `C-c @', the outline-minor-mode prefix."
+  "`@' acts as `C-c @', the outline-minor-mode prefix, recorded as such."
   (should (eq (lookup-key meow-normal-state-keymap (kbd "@"))
               'my/meow-outline-prefix))
-  (dl-meow-keymap-test--with-buffer ""
-    (let ((map (make-sparse-keymap))
-          (hit nil))
-      (define-key map (kbd "C-c @ z") (lambda () (interactive) (setq hit t)))
-      (use-local-map map)
-      (dl-meow-keymap-test--run 'my/meow-outline-prefix)
-      (execute-kbd-macro (kbd "z"))
-      (should hit))))
+  (should (equal (dl-meow-keymap-test--replay-keys 'my/meow-outline-prefix "z")
+                 (vconcat (kbd "C-c @ z")))))
 
 (provide 'dl-meow-keymap-test)
 ;;; dl-meow-keymap-test.el ends here

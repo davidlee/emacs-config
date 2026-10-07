@@ -447,8 +447,13 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 ;; `mode-specific-map' reaches only global C-c keys, missing mode-local
 ;; ones such as outline's C-c @ or org's C-c '.
 (defun my/meow--replay (keys)
-  "Feed KEYS back as input, so the keys after them see every active map."
-  (setq unread-command-events (listify-key-sequence (kbd keys))))
+  "Feed KEYS back as input, so the keys after them see every active map.
+Each event is wrapped as (t . EVENT) so it is recorded in
+`this-command-keys': otherwise only the first lands there, and the echo
+area and which-key show C-c instead of C-c @."
+  (setq unread-command-events
+    (mapcar (lambda (event) (cons t event))
+      (listify-key-sequence (kbd keys)))))
 
 (defun my/meow-ctrl-c ()
   "Act as \\`C-c'."
