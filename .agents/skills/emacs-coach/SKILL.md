@@ -72,10 +72,16 @@ drill note). Don't duplicate it.
      worth tracking;
    - keep the hub's try-next queue to five open items or fewer; close
      done ones and drop stale ones;
-   - something worth revisiting later (a note, a heading) goes in an
-     org-iw review queue, usually `LEARN`, via `org-iw-add` /
-     `org-iw-add-files`. Never hand-write `IW_<QUEUE>` ranks. org-iw is
-     the user's own review-queue package; don't add another SRS.
+   - a durable concept worth revisiting gets its own note (denote
+     `reference` or `slip`, linked from the hub), queued in the org-iw
+     queue `LEARN-EMACS` while it's active and removed once it's settled.
+     Use `org-iw-add` / `org-iw-add-files` / `org-iw-remove`; never
+     hand-write `IW_<QUEUE>` ranks. org-iw is the user's own
+     review-queue package; don't add another SRS.
+
+   Queue layout: the hub sits in both the general `LEARN` queue (the way
+   in from general review) and `LEARN-EMACS`; the meow drills sit in
+   `LEARN-EMACS`.
 
 ## Config loop
 

@@ -16,6 +16,7 @@
                     ("WORK-JOURNAL" :name "Work journal")
                     ("ARTICLES" :name "Articles")
                     ("LEARN" :name "Learn")
+                    ("LEARN-EMACS" :name "Learn Emacs")
                     ("READ" :name "Read")
                     ("DO" :name "Do" :placements
                       (("Next" (after 1))

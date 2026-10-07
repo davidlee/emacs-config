@@ -2,6 +2,13 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-10-08 — org-iw `LEARN-EMACS` queue
+
+New org-iw queue `LEARN-EMACS` ("Learn Emacs") in `org/dl-org-iw.el`, kept
+apart from the general `LEARN` queue. The `emacs-coach` skill queues
+active concept notes there; its hub note sits in both queues, so `LEARN`
+leads into it.
+
 ## 2026-10-08 — `emacs-coach` agent skill; public repo, private notes
 
 New vendor-neutral agent skill at `.agents/skills/emacs-coach/` (symlinked
