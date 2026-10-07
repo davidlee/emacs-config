@@ -536,26 +536,26 @@ Point and the selection are kept."
 ;; inner text (e.g. `, (' or `, "'), then edit the flanking delimiters.
 (defconst my/meow-surround-things
   '((round  ?\( . ?\))
-    (square ?\[ . ?\])
-    (curly  ?\{ . ?\})
-    (angle  ?\< . ?\>)
-    (string ?\" . ?\"))
+     (square ?\[ . ?\])
+     (curly  ?\{ . ?\})
+     (angle  ?\< . ?\>)
+     (string ?\" . ?\"))
   "Delimiter pairs by meow thing.  Any other character pairs with itself.")
 
 (defun my/meow--surround-pair (char)
   "Return (OPEN . CLOSE) for CHAR, which may be either delimiter."
   (let ((pairs (mapcar #'cdr my/meow-surround-things)))
     (or (assq char pairs)
-        (rassq char pairs)
-        (cons char char))))
+      (rassq char pairs)
+      (cons char char))))
 
 (defun my/meow--surround-input-pair (char)
   "Like `my/meow--surround-pair', but CHAR may also be a thing letter.
 Letters come from `meow-char-thing-table', as `,' / `.' read them
 \(r → (), c → {}, ...)."
   (or (alist-get (alist-get char meow-char-thing-table)
-                 my/meow-surround-things)
-      (my/meow--surround-pair char)))
+        my/meow-surround-things)
+    (my/meow--surround-pair char)))
 
 (defun my/meow--surround-bounds ()
   "Return the selection's (BEG . END) when a delimiter pair flanks it."
