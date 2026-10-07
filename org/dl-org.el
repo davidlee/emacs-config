@@ -40,6 +40,8 @@
        ("writing" . ?W)
        ("idea" . ?i)
        ("pkm" . ?p)))
+  (org-clock-sound ; for org-timer-start-timer, poor man's pomodoro
+    "/mnt/500G/home/david/.local/share/Steam/steamui/sounds/timer_expired_alarm.wav")
   :config
   (require 'ox-md)) ; markdown export
 
