@@ -533,6 +533,7 @@ removed.
 | `#` | `my/meow-comment-lines` | Toggle comments on the selected lines (or the current line). Selection stays. |
 | `~` / `` ` `` | `my/meow-upcase` / `my/meow-downcase` | Selection (kept), or the whole word at point; point doesn't move. |
 | `P` | `consult-yank-pop` | Pick from paste history. |
+| `C` | `my/meow-change-to-line-end` | Change from point (or the selection) to the line end: `D` then `c`. |
 | `T` | `meow-till-expand` | Till, extending the selection (pairs with `F`). |
 | `^` / `$` | `back-to-indentation` / `move-end-of-line` | Line text start / end. |
 | `m s` / `m d` / `m r` | `my/meow-surround{,-delete,-replace}` | Helix-style surround, selection-first. `m s CHAR` wraps the selection (opener or closer picks the pair; any other char wraps symmetrically). `m d` / `m r CHAR` act on the delimiters flanking an *inner* selection, so select with `, (` / `, "` first; they refuse if the flanks don't pair. |

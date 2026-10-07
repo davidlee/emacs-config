@@ -58,6 +58,7 @@ New normal-state keys:
 - `~` / `` ` ``: upcase / downcase the selection (kept), or the whole word at point
 - `P`: pick from paste history
 - `T`: till, extending the selection
+- `C`: change to the line end (`D c`)
 - `^` / `$`: line text start / line end
 
 `>` `<` `#` `=` share one helper for "the lines the selection touches".

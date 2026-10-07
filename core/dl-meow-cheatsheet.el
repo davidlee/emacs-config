@@ -27,6 +27,7 @@
     (meow-delete . "delete")
     (my/meow-delete-dwim . "cut/del")
     (my/meow-select-to-line-end . "to EOL")
+    (my/meow-change-to-line-end . "chg EOL")
     (meow-replace . "replce")
     (meow-swap-grab . "swap")
     (meow-undo . "undo")

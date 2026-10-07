@@ -77,7 +77,9 @@ All four fit on free keys without displacing existing bindings.
 
 ## Still open
 
-- Repurpose `s`. It is mostly redundant with `d`; this is the user's call.
+- Repurpose `s`. It only adds a one-key cut to the line end (`D d` does
+  the same). The user chose to add change-to-line-end on `C`
+  (`my/meow-change-to-line-end` = `D` then `c`) instead; `s` is unchanged.
 - Scroll on `C-d` / `C-u`. Skipped because `C-u` is `universal-argument`;
   `C-v` / `M-v` still work.
 

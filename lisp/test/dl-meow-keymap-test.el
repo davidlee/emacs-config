@@ -52,6 +52,7 @@
                    ("`"     . my/meow-downcase)
                    ("P"     . consult-yank-pop)
                    ("T"     . meow-till-expand)
+                   ("C"     . my/meow-change-to-line-end)
                    ("^"     . back-to-indentation)
                    ("$"     . move-end-of-line)))
     (should (eq (lookup-key meow-normal-state-keymap (kbd key)) command))))
@@ -169,6 +170,15 @@ and leave point where it was."
     (should (equal (buffer-string) "foo BAR baz"))
     (should (region-active-p))
     (should (equal (dl-meow-keymap-test--selected) "BAR"))))
+
+(ert-deftest dl-meow-keymap/change-to-line-end ()
+  "`C' deletes from point to the line end and enters insert state."
+  (dl-meow-keymap-test--with-buffer "foo bar\nbaz"
+    (meow-mode 1)
+    (forward-char 3)
+    (dl-meow-keymap-test--run 'my/meow-change-to-line-end)
+    (should (equal (buffer-string) "foo\nbaz"))
+    (should (meow-insert-mode-p))))
 
 (provide 'dl-meow-keymap-test)
 ;;; dl-meow-keymap-test.el ends here

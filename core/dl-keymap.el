@@ -404,7 +404,18 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 ;; x:grow  q:quit  m:surr w:mark z:pop      k:—    f:find  ':rpt  ;:rev  .:thing
 ;; X:shrink  >/<:indent  C-r:redo  C-o/C-S-o:jump back/forward (dogears)
 ;; m:surround (s/d/r)  #:comment  =:reindent  ~/`:up/downcase  P:paste-pick
-;; T:till+  ^/$:line start(text)/end
+;; T:till+  ^/$:line start(text)/end  C:change to EOL
+
+(declare-function meow-kill "meow-command")
+(declare-function meow-delete "meow-command")
+(declare-function meow-change "meow-command")
+(declare-function meow--select "meow-util")
+(declare-function meow--make-selection "meow-util")
+(declare-function meow-normal-define-key "meow-helpers")
+(declare-function meow-leader-define-key "meow-helpers")
+(declare-function meow-motion-define-key "meow-helpers")
+(defvar meow-cheatsheet-layout)
+(defvar meow-cheatsheet-layout-qwerty)
 
 (defun my/meow-delete-dwim ()
   "Cut the active selection, or delete one character forward."
@@ -423,6 +434,12 @@ Warns when KEY already has a binding in MAP that differs from CMD."
                  (line-end-position))))
     (meow--select (meow--make-selection '(select . transient) beg end) t)))
 
+(defun my/meow-change-to-line-end ()
+  "Change to the line end: `D' then `c'."
+  (interactive)
+  (my/meow-select-to-line-end)
+  (meow-change))
+
 ;; Line-wise edits (> < = #) share one notion of "the selected lines".
 ;; Not meow's own: with no selection `meow-indent' (C-M-\) reindents
 ;; from point to a possibly stale mark, and `meow-comment' (M-;
@@ -432,13 +449,13 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 Without a selection, the current line.  A selection ending at a line
 start (linewise) excludes that line."
   (let* ((active (region-active-p))
-         (beg (if active (region-beginning) (point)))
-         (end (if active (region-end) (point))))
+          (beg (if active (region-beginning) (point)))
+          (end (if active (region-end) (point))))
     (cons (save-excursion (goto-char beg) (line-beginning-position))
-          (save-excursion
-            (goto-char end)
-            (when (and (bolp) (> end beg)) (backward-char))
-            (line-end-position)))))
+      (save-excursion
+        (goto-char end)
+        (when (and (bolp) (> end beg)) (backward-char))
+        (line-end-position)))))
 
 (defun my/meow--edit-lines (edit &rest args)
   "Call EDIT with the selected lines' bounds and ARGS, keeping the selection
@@ -473,10 +490,10 @@ active so the command can repeat."
   "Apply CHANGE-REGION to the selection, else the whole word at point.
 Point and the selection are kept."
   (pcase-let ((`(,beg . ,end)
-               (if (region-active-p)
-                   (cons (region-beginning) (region-end))
-                 (or (bounds-of-thing-at-point 'word)
-                     (user-error "No word at point")))))
+                (if (region-active-p)
+                  (cons (region-beginning) (region-end))
+                  (or (bounds-of-thing-at-point 'word)
+                    (user-error "No word at point")))))
     (funcall change-region beg end))
   (setq deactivate-mark nil))
 
@@ -499,19 +516,19 @@ Point and the selection are kept."
 (defun my/meow--surround-pair (char)
   "Return (OPEN . CLOSE) for CHAR, which may be either delimiter."
   (or (assq char my/meow-surround-pairs)
-      (rassq char my/meow-surround-pairs)
-      (cons char char)))
+    (rassq char my/meow-surround-pairs)
+    (cons char char)))
 
 (defun my/meow--surround-bounds ()
   "Return the selection's (BEG . END) when a delimiter pair flanks it."
   (unless (region-active-p)
     (user-error "Select the text inside the delimiters first"))
   (let ((beg (region-beginning))
-        (end (region-end)))
+         (end (region-end)))
     (unless (and (> beg (point-min))
-                 (< end (point-max))
-                 (equal (my/meow--surround-pair (char-before beg))
-                        (cons (char-before beg) (char-after end))))
+              (< end (point-max))
+              (equal (my/meow--surround-pair (char-before beg))
+                (cons (char-before beg) (char-after end))))
       (user-error "Selection is not inside a delimiter pair"))
     (cons beg end)))
 
@@ -521,8 +538,8 @@ The selection stays on the content.  Without one, insert the pair
 with point inside."
   (interactive "cSurround with: ")
   (pcase-let ((`(,open . ,close) (my/meow--surround-pair char))
-              (beg (if (region-active-p) (region-beginning) (point)))
-              (end (if (region-active-p) (region-end) (point))))
+               (beg (if (region-active-p) (region-beginning) (point)))
+               (end (if (region-active-p) (region-end) (point))))
     (save-excursion
       (goto-char end)
       (insert close)
@@ -543,7 +560,7 @@ with point inside."
   "Replace the delimiter pair around the selection with CHAR's pair."
   (interactive "cReplace surround with: ")
   (pcase-let ((`(,beg . ,end) (my/meow--surround-bounds))
-              (`(,open . ,close) (my/meow--surround-pair char)))
+               (`(,open . ,close) (my/meow--surround-pair char)))
     ;; In place, so the selection's markers stay put.
     (subst-char-in-region end (1+ end) (char-after end) close)
     (subst-char-in-region (1- beg) beg (char-before beg) open))
@@ -653,6 +670,7 @@ with point inside."
 
     ;; Edit actions.
     '("c" . meow-change)
+    '("C" . my/meow-change-to-line-end)
     '("d" . my/meow-delete-dwim)
     '("D" . my/meow-select-to-line-end)
     '("s" . meow-kill)
