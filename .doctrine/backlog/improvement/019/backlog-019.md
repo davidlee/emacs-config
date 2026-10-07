@@ -5,20 +5,43 @@
 Emacs key conventions (elisp manual, "Key Binding Conventions") split `C-c`:
 
 ```
-C-c <letter>              users          ← our my-*-map families live here
-C-c <punct> / C-c C-<key> major modes    ← modes shadow anything global here
-C-c <digit>, { } < > : ;  minor modes
+C-c <letter>                       users        ← our my-*-map families live here
+C-c C-<key>, <digit>, { } < > : ;  major modes
+C-c <other punctuation>            minor modes  ← e.g. outline's C-c @
 ```
 
-`core/dl-policy-lint.el` checks only single-letter `C-c` bindings. Globals
-bound in the major-mode range pass silently. They work in some buffers and
-are shadowed in others, so the shadowing goes unnoticed.
+(Corrected 2026-10-08 against the Emacs 31 manual; the first draft had
+the major/minor rows swapped.) Org ignores the split: its `C-c '`,
+`C-c .`, `C-c /`, `C-c ?`, `C-c [`, `C-c ]` all sit in the minor-mode
+range. So in practice every non-letter `C-c` key is mode-owned.
 
-This matters more once Meow `o` acts as `C-c` and looks the next keys up
-in every active keymap (fix in flight, 2026-10-08). Today `o` binds the
-global `mode-specific-map` object, so mode-local `C-c` keys (`o @`, `o '`)
-are unreachable. After the fix, `o X` ≡ `C-c X`, so every global binding
-in the major-mode range turns mode-dependent.
+`core/dl-policy-lint.el` checks only single-letter `C-c` bindings. Globals
+bound in the mode-owned (non-letter) ranges pass silently. They work in
+some buffers and are shadowed in others, so the shadowing goes unnoticed.
+
+This matters more now that Meow `o` acts as `C-c` (landed 2026-10-08).
+
+## Findings: Meow `o` / `@` (2026-10-08)
+
+- **Root cause.** `o` was bound to the `mode-specific-map` object. A
+  keymap bound as a key's value is consulted alone: lookups after `o` saw
+  only global `C-c` keys. Mode-local `C-c` maps live in each mode's own
+  keymap, so `o @` (outline) and `o '` (org `org-edit-special`) were dead.
+- **Fix.** `o` runs `my/meow-ctrl-c`, which pushes `C-c` onto
+  `unread-command-events` (`my/meow--replay`). The command loop then reads
+  `C-c` plus the following keys through the normal lookup: every active
+  map, which-key included. Same in motion state.
+- **`@`.** Normal-state `@` now replays `C-c @` (`my/meow-outline-prefix`),
+  the `outline-minor-mode` prefix. `C-c @` sits in the minor-mode range
+  of the convention table above.
+- **Consequence for this item.** `o X` ≡ `C-c X` in every buffer, so each
+  global binding in the mode-owned ranges is now mode-dependent under `o`
+  as well as `C-c` (the table below). `SPC X` is unaffected: the leader
+  map is global.
+- **Pattern.** Bind a prefix key to a replay command, not to a keymap
+  object, whenever mode-local bindings under it must stay reachable. A
+  future static lint rule could flag keymap-object values whose prefix
+  modes also bind (e.g. `C-c`, `C-x`).
 
 ## Evidence (live scan, 2026-10-08)
 
@@ -42,9 +65,9 @@ collision. The lint must ignore it.
 ## Proposed scope
 
 1. **Static rule (cheap, deterministic):** report every global `C-c`
-   binding whose first key after `C-c` is punctuation or a control
-   character, i.e. the major-mode range. Same report surface as the
-   letter rule: `*Policy Lint*` buffer and a silent startup scan that logs
+   binding whose first key after `C-c` is not a letter: the major- and
+   minor-mode ranges together (see the corrected table). Same report
+   surface as the letter rule: `*Policy Lint*` buffer and a silent startup scan that logs
    to *Messages*. Allow-list deliberate keepers, like the reserved
    singletons.
 2. **Optional live probe (M-x only, never on startup):** for each live
