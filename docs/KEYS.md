@@ -513,8 +513,8 @@ Normal `d` cuts the active selection; with no selection it deletes one
 character forward. Normal `D` extends the selection's right edge to the
 end of its logical line (or selects from point with no selection), without
 deleting; `D d` cuts that text. `l d` selects and cuts a whole
-line. Normal `s` retains Meow's original kill behavior, including its
-kill-to-end-of-line fallback when nothing is selected.
+line. Normal `s` is unbound (free for reuse): `d` cuts a selection and
+`D d` cuts to the end of the line.
 
 The Backspace thumb key and NAV Delete key keep their existing commands. In
 Elisp, `C-h k` reports `puni-backward-delete-char` for Backspace and

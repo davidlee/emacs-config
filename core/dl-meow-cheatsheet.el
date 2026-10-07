@@ -20,7 +20,6 @@
     (meow-append . "append")
     (meow-open-above . "open↑")
     (meow-open-below . "open↓")
-    (meow-kill . "kill")
     (meow-save . "copy")
     (meow-yank . "paste")
     (meow-change . "change")

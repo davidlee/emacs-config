@@ -60,6 +60,7 @@ New normal-state keys:
 - `P`: pick from paste history
 - `T`: till, extending the selection
 - `C`: change to the line end (`D c`)
+- `s` unbound (was `meow-kill`; `d` and `D d` cover it)
 - `^` / `$`: line text start / line end
 
 `>` `<` `#` `=` share one helper for "the lines the selection touches".

@@ -400,7 +400,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 
 ;; Gallium alpha positions → meow-normal bindings
 ;; b:block l:line  d:del  c:chg  v:visit    j:join y:save  o:C-c  u:undo ,:thing
-;; n:srch  r:repl  t:till s:kill g:cancel   p:yank h:←word a:appd e:word→ i:ins
+;; n:srch  r:repl  t:till s:—    g:cancel   p:yank h:←word a:appd e:word→ i:ins
 ;; x:grow  q:quit  m:surr w:mark z:pop      k:—    f:find  ':rpt  ;:rev  .:thing
 ;; X:shrink  >/<:indent  C-r:redo  C-o/C-S-o:jump back/forward (dogears)
 ;; m:surround (s/d/r)  #:comment  =:reindent  ~/`:up/downcase  P:paste-pick
@@ -687,7 +687,6 @@ with point inside."
     '("C" . my/meow-change-to-line-end)
     '("d" . my/meow-delete-dwim)
     '("D" . my/meow-select-to-line-end)
-    '("s" . meow-kill)
     '("r" . meow-replace)
     '("R" . meow-swap-grab)
     '("u" . meow-undo)

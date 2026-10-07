@@ -82,9 +82,11 @@ All four fit on free keys without displacing existing bindings.
 
 ## Still open
 
-- Repurpose `s`. It only adds a one-key cut to the line end (`D d` does
-  the same). The user chose to add change-to-line-end on `C`
-  (`my/meow-change-to-line-end` = `D` then `c`) instead; `s` is unchanged.
+- ~~Repurpose `s`.~~ Unbound on 2026-10-07; nothing was lost (`d` cuts a
+  selection, `D d` cuts to the line end). It's free for a future binding.
+  A programmatic check found every stock qwerty `meow-setup` command bound
+  except `meow-delete` (`d`'s no-selection fallback) and
+  `meow-backward-delete` (dropped in IMP-016; Backspace covers it).
 - Scroll on `C-d` / `C-u`. Skipped because `C-u` is `universal-argument`;
   `C-v` / `M-v` still work.
 

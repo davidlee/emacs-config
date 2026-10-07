@@ -57,6 +57,10 @@
                    ("$"     . move-end-of-line)))
     (should (eq (lookup-key meow-normal-state-keymap (kbd key)) command))))
 
+(ert-deftest dl-meow-keymap/s-is-free ()
+  "`s' is unbound: `d' cuts a selection and `D d' cuts to line end."
+  (should-not (lookup-key meow-normal-state-keymap (kbd "s"))))
+
 (ert-deftest dl-meow-keymap/redo-reverts-meow-undo ()
   "`C-r' re-applies the change `u' undid."
   (dl-meow-keymap-test--with-buffer ""
