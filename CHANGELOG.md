@@ -10,8 +10,8 @@ unreachable. `o` now replays `C-c` as input (`my/meow-ctrl-c`), so the next
 keys are looked up in every active map, exactly as a typed `C-c` (motion state
 too). New normal-state `@` replays `C-c @` (`my/meow-outline-prefix`), the
 `outline-minor-mode` prefix. Both share `my/meow--replay`. Consequence: every
-global binding in the major-mode `C-c` range is now mode-dependent under `o`
-too — tracked in IMP-019. Tests: `lisp/test/dl-meow-keymap-test.el`.
+global non-letter `C-c` binding (the mode-owned ranges) is now
+mode-dependent under `o` too — tracked in IMP-019. Tests: `lisp/test/dl-meow-keymap-test.el`.
 
 ## 2026-10-07 — new journal dailies join org-iw queues
 
