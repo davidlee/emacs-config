@@ -29,7 +29,10 @@ belongs in `~/notes` (private), never here: not in files, commits,
 changelogs or backlog items. Emacs learning and coaching: use the
 `emacs-coach` skill (`.agents/skills/emacs-coach/`); it holds the
 procedure, `~/notes` holds the state. Config changes that come out of
-it go in the doctrine backlog here, described in config terms.
+it go in the doctrine backlog here, described in config terms. The
+reverse also holds: the coach learns about new or changed features from
+commits and `CHANGELOG.md`, so name the commands and keys a user-facing
+change touches.
 
 ## Misc 
 

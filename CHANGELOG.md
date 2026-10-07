@@ -2,6 +2,15 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-10-08 — `emacs-coach` agent skill; public repo, private notes
+
+New vendor-neutral agent skill at `.agents/skills/emacs-coach/` (symlinked
+from `.claude/skills/`): a procedure for coaching Emacs fluency from real
+work. It keeps its state in `~/notes`, never in this public repo; `AGENTS.md`
+states that rule. The skill reads config changes since its last visit, so
+commits and changelog entries for user-facing changes should name the
+commands and keys they touch.
+
 ## 2026-10-08 — Meow redo moves to `U`; `C-r` searches again
 
 Normal-state `C-r` was `undo-redo`, shadowing the global backward search

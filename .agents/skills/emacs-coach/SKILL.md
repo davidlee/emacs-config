@@ -39,8 +39,9 @@ drill note). Don't duplicate it.
      reached through `M-x` is one the user has no key for in muscle
      memory;
    - FRICTION entries in the log;
-   - recent config changes (`git -C ~/.emacs.d log --oneline -20`, top of
-     `CHANGELOG.md`): new bindings are candidates.
+   - config changes since the hub's `CONFIG_SEEN` commit
+     (`git -C ~/.emacs.d log --oneline <sha>..HEAD`, matching
+     `CHANGELOG.md` entries). See *Config loop*.
 3. **Resolve keys live.** Keys in this config change often, so never
    quote a key from memory or from an old note. Ask the running Emacs,
    in the user's current buffer so mode and meow maps apply:
@@ -70,7 +71,25 @@ drill note). Don't duplicate it.
    - add a capability heading (a task, not a key) when you find one
      worth tracking;
    - keep the hub's try-next queue to five open items or fewer; close
-     done ones and drop stale ones.
+     done ones and drop stale ones;
+   - something worth revisiting later (a note, a heading) goes in an
+     org-iw review queue, usually `LEARN`, via `org-iw-add` /
+     `org-iw-add-files`. Never hand-write `IW_<QUEUE>` ranks. org-iw is
+     the user's own review-queue package; don't add another SRS.
+
+## Config loop
+
+Learning and configuring feed each other. Both directions are part of
+every visit.
+
+- **Inbound (config → learning).** Read what changed since the hub's
+  `CONFIG_SEEN`. For each user-facing change: add or edit the
+  capabilities it touches (renamed commands, moved keys, new packages),
+  and offer anything worth trying as a try-next item. Then set
+  `CONFIG_SEEN` to the current `HEAD`.
+- **Outbound (learning → config).** Friction that needs a code change,
+  or a package worth trying, becomes a `.emacs.d` backlog item (see
+  Boundaries). A stated preference becomes a line in the hub's profile.
 
 ## Boundaries
 
