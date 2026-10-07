@@ -19,7 +19,10 @@ oauth2.*
 
 .claude
 .pi
-.agents
+/.agents/*
+!/.agents/skills
+/.agents/skills/*
+!/.agents/skills/emacs-coach
 .codex
 .dirge
 _claude

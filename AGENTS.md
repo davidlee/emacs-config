@@ -21,6 +21,16 @@ For Emacs Lisp edits:
 4. Re-run `bin/elisp-locate-paren-error FILE` until it returns {"ok":true}.
 5. Only then run byte compilation/tests.
 
+## Public repo, private notes
+
+This repo is public. Anything about the user personally — what they
+know or are learning, practice logs, drills, friction, preferences —
+belongs in `~/notes` (private), never here: not in files, commits,
+changelogs or backlog items. Emacs learning and coaching: use the
+`emacs-coach` skill (`.agents/skills/emacs-coach/`); it holds the
+procedure, `~/notes` holds the state. Config changes that come out of
+it go in the doctrine backlog here, described in config terms.
+
 ## Misc 
 
 when searching:
