@@ -68,6 +68,11 @@ All four fit on free keys without displacing existing bindings.
   selection fails loudly instead of deleting the wrong characters.
   puni's sexp-based commands were not used: the selection-first approach
   works for every delimiter meow can select inside.
+- `m s` / `m r` also accept meow's thing letters (`r` round, `s` square,
+  `c` curly, `g` string, `a` angle), read from `meow-char-thing-table`
+  so they always match `,` / `.`. `my/meow-surround-things` maps each
+  thing to its delimiters. `m d`'s flank check stays literal, so `r…r`
+  is a symmetric pair, not `(…)`.
 - `my/meow-command-label` in the cheatsheet no longer labels every prefix
   keymap "C-c". `my/meow-cheatsheet-keymap-labels` names each one.
 - Case changes first used `upcase-dwim` / `downcase-dwim`. Mid-word with no

@@ -101,6 +101,32 @@ Other characters wrap symmetrically.  The selection stays on the content."
       (should (equal (buffer-string) expected))
       (should (equal (dl-meow-keymap-test--selected) "ab")))))
 
+(ert-deftest dl-meow-keymap/surround-accepts-meow-thing-aliases ()
+  "`m s' / `m r' read the same delimiter letters as `,' / `.' via
+`meow-char-thing-table'; letters naming non-delimiter things stay literal."
+  (let ((meow-char-thing-table (cons '(?a . angle) meow-char-thing-table)))
+    (pcase-dolist (`(,char . ,expected) '((?r . "x (ab) y")
+                                          (?s . "x [ab] y")
+                                          (?c . "x {ab} y")
+                                          (?g . "x \"ab\" y")
+                                          (?a . "x <ab> y")
+                                          (?e . "x eabe y")))
+      (dl-meow-keymap-test--with-buffer "x ab y"
+        (dl-meow-keymap-test--select 3 5)
+        (my/meow-surround char)
+        (should (equal (buffer-string) expected))))
+    (dl-meow-keymap-test--with-buffer "x (ab) y"
+      (dl-meow-keymap-test--select 4 6)
+      (my/meow-surround-replace ?c)
+      (should (equal (buffer-string) "x {ab} y")))))
+
+(ert-deftest dl-meow-keymap/surround-delete-ignores-alias-letters ()
+  "Flanking letters are literal: `r…r' is a symmetric pair, not `(…)'."
+  (dl-meow-keymap-test--with-buffer "x rabr y"
+    (dl-meow-keymap-test--select 4 6)
+    (my/meow-surround-delete)
+    (should (equal (buffer-string) "x ab y"))))
+
 (ert-deftest dl-meow-keymap/surround-without-selection-inserts-pair ()
   "With no selection, `m s' inserts the pair with point inside it."
   (dl-meow-keymap-test--with-buffer "ab"

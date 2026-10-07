@@ -52,7 +52,8 @@ only ever rewrites that line; `date:` and `tags:` stay the blog's.
 ## 2026-10-07 — Meow editing gaps, part 2
 
 New normal-state keys:
-- `m s` / `m d` / `m r`: surround the selection (wrap / delete / replace)
+- `m s` / `m d` / `m r`: surround the selection (wrap / delete / replace).
+  `m s` and `m r` accept meow's thing letters, as `,` does: `r` (), `s` [], `c` {}, `g` "", `a` <>
 - `#`: toggle comments on the selected lines
 - `=`: reindent the selected lines
 - `~` / `` ` ``: upcase / downcase the selection (kept), or the whole word at point

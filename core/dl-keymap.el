@@ -416,6 +416,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (declare-function meow-motion-define-key "meow-helpers")
 (defvar meow-cheatsheet-layout)
 (defvar meow-cheatsheet-layout-qwerty)
+(defvar meow-char-thing-table)
 
 (defun my/meow-delete-dwim ()
   "Cut the active selection, or delete one character forward."
@@ -509,15 +510,28 @@ Point and the selection are kept."
 
 ;; Surround (Helix `ms' / `md' / `mr'), selection-first: select the
 ;; inner text (e.g. `, (' or `, "'), then edit the flanking delimiters.
-(defconst my/meow-surround-pairs
-  '((?\( . ?\)) (?\[ . ?\]) (?\{ . ?\}) (?\< . ?\>))
-  "Asymmetric delimiter pairs.  Any other character pairs with itself.")
+(defconst my/meow-surround-things
+  '((round  ?\( . ?\))
+    (square ?\[ . ?\])
+    (curly  ?\{ . ?\})
+    (angle  ?\< . ?\>)
+    (string ?\" . ?\"))
+  "Delimiter pairs by meow thing.  Any other character pairs with itself.")
 
 (defun my/meow--surround-pair (char)
   "Return (OPEN . CLOSE) for CHAR, which may be either delimiter."
-  (or (assq char my/meow-surround-pairs)
-    (rassq char my/meow-surround-pairs)
-    (cons char char)))
+  (let ((pairs (mapcar #'cdr my/meow-surround-things)))
+    (or (assq char pairs)
+        (rassq char pairs)
+        (cons char char))))
+
+(defun my/meow--surround-input-pair (char)
+  "Like `my/meow--surround-pair', but CHAR may also be a thing letter.
+Letters come from `meow-char-thing-table', as `,' / `.' read them
+\(r → (), c → {}, ...)."
+  (or (alist-get (alist-get char meow-char-thing-table)
+                 my/meow-surround-things)
+      (my/meow--surround-pair char)))
 
 (defun my/meow--surround-bounds ()
   "Return the selection's (BEG . END) when a delimiter pair flanks it."
@@ -533,11 +547,11 @@ Point and the selection are kept."
     (cons beg end)))
 
 (defun my/meow-surround (char)
-  "Wrap the selection in the delimiter pair for CHAR.
+  "Wrap the selection in the delimiter pair for CHAR (or thing letter).
 The selection stays on the content.  Without one, insert the pair
 with point inside."
   (interactive "cSurround with: ")
-  (pcase-let ((`(,open . ,close) (my/meow--surround-pair char))
+  (pcase-let ((`(,open . ,close) (my/meow--surround-input-pair char))
                (beg (if (region-active-p) (region-beginning) (point)))
                (end (if (region-active-p) (region-end) (point))))
     (save-excursion
@@ -560,7 +574,7 @@ with point inside."
   "Replace the delimiter pair around the selection with CHAR's pair."
   (interactive "cReplace surround with: ")
   (pcase-let ((`(,beg . ,end) (my/meow--surround-bounds))
-               (`(,open . ,close) (my/meow--surround-pair char)))
+               (`(,open . ,close) (my/meow--surround-input-pair char)))
     ;; In place, so the selection's markers stay put.
     (subst-char-in-region end (1+ end) (char-after end) close)
     (subst-char-in-region (1- beg) beg (char-before beg) open))
