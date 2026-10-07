@@ -48,8 +48,8 @@
                    ("m r"   . my/meow-surround-replace)
                    ("#"     . my/meow-comment-lines)
                    ("="     . my/meow-reindent-lines)
-                   ("~"     . upcase-dwim)
-                   ("`"     . downcase-dwim)
+                   ("~"     . my/meow-upcase)
+                   ("`"     . my/meow-downcase)
                    ("P"     . consult-yank-pop)
                    ("T"     . meow-till-expand)
                    ("^"     . back-to-indentation)
@@ -149,6 +149,26 @@ Other characters wrap symmetrically.  The selection stays on the content."
     (dl-meow-keymap-test--select (point-min) (point-max))
     (dl-meow-keymap-test--run 'my/meow-reindent-lines)
     (should (equal (buffer-string) "(a\n b)"))))
+
+(ert-deftest dl-meow-keymap/case-without-selection-changes-whole-word ()
+  "`~' / `` ` '' change the whole word around point, not just its tail,
+and leave point where it was."
+  (dl-meow-keymap-test--with-buffer "foo bar"
+    (forward-char 1)
+    (dl-meow-keymap-test--run 'my/meow-upcase)
+    (should (equal (buffer-string) "FOO bar"))
+    (should (= (point) 2))
+    (dl-meow-keymap-test--run 'my/meow-downcase)
+    (should (equal (buffer-string) "foo bar"))))
+
+(ert-deftest dl-meow-keymap/case-changes-selection-and-keeps-it ()
+  "With a selection, `~' changes exactly it and the selection survives."
+  (dl-meow-keymap-test--with-buffer "foo bar baz"
+    (dl-meow-keymap-test--select 5 8)
+    (dl-meow-keymap-test--run 'my/meow-upcase)
+    (should (equal (buffer-string) "foo BAR baz"))
+    (should (region-active-p))
+    (should (equal (dl-meow-keymap-test--selected) "BAR"))))
 
 (provide 'dl-meow-keymap-test)
 ;;; dl-meow-keymap-test.el ends here

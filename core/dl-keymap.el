@@ -467,6 +467,29 @@ active so the command can repeat."
   (interactive)
   (my/meow--edit-lines #'indent-region))
 
+;; Case.  Not `upcase-dwim': without a region it acts from point to
+;; the word's end, so mid-word it changes only the tail.
+(defun my/meow--change-case (change-region)
+  "Apply CHANGE-REGION to the selection, else the whole word at point.
+Point and the selection are kept."
+  (pcase-let ((`(,beg . ,end)
+               (if (region-active-p)
+                   (cons (region-beginning) (region-end))
+                 (or (bounds-of-thing-at-point 'word)
+                     (user-error "No word at point")))))
+    (funcall change-region beg end))
+  (setq deactivate-mark nil))
+
+(defun my/meow-upcase ()
+  "Upcase the selection, else the word at point."
+  (interactive)
+  (my/meow--change-case #'upcase-region))
+
+(defun my/meow-downcase ()
+  "Downcase the selection, else the word at point."
+  (interactive)
+  (my/meow--change-case #'downcase-region))
+
 ;; Surround (Helix `ms' / `md' / `mr'), selection-first: select the
 ;; inner text (e.g. `, (' or `, "'), then edit the flanking delimiters.
 (defconst my/meow-surround-pairs
@@ -672,8 +695,8 @@ with point inside."
     '("<" . my/meow-indent-left)
     '("=" . my/meow-reindent-lines)
     '("#" . my/meow-comment-lines)
-    '("~" . upcase-dwim)
-    '("`" . downcase-dwim)
+    '("~" . my/meow-upcase)
+    '("`" . my/meow-downcase)
     '("^" . back-to-indentation)
     '("$" . move-end-of-line)
     (cons "m" my-surround-map)

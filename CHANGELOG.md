@@ -55,7 +55,7 @@ New normal-state keys:
 - `m s` / `m d` / `m r`: surround the selection (wrap / delete / replace)
 - `#`: toggle comments on the selected lines
 - `=`: reindent the selected lines
-- `~` / `` ` ``: upcase / downcase
+- `~` / `` ` ``: upcase / downcase the selection (kept), or the whole word at point
 - `P`: pick from paste history
 - `T`: till, extending the selection
 - `^` / `$`: line text start / line end

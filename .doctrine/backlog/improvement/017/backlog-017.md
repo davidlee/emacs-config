@@ -47,7 +47,7 @@ All four fit on free keys without displacing existing bindings.
 |---|---|
 | `=` | `my/meow-reindent-lines` |
 | `#` | `my/meow-comment-lines` |
-| `~` / `` ` `` | `upcase-dwim` / `downcase-dwim` |
+| `~` / `` ` `` | `my/meow-upcase` / `my/meow-downcase` |
 | `P` | `consult-yank-pop` |
 | `T` | `meow-till-expand` |
 | `^` / `$` | `back-to-indentation` / `move-end-of-line` |
@@ -70,8 +70,10 @@ All four fit on free keys without displacing existing bindings.
   works for every delimiter meow can select inside.
 - `my/meow-command-label` in the cheatsheet no longer labels every prefix
   keymap "C-c". `my/meow-cheatsheet-keymap-labels` names each one.
-- Not done: case changes (`~`, `` ` ``) drop the selection, as Emacs
-  deactivates the mark after edits. Helix keeps it.
+- Case changes first used `upcase-dwim` / `downcase-dwim`. Mid-word with no
+  selection, those change only the word's tail. They also dropped the
+  selection. `my/meow--change-case` uses the whole word under point (point
+  stays put) or the selection, and keeps the selection afterwards.
 
 ## Still open
 

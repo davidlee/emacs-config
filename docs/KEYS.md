@@ -531,7 +531,7 @@ removed.
 | `C-o` / `C-S-o` | `dogears-back` / `dogears-forward` | Jump list. `C-i` is TAB, hence `C-S-o`. Records both ends of each command in `dl-motion-jump-commands` (xref, consult, avy, `v`, `L`, buffer start/end, last change), plus places idled on for 5s. `C-c j l` / `SPC j l` picks a place by completion; `C-c j L` opens the sidebar. |
 | `=` | `my/meow-reindent-lines` | Reindent the selected lines (or the current line) per the major mode. |
 | `#` | `my/meow-comment-lines` | Toggle comments on the selected lines (or the current line). Selection stays. |
-| `~` / `` ` `` | `upcase-dwim` / `downcase-dwim` | Selection, or the word at point. |
+| `~` / `` ` `` | `my/meow-upcase` / `my/meow-downcase` | Selection (kept), or the whole word at point; point doesn't move. |
 | `P` | `consult-yank-pop` | Pick from paste history. |
 | `T` | `meow-till-expand` | Till, extending the selection (pairs with `F`). |
 | `^` / `$` | `back-to-indentation` / `move-end-of-line` | Line text start / end. |
