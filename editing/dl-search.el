@@ -19,7 +19,6 @@
     ))
 
 (use-package deadgrep)
-(global-set-key (kbd "<f3>") #'deadgrep)
 
 (provide 'dl-search)
 ;;; dl-search.el ends here

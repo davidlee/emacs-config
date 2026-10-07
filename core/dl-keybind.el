@@ -126,7 +126,12 @@ Window resize: _<left>_/_<right>_ width  _<up>_/_<down>_ height  _=_ balance  _q
 ;; appends a timestamped entry under today's `* Log'.  Help stays on C-h;
 ;; C-<f1> belongs to `my/ghostel-toggle' (apps/dl-term.el).
 (global-set-key (kbd "<f1>") #'my/journal-quick-capture)
-
+;; f2 - view menu (needs work)
+;; f3 - start macro
+;; f4 - end or call macro
+(global-set-key (kbd "<f5>") #'deadgrep)
+;; f9 - toggle maximize buffer
+;; f10 - collides w/ WM
 
 (provide 'dl-keybind)
 ;;; dl-keybind.el ends here
