@@ -80,15 +80,18 @@ All four fit on free keys without displacing existing bindings.
   selection. `my/meow--change-case` uses the whole word under point (point
   stays put) or the selection, and keeps the selection afterwards.
 
-## Still open
+## Closing state
 
 - ~~Repurpose `s`.~~ Unbound on 2026-10-07; nothing was lost (`d` cuts a
   selection, `D d` cuts to the line end). It's free for a future binding.
   A programmatic check found every stock qwerty `meow-setup` command bound
   except `meow-delete` (`d`'s no-selection fallback) and
   `meow-backward-delete` (dropped in IMP-016; Backspace covers it).
-- Scroll on `C-d` / `C-u`. Skipped because `C-u` is `universal-argument`;
-  `C-v` / `M-v` still work.
+- ~~Scroll on `C-d` / `C-u`.~~ Won't do. The user keeps the global `C-v` /
+  `M-v` (they work in every meow state). The remaining unbound keys are
+  accepted.
+
+Resolved 2026-10-07.
 
 ## Implementation notes (2026-10-02)
 

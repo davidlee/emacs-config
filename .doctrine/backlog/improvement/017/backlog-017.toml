@@ -5,11 +5,11 @@ id = 17
 slug = "fill-meow-normal-state-gaps-redo-indent-expand-selection-jump-back"
 title = "Fill Meow normal-state gaps: redo, indent, expand selection, jump back"
 kind = "improvement"
-status = "open"
-resolution = ""                 # seeded empty so `backlog edit` sets it in place
+status = "resolved"
+resolution = "done"
 created = "2026-10-01"
-updated = "2026-10-01"
-tags = []
+updated = "2026-10-07"
+tags = ["emacs", "helix", "keymap", "meow"]
 
 # outbound-only (ADR-004). Cross-kind structural edges (e.g. references with a role
 # — `originates_from` for backlog→slice provenance — governed_by, related, drift) are
