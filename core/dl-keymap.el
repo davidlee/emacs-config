@@ -423,6 +423,10 @@ Warns when KEY already has a binding in MAP that differs from CMD."
                  (line-end-position))))
     (meow--select (meow--make-selection '(select . transient) beg end) t)))
 
+;; Line-wise edits (> < = #) share one notion of "the selected lines".
+;; Not meow's own: with no selection `meow-indent' (C-M-\) reindents
+;; from point to a possibly stale mark, and `meow-comment' (M-;
+;; `comment-dwim') appends an end-of-line comment instead of toggling.
 (defun my/meow--line-range ()
   "Return (BEG . END) spanning the lines the selection touches.
 Without a selection, the current line.  A selection ending at a line
