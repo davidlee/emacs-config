@@ -32,7 +32,7 @@
 ;; instead, and the suite tests old code.
 (setq load-prefer-newer t)
 
-(defvar dl-test-suite-dirs '("lisp/test")
+(defvar dl-test-suite-dirs '("lisp/test" "org")
   "Directories (relative to `user-emacs-directory') scanned for ERT files.
 A file is a test file when its name ends in \"-test.el\" or begins
 with \"test-\".")

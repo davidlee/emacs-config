@@ -73,7 +73,7 @@
   "Queue path derives from `dl-notes-root'.
 A literal would silently point at a stale location when the corpus moves
 (jail mount, directory rename) — the failure class that left a vendored
-`denote-roam.el' reading "~/notes/" independently of the paths module."
+`denote-roam.el' reading \"~/notes/\" independently of the paths module."
   (should (equal dl-notes-review-queue-file
                  (expand-file-name "review-queue.org" dl-notes-root)))
   (should (file-name-absolute-p dl-notes-review-queue-file))
