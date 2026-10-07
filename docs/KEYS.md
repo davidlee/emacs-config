@@ -336,6 +336,8 @@ prints/inserts into the buffer.
 | `C-c f d` | `dired-jump`          | dired here |
 | `C-c f D` | `dirvish`             | dirvish |
 | `C-c f t` | `dirvish-side`        | dirvish (side tree) |
+| `C-c f o` | `crux-open-with`      | open in external app |
+| `C-c f p` | `crux-kill-buffer-truename` | copy file's true path (symlinks resolved) |
 | `C-c f y` | `my/yazi-here`        | yazi |
 | `C-c f b` | `my/broot-here`       | broot |
 | `C-c f K` | `my/delete-current-buffer-file` | delete file on disk + kill buffer (confirm) |

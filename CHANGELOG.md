@@ -49,6 +49,11 @@ only ever rewrites that line; `date:` and `tags:` stay the blog's.
 `vc-follow-symlinks` is now `t`, so visiting a link edits the blog file.
 `~/notes/blog/` is gitignored in the notes repo.
 
+## 2026-10-07 — Copy file path
+
+`C-c f p` / `SPC f p` copies the current file's true path (symlinks
+resolved) to the clipboard (`crux-kill-buffer-truename`).
+
 ## 2026-10-07 — Meow editing gaps, part 2
 
 New normal-state keys:
