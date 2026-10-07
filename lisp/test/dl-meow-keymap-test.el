@@ -36,7 +36,7 @@
 (ert-deftest dl-meow-keymap/normal-state-bindings ()
   "Gap-filling commands are reachable from normal state."
   (pcase-dolist (`(,key . ,command)
-                 '(("C-r"   . undo-redo)
+                 '(("U"     . undo-redo)
                    (">"     . my/meow-indent-right)
                    ("<"     . my/meow-indent-left)
                    ("x"     . expreg-expand)
@@ -61,8 +61,12 @@
   "`s' is unbound: `d' cuts a selection and `D d' cuts to line end."
   (should-not (lookup-key meow-normal-state-keymap (kbd "s"))))
 
+(ert-deftest dl-meow-keymap/c-r-stays-backward-search ()
+  "`C-r' is unbound in normal state, so it searches backward as in insert."
+  (should-not (lookup-key meow-normal-state-keymap (kbd "C-r"))))
+
 (ert-deftest dl-meow-keymap/redo-reverts-meow-undo ()
-  "`C-r' re-applies the change `u' undid."
+  "`U' re-applies the change `u' undid."
   (dl-meow-keymap-test--with-buffer ""
     (insert "a") (undo-boundary)
     (insert "b") (undo-boundary)

@@ -404,7 +404,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 ;; b:block l:line  d:del  c:chg  v:visit    j:join y:save  o:C-c  u:undo ,:thing
 ;; n:srch  r:repl  t:till s:—    g:cancel   p:yank h:←word a:appd e:word→ i:ins
 ;; x:grow  q:quit  m:surr w:mark z:pop      k:—    f:find  ':rpt  ;:rev  .:thing
-;; X:shrink  >/<:indent  C-r:redo  C-o/C-S-o:jump back/forward (dogears)
+;; X:shrink  >/<:indent  U:redo  C-o/C-S-o:jump back/forward (dogears)
 ;; m:surround (s/d/r)  #:comment  =:reindent  ~/`:up/downcase  P:paste-pick
 ;; T:till+  ^/$:line start(text)/end  C:change to EOL
 
@@ -714,8 +714,9 @@ with point inside."
     '("r" . meow-replace)
     '("R" . meow-swap-grab)
     '("u" . meow-undo)
-    '("C-r" . undo-redo)
-    '("U" . meow-undo-in-selection)
+    ;; Helix redo.  C-r stays global backward search; undo within the
+    ;; selection is plain C-/ with a selection active.
+    '("U" . undo-redo)
     '("p" . meow-yank)
     '("P" . consult-yank-pop)
     '("y" . meow-save)

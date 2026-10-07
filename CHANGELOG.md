@@ -2,6 +2,15 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-10-08 — Meow redo moves to `U`; `C-r` searches again
+
+Normal-state `C-r` was `undo-redo`, shadowing the global backward search
+(`vr/isearch-backward`): the same chord searched in insert state and edited
+the buffer in normal state. Redo is now `U`, as in Helix; `C-r` is unbound in
+normal state and falls through to search. `meow-undo-in-selection` loses its
+key: it only pressed `C-/` with the selection active, so `C-/` on a selection
+does the same. Tests: `lisp/test/dl-meow-keymap-test.el`.
+
 ## 2026-10-08 — Meow `o` and `@` reach mode-local C-c maps
 
 Normal-state `o` was bound to the `mode-specific-map` object, so it saw only

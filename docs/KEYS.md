@@ -527,7 +527,7 @@ removed.
 
 | Key | Command | Notes |
 |---|---|---|
-| `C-r` | `undo-redo` | Redo after `u`; built-in, pairs with `meow-undo`'s `undo`. |
+| `U` | `undo-redo` | Redo after `u` (Helix). Replaces `meow-undo-in-selection`, which only pressed `C-/` with the selection active: `C-/` on a selection still undoes within it. `C-r` stays global backward search (`vr/isearch-backward`), as in insert state. |
 | `>` / `<` | `my/meow-indent-right` / `-left` | Shift every line the selection touches (or the current line) by `standard-indent`; selection stays active for repeats. |
 | `x` / `X` | `expreg-expand` / `expreg-contract` | Grow/shrink the selection by syntax (tree-sitter aware). |
 | `C-o` / `C-S-o` | `dogears-back` / `dogears-forward` | Jump list. `C-i` is TAB, hence `C-S-o`. Records both ends of each command in `dl-motion-jump-commands` (xref, consult, avy, `v`, `L`, buffer start/end, last change), plus places idled on for 5s. `C-c j l` / `SPC j l` picks a place by completion; `C-c j L` opens the sidebar. |
