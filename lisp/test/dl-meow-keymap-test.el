@@ -210,5 +210,31 @@ and leave point where it was."
     (should (equal (buffer-string) "foo\nbaz"))
     (should (meow-insert-mode-p))))
 
+(ert-deftest dl-meow-keymap/o-reaches-mode-local-c-c-bindings ()
+  "`o' acts as `C-c', so mode-local `C-c' maps (outline's `C-c @') work."
+  (should (eq (lookup-key meow-normal-state-keymap (kbd "o")) 'my/meow-ctrl-c))
+  (should (eq (lookup-key meow-motion-state-keymap (kbd "o")) 'my/meow-ctrl-c))
+  (dl-meow-keymap-test--with-buffer ""
+    (let ((map (make-sparse-keymap))
+          (hit nil))
+      (define-key map (kbd "C-c @ z") (lambda () (interactive) (setq hit t)))
+      (use-local-map map)
+      (dl-meow-keymap-test--run 'my/meow-ctrl-c)
+      (execute-kbd-macro (kbd "@ z"))
+      (should hit))))
+
+(ert-deftest dl-meow-keymap/at-reaches-outline-prefix ()
+  "`@' acts as `C-c @', the outline-minor-mode prefix."
+  (should (eq (lookup-key meow-normal-state-keymap (kbd "@"))
+              'my/meow-outline-prefix))
+  (dl-meow-keymap-test--with-buffer ""
+    (let ((map (make-sparse-keymap))
+          (hit nil))
+      (define-key map (kbd "C-c @ z") (lambda () (interactive) (setq hit t)))
+      (use-local-map map)
+      (dl-meow-keymap-test--run 'my/meow-outline-prefix)
+      (execute-kbd-macro (kbd "z"))
+      (should hit))))
+
 (provide 'dl-meow-keymap-test)
 ;;; dl-meow-keymap-test.el ends here

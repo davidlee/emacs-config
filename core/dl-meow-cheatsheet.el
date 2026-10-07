@@ -65,11 +65,11 @@
     (ignore . nil)
     (negative-argument . "neg")
     (consult-buffer . "buf-sw")
-    (my/forward-or-backward-sexp . "sexp")))
+    (my/forward-or-backward-sexp . "sexp")
+    (my/meow-ctrl-c . "C-c")))
 
 (defvar my/meow-cheatsheet-keymap-labels
-  '((mode-specific-map . "C-c")
-    (my-surround-map . "surr"))
+  '((my-surround-map . "surr"))
   "Labels for prefix keymaps bound in normal state, keyed by variable.")
 
 (defconst my/meow--cell-width 7)

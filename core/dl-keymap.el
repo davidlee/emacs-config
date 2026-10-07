@@ -23,9 +23,10 @@
 ;;   C-c m / SPC M   term   (capital in Meow: SPC m is keypad M- prefix)
 ;;   C-c z / SPC z   fold   (kirigami; routes to active backend)
 ;;
-;; Meow normal-state `o' is bound to `mode-specific-map' (the C-c
-;; keymap), giving a third path: o f f, o j s, etc.  Arrow-native
-;; movement via NAV layer; h/e = word motion on Gallium home row.
+;; Meow normal-state `o' acts as C-c (`my/meow-ctrl-c'), giving a
+;; third path: o f f, o j s, and mode-local keys such as o @ or o '.
+;; Arrow-native movement via NAV layer; h/e = word motion on Gallium
+;; home row.
 ;;
 ;; Add new bindings with `my/bind' so each carries a which-key label and
 ;; a collision warning.
@@ -442,6 +443,23 @@ Warns when KEY already has a binding in MAP that differs from CMD."
   (my/meow-select-to-line-end)
   (meow-change))
 
+;; Prefix keys replay as input rather than bind a keymap object: binding
+;; `mode-specific-map' reaches only global C-c keys, missing mode-local
+;; ones such as outline's C-c @ or org's C-c '.
+(defun my/meow--replay (keys)
+  "Feed KEYS back as input, so the keys after them see every active map."
+  (setq unread-command-events (listify-key-sequence (kbd keys))))
+
+(defun my/meow-ctrl-c ()
+  "Act as \\`C-c'."
+  (interactive)
+  (my/meow--replay "C-c"))
+
+(defun my/meow-outline-prefix ()
+  "Act as \\`C-c @', the `outline-minor-mode' prefix."
+  (interactive)
+  (my/meow--replay "C-c @"))
+
 ;; Line-wise edits (> < = #) share one notion of "the selected lines".
 ;; Not meow's own: with no selection `meow-indent' (C-M-\) reindents
 ;; from point to a possibly stale mark, and `meow-comment' (M-;
@@ -603,7 +621,7 @@ with point inside."
 
     '("!" . consult-buffer)
     '("/" . avy-goto-char-2)
-    `("o" . ,mode-specific-map)
+    '("o" . my/meow-ctrl-c)
 
     '("<escape>" . ignore))
 
@@ -736,7 +754,8 @@ with point inside."
     '(";" . meow-reverse)
 
     ;; Prefix / mode-specific (C-c dispatch).
-    `("o" . ,mode-specific-map)
+    '("o" . my/meow-ctrl-c)
+    '("@" . my/meow-outline-prefix)
 
     ;; Misc.
     '("%" . my/forward-or-backward-sexp)
