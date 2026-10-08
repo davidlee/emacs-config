@@ -12,6 +12,8 @@
   (org-iw-queues '(
                     ("HABITS" :name "Habits")
                     ("PROJECTS" :name "Projects")
+                    ("MAYBE" :name "Maybe")
+                    ("SOMEDAY" :name "Someday")
                     ("JOURNAL" :name "Journal")
                     ("WORK-JOURNAL" :name "Work journal")
                     ("ARTICLES" :name "Articles")

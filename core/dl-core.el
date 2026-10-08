@@ -40,7 +40,7 @@
   (use-short-answers t)
   (remember-data-file "~/notes/remember.txt")
   ;; (ediff-window-setup-function 'ediff-setup-windows-plain)
-
+  (register-preview t)
   :config
   ;; don't warn when loading stuff from custom-vars.el
   (load custom-file 'noerror 'nomessage)
