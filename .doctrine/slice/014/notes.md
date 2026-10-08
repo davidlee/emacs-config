@@ -97,7 +97,7 @@ Done in `4d8fb12`. Gates `l2-real-config` / `l3-real-config` went red
   `C-x C-j`, `M-Q`, comint `C-p`; L1 clean. The only stderr noise,
   `Error loading autoloads: (void-function define-compilation-mode)`,
   reproduces with `early-init.el` alone (pre-existing batch artefact).
-- VH-1 (user restart + smoke test) pending.
+- VH-1: user restarted and smoke-tested daily keys — "looks good" (2026-10-08).
 
 ### Incidental
 
