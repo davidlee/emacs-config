@@ -82,8 +82,8 @@ drill note). Don't duplicate it.
      `TRIED` / `LEVEL` / `SETUP`, one line each;
    - change a level only on evidence (the user said so, or you saw them
      use it); set the node's `:LEVEL:` and `:EVIDENCE: [date] what`;
-   - add a node when you find one worth tracking: a capability (a
-     task, not a key), a workflow (a loop that links its capabilities)
+   - add a node when you find one worth tracking: a capability (titled
+     by its subject, per the map's preamble), a workflow (a loop that links its capabilities)
      or a concept. Create it with `denote` so the name and front matter
      are canonical, then refresh the skill map's dynamic blocks
      (`org-update-all-dblocks`);
