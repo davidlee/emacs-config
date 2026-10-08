@@ -16,8 +16,11 @@ used:
 # Run the full ERT suite in batch mode (the default).
 # SATAN_DB_HOST redirects DB tests to the test DB; without it the
 # chokepoint guard refuses the production socket loudly.
+# load-prefer-newer: source edited outside Emacs (no compile-angel) is
+# newer than its .elc; test the source, not the stale bytecode.
 check:
   @emacs --batch -Q --init-directory="{{justfile_directory()}}" \
+    --eval '(setq load-prefer-newer t)' \
     -L core -L lisp -L org -L editing -L completion -L apps -L lang -L dev -L lisp/test -L ~/dev/satan/satan \
     -l dev/dl-test.el \
     --eval '(princ (dl-test-run-suite))' 2>&1 | tee /dev/stderr | grep -q PASS
