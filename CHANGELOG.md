@@ -2,6 +2,11 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-10-08 — `C-c s d` finds files with fd
+
+`C-c s d` (`o s d` in meow normal) is now `consult-fd`, replacing
+`consult-find`: same job, but fd is faster and respects `.gitignore`.
+
 ## 2026-10-08 — opening another project's file switches to its tab
 
 `otpp-find-file-integration` is on (`editing/dl-project.el`). `find-file`

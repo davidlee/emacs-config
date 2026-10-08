@@ -287,7 +287,7 @@ live in `completion/dl-consult.el`.
 | `C-c s I` | `consult-imenu-multi`             | project symbols |
 | `C-c s r` | `consult-ripgrep`                 | project root |
 | `C-c s R` | `my/consult-ripgrep-prompt-dir`   | arbitrary directory |
-| `C-c s d` | `consult-find`                    | filenames under project |
+| `C-c s d` | `consult-fd`                      | filenames under project (fd: respects .gitignore) |
 | `C-c s m` | `consult-mark`                    | buffer mark ring |
 | `C-c s M` | `consult-global-mark`             | global mark ring |
 | `C-c s g` | `rg-menu`                         | rg.el transient dispatcher |

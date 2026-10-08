@@ -103,7 +103,7 @@ runtime). Left for organic cleanup.
 ## Out of scope (future work)
 
 - Move `diredfl` from `editing/dl-project.el` to `apps/dl-dired.el`.
-- Wire `consult-fd` alongside `project-find-file` / `consult-find`.
+- ~~Wire `consult-fd`~~: done, it replaced `consult-find` on `C-c s d`.
 - Opt-in `dirvish-peek-mode` / `dirvish-side-follow-mode` (commented out).
 - TRAMP-aware variants of yazi/broot — likely impossible; both are local
   CLIs.
