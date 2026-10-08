@@ -1,0 +1,42 @@
+memory_uid = "mem_01a1196a043f7863a5b321a147c5adcd"
+memory_key = "mem.fact.doctrine.design-run-hand-edit-lockout"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "Hand-editing design.md during a managed design run locks the run out"
+summary = "After design start, hand edits to design.md block apply and materialise; drive edits through the run, or rm the runtime design.toml and restart --from-design"
+created = "2026-10-08"
+updated = "2026-10-08"
+
+[scope]
+paths = [".doctrine/slice"]
+globs = []
+commands = []
+tags = ["doctrine", "design"]
+workspace = "default"
+repo = "github.com/davidlee/emacs-config"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "9339e8509ed3bc01d2304b2e76ee36dcde83755d"
+ref_name = "refs/heads/main"
+checkout_state_id = "9dd6e8a5d333dac667d83a449380822e250a9ea002f57ba0ba57765f9549d191"
+base_commit = "0a4ebac0cd88b68c164f6cbb7b82eb687ba33966"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "medium"
+weight = 0
+
