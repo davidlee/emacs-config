@@ -5,7 +5,7 @@
 
 - **Leader**: `C-c <letter>` is the durable prefix. In Meow normal state, `SPC <letter>` mirrors it and `o` acts as `C-c` (`my/meow-ctrl-c` replays the key, so mode-local `C-c` maps work too: `o @` is outline's `C-c @`, `o '` is org's `C-c '`; `@` likewise acts as `C-c @`, the `outline-minor-mode` prefix). `C-c f f`, `SPC f f`, and `o f f` all reach `find-file`. The `o` route permits lowercase `g` / `m` without the capital-letter workaround the `SPC` leader needs.
 - **Editing vs. commands**: Meow normal state stays editing-focused (motions, selection, operators). Commands live under the leader.
-- **Single source of truth**: prefix maps, the `my/bind` helper, the Meow leader mirror, and which-key prefix labels all live in `core/dl-keymap.el`. Package files declare commands (`:commands`) and own their mode-local maps (`:bind (:map foo-mode-map …)` in `:config`).
+- **Single source of truth**: prefix maps, the `my/bind` helper, the Meow leader mirror, and which-key prefix labels all live in `core/dl-keymap.el`. Package files declare commands (`:commands`) and own their keys, global and mode-local, in `use-package :bind`. Keys with no owning package live in `core/dl-keybind.el` as `bind-keys`. See [Ownership rules](#ownership-rules).
 - **Discoverability**: `C-h` after a prefix triggers `embark-prefix-help-command`. `describe-keymap RET my-file-map RET` lists a map. `SPC ?` runs the Gallium Meow cheatsheet. `which-key-idle-delay` is `0.3` (see `core/dl-keybind.el`); auto-popups fire after a third of a second of hesitation.
 
 ## Policy
@@ -45,14 +45,48 @@
    top-level family, because `h` is already the modal gateway into the
    `C-c` command space.
 
+## Ownership rules
+
+Who writes a key, and with which form. Each (map, key) has exactly one
+writer, so load order never decides a binding.
+
+- **R1** A package's keys live in its `use-package :bind`, including
+  `:map` sections for its mode maps.
+- **R2** Keys with no owning `use-package` live in `core/dl-keybind.el`,
+  written with `bind-keys` (`bind-keys :map M` for a mode map).
+  Forbidden elsewhere: `global-set-key`, `keymap-global-set`,
+  `global-unset-key`, `local-set-key`, literal `define-key` /
+  `keymap-set`. Code that builds its own keymap uses `defvar-keymap` /
+  `define-keymap`.
+- **R3** Exceptions. The `C-c <letter>` family prefixes stay literal
+  `define-key global-map` lines in `core/dl-keymap.el` (a prefix is a
+  keymap value; `bind-keys` would bind the symbol's empty function
+  cell). `my/bind` stays the form for writes into `my-…-map` maps.
+  `meow-*-define-key` stays meow's DSL (not linted).
+- **R4** Each (map, key) is written once across the config. A
+  deliberate duplicate needs an entry, with a reason, in
+  `my-policy-lint-duplicate-allow-list` (currently empty).
+- **R5** `[remap cmd]` is its own key space, so a remap never collides
+  with a key.
+
+`M-x describe-personal-keybindings` lists every `:bind` / `bind-keys`
+write and the binding it replaced.
+
 ## Policy lint
 
-`core/dl-policy-lint.el` enforces the rules above. It scans `mode-specific-map` for single-letter bindings and flags anything that isn't either a `my-*-map` family map or one of the reserved singletons.
+`core/dl-policy-lint.el` holds three lints.
+
+| Lint | Checks | Reads | Runs |
+|---|---|---|---|
+| L1 | `C-c <letter>` holds a `my-…-map` family map or a reserved singleton (Policy 1, 6) | live keymap | startup; `M-x my-policy-lint`; `just check` (`dl-policy-lint/l1-real-config`) |
+| L2 | keymap writes use sanctioned forms (R2, R3) | config sources | `just check` (`dl-policy-lint/l2-real-config`) |
+| L3 | no (map, key) written twice (R4) | config sources | `just check` (`dl-policy-lint/l3-real-config`) |
 
 - `M-x my-policy-lint` — pops `*Policy Lint*` with each offending key, its binding, and the reason (`foreign-map` / `foreign-command`).
 - Silent startup check — runs from `emacs-startup-hook`; logs a single line to `*Messages*` iff violations exist, never opens a buffer.
+- L2 and L3 read every config `.el` (tests excluded) without loading it. They see only literal maps and keys; comments are not forms.
 
-The lint catches what `my/bind`'s collision warning can't: foreign packages that grab `C-c <letter>` from their own `:config` (the case-in-chief is `ready-player-mode` clobbering `C-c m`, fixed via `(setq ready-player-set-global-bindings nil)` in `apps/dl-dired.el`). A `C-c <letter>` keymap passes when some variable named `my-…-map` holds it, so a new tier-1 prefix needs no lint update.
+L1 catches what the source lints can't: foreign packages that grab `C-c <letter>` at runtime from their own `:config` (the case-in-chief is `ready-player-mode` clobbering `C-c m`, fixed via `(setq ready-player-set-global-bindings nil)` in `apps/dl-dired.el`). A `C-c <letter>` keymap passes when some variable named `my-…-map` holds it, so a new tier-1 prefix needs no lint update.
 
 ## Prefix index
 
@@ -63,7 +97,7 @@ The lint catches what `my/bind`'s collision warning can't: foreign packages that
 | `C-c w` | `my-window-map`  | windows (arrow keys for direction) |
 | `C-c s` | `my-search-map`  | search (scope ladder — see [Search](#search-c-c-s)) |
 | `C-c p` | `my-project-map` | project (project.el-aligned) |
-| `C-c j` | `my-jump-map`    | jump (avy family; chord escape hatches `C-:` / `C-;` in `dl-motion.el`) |
+| `C-c j` | `my-jump-map`    | jump (avy family; chord escape hatches `C-:` / `C-'` in `dl-motion.el`) |
 | `C-c g` | `my-git-map`     | git (Meow alias: `SPC G` — see Gotchas) |
 | `C-c n` | `my-notes-map`   | notes (sub-prefixes: `N` new, `m` manage, `v` review, `W` work). See [Notes](#notes-c-c-n) and `NOTES.md`. |
 | `C-c o` | `my-org-map`     | org — cross-buffer entry points (clocking, refile, heading jump). In-buffer ops stay at Org's `C-c C-<x>`. |
@@ -293,20 +327,19 @@ defaults so muscle memory between the two prefixes is identical.
 ## Jump (`C-c j`)
 
 avy family. The chord bindings in `editing/dl-motion.el` (`C-:`
-`avy-goto-char`, `C-;` `avy-goto-char-timer`) are the fast paths;
-this map is the discoverable surface.
+`avy-goto-char`, `C-'` `avy-goto-char-2`) are the fast paths;
+this map is the discoverable surface. `C-;` is `iedit-mode`.
 
 | Key | Command | |
 |---|---|---|
 | `C-c j j` | `avy-goto-line`        | line |
 | `C-c j c` | `avy-goto-char-timer`  | char (timer) |
-| `C-c j 2` | `avy-goto-char-2`      | 2-char (rescued from `C-'`, now `embark-dwim`) |
+| `C-c j 2` | `avy-goto-char-2`      | 2-char (also `C-'`) |
 | `C-c j w` | `avy-goto-word-1`      | word |
 | `C-c j p` | `my/forward-or-backward-sexp` | match paren (vim `%`) |
 
-`C-,` (was `goto-last-change`) and `C-'` (was `avy-goto-char-2`) were
-reassigned to `embark-act` / `embark-dwim`. `C-.` still gives you
-`goto-last-change-reverse`; rebind forward elsewhere if you miss it.
+`C-,` is `embark-act`; `goto-last-change` moved to `C-.`
+(`C-S-.` reverse). `M-.` is `embark-dwim`.
 
 ## Eval (`C-c e`)
 
@@ -470,22 +503,31 @@ In `core/dl-keymap.el`:
 Four spots in `dl-keymap.el`:
 
 1. `(defvar-keymap my-foo-map :name "foo")`
-2. `(define-key global-map (kbd "C-c X") my-foo-map)`
+2. `(define-key global-map (kbd "C-c X") my-foo-map)` — the R3 exception; this form is allowed only here
 3. Add `"C-c X" "foo"` to the `which-key-add-key-based-replacements` block
 4. Add `(cons "X" my-foo-map)` to `meow-leader-define-key`
 
-### Mode-local bindings (map owned by a package)
+### Global or mode-local keys (package-owned)
 
-Always `with-eval-after-load` or use-package's `:config` — never `:init`. The map is void at `:init` time.
+On the package's `use-package` (R1):
 
 ```elisp
-(use-package vterm-toggle
-  :bind (([C-f1] . vterm-toggle))
-  :config
-  (define-key vterm-mode-map (kbd "M-n") #'vterm-toggle-forward))
+;; editing/dl-snippets.el
+(use-package tempel
+  :bind (("M-*" . tempel-insert)
+         :map tempel-map
+         ("C-<down>" . tempel-next)))
 ```
 
-`:bind (:map FOO-MAP …)` works **only when `FOO-MAP` is owned by the current package**, because bind-keys' deferral keys off the current package's load, not the map's owner.
+`:bind (:map FOO-MAP …)` binds at once if `FOO-MAP` is bound, else after the package's feature loads. It works **only when `FOO-MAP` is defined by that feature** — name the defining feature in the `use-package` (e.g. `use-package esh-mode :ensure nil` for `eshell-mode-map`). For a map from another package, use `with-eval-after-load` + `bind-keys :map`.
+
+### Keys with no owning package
+
+`bind-keys` in `core/dl-keybind.el` (R2):
+
+```elisp
+(bind-keys ("C-;" . iedit-mode))
+```
 
 ### Cross-package binding (commands from A bound in keymap from B)
 
@@ -502,8 +544,10 @@ Declare autoloads on the source package with `:commands`. Then bind centrally:
 ## Gotchas we've hit
 
 - **Orphan leader maps**. Don't define a leader keymap without binding it to a key — `my-leader-map` lived for weeks as silent doc.
-- **`vterm-mode-map` in `:init`**. Void at init time. Use `:config`.
-- **`:bind :map` for foreign maps**. bind-keys defers to the current package, not the map's owner. Symptoms: `eval-after-load-helper: Symbol's value as variable is void: foo-mode-map`. Fix: move to `:config`, or add an explicit `with-eval-after-load`.
+- **`vterm-mode-map` in `:init`**. Void at init time. Use `:bind (:map …)` or `:config`.
+- **`:bind :map` for foreign maps**. bind-keys defers to the current package, not the map's owner. Symptoms: `eval-after-load-helper: Symbol's value as variable is void: foo-mode-map`. Fix: `use-package` the feature that defines the map, or `with-eval-after-load` + `bind-keys :map`.
+- **`:map` takes one symbol**. `(:map (a-map b-map) …)` breaks bind-key's deferral wrapper. Two maps → two `:map` sections.
+- **`:bind` makes a `use-package` deferred**. Never add `:bind` to an eagerly needed block (`use-package meow`, `use-package org`) without `:demand`; bind from another block instead.
 - **`:defer` / `:ensure-system-package` parse errors**. use-package keywords sit at the top level of the form. A keyword without a value, or one buried inside `:config` body, makes the parser see "keyword wants exactly one argument" or "wants a non-empty list."
 - **Nested `defun` warnings**. A `defun` inside `(use-package … :config …)` defines the function at runtime fine, but the byte-compiler doesn't promote it to "known" status — calls a few lines later warn "not known to be defined." Hoist the `defun` above the use-package form, or inline it.
 - **`my/bind` override messages**. `my/bind: overriding KEY in MAP: OLD -> NEW` in `*Messages*` means two bindings fight. Resolve at the source.
@@ -548,7 +592,8 @@ removed.
 
 - **More hydras**. `hydra-window-resize` (at `C-c w r`) is the first
   defhydra; the package is now loaded eagerly in `core/dl-keybind.el`.
-  Future candidates: zoom (`text-scale-adjust`), error navigation
+  Future candidates: zoom (now plain keys: `C-+` / `C-_` / `C-0`
+  buffer, `C-M-=` / `C-M-+` / `C-M--` / `C-S-0` global), error navigation
   (`flymake-goto-{next,prev}-error`), and outline traversal.
 - **`C-c k` config kit**. The reserved `k` letter is earmarked for a
   Nix-aware config kit (open `~/flakes/modules/home/emacs.nix`,

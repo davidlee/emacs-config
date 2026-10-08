@@ -36,7 +36,7 @@ Vendored copy of BardofSprites/denote-roam. Never `require`d, never `denote-roam
 **Fix**: delete it. If the bridge becomes useful later, install the upstream package via Nix.
 
 ### 3. Other orphaned files (none loaded transitively — verified)
-None of the following are `require`d from `init.el` or from any other file. `dl-global-text-scale.el` looks similar but is in fact required by `dl-keybind.el:40`, so it's fine.
+None of the following are `require`d from `init.el` or from any other file.
 
 - `core/dl-dwim.el` (20 lines)
 - `editing/dl-comment.el` (5 lines)

@@ -200,7 +200,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-search-map  "q" #'vr/query-replace                   "vr query-replace")
 (my/bind my-search-map  "Q" #'vr/replace                         "vr replace")
 
-;; Jump map — avy family.  Chord bindings `C-:'/`C-;' live in
+;; Jump map — avy family.  Chord bindings `C-:'/`C-'' live in
 ;; `editing/dl-motion.el' as fast escape hatches.
 (my/bind my-jump-map    "j" #'avy-goto-line          "line")
 (my/bind my-jump-map    "c" #'avy-goto-char-timer    "char (timer)")
@@ -772,7 +772,7 @@ with point inside."
 
 ;; Other
 ;; C-. goto last change
-;; C-; avy-goto-char-timer
+;; C-; iedit-mode
 
 
 (provide 'dl-keymap)

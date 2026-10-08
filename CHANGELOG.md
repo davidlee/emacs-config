@@ -2,6 +2,32 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-10-08 — one writer per key; key policy lints
+
+Every global and mode-map key now has exactly one writer (SL-014). Rules
+R1–R5 are in `docs/KEYS.md` § Ownership rules: a package's keys go in its
+`use-package :bind`; keys with no owning package go in `core/dl-keybind.el`
+as `bind-keys`; `global-set-key`, `local-set-key` and literal `define-key`
+are out. `M-x describe-personal-keybindings` now lists every personal key.
+
+Collisions resolved:
+
+- `C-:` is `avy-goto-char` only; `jinx-correct` stays on `M-$`.
+- ``C-M-` `` is `popper-toggle-type` only (ghostel's binding removed).
+- `C-<f1>` is `popterm-toggle`.
+- `C-z` is `undo-fu-only-undo`; the redundant unset is gone.
+
+Removed: `my/ghostel-toggle`, `my/setup-eshell`, the `my/global-text-scale-*`
+wrappers (`lisp/dl-global-text-scale.el`) and `org/dl-org-links.el`. Zoom
+behaves as before: `C-M-=` / `C-M-+` / `C-M--` / `C-S-0` call
+`global-text-scale-adjust` directly.
+
+New lints in `core/dl-policy-lint.el`, run by `just check`: L2 flags keymap
+writes outside the sanctioned forms; L3 flags a (map, key) written twice.
+L1 (`C-c <letter>` families, also at startup and via `M-x my-policy-lint`)
+now derives family maps from the `my-…-map` naming, which fixes the
+spurious `C-c i` report.
+
 ## 2026-10-08 — emacs-coach: learner state is a note graph
 
 The `emacs-coach` skill's state moves from one flat skill-map file to a

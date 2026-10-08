@@ -104,3 +104,30 @@ Done in `4d8fb12`. Gates `l2-real-config` / `l3-real-config` went red
 - A first batch-init attempt without clearing `kill-emacs-hook` rewrote
   `~/.emacs.d/project-window-list` on exit (round trip of the loaded
   file; content intact, 32 KB). Recipe recorded as memory.
+
+## PHASE-03 — Document rules (2026-10-08)
+
+Docs only, plus two stale comments in `core/dl-keymap.el`.
+
+- `docs/KEYS.md`: new § Ownership rules (R1–R5, `describe-personal-keybindings`);
+  § Policy lint now a table of L1/L2/L3 — what each checks, what it reads,
+  where it runs (L1 startup + `M-x my-policy-lint` + `l1-real-config`; L2/L3
+  only `just check`); allow-list named. Mental model restated per R1/R2.
+  "Adding a binding": R3 note on the family `define-key`; the
+  `[C-f1] . vterm-toggle` + `define-key` example replaced by the real
+  `tempel` `:bind`/`:map` block and a `bind-keys` example; Gotchas gained
+  the map-owner sharp edges (one-symbol `:map`, `:bind` defers).
+  Zoom keys stated in Deferred.
+- Pre-existing staleness fixed while there: Jump section claimed `C-;`
+  avy-timer and `C-'` embark-dwim. Live: `C-;` iedit, `C-'`
+  `avy-goto-char-2`, `M-.` embark-dwim, `C-.`/`C-S-.` goto-chg.
+- `docs/REVIEW.md`: `dl-global-text-scale.el` clause dropped.
+- `CHANGELOG.md`: entry naming changed keys/commands and the lints.
+
+### Verification
+
+- VA-1: `rg -F` over KEYS.md/REVIEW.md for `C-;`, `C-:`, ``C-M-` ``,
+  `C-<f1>`, `C-f1`, `vterm-toggle`, `ghostel-toggle`, `global-text-scale`,
+  `dl-org-links`, `C-z`, `family-maps`, `setup-eshell`, `jinx` — every hit
+  matches live bindings (checked against `rg` of config sources).
+- `just check` 166/166.
