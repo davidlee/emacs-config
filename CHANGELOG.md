@@ -2,6 +2,14 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-10-08 — mail: Gnus + Fastmail
+
+New `apps/dl-gnus.el`. `M-x gnus` reads Fastmail over IMAP; `C-x m`
+composes and `C-c C-c` sends over Fastmail SMTP. Login is
+`david@davlee.com` with a Fastmail app password; the first connect and
+first send each prompt for it and save it to the GNOME keyring. No NNTP
+primary server.
+
 ## 2026-10-08 — defaults adopted from *Use GNU Emacs*
 
 Settings taken from the book's minimal init (Keith Waclena), after review:
