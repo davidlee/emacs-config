@@ -18,7 +18,8 @@ collaborators = []
 targets      = []
 dependencies = []
 
-# One [[phase]]
+# One [[phase]] table per phase.
+[[phase]]
 id        = "PHASE-01"
 name      = "Key policy lints"
 objective = """Extend core/dl-policy-lint.el per design § Static lint: L1 family

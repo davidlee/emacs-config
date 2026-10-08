@@ -52,7 +52,7 @@
 - `M-x my-policy-lint` — pops `*Policy Lint*` with each offending key, its binding, and the reason (`foreign-map` / `foreign-command`).
 - Silent startup check — runs from `emacs-startup-hook`; logs a single line to `*Messages*` iff violations exist, never opens a buffer.
 
-The lint catches what `my/bind`'s collision warning can't: foreign packages that grab `C-c <letter>` from their own `:config` (the case-in-chief is `ready-player-mode` clobbering `C-c m`, fixed via `(setq ready-player-set-global-bindings nil)` in `apps/dl-dired.el`). Keep `my-policy-lint-family-maps` in sync when adding a new tier-1 prefix.
+The lint catches what `my/bind`'s collision warning can't: foreign packages that grab `C-c <letter>` from their own `:config` (the case-in-chief is `ready-player-mode` clobbering `C-c m`, fixed via `(setq ready-player-set-global-bindings nil)` in `apps/dl-dired.el`). A `C-c <letter>` keymap passes when some variable named `my-…-map` holds it, so a new tier-1 prefix needs no lint update.
 
 ## Prefix index
 
