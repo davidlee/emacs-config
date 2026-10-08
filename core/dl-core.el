@@ -45,6 +45,16 @@
   (remember-data-file "~/notes/remember.txt")
   ;; (ediff-window-setup-function 'ediff-setup-windows-plain)
   (register-preview t)
+  ;; AU / calendar
+  (calendar-holidays australia-holidays-for-vic)
+  (australia-holidays-january-26-label "Invasion Day")
+  (calendar-latitude [37 48 south])
+  (calendar-longitude [144 57 east])
+  (calendar-location-name "Melbourne, AU")
+  (calendar-mark-holidays-flag t)
+  (calendar-mark-today t)
+  (calendar-mark-diary-entries-flag t)
+
   :config
   ;; don't warn when loading stuff from custom-vars.el
   (load custom-file 'noerror 'nomessage)
