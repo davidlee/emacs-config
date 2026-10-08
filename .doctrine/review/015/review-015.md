@@ -73,3 +73,22 @@ autoloads); `meow-*-define-key` stays unlinted (R3).
 
 - None. No ADR, policy, standard or spec governs key ownership; the rules
   live in `docs/KEYS.md`.
+
+## Reconciliation Outcome
+
+### Direct edits applied
+- `design.md` § Migration (sec-6): org row notes `dl-org-links.el` deleted;
+  the combined vertico/embark/eshell row split into three rows stating the
+  shipped bind sites (embark via `bind-keys :map` in
+  `with-eval-after-load 'org`; eshell on `use-package esh-mode`,
+  `my/setup-eshell` deleted). Covers RV-015 F-1. User-approved.
+
+### REVs completed
+- None — no governance/spec items.
+
+### Withdrawn / tolerated
+- RV-015 F-2: tolerated — ERT names in § Verification are illustrative;
+  every designed case has a shipped counterpart. No edit.
+- RV-015 F-3: fixed in `8b6984f` during audit; no reconcile write.
+
+Reconcile pass complete — handoff to /close.

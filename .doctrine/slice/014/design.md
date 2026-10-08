@@ -136,12 +136,14 @@ Invariants / edge cases:
 | `core/dl-keybind.el` windmove (in `use-package windmove :config`) | 4 | `:bind` on that `use-package` (R1) |
 | `core/dl-keybind.el` other globals + comint | 35 | same file, `bind-keys` / `bind-keys :map comint-mode-map` |
 | `core/dl-keymap.el` `C-x C-j`, `C-x C-n` | 2 | `dl-keybind.el` |
-| `org/dl-org-{agenda,capture,links}.el` `C-c a/c/l` | 3 | `dl-keybind.el` (no `use-package` in those files) |
+| `org/dl-org-{agenda,capture,links}.el` `C-c a/c/l` | 3 | `dl-keybind.el` (no `use-package` in those files); `dl-org-links.el`, then empty, deleted |
 | `core/dl-prose.el` `M-Q`; `apps/dl-term.el` `s-C-<return>`, `C-<f2>` | 3 | `dl-keybind.el` |
 | `editing/dl-crux.el` (5 in `:config`) | 5 | `:bind` on `use-package crux` |
 | `org/dl-org.el` org-timeblock remaps | 4 | `:bind (:map …)` on `use-package org-timeblock` |
 | `core/dl-meow.el` `C-\` in two meow state maps | 2 | `:bind (:map …)` on `use-package repeat-fu` |
-| `completion/dl-vertico.el` (3), `completion/dl-embark.el` (1), `apps/dl-term.el` eshell (1) | 5 | `:bind (:map …)` on the owning `use-package` |
+| `completion/dl-vertico.el` (3) | 3 | `:bind (:map vertico-map …)` on `use-package vertico` |
+| `completion/dl-embark.el` `org-mode-map` `C-,` (1) | 1 | `bind-keys :map` in the existing `with-eval-after-load 'org` (a `:bind` on `use-package org` would defer org) |
+| `apps/dl-term.el` eshell `C-r` (1) | 1 | `:bind (:map eshell-mode-map …)` on `use-package esh-mode :ensure nil` (the map's defining feature); `my/setup-eshell` deleted |
 
 Collision resolutions (user decisions, 2026-10-08):
 
