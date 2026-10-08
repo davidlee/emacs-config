@@ -5,7 +5,7 @@
 ;;    then `cd ~/flakes && just home-switch'. use-package never downloads:
 ;;    `package-archives' is nil, so a package missing from the list fails
 ;;    to load.
-;; -- package-vc: a `:vc' use-package stanza clones into ~/.emacs.d/elpa
+;; -- package-vc: a `:vc' use-package stanza clones into elpa/ here
 ;;    at runtime, for packages not in nixpkgs or needing a writable dir
 ;;    (see dl-ghostel.el). `package-initialize' below activates them.
 
@@ -41,5 +41,5 @@
 (setq x-use-underline-position-properties nil)
 (setq x-underline-at-descent-line t)            ; Prettier underlines
 
-(load-file "~/.emacs.d/core/dl-path.el")
+(load-file (expand-file-name "core/dl-path.el" user-emacs-directory))
 ;;; early-init.el ends here

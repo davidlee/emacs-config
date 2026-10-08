@@ -8,7 +8,7 @@ default: home-switch
 
 home-switch:
   cd ~/flakes && git add . && nix flake update agents panopticon satan-patcher satan-attrd && just home-switch
-  @cd ~/.emacs.d && just clean-eln
+  @just clean-eln
 
 used:
   @rg use-package -g '*.el' -I --trim | egrep -v '^;' | cut -d ' ' -f 2 | tr ')' ' ' | sort | uniq
@@ -35,7 +35,7 @@ db-status:
   supabase status
 
 clean: clean-eln
-  @find ~/.emacs.d -name '*.elc' -delete
+  @find . -name '*.elc' -delete
 
 # `home-manager switch` mints a new ABI gen dir per emacs rebuild and never
 # removes the old ones; executing a mismatched/stale .eln SIGSEGVs the editor
@@ -46,7 +46,7 @@ clean: clean-eln
 clean-eln:
   #!/usr/bin/env bash
   set -uo pipefail
-  cache="$HOME/.emacs.d/eln-cache"
+  cache="{{justfile_directory()}}/eln-cache"
   [ -d "$cache" ] || exit 0
   live=$(timeout 30 "$HOME/.nix-profile/bin/emacs" -Q --batch \
            --eval '(princ comp-native-version-dir)' 2>/dev/null || true)
@@ -60,7 +60,7 @@ clean-eln:
   done
 
 wc:
-  @find ~/.emacs.d/{core,lisp,dev,lang,editing,completion,apps,org} -name '*.el' | xargs wc -l ;
+  @find core lisp dev lang editing completion apps org -name '*.el' | xargs wc -l ;
 
 hello-satan:
   emacsclient -e "(satan-mcp-start)"

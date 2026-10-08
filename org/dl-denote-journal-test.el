@@ -1,8 +1,8 @@
 ;;; dl-denote-journal-test.el --- ert tests for dl-denote-journal -*- lexical-binding: t; -*-
 
-;; Run from CLI:
+;; Run from CLI, in the config root:
 ;;   emacs --batch \
-;;     -L ~/.emacs.d/core -L ~/.emacs.d/org \
+;;     -L core -L org \
 ;;     --eval "(require 'package)" \
 ;;     -l dl-denote-journal-test.el -f ert-run-tests-batch-and-exit
 ;;

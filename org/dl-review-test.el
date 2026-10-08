@@ -1,8 +1,8 @@
 ;;; dl-review-test.el --- ert tests for dl-review views -*- lexical-binding: t; -*-
 
-;; Run from CLI:
+;; Run from CLI, in the config root:
 ;;   emacs --batch \
-;;     -L ~/.emacs.d/core -L ~/.emacs.d/org \
+;;     -L core -L org \
 ;;     -l dl-review-test.el -f ert-run-tests-batch-and-exit
 ;;
 ;; Or interactively: M-x ert RET dl-review RET.
