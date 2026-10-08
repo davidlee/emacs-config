@@ -1,0 +1,91 @@
+# Implementation plan for SL-014 — the authored, durable phase plan.
+#
+# This is the single source of each phase's objective, criteria, verification,
+# and links. Runtime status lives separately under .doctrine/state/ (phase
+# tracking) — never record progress here. Hand-edit freely: the tool reads this
+# file but does not rewrite it.
+schema  = "doctrine.plan.overview"
+version = 1
+slice   = "SL-014"
+
+# Canonical spec/requirement links — cite ids, never restate what they say. The
+# plan reader does not model these yet, so nothing downstream consumes them.
+[specs]
+primary       = []
+collaborators = []
+
+[requirements]
+targets      = []
+dependencies = []
+
+# One [[phase]]
+id        = "PHASE-01"
+name      = "Key policy lints"
+objective = """Extend core/dl-policy-lint.el per design § Static lint: L1 family
+allow-list derived from the my-…-map naming convention (D2; fixes C-c i); L2
+sanctioned-forms and L3 duplicate (map, key) rules as pure functions over
+source records, with the D3 allow-list. TDD against fixture forms. No config
+migration yet."""
+entrance_criteria = [
+  { id = "EN-1", text = "SL-014 design locked; just check green" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "my-policy-lint-family-maps removed; L1 accepts any keymap held by a my-…-map variable and still flags foreign keymaps/commands" },
+  { id = "EX-2", text = "Record extraction covers every form in design § Static lint (:bind/:bind* with :map sections, bind-keys, my/bind, define-key, keymap-set, global-set-key, keymap-global-set, global-unset-key, local-set-key); non-literal map/key yields no record; remaps normalise to <remap> <cmd>" },
+  { id = "EX-3", text = "L2 flags forbidden forms, exempts dl-keymap family prefixes, flags my/bind into non my-…-map maps; L3 reports cross-file and same-file duplicates minus allow-list" },
+  { id = "EX-4", text = "Unreadable config file signals an error; odd/improper forms do not abort a file" },
+  { id = "EX-5", text = "L1 real-config gate (require dl-keymap) green; just check green; paren checker clean on touched files" },
+]
+verification = [
+  { id = "VT-1", expects = "L1 naming-derived allow-list; C-c i clean; foreign keymap flagged", test_file = "lisp/test/dl-policy-lint-test.el", keywords = ["dl-policy-lint/l1-family-by-naming", "dl-policy-lint/l1-real-config"], waived = false },
+  { id = "VT-2", expects = "record extraction per form, normalisation, non-literal skipped", test_file = "lisp/test/dl-policy-lint-test.el", keywords = ["dl-policy-lint/records-bind-global", "dl-policy-lint/records-bind-map-sections", "dl-policy-lint/records-bind-keys", "dl-policy-lint/records-remap-own-space", "dl-policy-lint/records-non-literal-skipped"], waived = false },
+  { id = "VT-3", expects = "L2 violations and exemptions; L3 duplicates and allow-list", test_file = "lisp/test/dl-policy-lint-test.el", keywords = ["dl-policy-lint/l2-global-set-key-flagged", "dl-policy-lint/l2-family-prefix-exempt", "dl-policy-lint/l3-cross-file", "dl-policy-lint/l3-allow-listed"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-02"
+name      = "Migrate key writes; resolve collisions"
+objective = """Add L2/L3 real-config gates (red: 3 duplicates, 64 violations), then
+migrate per design § Migration until green: loose keys to bind-keys in
+core/dl-keybind.el, package keys to :bind (incl. :map), collisions resolved
+(C-: avy, C-M-` popper, C-<f1> popterm-toggle, drop C-z unset), zoom bound to
+global-text-scale-adjust, dl-global-text-scale.el and my/ghostel-toggle
+deleted. Behaviour of every key otherwise unchanged."""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-01 complete" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "L2 and L3 real-config gates green (allow-list empty or each entry reasoned)" },
+  { id = "EX-2", text = "Every :bind (:map X) whose X is owned by another package binds after X's owner loads (design § Risks)" },
+  { id = "EX-3", text = "No behaviour change beyond the design's decided resolutions" },
+  { id = "EX-4", text = "just check green; paren checker clean on every touched file" },
+]
+verification = [
+  { id = "VT-1", expects = "real config: no L2 violations, no L3 duplicates", test_file = "lisp/test/dl-policy-lint-test.el", keywords = ["dl-policy-lint/l2-real-config", "dl-policy-lint/l3-real-config"], waived = false },
+  { id = "VA-1", text = "Fresh Emacs (emacs --init-directory, no server) loads without key errors; key-binding spot checks for every migrated key and the three resolutions match design; describe-personal-keybindings lists migrated keys" },
+  { id = "VH-1", text = "User restarts Emacs and smoke-tests daily keys (zoom, C-:, C-M-`, C-<f1>, crux keys, vertico M-RET, org-timeblock motion)" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-03"
+name      = "Document rules"
+objective = """docs/KEYS.md states R1–R5 and the lints; stale lines fixed (C-; iedit,
+C-<f1> popterm incl. the vterm-toggle example, zoom keys); docs/REVIEW.md note
+on dl-global-text-scale removed; CHANGELOG entry naming changed keys."""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-02 complete" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "KEYS.md documents ownership rules and where each lint runs" },
+  { id = "EX-2", text = "No KEYS.md line contradicts the live bindings changed by this slice" },
+  { id = "EX-3", text = "CHANGELOG names the commands and keys touched (emacs-coach reads it)" },
+]
+verification = [
+  { id = "VA-1", text = "Grep KEYS.md / REVIEW.md for every key and symbol changed in PHASE-02; each mention matches the new state" },
+]
+specs        = []
+requirements = []

@@ -1,7 +1,7 @@
 id = 14
 slug = "global-keybinding-ownership"
 title = "Global keybinding ownership and collision lint"
-status = "design"
+status = "plan"
 created = "2026-10-08"
 updated = "2026-10-08"
 tags = []
