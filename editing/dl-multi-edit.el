@@ -1,9 +1,7 @@
 ;;; dl-multi-edit.el --- multi-edit -*- lexical-binding: t; -*-
 
-(use-package multiple-cursors
-  :bind (("C-S-c C-S-c" . mc/edit-lines)
-          ("C->" . mc/mark-next-like-this)
-          ("C-<" . mc/mark-previous-like-this)))
+;; No multiple-cursors: meow beacon (`meow-grab', then a selection)
+;; covers it; iedit handles live symbol renames.
 
 (use-package expreg
   :bind (("C-=" . expreg-expand)

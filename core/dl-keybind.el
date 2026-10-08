@@ -50,9 +50,10 @@
 (global-set-key (kbd "M-v") #'View-scroll-half-page-backward)
 
 ;; Buffer-local text scaling, equivalent in spirit to C-scrollwheel.
-(global-set-key (kbd "C-=") #'text-scale-increase)
+;; `C-=' / `C--' belong to expreg (`dl-multi-edit.el'); zoom pairs the
+;; shifted keys: `C-+' in, `C-_' out (`C-/' still undoes).
 (global-set-key (kbd "C-+") #'text-scale-increase)
-(global-set-key (kbd "C--") #'text-scale-decrease)
+(global-set-key (kbd "C-_") #'text-scale-decrease)
 (global-set-key (kbd "C-0") #'text-scale-adjust)
 
 (require 'dl-global-text-scale)
@@ -86,7 +87,6 @@ Window resize: _<left>_/_<right>_ width  _<up>_/_<down>_ height  _=_ balance  _q
 (use-package which-key
   :ensure nil
   :custom
-  (prefix-help-command #'embark-prefix-help-command)
   (which-key-show-early-on-C-h t)
   (which-key-idle-delay 0.3) ; 1e6
   (which-key-idle-secondary-delay 0.05)

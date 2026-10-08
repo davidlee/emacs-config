@@ -35,4 +35,12 @@
   ;; Tidy shadowed file names
   :hook (rfn-eshadow-update-overlay . vertico-directory-tidy))
 
+(use-package vertico-multiform
+  :after vertico
+  :ensure nil
+  :config
+  ;; `embark-bindings' / embark prefix help as a grid.
+  (add-to-list 'vertico-multiform-categories '(embark-keybinding grid))
+  (vertico-multiform-mode))
+
 (provide 'dl-vertico)

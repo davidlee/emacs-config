@@ -1,15 +1,15 @@
 schema = "doctrine.backlog"
 version = 1
 
-id = 9
-slug = "embark-never-loads-circular-after-with-embark-consult-stray-forms-in-after"
-title = "embark never loads: circular :after with embark-consult, stray forms in :after"
+id = 10
+slug = "global-keybindings-scattered-silent-conflicts"
+title = "Global keybindings scattered across modules; silent last-writer-wins conflicts"
 kind = "issue"
-status = "resolved"
-resolution = "fixed"
-created = "2026-10-07"
+status = "open"
+resolution = ""                 # seeded empty so `backlog edit` sets it in place
+created = "2026-10-08"
 updated = "2026-10-08"
-tags = ["completion", "emacs", "embark"]
+tags = ["emacs", "keys", "lint"]
 
 # outbound-only (ADR-004). Cross-kind structural edges (e.g. references with a role
 # — `originates_from` for backlog→slice provenance — governed_by, related, drift) are

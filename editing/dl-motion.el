@@ -9,14 +9,13 @@
 
 ;; avy: chord bindings here are escape hatches; the family map lives
 ;; centrally at `C-c j' (`my-jump-map') in `core/dl-keymap.el'.
-;; `C-'' previously held `avy-goto-char-2' but was reassigned to
-;; `embark-dwim' — the 2-char variant lives at `C-c j 2' now.
 (use-package avy
   :commands (avy-goto-char avy-goto-char-2 avy-goto-char-timer
               avy-goto-line avy-goto-word-1)
+  ;; `C-;' is `iedit-mode' (`dl-keybind.el'); the timer variant is
+  ;; `C-c j c'.
   :bind ( ("C-:" . avy-goto-char)
-          ("C-'" . avy-goto-char-2)  ;; <-- usually this one is what you want
-          ("C-;" . avy-goto-char-timer)))
+          ("C-'" . avy-goto-char-2)))  ;; <-- usually this one is what you want
 
 (use-package ace-window
   :custom
@@ -26,9 +25,8 @@
   :bind (("M-o" . ace-window)))
 
 
-;; `C-,' previously held `goto-last-change' but was reassigned to
-;; `embark-act'.  Reverse direction still at `C-.'; rebind forward
-;; here if you miss it.
+;; `C-,' previously held `goto-last-change'; it went to `embark-act'
+;; and `goto-last-change' moved to `C-.'.
 (use-package goto-chg
   :bind ( ("C-."   . goto-last-change)
           ("C-S-." . goto-last-change-reverse)))

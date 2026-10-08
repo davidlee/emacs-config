@@ -2,6 +2,41 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-10-08 — `C-=` / `C--` grow and shrink the selection; zoom out on `C-_`
+
+`expreg-expand` / `expreg-contract` were bound to `C-=` / `C--` in
+`editing/dl-multi-edit.el` but overwritten by zoom in `core/dl-keybind.el`.
+expreg now has them. Zoom uses the shifted pair: `C-+` in, `C-_` out (`C-_`
+was an undo alias; `C-/` still undoes). The wider problem of modules
+silently overriding each other's global keys is ISS-010.
+
+## 2026-10-08 — `C-;` is iedit only; multiple-cursors removed
+
+`C-;` was bound twice: avy's `avy-goto-char-timer` in `editing/dl-motion.el`
+was silently overwritten by `iedit-mode` in `core/dl-keybind.el`, which loads
+later. The dead avy binding is gone; `avy-goto-char-timer` stays on `C-c j c`.
+`multiple-cursors` is removed (`editing/dl-multi-edit.el` and the package list
+in `~/flakes/emacs/emacs.nix`): meow beacon (`G` / `meow-grab`, then a
+selection) covers it, and iedit covers live symbol renames. `C->`, `C-<` and
+`C-S-c C-S-c` are now free; iedit's `M-M` (switch to multiple-cursors) no
+longer works.
+
+## 2026-10-08 — embark loads again; `C-,` acts, `M-.` does what you mean
+
+`embark` never loaded (ISS-009): its `:after (avy embark-consult)` was
+circular with `embark-consult`'s `:after (embark consult)`, and two `:config`
+forms sat in the `:after` slot. So `C-,` (`embark-act`) and `C-h B`
+(`embark-bindings`) were unbound, and embark prefix help never ran. Now
+`embark` autoloads on first `C-,` / `C-h B`. `C-,` also wins in org buffers
+(org's `org-cycle-agenda-files` keeps `C-'`). Avy dispatch `.` runs
+`embark-act` at the chosen target once avy loads. The `embark-keybinding`
+grid moved to a `vertico-multiform` block in `completion/dl-vertico.el`.
+`M-.` is now `embark-dwim`: on an identifier its default action is still
+`xref-find-definitions` (`M-,` goes back); on a URL, file or other target it
+runs that target's default action. Name-prompting lookup stays on `C-M-.`
+(`xref-find-apropos`).
+Tests: `lisp/test/dl-embark-test.el`.
+
 ## 2026-10-08 — org-iw `LEARN-EMACS` queue
 
 New org-iw queue `LEARN-EMACS` ("Learn Emacs") in `org/dl-org-iw.el`, kept
