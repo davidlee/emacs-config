@@ -91,6 +91,8 @@ drill note). Don't duplicate it.
      it into the capability;
    - keep the hub's try-next queue to five open items or fewer; close
      done ones and drop stale ones;
+   - overwrite the hub's `Next visit` section: where to start next time
+     and the open threads. The next agent starts there;
    - a node under active study goes in the org-iw queue `LEARN-EMACS`
      and comes out once it's settled.
      Use `org-iw-add` / `org-iw-add-files` / `org-iw-remove`; never
