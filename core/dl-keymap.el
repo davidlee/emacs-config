@@ -194,6 +194,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-search-map  "r" #'consult-ripgrep                    "ripgrep (project)")
 (my/bind my-search-map  "R" #'my/consult-ripgrep-prompt-dir      "ripgrep (dir prompt)")
 (my/bind my-search-map  "d" #'consult-fd                         "fd filenames")
+(my/bind my-search-map  "D" #'consult-find                       "find(1) filenames")
 (my/bind my-search-map  "m" #'consult-mark                       "mark ring")
 (my/bind my-search-map  "M" #'consult-global-mark                "global mark ring")
 (my/bind my-search-map  "g" #'rg-menu                            "rg menu")
