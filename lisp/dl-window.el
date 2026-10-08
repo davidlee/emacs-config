@@ -27,6 +27,9 @@
 ;; Undo/redo for window configs.
 (winner-mode 1)
 
+;; C-x 5 u reopens a recently deleted frame, layout included.
+(undelete-frame-mode 1)
+
 (defun my/rotate-windows (count)
   "Rotate non-dedicated windows by COUNT positions."
   (interactive "p")

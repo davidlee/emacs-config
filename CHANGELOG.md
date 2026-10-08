@@ -2,6 +2,27 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-10-08 — defaults adopted from *Use GNU Emacs*
+
+Settings taken from the book's minimal init (Keith Waclena), after review:
+
+- Dired: `dired-dwim-target` — with two dired windows visible, `C` / `R`
+  default to the other one's directory. `dired-x` now actually loads
+  (its `dired-load-hook` never fired from `:config`).
+- `undelete-frame-mode`: `C-x 5 u` reopens a recently deleted frame.
+- Ediff: side-by-side split; plain `ediff-*` sessions restore the prior
+  window layout on `q` / `z` (magit's sessions already did).
+- `M-&` / dired `&`: a busy async command gets a new buffer without
+  prompting; the output buffer appears only once there is output.
+- Comint (`ielm`, `M-x shell`, inferior REPLs) truncates to 65536 lines.
+- `goto-address-prog-mode`: URLs in comments and strings are underlined;
+  `mouse-2` / `C-c RET` opens.
+- `M-x proced` is coloured.
+
+Cleanups: `dictionary-server` set once (`localhost`); flymake mode-line
+formats use `setopt`, so they no longer show as unsaved customizations;
+dead easysession / desktop blocks removed from `editing/dl-persist.el`.
+
 ## 2026-10-08 — `C-c s d` finds files with fd
 
 `C-c s d` (`o s d` in meow normal) is now `consult-fd`: fd is faster and

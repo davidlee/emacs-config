@@ -11,14 +11,14 @@
   (dired-kill-when-opening-new-dired-buffer t)
   (dired-recursive-copies 'always)
   (dired-recursive-deletes 'top)
+  ;; With two dired windows visible, C / R default to the other one.
+  (dired-dwim-target t)
   (delete-by-moving-to-trash t)
   (dired-listing-switches
     "-l --almost-all --human-readable --group-directories-first --no-group")
   :config
   ;; Lets `dirvish-side' auto-close its window when opening a file.
-  (add-hook 'dired-load-hook
-    (lambda ()
-      (load "dired-x")))
+  (require 'dired-x)
   (put 'dired-find-alternate-file 'disabled nil))
 
 (use-package diredfl

@@ -110,6 +110,9 @@
   ;; Display line numbers in programming mode
   (add-hook 'prog-mode-hook 'display-line-numbers-mode)
 
+  ;; Underline URLs in comments and strings; mouse-2 / C-c RET opens.
+  (add-hook 'prog-mode-hook #'goto-address-prog-mode)
+
   ;; Nice line wrapping when working with text
   (add-hook 'text-mode-hook 'visual-line-mode)
 

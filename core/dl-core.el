@@ -37,6 +37,10 @@
   (read-buffer-completion-ignore-case t)
   (completion-ignore-case t)
   (confirm-kill-processes nil)
+  ;; M-& / dired &: a busy command gets a sibling buffer, no prompt;
+  ;; the output buffer appears only once there is output.
+  (async-shell-command-buffer 'new-buffer)
+  (async-shell-command-display-buffer nil)
   (use-short-answers t)
   (remember-data-file "~/notes/remember.txt")
   ;; (ediff-window-setup-function 'ediff-setup-windows-plain)
@@ -50,6 +54,19 @@
   ;; (server-start)
 
   (require 'org-protocol)) ; emacsclient
+
+;; M-x proced: colour PIDs, users, CPU / memory columns.
+(use-package proced
+  :ensure nil
+  :custom (proced-enable-color-flag t))
+
+;; Shell / REPL buffers (shell, ielm, inferior-*): trim the oldest lines
+;; after each output batch so a runaway process can't bloat the buffer.
+(declare-function comint-truncate-buffer "comint")
+(use-package comint
+  :ensure nil
+  :custom (comint-buffer-maximum-size 65536) ; lines
+  :config (add-hook 'comint-output-filter-functions #'comint-truncate-buffer))
 
 ;; emacsclient forwards its own $DISPLAY (":0", courtesy of xwayland-satellite)
 ;; and server.el passes that name straight to `make-frame-on-display'.  GDK

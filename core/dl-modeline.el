@@ -144,11 +144,11 @@ the segment renderers (e.g. `meow-indicator')."
     (setq-default mode-line-format (list "%_"))
     (setq mode-line-format (list "%_"))))
 
-(customize-set-variable 'flymake-mode-line-counter-format
+(setopt flymake-mode-line-counter-format
   '(" " flymake-mode-line-error-counter
      flymake-mode-line-warning-counter flymake-mode-line-note-counter " "))
 
-(customize-set-variable 'flymake-mode-line-format
+(setopt flymake-mode-line-format
   '(" " flymake-mode-line-exception flymake-mode-line-counters))
 
 (setopt lambda-line-space-right +.15)
