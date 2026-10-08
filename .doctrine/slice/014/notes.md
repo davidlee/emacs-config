@@ -46,3 +46,61 @@ reads.
   Fixed the header.
 - `docs/KEYS.md`: stale "keep family-maps in sync" sentence replaced (rest of
   the docs is PHASE-03).
+
+## PHASE-02 — Migrate key writes; resolve collisions (2026-10-08)
+
+Done in `4d8fb12`. Gates `l2-real-config` / `l3-real-config` went red
+(64 / 3), green after migration. Allow-list stays empty.
+
+### Audit table (collisions)
+
+| Key | Writers before | Resolution |
+|---|---|---|
+| `C-:` | `jinx-correct` (`core/dl-prose.el` :bind), `avy-goto-char` (`editing/dl-motion.el` :bind) | avy keeps it; jinx keeps `M-$` |
+| ``C-M-` `` | `popper-toggle-type` (`core/dl-popups.el`), `popterm-toggle` (`apps/dl-ghostel.el`, key had a trailing space) | popper keeps it; `popterm-toggle` → `C-<f1>` |
+| `C-<f1>` | `my/ghostel-toggle` (`apps/dl-term.el`) | replaced by `popterm-toggle`; `my/ghostel-toggle` deleted |
+| `C-z` | `global-unset-key` + `global-set-key`, `core/dl-keybind.el` | unset dropped |
+
+### Where things went
+
+- `core/dl-keybind.el`: all ownerless globals as `bind-keys` blocks (tabs,
+  editing chords, `C-x C-j/C-n` from dl-keymap, org `C-c a/c/l`, `M-Q`,
+  `C-s-<return>`, view scroll, zoom, function keys incl. `C-<f2>`), plus
+  `bind-keys :map comint-mode-map`. windmove keys → its `:bind`.
+- `:bind` moves: crux (now deferred; remaps resolve to autoloads), vertico
+  (`:demand t`), org-timeblock (`:demand t`, two `:map` sections),
+  repeat-fu (`:map meow-*-state-keymap`; meow is eager above it, so the
+  `boundp` branch binds immediately), popterm.
+- embark's `org-mode-map` `C-,`: `bind-keys :map` inside the existing
+  `with-eval-after-load 'org` (map owned by org; adding `:bind` to
+  `use-package org` would defer org).
+- eshell `C-r`: `eshell-mode-map` is defined in `esh-mode`, which
+  `(require 'eshell)` does NOT load — `use-package eshell :bind (:map
+  eshell-mode-map …)` would `void-variable` after eshell loads. Bound on
+  `use-package esh-mode :ensure nil`; the old `my/setup-eshell` hook
+  workaround is gone (Emacs 31 eshell uses `eshell-mode-map` directly as
+  the local map — verified).
+- Deleted: `lisp/dl-global-text-scale.el`, `org/dl-org-links.el` (held only
+  `C-c l`; `init.el` require and `docs/NOTES.md` line removed),
+  `my/ghostel-toggle`, `my/setup-eshell`.
+- `bind-keys :map` takes one symbol: a list breaks its `(boundp 'MAP)`
+  wrapper, so two maps = two `:map` sections.
+
+### Verification
+
+- `just check` 166/166.
+- VA-1: full init in a fresh batch Emacs (scratch `va1b.el`): no init
+  error; 37 key spot checks all resolve as designed (globals, three
+  resolutions, zoom, crux remaps, comint, vertico, meow state maps,
+  org-timeblock, org `C-,`, eshell `C-r`); `my/ghostel-toggle` and
+  `my/global-text-scale-*` unbound; `personal-keybindings` has
+  `C-x C-j`, `M-Q`, comint `C-p`; L1 clean. The only stderr noise,
+  `Error loading autoloads: (void-function define-compilation-mode)`,
+  reproduces with `early-init.el` alone (pre-existing batch artefact).
+- VH-1 (user restart + smoke test) pending.
+
+### Incidental
+
+- A first batch-init attempt without clearing `kill-emacs-hook` rewrote
+  `~/.emacs.d/project-window-list` on exit (round trip of the loaded
+  file; content intact, 32 KB). Recipe recorded as memory.
