@@ -9,6 +9,10 @@
   (vertico-count 20) ;; Show more candidates
   ;; (vertico-resize t) ;; Grow and shrink the Vertico minibuffer
   (vertico-cycle t) ;; Enable cycling for `vertico-next/previous'
+  :bind (:map vertico-map
+         ("M-?"   . minibuffer-completion-help)
+         ("M-RET" . minibuffer-force-complete-and-exit)
+         ("M-TAB" . minibuffer-complete))
   :config
   (vertico-mode))
 
@@ -18,10 +22,6 @@
 
 ;; Minibuffer-wide settings (recursive minibuffers, prompt properties,
 ;; M-x predicate, context-menu) live in `dl-completion.el' / `dl-interface.el'.
-
-(keymap-set vertico-map "M-?"   #'minibuffer-completion-help)
-(keymap-set vertico-map "M-RET" #'minibuffer-force-complete-and-exit)
-(keymap-set vertico-map "M-TAB" #'minibuffer-complete)
 
 ;; Configure directory extension.
 (use-package vertico-directory

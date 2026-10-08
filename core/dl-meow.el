@@ -38,6 +38,11 @@
   :ensure nil
   :vc (:url "https://codeberg.org/ideasman42/emacs-repeat-fu.git")
   :commands (repeat-fu-mode repeat-fu-execute)
+  ;; Meow's state maps exist by now (`use-package meow' above is eager).
+  :bind (:map meow-normal-state-keymap
+         ("C-\\" . repeat-fu-execute)
+         :map meow-insert-state-keymap
+         ("C-\\" . repeat-fu-execute))
   :config
   (setq repeat-fu-preset 'meow)
   :hook
@@ -45,9 +50,7 @@
     .
     (lambda ()
       (when (and (not (minibufferp)) (not (derived-mode-p 'special-mode)))
-        (repeat-fu-mode)
-        (define-key meow-normal-state-keymap (kbd "C-\\") 'repeat-fu-execute)
-        (define-key meow-insert-state-keymap (kbd "C-\\") 'repeat-fu-execute)))))
+        (repeat-fu-mode)))))
 
 
 ;; Terminals: disable meow entirely (cleaner than `insert' state — also

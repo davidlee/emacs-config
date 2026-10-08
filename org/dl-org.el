@@ -1,7 +1,7 @@
 ;;; dl-org.el --- Org defaults, TODO states, styling -*- lexical-binding: t; -*-
 
 ;; Slim core.  Capture lives in `dl-org-capture', agenda in
-;; `dl-org-agenda', store/insert/open links in `dl-org-links', and
+;; `dl-org-agenda', and
 ;; daily/weekly note builders in `dl-denote-journal'.
 
 (require 'dl-notes-paths)
@@ -104,11 +104,12 @@
 (use-package org-timeblock
   :ensure nil
   :demand t
-  :config
-  (define-key org-timeblock-mode-map [remap meow-prev] #'org-timeblock-backward-block)
-  (define-key org-timeblock-mode-map [remap meow-next] #'org-timeblock-forward-block)
-  (define-key org-timeblock-list-mode-map [remap meow-prev] #'org-timeblock-list-previous-line)
-  (define-key org-timeblock-list-mode-map [remap meow-next] #'org-timeblock-list-next-line))
+  :bind (:map org-timeblock-mode-map
+         ([remap meow-prev] . org-timeblock-backward-block)
+         ([remap meow-next] . org-timeblock-forward-block)
+         :map org-timeblock-list-mode-map
+         ([remap meow-prev] . org-timeblock-list-previous-line)
+         ([remap meow-next] . org-timeblock-list-next-line)))
 
 
 ;; (use-package org-review

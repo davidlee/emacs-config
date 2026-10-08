@@ -7,11 +7,13 @@
 
 (use-package windmove
   :ensure nil
-  :config
-  (global-set-key (kbd "C-M-<left>")  #'windmove-left)
-  (global-set-key (kbd "C-M-<up>")    #'windmove-up)
-  (global-set-key (kbd "C-M-<down>")  #'windmove-down)
-  (global-set-key (kbd "C-M-<right>") #'windmove-right))
+  :bind (("C-M-<left>"  . windmove-left)
+         ("C-M-<up>"    . windmove-up)
+         ("C-M-<down>"  . windmove-down)
+         ("C-M-<right>" . windmove-right)))
+
+;; Keys without an owning `use-package' live here, as `bind-keys'
+;; (KEYS.md R2), so `describe-personal-keybindings' lists them.
 
 ;; Tab chords: C-PgUp/PgDn walk tab-bar tabs (layouts), as in ghostty;
 ;; M-PgUp/PgDn and s-{ / s-} do too.  C-M-PgUp/PgDn walk this window's
@@ -21,52 +23,65 @@
 ;;   M-PgUp/PgDn  `scroll-other-window-down' / `-window' (still C-M-S-v / C-M-v)
 ;; ghostel lets them through via `ghostel-keymap-exceptions'
 ;; (apps/dl-ghostel.el).
-(keymap-global-set "C-<prior>"   'tab-bar-switch-to-prev-tab)
-(keymap-global-set "C-<next>"    'tab-bar-switch-to-next-tab)
-(keymap-global-set "M-<prior>"   'tab-bar-switch-to-prev-tab)
-(keymap-global-set "M-<next>"    'tab-bar-switch-to-next-tab)
-(keymap-global-set "C-M-<prior>" 'tab-line-switch-to-prev-tab)
-(keymap-global-set "C-M-<next>"  'tab-line-switch-to-next-tab)
-(keymap-global-set "s-{"         'tab-bar-switch-to-prev-tab)
-(keymap-global-set "s-}"         'tab-bar-switch-to-next-tab)
+(bind-keys
+  ("C-<prior>"   . tab-bar-switch-to-prev-tab)
+  ("C-<next>"    . tab-bar-switch-to-next-tab)
+  ("M-<prior>"   . tab-bar-switch-to-prev-tab)
+  ("M-<next>"    . tab-bar-switch-to-next-tab)
+  ("C-M-<prior>" . tab-line-switch-to-prev-tab)
+  ("C-M-<next>"  . tab-line-switch-to-next-tab)
+  ("s-{"         . tab-bar-switch-to-prev-tab)
+  ("s-}"         . tab-bar-switch-to-next-tab))
 
-(global-set-key (kbd "M-/") 'hippie-expand)
-(global-set-key (kbd "C-;") 'iedit-mode)
-(global-set-key (kbd "M-z") 'zap-up-to-char)
-(global-set-key (kbd "C-x K") 'kill-current-buffer)
-(global-set-key (kbd "C-x C-b") 'ibuffer)
-(global-set-key (kbd "C-x C-z") 'zoom-window-zoom)
+(bind-keys
+  ("M-/"     . hippie-expand)
+  ("C-;"     . iedit-mode)
+  ("M-z"     . zap-up-to-char)
+  ("M-Q"     . my/unfill-paragraph)     ; `dl-prose.el'
+  ("C-x K"   . kill-current-buffer)
+  ("C-x C-b" . ibuffer)
+  ("C-x C-z" . zoom-window-zoom)
+  ("C-x 2"   . split-and-follow-horizontally)
+  ("C-x 3"   . split-and-follow-vertically)
+  ;; Universal Emacs muscle memory for dired-jump; C-x C-n repurposed
+  ;; from the dropped dired-sidebar binding to dirvish-side.
+  ("C-x C-j" . dired-jump)
+  ("C-x C-n" . dirvish-side)
+  ("C-z"     . undo-fu-only-undo)
+  ("C-S-z"   . undo-fu-only-redo)
+  ("C-S-g"   . exit-minibuffer)
+  ("C-s-<return>" . eshell-other-window)) ; `dl-term.el'
 
-(define-key comint-mode-map (kbd "C-p") #'comint-previous-input)
-(define-key comint-mode-map (kbd "C-n") #'comint-next-input)
-(define-key comint-mode-map (kbd "C-w") #'backward-kill-word)
+;; Org entry points: the reserved `C-c <letter>' singletons (KEYS.md).
+(bind-keys
+  ("C-c a" . org-agenda)
+  ("C-c c" . org-capture)
+  ("C-c l" . org-store-link))
 
-(global-set-key (kbd "C-x 2") 'split-and-follow-horizontally)
-(global-set-key (kbd "C-x 3") 'split-and-follow-vertically)
+(bind-keys :map comint-mode-map
+  ("C-p" . comint-previous-input)
+  ("C-n" . comint-next-input)
+  ("C-w" . backward-kill-word))
 
 ;; Half-page scroll on the View bindings (emacs muscle-memory override).
 (require 'view)
-(global-set-key (kbd "C-v") #'View-scroll-half-page-forward)
-(global-set-key (kbd "M-v") #'View-scroll-half-page-backward)
+(bind-keys
+  ("C-v" . View-scroll-half-page-forward)
+  ("M-v" . View-scroll-half-page-backward))
 
 ;; Buffer-local text scaling, equivalent in spirit to C-scrollwheel.
 ;; `C-=' / `C--' belong to expreg (`dl-multi-edit.el'); zoom pairs the
 ;; shifted keys: `C-+' in, `C-_' out (`C-/' still undoes).
-(global-set-key (kbd "C-+") #'text-scale-increase)
-(global-set-key (kbd "C-_") #'text-scale-decrease)
-(global-set-key (kbd "C-0") #'text-scale-adjust)
-
-(require 'dl-global-text-scale)
-(global-set-key (kbd "C-M-=") #'my/global-text-scale-increase)
-(global-set-key (kbd "C-M-+") #'my/global-text-scale-increase)
-(global-set-key (kbd "C-M--") #'my/global-text-scale-increase)
-(global-set-key (kbd "C-S-0") #'my/global-text-scale-reset)
-
-(global-unset-key (kbd "C-z"))
-(global-set-key (kbd "C-z")   'undo-fu-only-undo)
-(global-set-key (kbd "C-S-z") 'undo-fu-only-redo)
-
-(global-set-key (kbd "C-S-g") #'exit-minibuffer)
+;; Global scaling: `global-text-scale-adjust' reads its direction from
+;; the invoking key's last event (`-' out, `0' reset, else in).
+(bind-keys
+  ("C-+"   . text-scale-increase)
+  ("C-_"   . text-scale-decrease)
+  ("C-0"   . text-scale-adjust)
+  ("C-M-=" . global-text-scale-adjust)
+  ("C-M-+" . global-text-scale-adjust)
+  ("C-M--" . global-text-scale-adjust)
+  ("C-S-0" . global-text-scale-adjust))
 
 ;; Hydras for repeatable, sticky subinterfaces.  Eagerly loaded so
 ;; `defhydra' is in scope when downstream files (`dl-keymap.el')
@@ -119,19 +134,17 @@ Window resize: _<left>_/_<right>_ width  _<up>_/_<down>_ height  _=_ balance  _q
 ;;   M-x where-is
 
 (require 'dl-buffer-management)
-;; Bind it to a key (example: F9)
-(global-set-key (kbd "<f9>") 'toggle-maximize-buffer)
 
-;; Fast journal capture: <f1> pops a small org buffer; C-c C-c / C-RET
-;; appends a timestamped entry under today's `* Log'.  Help stays on C-h;
-;; C-<f1> belongs to `my/ghostel-toggle' (apps/dl-term.el).
-(global-set-key (kbd "<f1>") #'my/journal-quick-capture)
-;; f2 - view menu (needs work)
-;; f3 - start macro
-;; f4 - end or call macro
-(global-set-key (kbd "<f5>") #'deadgrep)
-;; f9 - toggle maximize buffer
-;; f10 - collides w/ WM
+;; Function keys.  Fast journal capture: <f1> pops a small org buffer;
+;; C-c C-c / C-RET appends a timestamped entry under today's `* Log'.
+;; Help stays on C-h; C-<f1> is `popterm-toggle' (apps/dl-ghostel.el).
+;;   f2 - view menu (needs work)    f3 - start macro
+;;   f4 - end or call macro         f10 - collides w/ WM
+(bind-keys
+  ("<f1>"   . my/journal-quick-capture)
+  ("C-<f2>" . my/ghostel-here)          ; `dl-term.el'
+  ("<f5>"   . deadgrep)
+  ("<f9>"   . toggle-maximize-buffer))
 
 (provide 'dl-keybind)
 ;;; dl-keybind.el ends here

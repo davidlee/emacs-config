@@ -168,7 +168,5 @@ in the main frame are safe.")
 (advice-add 'org-capture-finalize :after #'my/org-capture-delete-client-frame)
 (advice-add 'org-capture-kill     :after #'my/org-capture-delete-client-frame)
 
-(global-set-key (kbd "C-c c") #'org-capture)
-
 (provide 'dl-org-capture)
 ;;; dl-org-capture.el ends here

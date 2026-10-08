@@ -59,7 +59,6 @@
 (require 'dl-org)
 (require 'dl-org-capture)
 (require 'dl-org-agenda)
-(require 'dl-org-links)
 (require 'dl-denote)
 (require 'dl-denote-templates)
 (require 'dl-denote-blog)

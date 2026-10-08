@@ -58,8 +58,8 @@ with a copy lacking those keys; wheel scrolling stays smooth."
     popterm-display-method 'window ;; | 'posframe | 'fullscreen
     popterm-scope          'project ;; | 'frame | 'dedicated | nil
     popterm-auto-cd        t)
-  :bind
-  ("C-M-` " . popterm-toggle)) ;; note: conflict with popper-mode toggle
+  ;; `C-M-`' is `popper-toggle-type' (`dl-popups.el').
+  :bind ("C-<f1>" . popterm-toggle))
 
 (provide 'dl-ghostel)
 ;;; dl-ghostel.el ends here

@@ -77,8 +77,7 @@ any missing dirs so a fresh clone bootstraps without manual `mkdir`.
 ```
 org/dl-org.el                 defaults, TODO states, styling
 org/dl-org-capture.el         capture templates + protocol helpers
-org/dl-org-agenda.el          org-agenda-files + C-c a
-org/dl-org-links.el           C-c l store-link (other link binds in notes map)
+org/dl-org-agenda.el          org-agenda-files, custom agenda views
 org/dl-org-ql.el              org-ql install
 org/dl-denote.el              Denote core config
 org/dl-denote-templates.el    class constructors (my/denote-new-*)

@@ -282,5 +282,28 @@ different maps, and a remap of the same name, are not."
                  (list (dl-policy-lint-test--record 'global-map "C-z")
                        (dl-policy-lint-test--record 'global-map "C-z"))))))
 
+;;; Gates — the real config
+
+(defun dl-policy-lint-test--config-records ()
+  "Records for every config source under `user-emacs-directory'."
+  (mapcan #'my-policy-lint-file-records (my-policy-lint-config-files)))
+
+(defun dl-policy-lint-test--where (record)
+  "RECORD as a compact (MAP KEY FILE:LINE) for failure output."
+  (list (plist-get record :map) (plist-get record :key)
+        (format "%s:%d" (plist-get record :file) (plist-get record :line))))
+
+(ert-deftest dl-policy-lint/l2-real-config ()
+  "No config file writes a key outside the sanctioned forms (R2)."
+  (should-not (mapcar #'dl-policy-lint-test--where
+                      (my-policy-lint-form-violations
+                       (dl-policy-lint-test--config-records)))))
+
+(ert-deftest dl-policy-lint/l3-real-config ()
+  "No (map, key) is written twice across the config (R4)."
+  (should-not (mapcar (lambda (d) (mapcar #'dl-policy-lint-test--where (cdr d)))
+                      (my-policy-lint-duplicates
+                       (dl-policy-lint-test--config-records)))))
+
 (provide 'dl-policy-lint-test)
 ;;; dl-policy-lint-test.el ends here

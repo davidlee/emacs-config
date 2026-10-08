@@ -34,7 +34,7 @@
   :init
   ;; Org binds `C-,' to `org-cycle-agenda-files', which keeps `C-''.
   (with-eval-after-load 'org
-    (keymap-set org-mode-map "C-," #'embark-act))
+    (bind-keys :map org-mode-map ("C-," . embark-act)))
   ;; After invoking avy-goto-char-timer, hit "." to run embark at the
   ;; selected candidate.
   (with-eval-after-load 'avy

@@ -97,7 +97,5 @@ restart.  Idempotent."
          (todo "WAITING"))
        ((org-agenda-files my/org-agenda-combined-files)))))
 
-(global-set-key (kbd "C-c a") #'org-agenda)
-
 (provide 'dl-org-agenda)
 ;;; dl-org-agenda.el ends here

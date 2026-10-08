@@ -98,11 +98,6 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (define-key global-map (kbd "C-c m") my-term-map)
 (define-key global-map (kbd "C-c z") my-fold-map)
 
-;; Universal Emacs muscle memory for dired-jump; C-x C-n repurposed
-;; from the dropped dired-sidebar binding to dirvish-side.
-(global-set-key (kbd "C-x C-j") #'dired-jump)
-(global-set-key (kbd "C-x C-n") #'dirvish-side)
-
 ;; Prefix labels for which-key.
 (with-eval-after-load 'which-key
   (which-key-add-key-based-replacements
