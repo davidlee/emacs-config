@@ -2,6 +2,17 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-10-08 — emacs-coach: learner state is a note graph
+
+The `emacs-coach` skill's state moves from one flat skill-map file to a
+graph of denote slips: one per capability, workflow (an expert loop that
+links its capabilities) and concept. The skill map becomes an index of
+`denote-links` dynamic blocks; a capability's level is its `:LEVEL:`
+property. New `whythough` tag: a capability the learner can do but
+doesn't reach for; suggestions for it lead with the triggering
+situation. IMP-020 files a dynamic block to tabulate file-level
+properties across denote notes, so the index can show levels.
+
 ## 2026-10-08 — `C-=` / `C--` grow and shrink the selection; zoom out on `C-_`
 
 `expreg-expand` / `expreg-contract` were bound to `C-=` / `C--` in

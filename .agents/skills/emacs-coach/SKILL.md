@@ -17,14 +17,22 @@ anything they learned or found hard — lives in `~/notes` (private).
 Never write learner state into `~/.emacs.d`, and never copy it into
 commits, changelogs or backlog items there.
 
-State is three denote notes. Denote renames files when the title or
-tags change, so find each one by its identifier (`fd <ID> ~/notes`):
+State is a small graph of denote notes. Denote renames files when the
+title or tags change, so find a note by its identifier
+(`fd <ID> ~/notes`). Three fixed notes:
 
 | ID                | Note               | Holds                                        |
 |-------------------|--------------------|----------------------------------------------|
 | `20261008T094800` | emacs-fluency      | profile, priorities, try-next queue          |
-| `20261008T094801` | emacs-skill-map    | capabilities, each with a level + evidence   |
+| `20261008T094801` | emacs-skill-map    | generated index of the nodes; their format   |
 | `20261008T094802` | emacs-learning-log | dated append-only log                        |
+
+Every capability, workflow and concept is its own slip in
+`~/notes/slips`, tagged `emacs` plus a kind (`capability` / `workflow`
+/ `concept`) and an area. A capability's level is its `:LEVEL:`
+property; read levels with `rg ':LEVEL:' ~/notes/slips`. The skill
+map's preamble defines the tags, properties and levels. It is the
+format's single source; read it before writing a node.
 
 Meow modal editing has its own track (the hub links its brief and
 drill note). Don't duplicate it.
@@ -59,22 +67,32 @@ drill note). Don't duplicate it.
 4. **Suggest at most three things.** Prefer, in order:
    - something that fits the task in hand;
    - the next step above a capability already at USING;
-   - the hub's priority order.
+   - the hub's priority order;
+   - a `whythough` capability (one the user can do but doesn't reach
+     for), when the moment matches its trigger.
 
    For each: what it does, when to reach for it, command name and live
-   key, one line on why it's worth it.
+   key, one line on why it's worth it. For a `whythough` node, lead
+   with the situation that should trigger it; if the node lacks a
+   trigger, work one out with the user and write it into the node.
+   When a capability only pays off inside a workflow, suggest the
+   workflow and name the missing or broken piece.
 5. **Record**, before the session ends:
    - append to the log under today's heading: `TIL` / `FRICTION` /
      `TRIED` / `LEVEL` / `SETUP`, one line each;
    - change a level only on evidence (the user said so, or you saw them
-     use it); set `:EVIDENCE: [date] what`;
-   - add a capability heading (a task, not a key) when you find one
-     worth tracking;
+     use it); set the node's `:LEVEL:` and `:EVIDENCE: [date] what`;
+   - add a node when you find one worth tracking: a capability (a
+     task, not a key), a workflow (a loop that links its capabilities)
+     or a concept. Create it with `denote` so the name and front matter
+     are canonical, then refresh the skill map's dynamic blocks
+     (`org-update-all-dblocks`);
+   - workflow membership lives only in the workflow note; never copy
+     it into the capability;
    - keep the hub's try-next queue to five open items or fewer; close
      done ones and drop stale ones;
-   - a durable concept worth revisiting gets its own note (denote
-     `reference` or `slip`, linked from the hub), queued in the org-iw
-     queue `LEARN-EMACS` while it's active and removed once it's settled.
+   - a node under active study goes in the org-iw queue `LEARN-EMACS`
+     and comes out once it's settled.
      Use `org-iw-add` / `org-iw-add-files` / `org-iw-remove`; never
      hand-write `IW_<QUEUE>` ranks. org-iw is the user's own
      review-queue package; don't add another SRS.
