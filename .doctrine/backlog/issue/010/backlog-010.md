@@ -20,8 +20,8 @@ Known casualties (found 2026-10-08):
 - `C-=` / `C--`: `expreg-expand` / `expreg-contract`
   (`editing/dl-multi-edit.el`) dead under `text-scale-increase` /
   `-decrease` (`dl-keybind.el`). Pending a decision; trialled live.
-- `C-0` is `text-scale-adjust`, so `C-0` is not a prefix argument
-  (iedit's `C-0 C-;` defun scope needs `M-0`). Intentional?
+- `C-0` is `text-scale-adjust`, so `C-0` is not a prefix argument.
+  Intentional (2026-10-08): `M-0` / `C-u 0` cover the prefix; keep it.
 - Stale comments claimed keys had moved when they hadn't (`C-'`).
 
 Existing guard: `core/dl-policy-lint.el` checks only `C-c <letter>`
