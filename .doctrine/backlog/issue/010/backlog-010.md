@@ -19,7 +19,8 @@ Known casualties (found 2026-10-08):
   `iedit-mode` (`dl-keybind.el`). Fixed by deleting the avy binding.
 - `C-=` / `C--`: `expreg-expand` / `expreg-contract`
   (`editing/dl-multi-edit.el`) dead under `text-scale-increase` /
-  `-decrease` (`dl-keybind.el`). Pending a decision; trialled live.
+  `-decrease` (`dl-keybind.el`). Fixed: expreg keeps `C-=` / `C--`;
+  zoom moved to `C-+` / `C-_`.
 - `C-0` is `text-scale-adjust`, so `C-0` is not a prefix argument.
   Intentional (2026-10-08): `M-0` / `C-u 0` cover the prefix; keep it.
 - Stale comments claimed keys had moved when they hadn't (`C-'`).
