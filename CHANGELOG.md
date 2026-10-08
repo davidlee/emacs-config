@@ -2,6 +2,14 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-10-08 — opening another project's file switches to its tab
+
+`otpp-find-file-integration` is on (`editing/dl-project.el`). `find-file`
+(`C-x C-f`, dired) on a file from another project switches to that
+project's tab, opening it if needed; files outside any project stay in
+the current tab. xref jumps are not covered; `otpp-detach-buffer-to-tab`
+moves a stray buffer to its project's tab.
+
 ## 2026-10-08 — one writer per key; key policy lints
 
 Every global and mode-map key now has exactly one writer (SL-014). Rules

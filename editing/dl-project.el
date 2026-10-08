@@ -80,6 +80,9 @@ same roots, so one place defines them."
   :ensure nil
   :vc (:url "https://github.com/abougouffa/one-tab-per-project.git")
   :after project
+  :custom
+  ;; `find-file' on another project's file switches to (or opens) its tab.
+  (otpp-find-file-integration t)
   :config
   ;; Enable `otpp-mode` globally
   (otpp-mode 1)
