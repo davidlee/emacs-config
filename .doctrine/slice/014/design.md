@@ -142,12 +142,14 @@ Collision resolutions (user decisions, 2026-10-08):
 
 Other fixes:
 
-- Global zoom: `global-text-scale-adjust` dispatches on the invoking key
-  (`-` out, `0` reset, else in), so the `my/global-text-scale-*`
-  wrappers are wrong (`…-decrease` on a `-` key zooms in). Bind
+- Global zoom (cosmetic; behaviour is correct today):
+  `global-text-scale-adjust` takes its direction from the invoking key
+  (`-` out, `0` reset, else in), whatever argument the wrappers pass, so
+  `C-M--` on `my/global-text-scale-increase` already zooms out. The
+  wrappers add nothing and the name misleads. Bind
   `global-text-scale-adjust` directly on `C-M-=`, `C-M-+`, `C-M--`,
-  `C-S-0`; delete `lisp/dl-global-text-scale.el` and its note in
-  `docs/REVIEW.md`.
+  `C-S-0` (same behaviour); delete `lisp/dl-global-text-scale.el` and its
+  note in `docs/REVIEW.md`.
 - `apps/dl-ghostel.el`: key string `"C-M-` "` has a trailing space;
   removed when the binding moves.
 - `docs/KEYS.md`: add R1–R5; fix stale lines (`C-;` is `iedit-mode`, not

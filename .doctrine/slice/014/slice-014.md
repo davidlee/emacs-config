@@ -32,9 +32,10 @@ Existing guards are narrow:
    explicit allow-list.
 3. **Audit.** Run the detector over the current config; resolve each
    collision or allow-list it with a reason.
-4. **Honest zoom.** Bind `global-text-scale-adjust` directly (it
-   dispatches on the invoking key) and delete the misleading
-   `my/global-text-scale-*` wrappers.
+4. **Zoom naming (cosmetic).** Zoom behaves correctly; the
+   `my/global-text-scale-*` wrappers are redundant and `C-M--` runs one
+   named "increase". Bind `global-text-scale-adjust` directly, drop the
+   wrappers.
 5. **Form consistency.** Mode-map writes migrate to `:bind (:map …)` /
    `bind-keys :map`, so every personal bind shows in
    `describe-personal-keybindings`.
@@ -84,7 +85,7 @@ Existing guards are narrow:
 - Audit table (key, writers, resolution) recorded in slice notes; every
   collision resolved or allow-listed.
 - Collisions resolved per design (`C-:` avy, ``C-M-` `` popper,
-  `C-<f1>` popterm); global zoom keys behave as labelled.
+  `C-<f1>` popterm); global zoom keys unchanged in behaviour.
 - `just check` green; elisp paren checker clean on every touched file.
 
 ## Summary
