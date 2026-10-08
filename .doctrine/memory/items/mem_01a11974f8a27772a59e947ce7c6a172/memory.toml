@@ -1,0 +1,42 @@
+memory_uid = "mem_01a11974f8a27772a59e947ce7c6a172"
+memory_key = "mem.fact.doctrine.plan-toml-phase-header"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "Commented-out [[phase]] header in plan.toml silently drops that phase"
+summary = "If plan.toml's first [[phase]] header sits in a comment, that phase's keys parse as top-level and 'doctrine slice phases' says 'up to date' with no sheet"
+created = "2026-10-08"
+updated = "2026-10-08"
+
+[scope]
+paths = []
+globs = [".doctrine/slice/*/plan.toml"]
+commands = ["doctrine slice phases"]
+tags = ["doctrine", "plan"]
+workspace = "default"
+repo = "github.com/davidlee/emacs-config"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "e7439da70920cb684700b08838372db885c89576"
+ref_name = "refs/heads/main"
+checkout_state_id = "83806c0947e484119683464b0bf9ab20f683c20493d7fc7daaebac306a925bfb"
+base_commit = "71deb8c71b1fa33bc074dc4c8e097c3dfe7962d5"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "medium"
+weight = 0
+
