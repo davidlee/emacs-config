@@ -10,6 +10,106 @@ tags = []
 needs = []                      # slice→work hard prerequisite
 after = []                      # slice→work soft sequence: { to, rank }
 
+[[selector]]
+selector = "core/dl-policy-lint.el"
+intent = "design-target"
+note = "key policy lints + rule docs"
+
+[[selector]]
+selector = "lisp/test/dl-policy-lint-test.el"
+intent = "design-target"
+note = "key policy lints + rule docs"
+
+[[selector]]
+selector = "docs/KEYS.md"
+intent = "design-target"
+note = "key policy lints + rule docs"
+
+[[selector]]
+selector = "core/dl-keybind.el"
+intent = "design-target"
+note = "key policy lints + rule docs"
+
+[[selector]]
+selector = "core/dl-keymap.el"
+intent = "design-target"
+note = "key policy lints + rule docs"
+
+[[selector]]
+selector = "editing/dl-crux.el"
+intent = "design-target"
+note = "migrated key writes"
+
+[[selector]]
+selector = "editing/dl-motion.el"
+intent = "design-target"
+note = "migrated key writes"
+
+[[selector]]
+selector = "core/dl-prose.el"
+intent = "design-target"
+note = "migrated key writes"
+
+[[selector]]
+selector = "core/dl-meow.el"
+intent = "design-target"
+note = "migrated key writes"
+
+[[selector]]
+selector = "core/dl-popups.el"
+intent = "design-target"
+note = "migrated key writes"
+
+[[selector]]
+selector = "org/dl-org.el"
+intent = "design-target"
+note = "migrated key writes"
+
+[[selector]]
+selector = "org/dl-org-agenda.el"
+intent = "design-target"
+note = "migrated key writes"
+
+[[selector]]
+selector = "org/dl-org-capture.el"
+intent = "design-target"
+note = "migrated key writes"
+
+[[selector]]
+selector = "org/dl-org-links.el"
+intent = "design-target"
+note = "migrated key writes"
+
+[[selector]]
+selector = "completion/dl-vertico.el"
+intent = "design-target"
+note = "migrated key writes"
+
+[[selector]]
+selector = "completion/dl-embark.el"
+intent = "design-target"
+note = "migrated key writes"
+
+[[selector]]
+selector = "apps/dl-term.el"
+intent = "design-target"
+note = "migrated key writes"
+
+[[selector]]
+selector = "apps/dl-ghostel.el"
+intent = "design-target"
+note = "migrated key writes"
+
+[[selector]]
+selector = "lisp/dl-global-text-scale.el"
+intent = "design-target"
+note = "migrated key writes"
+
+[[selector]]
+selector = "docs/REVIEW.md"
+intent = "design-target"
+note = "migrated key writes"
+
 [[relation]]
 label = "fulfils"
 target = "ISS-010"

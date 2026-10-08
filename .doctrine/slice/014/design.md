@@ -1,5 +1,8 @@
+<!-- doctrine:section sec-1 -->
 # SL-014 design — Global keybinding ownership and collision lint
 
+
+<!-- doctrine:section sec-2 -->
 ## Current vs target
 
 | | Current | Target |
@@ -9,6 +12,8 @@
 | Discoverability | None for non-`:bind` writes | `M-x describe-personal-keybindings` lists every personal bind and what it replaced |
 | `C-c <letter>` lint | Hand-synced allow-list, already drifted (`C-c i` reported at startup, unnoticed) | Allow-list derived from naming; also run in `just check` |
 
+
+<!-- doctrine:section sec-3 -->
 ## Rules (documented in `docs/KEYS.md`)
 
 - **R1** A package's keys live in its `use-package :bind` (including
@@ -34,6 +39,8 @@
 Load order of `core/dl-keybind.el` becomes irrelevant under R4 (closes
 the scope's Q3).
 
+
+<!-- doctrine:section sec-4 -->
 ## Module boundaries
 
 ```
@@ -65,6 +72,8 @@ the scope's Q3).
   script, output recorded in slice notes, then discarded. Only the lints
   are permanent.
 
+
+<!-- doctrine:section sec-5 -->
 ## Static lint (L2, L3)
 
 Records (plist):
@@ -116,6 +125,8 @@ Invariants / edge cases:
   positions).
 - Comments and commented-out code are not forms — never reported.
 
+
+<!-- doctrine:section sec-6 -->
 ## Migration (from the census, 2026-10-08)
 
 371 keymap writes: 214 `my/bind`, 79 `:bind`, 64 to migrate.
@@ -157,6 +168,8 @@ Other fixes:
   `[C-f1] . vterm-toggle` example near L483; zoom keys).
 - Stale comment in `core/dl-keybind.el` about `C-<f1>`.
 
+
+<!-- doctrine:section sec-7 -->
 ## Verification
 
 ERT (`lisp/test/dl-policy-lint-test.el`, runs in `just check`):
@@ -180,6 +193,8 @@ Live checks (by agent, against the running Emacs after reload):
 `popterm-toggle`, `C-M--` zooms out, `describe-personal-keybindings`
 shows the migrated keys.
 
+
+<!-- doctrine:section sec-8 -->
 ## Risks
 
 - The ERT gates read the real config from `user-emacs-directory`
@@ -201,8 +216,11 @@ shows the migrated keys.
 - `vertico-map` binds currently run at top level after `use-package
   vertico`; moving them into its `:bind` is straightforward.
 
+
+<!-- doctrine:section sec-9 -->
 ## Out of scope / follow-ups
 
 - IMP-019: mode-owned `C-c` range rule and live per-mode shadowing probe
   (reuses `dl-policy-lint.el`).
 - Correct ISS-010's stale `C-=` / `C--` "pending" line at close.
+
