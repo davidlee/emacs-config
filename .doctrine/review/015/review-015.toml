@@ -1,0 +1,43 @@
+id    = 15
+slug  = "reconciliation-review-of-sl-014"
+title = "reconciliation review of SL-014"
+# no status — a review's status is DERIVED from its findings (ADR-007 D-C8), so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "reconciliation"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+
+[target]                   # the outbound `reviews` edge (ADR-004): RV-NNN ──reviews──▶ <ref>
+ref   = "SL-014"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "minor"
+title = "design Migration table should match shipped bind sites and deletions; it does not"
+detail = "design.md § Migration: embark org-mode-map C-, and eshell are routed to ':bind (:map …) on the owning use-package', and org/dl-org-links.el only loses its C-c l. Shipped (4d8fb12, notes PHASE-02): embark uses 'bind-keys :map org-mode-map' inside 'with-eval-after-load 'org' (a :bind on use-package org would defer org); eshell C-r binds on 'use-package esh-mode :ensure nil' (eshell-mode-map is defined in esh-mode) and my/setup-eshell is deleted; org/dl-org-links.el is deleted outright (held only C-c l). Design § Risks anticipated per-site resolution, so behaviour is correct; the design record is stale."
+disposition = "verified"
+response = "Observation confirmed; code is correct per design § Risks (per-site resolution). Design record update delegated to /reconcile — see Reconciliation Brief (per-slice direct edit, design.md § Migration)."
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "nit"
+title = "design Verification ERT names should match shipped tests; they differ"
+detail = "design.md § Verification lists form-records/*, violations/*, duplicates/*, l1/family-by-naming. Shipped lisp/test/dl-policy-lint-test.el uses dl-policy-lint/records-*, l2-*, l3-*, l1-family-by-naming, plus extras (records-empty-bind, records-nested, records-quoted-data-ignored, file-*, config-files, records-global-writers). Every designed case has a counterpart (bind-keys :map is inside records-bind-keys). Naming only."
+disposition = "tolerated"
+response = "Test names are illustrative in the design; every designed case has a shipped counterpart and extra edge-case tests exist. Renaming tests or design for cosmetic parity adds churn with no reader benefit; reconcile may touch it opportunistically when editing design.md § Verification."
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "minor"
+title = "KEYS.md should state live keys near changed ones; pre-existing stale Jump text found"
+detail = "PHASE-03 VA-1 found docs/KEYS.md Jump section (outside the slice's changed keys) claiming C-' was embark-dwim and C-; avy-goto-char-timer. Live: C-' avy-goto-char-2 (editing/dl-motion.el), M-. embark-dwim, C-; iedit-mode, C-./C-S-. goto-chg. Also core/dl-keymap.el comments (L203, L775) said C-; avy. Fixed in 8b6984f."
+disposition = "fix-now"
+response = "Fixed in 8b6984f: KEYS.md Jump section and prefix index now state C-: / C-' avy, C-; iedit-mode, C-, embark-act, M-. embark-dwim, C-./C-S-. goto-chg; dl-keymap.el comments corrected. Verified by rg against config sources; just check 166/166."
+
+# Findings are append-only `[[finding]]` tables, added by `review raise` (PHASE-03).
+# Empty here at creation — a fresh review is Active, awaiting the raiser (D-C8).

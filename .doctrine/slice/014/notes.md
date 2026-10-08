@@ -131,3 +131,12 @@ Docs only, plus two stale comments in `core/dl-keymap.el`.
   `dl-org-links`, `C-z`, `family-maps`, `setup-eshell`, `jinx` — every hit
   matches live bindings (checked against `rg` of config sources).
 - `just check` 166/166.
+
+## Audit (RV-015, 2026-10-08)
+
+Conformance audit done: 3 findings, all terminal. F-1 (design § Migration
+stale on embark/eshell/dl-org-links sites) → reconcile brief; F-2 (ERT names)
+tolerated; F-3 (pre-existing KEYS.md Jump staleness) fixed in `8b6984f`.
+Harvest: phase-sheet findings already in this file; memories
+`mem.fact.emacs.keybinding-map-owners` + batch-init recipe recorded in
+PHASE-02. No new backlog items (IMP-019 already holds the follow-up).
