@@ -43,3 +43,21 @@ after        ~/.config/emacs/ (real)      no ~/.emacs.d -> Emacs uses XDG
 - Agent tooling keyed on the working-directory path (e.g. Claude Code
   project memory) starts fresh under the new path unless copied.
 - zmx session names derive from the dir name (`emacs.d-*` -> `emacs-*`).
+
+## Progress log
+
+Resume from `~/.config/emacs` (or the `~/.emacs.d` symlink) if a session
+is cut off. Claude Code memory is copied to the new path key in step 1.
+
+Survey (2026-10-10) — functional refs outside docs:
+- `~/dev/satan/satan/satan-tools-vcs.el:23` — `vcs_log` bare-slug root.
+- `~/.config/waybar/scripts/satan-timer.py:31` — already stale
+  (`~/.emacs.d/satan/bin` gone since SL-012); target `~/dev/satan/satan/bin`.
+- `~/.config/gtk-3.0/bookmarks`, `~/flakes/files/omp.custom.json:69`.
+- Doc-only elsewhere; historical design/archive docs left as-is.
+
+- [ ] 1. move + symlink + clean-eln + direnv allow + copy agent memory
+- [ ] 2. functional refs fixed
+- [ ] 3. agent-facing docs updated (AGENTS.md, docs/emacs/*, home-context.md)
+- [ ] 4. user restarts Emacs, verifies
+- [ ] 5. symlink removed, `just check`, CHANGELOG, close

@@ -5,10 +5,10 @@ id = 3
 slug = "move-config-to-configemacs-xdg"
 title = "Move config to ~/.config/emacs (XDG)"
 kind = "chore"
-status = "open"
-resolution = ""                 # seeded empty so `backlog edit` sets it in place
+status = "started"
+resolution = ""
 created = "2026-10-08"
-updated = "2026-10-08"
+updated = "2026-10-10"
 tags = []
 
 # outbound-only (ADR-004). Cross-kind structural edges (e.g. references with a role
