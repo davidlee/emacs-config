@@ -69,6 +69,11 @@ Survey (2026-10-10) — functional refs outside docs:
       leave own code untrusted. Batch Emacs reports
       `user-emacs-directory` = `~/.config/emacs/`; `just check` green.
 - [ ] 4. user restarts Emacs, verifies; then close.
+      Race: daemon started 11:52:20 via the symlink, just before its
+      removal, so it runs with `user-emacs-directory` = `~/.emacs.d/`;
+      savehist recreated `~/.emacs.d/` (history) at 11:57. Fix: stop
+      Emacs, move `~/.emacs.d/*` over `~/.config/emacs/` (newer state),
+      `rmdir ~/.emacs.d`, start Emacs, confirm `user-emacs-directory`.
 
 Pending outside this repo: `just home-switch` (omp mapping); restart
 the waybar satan-timer. Left as-is: historical design/archive docs in
