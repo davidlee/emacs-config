@@ -68,7 +68,7 @@ Survey (2026-10-10) — functional refs outside docs:
       trust compares truenames, so a symlinked `~/.emacs.d` would
       leave own code untrusted. Batch Emacs reports
       `user-emacs-directory` = `~/.config/emacs/`; `just check` green.
-- [ ] 4. user restarts Emacs, verifies; then close.
+- [x] 4. user restarts Emacs, verifies; then close.
       Race: daemon started 11:52:20 via the symlink, just before its
       removal, so it runs with `user-emacs-directory` = `~/.emacs.d/`;
       savehist recreated `~/.emacs.d/` (history) at 11:57. Fix: stop
@@ -80,3 +80,9 @@ the waybar satan-timer. Left as-is: historical design/archive docs in
 satan, stale `-L ~/.emacs.d/...` run headers in satan tests (stale
 since SL-012), `flakes/emacs/emacs.nix:88` comment (file had
 uncommitted user edits).
+
+Resolved 2026-10-10: stale `~/.emacs.d` moved aside by user; nothing
+merged (session state was identical or emptier). Old paths rewritten in
+recentf/places/history/eshell lastdir; stale `custom-vars.elc` removed.
+Restarted daemon: `user-emacs-directory` = `~/.config/emacs/`, own code
+`trusted-content-p`, no `~/.emacs.d` recreated. `just home-switch` done.
