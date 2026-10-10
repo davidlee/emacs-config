@@ -10,7 +10,7 @@
 (setq plstore-cache-passphrase-for-symmetric-encryption t)
 
 ;; `oauth2-auto-plstore' defaults to `(concat user-emacs-directory ...)';
-;; `user-emacs-directory' is the unexpanded "~/.emacs.d/", so the var
+;; `user-emacs-directory' is unexpanded (e.g. "~/.config/emacs/"), so the var
 ;; ends up containing a literal tilde. oauth2-auto's
 ;; `insert-break-on-secret-entries' guard then misfires under some call
 ;; paths even though `file-truename' would canonicalise both sides.

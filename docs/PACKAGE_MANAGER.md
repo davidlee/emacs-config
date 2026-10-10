@@ -22,7 +22,7 @@ Layer 1: nix (build time)
        READ-ONLY: this directory cannot be written to at runtime.
 
 Layer 2: emacs (runtime)
-  ~/.emacs.d/elpa/                          writable
+  ~/.config/emacs/elpa/                        writable
     package.el          installs from package-archives        (DISABLED — see below)
     package-vc          clones a git repo into elpa/NAME/
     manual              you do whatever you want
@@ -74,7 +74,7 @@ the package is *already* present via nix.
 ### `:vc (...)` (Emacs 30+ built-in use-package)
 
 Use-package's `:vc` handler calls `package-vc-install` with the supplied
-spec. The package is cloned into `~/.emacs.d/elpa/NAME/`. This is the only
+spec. The package is cloned into `~/.config/emacs/elpa/NAME/`. This is the only
 runtime path that can pull source from outside what nix provides.
 
 `:vc` and `:ensure` are independent handlers. With `:ensure t :vc (...)`,
@@ -123,7 +123,7 @@ Fix:
    `package-vc-selected-packages` in `custom-vars.el`.
 3. `home-manager switch` to drop ghostel from the nix derivation.
 4. `M-x package-vc-install-selected-packages` to clone into the writable
-   `~/.emacs.d/elpa/ghostel/`.
+   `~/.config/emacs/elpa/ghostel/`.
 5. `M-x ghostel-download-module` — now writes into the writable dir.
 
 Pattern: any VC package whose name matches a melpa entry must carry
@@ -156,7 +156,7 @@ re-runs install without actually re-cloning — the old autoloads stay put
 and your new `:lisp-dir` / `:rev` / `:branch` is ignored.
 
 When changing the spec for a VC package: `rm -rf
-~/.emacs.d/elpa/NAME/`, then `M-x package-vc-install-selected-packages`.
+~/.config/emacs/elpa/NAME/`, then `M-x package-vc-install-selected-packages`.
 Don't rely on the prompt.
 
 ### `:ensure nil` confusion
@@ -214,13 +214,13 @@ nix-store -q --requisites $(readlink -f $(which emacs)) | grep emacs-
 nix-store -q --requisites $(readlink -f $(which emacs)) | grep -i FOO
 
 # What's in writable elpa?
-ls ~/.emacs.d/elpa/
+ls ~/.config/emacs/elpa/
 
 # Rebuild after editing .el or emacs.nix
 cd ~/flakes && home-manager switch --flake .
 
 # Force re-install of a VC package after spec change
-rm -rf ~/.emacs.d/elpa/FOO && emacsclient -e '(package-vc-install-selected-packages)'
+rm -rf ~/.config/emacs/elpa/FOO && emacsclient -e '(package-vc-install-selected-packages)'
 
 # Locate the overlay parser
 find /nix/store -maxdepth 5 -name parse.nix -path '*emacs*'
@@ -231,10 +231,10 @@ find /nix/store -maxdepth 5 -name parse.nix -path '*emacs*'
 | File | Role |
 | --- | --- |
 | `~/flakes/modules/home/emacs.nix`              | Layer 1 entry point. `extraEmacsPackages` for things outside use-package scanning. |
-| `~/.emacs.d/early-init.el`                     | Sets `package-archives nil` — disables `package-install`. |
-| `~/.emacs.d/custom-vars.el`                    | `package-vc-selected-packages` lives here. |
-| `~/.emacs.d/apps/dl-ghostel.el`                | Reference example of `:ensure nil :vc :lisp-dir`. |
-| `~/.emacs.d/apps/dl-claude.el`                 | Reference example of `:vc` without `:ensure nil` (works because name isn't in melpa-nix). |
-| `~/.emacs.d/apps/dl-eaf.el`                    | Reference example of `:ensure nil :demand t` for a package supplied by `extraEmacsPackages`. |
+| `~/.config/emacs/early-init.el`                | Sets `package-archives nil` — disables `package-install`. |
+| `~/.config/emacs/custom-vars.el`               | `package-vc-selected-packages` lives here. |
+| `~/.config/emacs/apps/dl-ghostel.el`           | Reference example of `:ensure nil :vc :lisp-dir`. |
+| `~/.config/emacs/apps/dl-claude.el`            | Reference example of `:vc` without `:ensure nil` (works because name isn't in melpa-nix). |
+| `~/.config/emacs/apps/dl-eaf.el`               | Reference example of `:ensure nil :demand t` for a package supplied by `extraEmacsPackages`. |
 | nix-community/emacs-overlay `parse.nix`        | Layer 1 parser. Cached at `/nix/store/*-source/parse.nix`. |
 | emacs `lisp/emacs-lisp/package-vc.el`          | Layer 2 VC install machinery. |

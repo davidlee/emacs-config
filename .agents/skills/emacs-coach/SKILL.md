@@ -11,10 +11,10 @@ sake, no unprompted quizzes.
 
 ## Public procedure, private state
 
-This skill lives in `~/.emacs.d`, a **public** repo. It holds only the
+This skill lives in `~/.config/emacs`, a **public** repo. It holds only the
 procedure. Everything about the user — profile, levels, logs, drills,
 anything they learned or found hard — lives in `~/notes` (private).
-Never write learner state into `~/.emacs.d`, and never copy it into
+Never write learner state into `~/.config/emacs`, and never copy it into
 commits, changelogs or backlog items there.
 
 State is a small graph of denote notes. Denote renames files when the
@@ -43,12 +43,12 @@ drill note). Don't duplicate it.
    weeks.
 2. **Gather evidence** (only what the moment needs):
    - what the user is doing right now: the best evidence there is;
-   - `~/.emacs.d/var/prescient-save.el`: recent `M-x` picks. A command
+   - `~/.config/emacs/var/prescient-save.el`: recent `M-x` picks. A command
      reached through `M-x` is one the user has no key for in muscle
      memory;
    - FRICTION entries in the log;
    - config changes since the hub's `CONFIG_SEEN` commit
-     (`git -C ~/.emacs.d log --oneline <sha>..HEAD`, matching
+     (`git -C ~/.config/emacs log --oneline <sha>..HEAD`, matching
      `CHANGELOG.md` entries). See *Config loop*.
 3. **Resolve keys live.** Keys in this config change often, so never
    quote a key from memory or from an old note. Ask the running Emacs,
@@ -114,12 +114,12 @@ every visit.
   and offer anything worth trying as a try-next item. Then set
   `CONFIG_SEEN` to the current `HEAD`.
 - **Outbound (learning → config).** Friction that needs a code change,
-  or a package worth trying, becomes a `.emacs.d` backlog item (see
+  or a package worth trying, becomes a `~/.config/emacs` backlog item (see
   Boundaries). A stated preference becomes a line in the hub's profile.
 
 ## Boundaries
 
-- Config friction that needs a code change goes to the `.emacs.d`
+- Config friction that needs a code change goes to the `~/.config/emacs`
   backlog (`doctrine backlog new`), described in config terms only. The
   learning log records that it was filed.
 - Build drills only when asked. Follow the meow-drills format: Do /

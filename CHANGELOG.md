@@ -2,6 +2,14 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-10-10 — config moved to ~/.config/emacs (XDG)
+
+The config now lives at `~/.config/emacs`; `~/.emacs.d` is gone, so
+Emacs uses the XDG location. Paths derive from `user-emacs-directory`,
+so no code changed; docs, the treemacs project, satan's `vcs_log`
+search root and the flakes repo follow the new path. zmx session names
+for this project change from `emacs.d-*` to `emacs-*`.
+
 ## 2026-10-09 — follow and annotate agent changes
 
 `M-x my/agent-review-start` chooses a local Git repo and opens a watched

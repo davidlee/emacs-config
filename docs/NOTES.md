@@ -335,12 +335,12 @@ Concrete next steps if/when the friction is felt:
 
 ## Pointers
 
-- `~/.emacs.d/docs/KEYS.md` — full keymap reference (this doc has only the
+- `~/.config/emacs/docs/KEYS.md` — full keymap reference (this doc has only the
   notes-map subset).
-- `~/.emacs.d/CHANGELOG.md` — phase-by-phase history of the build-out.
-- `~/.emacs.d/AGENTS.md` — agent orientation (links to Nix integration
+- `~/.config/emacs/CHANGELOG.md` — phase-by-phase history of the build-out.
+- `~/.config/emacs/AGENTS.md` — agent orientation (links to Nix integration
   traps at `docs/emacs/traps.md`; read before editing packaging-adjacent code).
-- `~/.emacs.d/CLAUDE.md` → `AGENTS.md` — project conventions for AI
+- `~/.config/emacs/CLAUDE.md` → `AGENTS.md` — project conventions for AI
   collaborators.
 - `~/.claude/plans/yes-use-dl-for-staged-quiche.md` — the original
   implementation plan (phases 1-7). The plan is done; this file is the

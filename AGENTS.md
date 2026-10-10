@@ -63,18 +63,18 @@ the Nix integration.
 ~/flakes/emacs/emacs.nix           THE package list (manual, emacsWithPackages)
 ~/flakes/emacs/flake.nix           exports it as packages.default (own pins)
 ~/flakes/modules/home/emacs.nix    home-manager module (inputs.emacs's package)
-~/.emacs.d/flake.nix               devshell; emacs via the `emacs` flake input
-~/.emacs.d/early-init.el           loads dl-path.el, sets package-archives nil
-~/.emacs.d/core/dl-path.el         load-path, exec-path, trusted-content, direnv
-~/.emacs.d/init.el                 main config
-~/.emacs.d/{core,apps,lang,lisp,editing,completion,org,dev}/*.el
+~/.config/emacs/flake.nix           devshell; emacs via the `emacs` flake input
+~/.config/emacs/early-init.el       loads dl-path.el, sets package-archives nil
+~/.config/emacs/core/dl-path.el     load-path, exec-path, trusted-content, direnv
+~/.config/emacs/init.el             main config
+~/.config/emacs/{core,apps,lang,lisp,editing,completion,org,dev}/*.el
 ```
 
 Packages are a **manual list** in `~/flakes/emacs/emacs.nix`
 (`emacsWithPackages`) — nothing parses `use-package` forms. **No package
 archives are configured at runtime** (`package-archives nil` in
 `early-init.el`); MELPA is not available from inside Emacs (exception:
-`package-vc-selected-packages` installs `:vc` stanzas into `~/.emacs.d/elpa`).
+`package-vc-selected-packages` installs `:vc` stanzas into `~/.config/emacs/elpa`).
 To get a new package: add it to the list in `~/flakes/emacs/emacs.nix`, run
 `just home-switch` (home profile; it overrides the `emacs` input with the
 checkout), and `direnv reload` here (`.envrc`'s `use flake_local pub emacs`
@@ -117,7 +117,7 @@ Full detail: [docs/emacs/traps.md](docs/emacs/traps.md).
 
 - Nix flake at `~/flakes`, hostname `Sleipnir`, x86_64-linux.
 - Modal editing: meow.
-- Native compilation is on; eln-cache at `~/.emacs.d/eln-cache/`.
+- Native compilation is on; eln-cache at `~/.config/emacs/eln-cache/`.
 - compile-angel byte-compiles `.el` on save and load.
 - Some files are intentionally untracked (`*.secret.el`, `apps/dl-spotify.el`
   historically) — check git status before assuming a "missing" file is a bug.

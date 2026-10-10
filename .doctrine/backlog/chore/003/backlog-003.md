@@ -56,8 +56,22 @@ Survey (2026-10-10) — functional refs outside docs:
 - `~/.config/gtk-3.0/bookmarks`, `~/flakes/files/omp.custom.json:69`.
 - Doc-only elsewhere; historical design/archive docs left as-is.
 
-- [ ] 1. move + symlink + clean-eln + direnv allow + copy agent memory
-- [ ] 2. functional refs fixed
-- [ ] 3. agent-facing docs updated (AGENTS.md, docs/emacs/*, home-context.md)
-- [ ] 4. user restarts Emacs, verifies
-- [ ] 5. symlink removed, `just check`, CHANGELOG, close
+- [x] 1. moved; clean-eln; direnv allowed; Claude memory copied to
+      `~/.claude/projects/-home-david--config-emacs`.
+- [x] 2. functional refs: satan `1b007d6`; home repo `f414bc6d`
+      (flakes docs, omp, waybar timer); gtk bookmark (untracked);
+      treemacs-persist project path.
+- [x] 3. docs: AGENTS.md, docs/{emacs/traps,PACKAGE_MANAGER,NOTES}.md,
+      emacs-coach skill, ~/notes home-context.md.
+- [x] 5 (brought forward). Symlink removed before first restart:
+      `trusted-content` derives from `user-emacs-directory`, and
+      trust compares truenames, so a symlinked `~/.emacs.d` would
+      leave own code untrusted. Batch Emacs reports
+      `user-emacs-directory` = `~/.config/emacs/`; `just check` green.
+- [ ] 4. user restarts Emacs, verifies; then close.
+
+Pending outside this repo: `just home-switch` (omp mapping); restart
+the waybar satan-timer. Left as-is: historical design/archive docs in
+satan, stale `-L ~/.emacs.d/...` run headers in satan tests (stale
+since SL-012), `flakes/emacs/emacs.nix:88` comment (file had
+uncommitted user edits).

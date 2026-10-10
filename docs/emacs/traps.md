@@ -22,8 +22,8 @@ Four things that have bitten this config. Quick reference; for orientation see [
 untracked.
 
 ```
-git -C ~/.emacs.d status --short    # ?? marks invisible files
-git -C ~/.emacs.d add path/to/new.el
+git -C ~/.config/emacs status --short    # ?? marks invisible files
+git -C ~/.config/emacs add path/to/new.el
 ```
 
 Staged (uncommitted) is enough — the "Git tree is dirty" warning is benign.
@@ -62,7 +62,7 @@ See `core/dl-compile.el`.
 ## 4. `trusted-content` entries must be `~/` form
 
 `trusted-content-p` in `files.el` runs `(abbreviate-file-name
-buffer-file-truename)` before matching, so it compares `~/.emacs.d/foo/bar.el`
+buffer-file-truename)` before matching, so it compares `~/.config/emacs/foo/bar.el`
 against your trusted entries via `string-prefix-p`. Entries built from
 `expand-file-name` (`/home/david/...`) never match. Wrap in
 `abbreviate-file-name` — see `core/dl-path.el:my/expand-emacs-dir`.
@@ -70,7 +70,7 @@ against your trusted entries via `string-prefix-p`. Entries built from
 ## 5. Stale `eln-cache` generations SIGSEGV the editor
 
 Every emacs rebuild mints a new native-comp ABI dir under
-`~/.emacs.d/eln-cache/<version>-<hash>/`. `home-manager switch` **never removes
+`~/.config/emacs/eln-cache/<version>-<hash>/`. `home-manager switch` **never removes
 the old ones**, so they accumulate (seen in the wild: 7 gens / 94 MB across two
 major versions, incl. a 585-file `.eln.tmp` storm from a died compile). When a
 mismatched or partial `.eln` is executed, emacs jumps to a garbage address and

@@ -96,7 +96,7 @@ uses the same account rather than falling through to auth-source."
       :endpoint "/api/v1/chat/completions"
       :key (lambda () (my/op-key "OPENROUTER"))
       :stream t
-      ;;  cat ~/.emacs.d/.cache/gptel-openrouter/models.json| jq '.data[].id' | sort
+      ;;  cat ~/.config/emacs/.cache/gptel-openrouter/models.json| jq '.data[].id' | sort
       :models (gptel-openrouter-get-annotated-models
                 '(
                    deepseek/deepseek-flash
