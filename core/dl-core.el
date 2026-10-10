@@ -53,7 +53,6 @@
   (calendar-location-name "Melbourne, AU")
   (calendar-mark-holidays-flag t)
   (calendar-mark-today t)
-  (calendar-mark-diary-entries-flag t)
 
   :config
   ;; don't warn when loading stuff from custom-vars.el

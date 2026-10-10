@@ -85,6 +85,7 @@
 (require 'dl-ghostel)
 (require 'dl-zmx)
 (require 'dl-magit)
+(require 'dl-agent-review)
 (require 'dl-ediff)
 (require 'dl-claude)
 (require 'dl-gnus)

@@ -105,12 +105,18 @@
   :ensure nil
   :demand t
   :bind (:map org-timeblock-mode-map
-         ([remap meow-prev] . org-timeblock-backward-block)
-         ([remap meow-next] . org-timeblock-forward-block)
-         :map org-timeblock-list-mode-map
-         ([remap meow-prev] . org-timeblock-list-previous-line)
-         ([remap meow-next] . org-timeblock-list-next-line)))
+          ([remap meow-prev] . org-timeblock-backward-block)
+          ([remap meow-next] . org-timeblock-forward-block)
+          :map org-timeblock-list-mode-map
+          ([remap meow-prev] . org-timeblock-list-previous-line)
+          ([remap meow-next] . org-timeblock-list-next-line)))
 
+(use-package org-alert
+  :custom
+  (alert-default-style 'libnotify)
+  (org-alert-interval 300)
+  (org-alert-notify-cutoff 10)
+  (org-alert-notify-after-event-cutoff 10))
 
 ;; (use-package org-review
 ;;   :bind (:map org-agenda-mode-map

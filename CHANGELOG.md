@@ -2,6 +2,20 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-10-09 — follow and annotate agent changes
+
+`M-x my/agent-review-start` chooses a local Git repo and opens a watched
+working-tree diff against `HEAD` (staged and unstaged changes). Filesystem
+events refresh status and the dedicated review diff; comment entry defers
+diff updates. `M-x my/agent-review-stop`, or closing either review buffer,
+stops watching. Existing independent watchers are preserved.
+
+Hunk-notes adds line/range comments: `C-c , c` comments, `C-c , y` copies
+the comments and relevant hunks as an agent prompt. Reviews are stored
+outside the config, under `~/.local/state/emacs-hunk-notes/reviews/`.
+No new global keys. The Nix package list includes magit-filenotify and a
+pinned hunk-notes build. Untracked files remain listed in Magit status.
+
 ## 2026-10-08 — mail: Gnus + Fastmail
 
 New `apps/dl-gnus.el`. `M-x gnus` reads Fastmail over IMAP; `C-x m`
