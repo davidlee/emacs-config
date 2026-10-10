@@ -9,8 +9,8 @@
   (should (equal (dl-zmx-session-name "hris" "claude") "hris-claude")))
 
 (ert-deftest dl-zmx/session-name-drops-leading-dots ()
-  "Hidden project dirs (`.emacs.d') give readable session names."
-  (should (equal (dl-zmx-session-name ".emacs.d" "pi") "emacs.d-pi")))
+  "Hidden project dirs (`.hidden.d') give readable session names."
+  (should (equal (dl-zmx-session-name ".hidden.d" "pi") "hidden.d-pi")))
 
 (ert-deftest dl-zmx/session-name-replaces-label-unsafe-chars ()
   "zmx labels allow only [a-zA-Z0-9._-]; names and labels must agree."
@@ -26,11 +26,11 @@
 (ert-deftest dl-zmx/attach-argv-labels-new-sessions ()
   "New sessions get their own systemd scope, outside Emacs's cgroup."
   (dl-zmx-test--with-commands
-   (should (equal (dl-zmx-attach-argv "emacs.d-re-view"
-                                      (dl-zmx-labels ".emacs.d" "re view"))
+   (should (equal (dl-zmx-attach-argv "hidden.d-re-view"
+                                      (dl-zmx-labels ".hidden.d" "re view"))
                   '("systemd-run" "--user" "--scope"
-                    "zmx" "attach" "--labels" "project=emacs.d id=re-view"
-                    "emacs.d-re-view" "nu")))))
+                    "zmx" "attach" "--labels" "project=hidden.d id=re-view"
+                    "hidden.d-re-view" "nu")))))
 
 (ert-deftest dl-zmx/attach-argv-reattach-without-labels ()
   (dl-zmx-test--with-commands
@@ -89,7 +89,7 @@
 (ert-deftest dl-zmx/project-identifiers-from-sessions ()
   "Only this project's sessions, by identifier."
   (should (equal (dl-zmx-project-identifiers
-                  ".emacs.d" '("emacs.d-claude" "hris-pi" "emacs.d-build" "ls"))
+                  ".hidden.d" '("hidden.d-claude" "hris-pi" "hidden.d-build" "ls"))
                  '("claude" "build"))))
 
 (ert-deftest dl-zmx/ghostel-exec-callable-before-ghostel-loads ()
