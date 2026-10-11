@@ -35,15 +35,17 @@ with a copy lacking those keys; wheel scrolling stays smooth."
   :vc (:url "https://github.com/dakra/ghostel"
         :rev :newest)
   :custom
-  ;; Upstream's list, plus the tab chords (core/dl-keybind.el) so they
-  ;; switch tabs here too, and S-PgUp/PgDn so they page the scrollback,
-  ;; as in ghostty.  The terminal no longer sees these.
+  ;; Upstream's list, plus the tab chords and window moves
+  ;; (core/dl-keybind.el, editing/dl-motion.el) so they work here too,
+  ;; and S-PgUp/PgDn so they page the scrollback, as in ghostty.  The
+  ;; terminal no longer sees these.
   (xterm-extra-capabilities '(getSelection setSelection)) ;; make selection work / OSC 52
   (select-enable-clipboard t)
   (ghostel-keymap-exceptions
     '("C-c" "C-x" "C-u" "C-h" "M-x" "M-:" "C-\\"
        "C-<prior>" "C-<next>" "M-<prior>" "M-<next>"
-       "C-M-<prior>" "C-M-<next>" "S-<prior>" "S-<next>"))
+       "C-M-<prior>" "C-M-<next>" "S-<prior>" "S-<next>"
+       "C-M-<left>" "C-M-<right>" "C-M-<up>" "C-M-<down>" "M-o"))
   :hook (ghostel-mode . dl-ghostel--pass-paging-keys)
   ;; The scrollback is buffer text, so paging it is a window scroll.
   ;; Bound in the parent map: the semi-char map is rebuilt on change.

@@ -2,6 +2,13 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-10-12 — window keys work in ghostel terminals
+
+`C-M-<arrow>` (`windmove-*`) and `M-o` (`ace-window`) now reach Emacs
+from a ghostel buffer; they were sent to the terminal. Added to
+`ghostel-keymap-exceptions`, so programs in the terminal no longer
+see them.
+
 ## 2026-10-10 — config moved to ~/.config/emacs (XDG)
 
 The config now lives at `~/.config/emacs`; `~/.emacs.d` is gone, so
