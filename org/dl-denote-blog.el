@@ -8,7 +8,7 @@
 ;; symlinking it into `dl-notes-blog-dir' under a Denote file name:
 ;;
 ;;   ~/notes/blog/20261003T120000--a-title__article_blog.typ
-;;     -> ~/dev/www/doctrine.engineering/.src/articles/a-title.typ
+;;     -> ~/dev/www/doctrine.engineering/src/articles/a-title.typ
 ;;
 ;; One source of truth (the blog repo); the link is only an address.
 ;; `vc-follow-symlinks' is t so visiting a link edits the blog file in
