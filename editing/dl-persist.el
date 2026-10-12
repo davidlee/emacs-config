@@ -8,10 +8,10 @@
   (buffer-terminator-verbose nil)
 
   (buffer-terminator-inactivity-timeout (* 45 60)) ; 45 minutes
-  (buffer-terminator-interval (* 5 60)) ; run every   5 minutes
-
-  :config
-  (buffer-terminator-mode 1))
+  (buffer-terminator-interval (* 5 60))) ; run every   5 minutes
+  ;; Off while isolating ISS-011 (window hijack with org-alert).
+  ;; :config
+  ;; (buffer-terminator-mode 1))
 
 ;; --------------------------------------------------------------------------------
 ;; Revisiting: point restore, auto-revert

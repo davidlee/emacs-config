@@ -5,6 +5,7 @@
 ;; daily/weekly note builders in `dl-denote-journal'.
 
 (require 'dl-notes-paths)
+(require 'dl-faces)                    ; my/apply-org-faces (org-mode hook)
 
 (use-package org
   :ensure nil
@@ -90,7 +91,11 @@
   (add-hook 'post-command-hook #'my/org-hl-line-strip-bg 90 t)
   ;; Option B: disable hl-line entirely in org if remap isn't enough
   ;; (hl-line-mode -1)
-  (set-window-buffer nil (current-buffer)))
+  ;; Margins apply on `set-window-buffer'; refresh only windows already
+  ;; showing this buffer.  Background visits (org-alert, agenda) must not
+  ;; pull the buffer into the selected window.
+  (dolist (window (get-buffer-window-list nil nil t))
+    (set-window-buffer window (current-buffer))))
 
 (add-hook 'org-mode-hook #'my/org-setup-margins)
 
@@ -116,7 +121,9 @@
   (alert-default-style 'libnotify)
   (org-alert-interval 300)
   (org-alert-notify-cutoff 10)
-  (org-alert-notify-after-event-cutoff 10))
+  (org-alert-notify-after-event-cutoff 10)
+  :config
+  (org-alert-enable))
 
 ;; (use-package org-review
 ;;   :bind (:map org-agenda-mode-map

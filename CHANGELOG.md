@@ -2,6 +2,17 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-10-12 — org-alert on, buffer-terminator off
+
+`org-alert` now runs (desktop notifications for timed org entries, checked
+every 5 minutes). `buffer-terminator-mode` is off, so idle buffers are no
+longer killed automatically. Together they made a background org buffer
+(e.g. a weekly journal) replace the selected window, even mid-typing; this
+isolates the cause (ISS-011).
+
+Org buffers opened in the background no longer take over the selected
+window (`my/org-setup-margins`).
+
 ## 2026-10-12 — terminal frames get the kitty keyboard protocol
 
 `kkp` (`global-kkp-mode`) is on: in `emacsclient -t` frames, e.g. over
