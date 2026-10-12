@@ -158,6 +158,14 @@
 (custom-set-variables
   '(zoom-window-mode-line-color "#005500"))
 
+;; Terminal frames (`emacsclient -t', e.g. over ssh): the kitty keyboard
+;; protocol delivers modified keys (`C-,' `C-;' `C-=' `C-M-<arrow>')
+;; that the legacy encoding drops.  ghostty and kitty speak it; GUI
+;; frames are unaffected.
+(use-package kkp
+  :functions global-kkp-mode
+  :config (global-kkp-mode 1))
+
 ;; (use-package persp-mode)
 
 (setopt scroll-conservatively 100)

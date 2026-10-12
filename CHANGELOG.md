@@ -2,6 +2,13 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-10-12 — terminal frames get the kitty keyboard protocol
+
+`kkp` (`global-kkp-mode`) is on: in `emacsclient -t` frames, e.g. over
+ssh from ghostty or kitty, modified keys such as `C-,`, `C-;`, `C-=`
+and `C-M-<arrow>` now arrive as in a GUI frame. No effect on GUI frames.
+Needs `kkp` in `~/flakes/emacs/emacs.nix`.
+
 ## 2026-10-12 — window keys work in ghostel terminals
 
 `C-M-<arrow>` (`windmove-*`) and `M-o` (`ace-window`) now reach Emacs
