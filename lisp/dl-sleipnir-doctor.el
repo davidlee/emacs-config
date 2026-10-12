@@ -13,7 +13,7 @@
 (declare-function satan-run--id-from-leaf "satan-run" (name))
 (declare-function satan-patch-runner-active-p "satan-patch-runner" ())
 (declare-function satan-patch-store-list "satan-patch-store" (&rest args))
-(declare-function satan-memory-evidence--current-window-status "satan-memory-evidence" (path now))
+(declare-function satan-desktop-at "satan-desktop" (root time))
 (declare-function satan-memory-evidence--segments-status "satan-memory-evidence" (path start end limit now))
 (declare-function eglot--managed-servers "eglot" ())
 (declare-function jsonrpc-running-p "jsonrpc" (conn))
@@ -88,6 +88,7 @@ left the observer unable to confirm any intraday intervention."
 
 (defun sleipnir-doctor--sensors-available-p ()
   (and (featurep 'satan-memory-evidence)
+       (fboundp 'satan-desktop-at)
        (boundp 'satan-tools-activity-dir)))
 
 ;; ---------------------------------------------------------------------------
@@ -227,14 +228,16 @@ left the observer unable to confirm any intraday intervention."
 
 (defun sleipnir-doctor--sensor-status->doctor (status)
   "Map an evidence sensor STATUS string to a doctor status string.
-STATUS is the §S6 vocabulary: `\"ok\"' / `\"stale-Nm\"' / `\"missing\"'
-/ `\"malformed\"'.  Staleness past
+STATUS is `\"ok\"' / `\"missing\"' / `\"malformed\"', plus
+`\"stale-Nm\"' from the segment feeds and `\"disconnected\"' from the
+current window (compositor connection down).  Staleness past
 `sleipnir-doctor-sensor-stale-crit-minutes' escalates WARN→CRIT so a
 silently-frozen feed (not mere capture lag) trips the louder signal."
   (cond
    ((equal status "ok") "OK")
    ((equal status "malformed") "CRIT")
    ((equal status "missing") "WARN")
+   ((equal status "disconnected") "WARN")
    ((and (stringp status)
          (string-match "\\`stale-\\([0-9]+\\)m\\'" status))
     (if (>= (string-to-number (match-string 1 status))
@@ -243,12 +246,15 @@ silently-frozen feed (not mere capture lag) trips the louder signal."
    (t "WARN")))
 
 (defun sleipnir-doctor--satan-sensors ()
-  "Probe panopticon sensor freshness via the evidence status functions.
-Catches both staleness (`stale-Nm') and silence (`missing'/`malformed')
-of the current-window file and today's focus/browser segment feeds —
-the inputs the observer gates classification on (§S6).  Reuses the same
-status code the assembler runs, so the doctor sees exactly what the
-classifier would.  Worst sensor sets the overall status."
+  "Probe the panopticon feeds the evidence assembler reads.
+The current window is replayed from panopticon's raw desktop log at
+now (`satan-desktop-at'): liveness comes from its lifecycle events, so
+it reads `disconnected', `missing' or `malformed', never stale.  Today's
+focus/browser segment feeds keep their staleness check (`stale-Nm') as
+well as `missing'/`malformed' — the inputs the observer gates
+classification on (§S6).  Reuses the assembler's own probes, so the
+doctor sees exactly what the classifier would.  Worst sensor sets the
+overall status."
   (if (not (sleipnir-doctor--sensors-available-p))
       (sleipnir-doctor--check "SATAN" "sensors" "OK" "not loaded")
     (let* ((now (current-time))
@@ -258,12 +264,10 @@ classifier would.  Worst sensor sets the overall status."
            ;; entry's age, independent of these bounds; they only shape
            ;; the (discarded) filtered tail on an `ok' probe.
            (start "1970-01-01T00:00:00Z")
-           (end (format-time-string "%Y-%m-%dT%H:%M:%S%z" now))
+           (end (format-time-string "%FT%T%:z" now))
            (probes
             (list
-             (cons "current"
-                   (car (satan-memory-evidence--current-window-status
-                         (expand-file-name "current/desktop.json" root) now)))
+             (cons "current" (car (satan-desktop-at root end)))
              (cons "focus"
                    (car (satan-memory-evidence--segments-status
                          (expand-file-name
