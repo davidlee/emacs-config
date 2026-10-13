@@ -1,6 +1,7 @@
 ;;; dl-gnus.el --- gnus + fastmail -*- lexical-binding: t; -*-
 
 ;; Mail via Fastmail: read over IMAP (nnimap), send over SMTP.
+;; News via Frugal Usenet (nntp, see `gnus-secondary-select-methods').
 ;; Login and sending address are both the Fastmail account (david@).
 ;;
 ;; Credentials come from auth-source (`auth-sources' is the GNOME
@@ -36,7 +37,16 @@
     `((nnimap "fastmail"
         (nnimap-address "imap.fastmail.com")
         (nnimap-stream ssl)
-        (nnimap-user ,dl-gnus-login)))))
+        (nnimap-user ,dl-gnus-login))
+       ;; Usenet.  nntp prompts for the login each session and never
+       ;; saves it; to avoid that, seed the keyring (`:port' must be one
+       ;; nntp asks for, e.g. "563"):
+       ;;   (secrets-create-item "Login" "Frugal Usenet" (read-passwd "Password: ")
+       ;;     :host "news.frugalusenet.com" :user "USER" :port "563")
+       (nntp "frugal"
+         (nntp-address "news.frugalusenet.com")
+         (nntp-port-number 563)
+         (nntp-open-connection-function nntp-open-ssl-stream)))))
 
 (use-package gnus-msg
   :defer t

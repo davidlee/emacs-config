@@ -40,6 +40,16 @@ The map is registered as `meow-global-mode' does, ahead of minor modes."
       (should (eq (key-binding "!") #'gnus-summary-tick-article-forward))
       (should (eq (key-binding "o") #'my/meow-ctrl-c)))))
 
+(ert-deftest dl-gnus/usenet-over-tls ()
+  "Frugal Usenet is a news server, reached over NNTPS (port 563)."
+  (let ((news (seq-find (lambda (method) (equal (cadr method) "frugal"))
+                gnus-secondary-select-methods)))
+    (should (eq (car news) 'nntp))
+    (should (equal (cadr (assq 'nntp-address news)) "news.frugalusenet.com"))
+    (should (equal (cadr (assq 'nntp-port-number news)) 563))
+    (should (eq (cadr (assq 'nntp-open-connection-function news))
+                'nntp-open-ssl-stream))))
+
 (ert-deftest dl-gnus/sent-mail-kept-on-server ()
   "Sent mail is copied to Fastmail's Sent folder, already read."
   (should (equal gnus-message-archive-group "nnimap+fastmail:Sent"))

@@ -2,6 +2,13 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-10-13 — gnus: Frugal Usenet news server
+
+Gnus reads Usenet from Frugal Usenet (`news.frugalusenet.com`, NNTPS on
+563) as a second server beside Fastmail. Subscribe from the server
+buffer (`^` in the Group buffer). nntp prompts for the login each
+session unless it is seeded in the keyring (see `apps/dl-gnus.el`).
+
 ## 2026-10-13 — gnus: limit and tick keys under meow
 
 In a Gnus summary buffer, `/` (the limit prefix: filter by author,
