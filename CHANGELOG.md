@@ -2,6 +2,13 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-10-13 — gnus: Gmane in, Frugal Usenet out
+
+Usenet now comes from Gmane (`news.gmane.io`, plain NNTP, no login):
+mailing lists such as `gmane.emacs.devel` as newsgroups. The Frugal
+Usenet server and its fallbacks are commented out (subscription
+lapsed); `dl-gnus--frugal` stays for renewal.
+
 ## 2026-10-13 — gnus: Atom feeds, Usenet fallback servers
 
 Atom feeds are Gnus servers (nnatom), listed in `dl-gnus-feeds`; first:

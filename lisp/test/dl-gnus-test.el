@@ -40,24 +40,22 @@ The map is registered as `meow-global-mode' does, ahead of minor modes."
       (should (eq (key-binding "!") #'gnus-summary-tick-article-forward))
       (should (eq (key-binding "o") #'my/meow-ctrl-c)))))
 
-(ert-deftest dl-gnus/usenet-over-tls ()
-  "Frugal Usenet is a news server, reached over NNTPS (port 563)."
-  (let ((news (seq-find (lambda (method) (equal (cadr method) "frugal"))
-                gnus-secondary-select-methods)))
+(ert-deftest dl-gnus/frugal-servers-use-tls ()
+  "A Frugal Usenet server is reached over NNTPS (port 563)."
+  (let ((news (dl-gnus--frugal "frugal" "news.frugalusenet.com")))
     (should (eq (car news) 'nntp))
     (should (equal (cadr (assq 'nntp-address news)) "news.frugalusenet.com"))
     (should (equal (cadr (assq 'nntp-port-number news)) 563))
     (should (eq (cadr (assq 'nntp-open-connection-function news))
                 'nntp-open-ssl-stream))))
 
-(ert-deftest dl-gnus/missing-articles-fall-back-across-servers ()
-  "An article missing from the current server is fetched from the other
-Frugal servers in priority order, the bonus (fill) server last."
-  (should (eq (car gnus-refer-article-method) 'current))
-  (should (equal (mapcar (lambda (method) (cadr (assq 'nntp-address method)))
-                   (cdr gnus-refer-article-method))
-                 '("aunews.frugalusenet.com" "eunews.frugalusenet.com"
-                   "bonus.frugalusenet.com"))))
+(ert-deftest dl-gnus/usenet-from-gmane-only ()
+  "Usenet comes from Gmane; Frugal (subscription lapsed) is not contacted."
+  (should (member '(nntp "gmane" (nntp-address "news.gmane.io"))
+                  gnus-secondary-select-methods))
+  (should-not (seq-find (lambda (method) (string-prefix-p "frugal" (cadr method)))
+                gnus-secondary-select-methods))
+  (should (eq gnus-refer-article-method 'current)))
 
 (ert-deftest dl-gnus/feeds-are-atom-servers ()
   "Each feed is an nnatom server, addressed without its scheme."

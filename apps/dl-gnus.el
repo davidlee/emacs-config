@@ -1,7 +1,7 @@
 ;;; dl-gnus.el --- gnus + fastmail -*- lexical-binding: t; -*-
 
 ;; Mail via Fastmail: read over IMAP (nnimap), send over SMTP.
-;; News via Frugal Usenet (nntp); web feeds via nnatom.
+;; News via Gmane (nntp; Frugal Usenet disabled); web feeds via nnatom.
 ;; Login and sending address are both the Fastmail account (david@).
 ;;
 ;; Credentials come from auth-source (`auth-sources' is the GNOME
@@ -54,17 +54,21 @@ Addresses omit the scheme; nnatom fetches over https.")
         (nnimap-address "imap.fastmail.com")
         (nnimap-stream ssl)
         (nnimap-user ,dl-gnus-login))
-       ,(dl-gnus--frugal "frugal" "news.frugalusenet.com")
-       ,@(mapcar (lambda (feed) `(nnatom ,feed)) dl-gnus-feeds)))
-  ;; Gnus has no server failover.  An article missing from the current
-  ;; server (expired, taken down) is asked of these in order, the bonus
-  ;; server (another backbone) last.  Not subscribable: each would
-  ;; duplicate every group.
-  (gnus-refer-article-method
-    `(current
-       ,(dl-gnus--frugal "frugal-au" "aunews.frugalusenet.com")
-       ,(dl-gnus--frugal "frugal-eu" "eunews.frugalusenet.com")
-       ,(dl-gnus--frugal "frugal-bonus" "bonus.frugalusenet.com"))))
+       ;; Mailing lists as newsgroups; public, no login.  Plain NNTP:
+       ;; its TLS port (563) does not answer.
+       (nntp "gmane" (nntp-address "news.gmane.io"))
+       ;; Frugal Usenet: subscription lapsed; uncomment on renewal.
+       ;; ,(dl-gnus--frugal "frugal" "news.frugalusenet.com")
+       ,@(mapcar (lambda (feed) `(nnatom ,feed)) dl-gnus-feeds))))
+  ;; With Frugal: Gnus has no server failover.  An article missing from
+  ;; the current server (expired, taken down) is asked of these in
+  ;; order, the bonus server (another backbone) last.  Not subscribable:
+  ;; each would duplicate every group.
+  ;; (gnus-refer-article-method
+  ;;   `(current
+  ;;      ,(dl-gnus--frugal "frugal-au" "aunews.frugalusenet.com")
+  ;;      ,(dl-gnus--frugal "frugal-eu" "eunews.frugalusenet.com")
+  ;;      ,(dl-gnus--frugal "frugal-bonus" "bonus.frugalusenet.com")))
 
 (use-package gnus-msg
   :defer t
