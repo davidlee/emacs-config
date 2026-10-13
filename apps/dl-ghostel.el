@@ -15,20 +15,14 @@
 ;; `:lisp-dir "lisp"' is needed because ghostel's elisp lives in `lisp/'
 ;; inside the repo, not at the root.  package-vc writes autoloads /
 ;; load-path entries based on this.
-(defvar pixel-scroll-precision-mode-map)
+(require 'dl-keymap-shadow)
 (defvar ghostel-mode-map)
 
 (defun dl-ghostel--pass-paging-keys ()
   "Send PgUp/PgDn to the terminal in this buffer.
-`pixel-scroll-precision-mode' binds them to scroll the window, and a
-minor mode's map beats ghostel's major-mode map.  Shadow that map here
-with a copy lacking those keys; wheel scrolling stays smooth."
-  (let ((map (copy-keymap pixel-scroll-precision-mode-map)))
-    (keymap-unset map "<prior>" t)
-    (keymap-unset map "<next>" t)
-    (setq-local minor-mode-overriding-map-alist
-      (cons (cons 'pixel-scroll-precision-mode map)
-        minor-mode-overriding-map-alist))))
+`pixel-scroll-precision-mode' binds them to scroll the window; wheel
+scrolling stays smooth."
+  (dl-keymap-shadow-yield 'pixel-scroll-precision-mode "<prior>" "<next>"))
 
 (use-package ghostel
   :ensure nil

@@ -3,7 +3,11 @@
 ;; Run: `just check' (dl-test scans lisp/test), or M-x ert RET dl-gnus RET.
 
 (require 'ert)
+(require 'meow)
+(require 'dl-keymap)
 (require 'dl-gnus)
+
+(meow-setup)
 (require 'gnus-sum)
 (require 'gnus-msg)
 
@@ -20,6 +24,21 @@ The prefix passes through, so process marks and counts still apply."
   "`y' archives from the summary buffer, as in Gmail."
   (should (eq (keymap-lookup gnus-summary-mode-map "y")
               #'my/gnus-summary-archive)))
+
+(ert-deftest dl-gnus/summary-keys-beat-meow-motion ()
+  "Limiting (`/') and ticking (`!') work in a summary buffer under meow.
+Meow's motion map otherwise takes them; its `C-c' stand-in `o' stays.
+The map is registered as `meow-global-mode' does, ahead of minor modes."
+  (let ((emulation-mode-map-alists
+          (cons `((meow-motion-mode . ,meow-motion-state-keymap))
+            emulation-mode-map-alists)))
+    (with-temp-buffer
+      (use-local-map gnus-summary-mode-map)
+      (meow-motion-mode)
+      (run-hooks 'gnus-summary-mode-hook)
+      (should (eq (key-binding "/") 'gnus-summary-limit-map))
+      (should (eq (key-binding "!") #'gnus-summary-tick-article-forward))
+      (should (eq (key-binding "o") #'my/meow-ctrl-c)))))
 
 (ert-deftest dl-gnus/sent-mail-kept-on-server ()
   "Sent mail is copied to Fastmail's Sent folder, already read."

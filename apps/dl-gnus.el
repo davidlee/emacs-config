@@ -16,6 +16,8 @@
 ;;   (secrets-create-item "Login" "Fastmail SMTP" (read-passwd "App password: ")
 ;;     :host "smtp.fastmail.com" :user "david@davlee.com" :port "465")
 
+(require 'dl-keymap-shadow)
+
 (defconst dl-gnus-login "david@davlee.com"
   "Fastmail account login, shared by IMAP and SMTP.")
 
@@ -52,8 +54,14 @@ Moves them to `dl-gnus-archive-group'."
   (interactive "P" gnus-summary-mode)
   (gnus-summary-move-article n dl-gnus-archive-group))
 
+(defun dl-gnus--yield-meow-keys ()
+  "Give the summary buffer back `/' (limit) and `!' (tick) from meow.
+Meow's motion state binds them; its `o' (`C-c') and `SPC' (leader) stay."
+  (dl-keymap-shadow-yield 'meow-motion-mode "/" "!"))
+
 (use-package gnus-sum
   :defer t
+  :hook (gnus-summary-mode . dl-gnus--yield-meow-keys)
   :bind (:map gnus-summary-mode-map ("y" . my/gnus-summary-archive)))
 
 (use-package smtpmail

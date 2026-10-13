@@ -2,6 +2,15 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-10-13 — gnus: limit and tick keys under meow
+
+In a Gnus summary buffer, `/` (the limit prefix: filter by author,
+subject, score…) and `!` (tick, i.e. flag) reach Gnus again; meow's
+motion state had them as `avy-goto-char-2` and `consult-buffer`. `o`
+(`C-c`) and `SPC` (leader) stay meow's. New `dl-keymap-shadow-yield`
+gives a buffer back keys from a minor mode's map; ghostel's PgUp/PgDn
+pass-through uses it too.
+
 ## 2026-10-13 — gnus: archive key, sent mail on the server
 
 `y` in a Gnus summary buffer (`my/gnus-summary-archive`) moves the
