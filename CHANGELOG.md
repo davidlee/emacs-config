@@ -2,6 +2,14 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-10-13 — comment-dwim-2 back on M-; (linux)
+
+`M-;` (`comment-dwim-2`) works again: the package is back in the Nix
+list on linux, where Emacs 31.1 fixed the install bug that dropped it.
+It errored with "Cannot open load file" since then. Without the package
+(darwin) `M-;` is the built-in `comment-dwim`. Meow's `#` toggles
+comments on the selected lines either way.
+
 ## 2026-10-13 — diagnostics: Nix linters
 
 nix-mode buffers now run statix lints (empty `let`, useless parens,
