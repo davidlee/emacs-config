@@ -1,0 +1,42 @@
+memory_uid = "mem_01a132d5bf297ce3a64413054158c0ff"
+memory_key = "mem.fact.emacs.use-package-custom-reasserted"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "use-package :custom is re-asserted by later use-package forms"
+summary = "use-package :custom values are re-applied by later :custom forms (theme re-enable); setq after load gets overwritten"
+created = "2026-10-13"
+updated = "2026-10-13"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["emacs", "use-package", "testing"]
+workspace = "default"
+repo = "github.com/davidlee/emacs-config"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "74271b9c1a624e15e20c1d1574f53a14a98a2699"
+ref_name = "refs/heads/main"
+checkout_state_id = "1c519e3d14fd271afa32ec29aa20ce672fe49e1cc2564b06d78040d3e2f30dcb"
+base_commit = "1a4cd4f16592026f3414042f3a01116bf259986f"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "medium"
+weight = 0
+

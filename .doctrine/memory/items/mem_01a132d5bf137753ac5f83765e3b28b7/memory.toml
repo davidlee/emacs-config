@@ -1,0 +1,46 @@
+memory_uid = "mem_01a132d5bf137753ac5f83765e3b28b7"
+memory_key = "mem.fact.emacs.flyover-flymake-update-hook"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "flyover on Flymake 1.4.7 needs a shim for its update hook"
+summary = "flyover needs flymake-after-update-diagnostics-hook, absent in Flymake 1.4.7; dl-diagnostics supplies it"
+created = "2026-10-13"
+updated = "2026-10-13"
+
+[scope]
+paths = ["dev/dl-diagnostics.el"]
+globs = []
+commands = []
+tags = ["emacs", "flymake", "flyover"]
+workspace = "default"
+repo = "github.com/davidlee/emacs-config"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "74271b9c1a624e15e20c1d1574f53a14a98a2699"
+ref_name = "refs/heads/main"
+checkout_state_id = "488c02d0ea8f22e906c7a16d9f0c8c6753bfbd07303a85a5c2ffa39ce7dd6627"
+base_commit = "1a4cd4f16592026f3414042f3a01116bf259986f"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "medium"
+weight = 0
+
+[[source]]
+kind = "commit"
+ref = "1a4cd4f"
+
