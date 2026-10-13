@@ -105,6 +105,7 @@ L1 catches what the source lints can't: foreign packages that grab `C-c <letter>
 | `C-c e` | `my-eval-map`    | eval / elisp (scope ladder over Elisp) |
 | `C-c m` | `my-term-map`    | ghostel + zmx (Meow alias: `SPC M` — see Gotchas) |
 | `C-c z` | `my-fold-map`    | fold (kirigami dispatcher — routes to outline / hs / treesit-fold) |
+| `C-c d` | `my-diagnostics-map` | diagnostics (Flymake — see [Diagnostics](#diagnostics-c-c-d)) |
 
 ## Fold (`C-c z`)
 
@@ -359,6 +360,28 @@ prints/inserts into the buffer.
 | `C-c e x` | `eval-expression`          | one-shot expression (alias of `M-:`) |
 | `C-c e m` | `pp-macroexpand-last-sexp` | macroexpand at point |
 
+## Diagnostics (`C-c d`)
+
+Flymake is the one diagnostics frontend (`dev/dl-diagnostics.el`): it
+is on in every file-visiting `prog-mode` buffer, fed by eglot, Emacs's
+own backends, and flycheck's checkers (via `flymake-flycheck`).
+flyover draws errors and warnings under the line. Lowercase acts on the
+buffer, uppercase on the project.
+
+| Key | Command | |
+|---|---|---|
+| `C-c d d` | `consult-flymake`                  | search diagnostics (buffer) |
+| `C-c d D` | `my/consult-flymake-project`       | search diagnostics (project) |
+| `C-c d l` | `flymake-show-buffer-diagnostics`  | list (buffer) |
+| `C-c d L` | `flymake-show-project-diagnostics` | list (project) |
+| `C-c d <down>` / `<up>` | `flymake-goto-next-error` / `-prev-error` | next / previous |
+| `C-c d i` | `my/diagnostics-toggle-inline-style` | inline: flyover ⇄ Flymake `fancy` (buffer) |
+| `C-c d b` | `flymake-running-backends`         | which checkers ran |
+| `C-c d B` | `flymake-switch-to-log-buffer`     | Flymake log (why a checker is silent) |
+
+In `flymake-mode-map`: `M-n` / `M-p` next / previous diagnostic
+(repeatable by holding Meta). `C-c t m` toggles `flymake-mode`.
+
 ## File (`C-c f`)
 
 | Key | Command | |
@@ -595,7 +618,7 @@ removed.
   defhydra; the package is now loaded eagerly in `core/dl-keybind.el`.
   Future candidates: zoom (now plain keys: `C-+` / `C-_` / `C-0`
   buffer, `C-M-=` / `C-M-+` / `C-M--` / `C-S-0` global), error navigation
-  (`flymake-goto-{next,prev}-error`), and outline traversal.
+  (now `M-n` / `M-p` in `flymake-mode-map`), and outline traversal.
 - **`C-c k` config kit**. The reserved `k` letter is earmarked for a
   Nix-aware config kit (open `~/flakes/modules/home/emacs.nix`,
   `home-manager switch`, etc.) — see `AGENTS.md` for the integration
@@ -612,5 +635,5 @@ removed.
   keeps biting — see `Gotchas` entry above and lambda-emacs's
   `meow.local.el` for the precedent.
 - **`C-c t` collision watch**. The toggle map is well-populated now, but mind the `C-c t C-c t` / `C-c t C-h` use-package conventions some major modes still grab when adding new toggles.
-- **Reserved letters**. `d` (diagnostics) and `k` (config / "kit") are kept free for future tier-1 families per the [Policy](#policy) budget. Don't grab them for one-off binds.
+- **Reserved letters**. `k` (config / "kit") is kept free for a future tier-1 family per the [Policy](#policy) budget. Don't grab it for one-off binds. (`d` went to diagnostics.)
 - **Slack re-enable**. `apps/dl-slack.el` is currently uninstalled (`init.el:76` commented). If/when it returns, the global `C-c S …` family must be lifted into `core/dl-keymap.el` under a sub-prefix — see the header comment in `dl-slack.el`.

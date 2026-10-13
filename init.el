@@ -23,6 +23,7 @@
 
 ;; DEV
 (require 'dl-eglot)
+(require 'dl-diagnostics)
 (require 'dl-treesit)
 (require 'dl-delimiters)
 (require 'dl-test)

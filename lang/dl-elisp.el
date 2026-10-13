@@ -8,7 +8,6 @@
   :ensure nil
   :hook
   ((emacs-lisp-mode . eldoc-mode)
-    (emacs-lisp-mode . flymake-mode)
     (emacs-lisp-mode . electric-pair-local-mode)
     (emacs-lisp-mode . show-paren-local-mode))
   :custom

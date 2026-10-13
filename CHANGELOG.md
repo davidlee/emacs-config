@@ -2,6 +2,20 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-10-13 — diagnostics: Flymake + flycheck checkers + flyover
+
+Flymake runs in every file-visiting `prog-mode` buffer (was: Elisp
+only). Besides eglot and Emacs's own backends it now runs flycheck's
+checkers through `flymake-flycheck`; flycheck's twins of built-in
+backends (`emacs-lisp`, `emacs-lisp-checkdoc`, `sh-shellcheck`) are
+disabled. flyover draws errors and warnings under the line;
+`C-c d i` swaps to Flymake's built-in `fancy` style for comparison.
+New `C-c d` diagnostics family: `d`/`D` consult-flymake buffer/project,
+`l`/`L` list buffer/project, `<down>`/`<up>` next/previous,
+`b` running backends, `B` log. `M-n`/`M-p` next/previous in
+`flymake-mode-map`. New module `dev/dl-diagnostics.el`; packages
+`flymake-flycheck` in, `avy-flycheck`/`consult-flycheck` out.
+
 ## 2026-10-13 — gnus: Gmane in, Frugal Usenet out
 
 Usenet now comes from Gmane (`news.gmane.io`, plain NNTP, no login):

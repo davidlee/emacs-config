@@ -31,3 +31,11 @@ maps too: L2 rejects `define-key` / `keymap-set`, and L3 fails on any
 whether flymake should feed `next-error` instead of new keys.
 
 Name the keys in `CHANGELOG.md` when done.
+
+## Progress (2026-10-13)
+
+Diagnostics half done with the Flymake setup (`dev/dl-diagnostics.el`):
+`C-c d` family (consult-flymake buffer/project, diagnostics lists,
+next/prev, backends, log) plus `M-n` / `M-p` in `flymake-mode-map`.
+See `docs/KEYS.md` § Diagnostics. Remaining: `eglot-rename`,
+`eglot-code-actions` keys in `eglot-mode-map`.

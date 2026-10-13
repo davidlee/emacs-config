@@ -80,6 +80,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (defvar-keymap my-eval-map        :name "eval")
 (defvar-keymap my-term-map        :name "term")
 (defvar-keymap my-fold-map        :name "fold")
+(defvar-keymap my-diagnostics-map :name "diagnostics")
 (defvar-keymap my-org-iw-map      :name "org-iw")
 
 ;; Bind prefix maps globally under C-c <letter>.
@@ -97,6 +98,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (define-key global-map (kbd "C-c e") my-eval-map)
 (define-key global-map (kbd "C-c m") my-term-map)
 (define-key global-map (kbd "C-c z") my-fold-map)
+(define-key global-map (kbd "C-c d") my-diagnostics-map)
 
 ;; Prefix labels for which-key.
 (with-eval-after-load 'which-key
@@ -119,7 +121,8 @@ Warns when KEY already has a binding in MAP that differs from CMD."
     "C-c t"   "toggle"
     "C-c e"   "eval"
     "C-c m"   "term"
-    "C-c z"   "fold"))
+    "C-c z"   "fold"
+    "C-c d"   "diagnostics"))
 
 ;; Concrete bindings -- starter set, grow as needed.
 (my/bind my-file-map   "f" #'find-file              "find-file")
@@ -221,6 +224,18 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-eval-map    "s" #'scratch-buffer              "scratch")
 (my/bind my-eval-map    "x" #'eval-expression             "expression (M-:)")
 (my/bind my-eval-map    "m" #'pp-macroexpand-last-sexp    "macroexpand")
+
+;; Diagnostics map — Flymake (dev/dl-diagnostics.el).  Lowercase is the
+;; buffer, uppercase the project.
+(my/bind my-diagnostics-map "d" #'consult-flymake                   "search (buffer)")
+(my/bind my-diagnostics-map "D" #'my/consult-flymake-project        "search (project)")
+(my/bind my-diagnostics-map "l" #'flymake-show-buffer-diagnostics   "list (buffer)")
+(my/bind my-diagnostics-map "L" #'flymake-show-project-diagnostics  "list (project)")
+(my/bind my-diagnostics-map "<down>" #'flymake-goto-next-error      "next")
+(my/bind my-diagnostics-map "<up>"   #'flymake-goto-prev-error      "previous")
+(my/bind my-diagnostics-map "i" #'my/diagnostics-toggle-inline-style "inline: flyover / fancy")
+(my/bind my-diagnostics-map "b" #'flymake-running-backends          "running backends")
+(my/bind my-diagnostics-map "B" #'flymake-switch-to-log-buffer      "log")
 
 ;; Org map — cross-buffer entry points only.  In-buffer Org commands stay
 ;; at Org's own `C-c C-<x>' (mode-specific space, Org owns it).
@@ -660,7 +675,8 @@ with point inside."
     (cons "t" my-toggle-map)
     (cons "e" my-eval-map)
     (cons "M" my-term-map)
-    (cons "z" my-fold-map))
+    (cons "z" my-fold-map)
+    (cons "d" my-diagnostics-map))
 
   (meow-normal-define-key
     ;; Numeric expansion.
