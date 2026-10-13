@@ -378,6 +378,7 @@ buffer, uppercase on the project.
 | `C-c d i` | `my/diagnostics-toggle-inline-style` | inline: flyover ⇄ Flymake `fancy` (buffer) |
 | `C-c d b` | `flymake-running-backends`         | which checkers ran |
 | `C-c d B` | `flymake-switch-to-log-buffer`     | Flymake log (why a checker is silent) |
+| `C-c d a` | `eglot-code-actions`               | code actions at point (eglot buffers only; `eglot-mode-map`, `dev/dl-eglot.el`) |
 
 In `flymake-mode-map`: `M-n` / `M-p` next / previous diagnostic
 (repeatable by holding Meta). `C-c t m` toggles `flymake-mode`.

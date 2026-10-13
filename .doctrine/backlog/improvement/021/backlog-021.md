@@ -39,3 +39,10 @@ Diagnostics half done with the Flymake setup (`dev/dl-diagnostics.el`):
 next/prev, backends, log) plus `M-n` / `M-p` in `flymake-mode-map`.
 See `docs/KEYS.md` § Diagnostics. Remaining: `eglot-rename`,
 `eglot-code-actions` keys in `eglot-mode-map`.
+
+## Progress (2026-10-13)
+
+- flymake next/prev, consult-flymake: done in `1a4cd4f` (`M-n`/`M-p`,
+  `C-c d` family).
+- `eglot-code-actions`: `C-c d a` in `eglot-mode-map` (`dev/dl-eglot.el`).
+- Open: `eglot-rename`.

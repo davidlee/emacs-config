@@ -2,6 +2,15 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-10-13 — eglot: code actions on C-c d a
+
+`C-c d a` (`eglot-code-actions`) offers the language server's actions
+for the thing at point: quick fixes for its diagnostics, and refactors
+(nixd: pack / flatten attribute paths). Bound in `eglot-mode-map`, so
+it only exists in eglot buffers; the rest of `C-c d` is unchanged.
+Code actions come from the server only: flycheck checkers' warnings
+(e.g. statix) have none.
+
 ## 2026-10-13 — comment-dwim-2 back on M-; (linux)
 
 `M-;` (`comment-dwim-2`) works again: the package is back in the Nix
