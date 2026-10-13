@@ -18,6 +18,17 @@ parse check is disabled: nixd (eglot) reports parse errors and unused
 bindings, with fixes, so deadnix is not wired in. statix and deadnix
 come from the system profile in `~/flakes`.
 
+## 2026-10-13 — prose: Webster 1913 dictionary, thesaurus
+
+`M-#` (`quick-sdcv-search-input`) defines the word at point from
+Webster's Revised Unabridged Dictionary (1913), offline via `sdcv`;
+nix links the StarDict data into `~/.stardict/dic`. Many entries end in
+a "Syn." paragraph distinguishing near-synonyms. `C-M-#`
+(`powerthesaurus-lookup-synonyms-dwim`) replaces the word at point with
+a synonym from powerthesaurus.org; `C-u` only displays. `M-x dictionary`
+now queries dict.org (was: local dictd, now removed). Packages
+`quick-sdcv`, `powerthesaurus` in.
+
 ## 2026-10-13 — diagnostics: Flymake + flycheck checkers + flyover
 
 Flymake runs in every file-visiting `prog-mode` buffer (was: Elisp

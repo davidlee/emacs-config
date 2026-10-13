@@ -25,8 +25,18 @@
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(setopt dictionary-use-single-buffer t)
-(setopt dictionary-server "localhost")
+;; Webster's 1913 via sdcv; nix links the data into ~/.stardict/dic.
+;; Many entries end in a "Syn." paragraph distinguishing near-synonyms.
+;; Keys mirror jinx: M-$ / C-M-$ spell, M-# / C-M-# words.
+(use-package quick-sdcv
+  :bind ("M-#" . quick-sdcv-search-input))
+
+;; M-x dictionary: dict.org's public server (WordNet, Moby Thesaurus, …).
+(setopt dictionary-server "dict.org")
+
+;; Online thesaurus: replaces the word at point; C-u to only display.
+(use-package powerthesaurus
+  :bind ("C-M-#" . powerthesaurus-lookup-synonyms-dwim))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

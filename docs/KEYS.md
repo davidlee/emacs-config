@@ -510,6 +510,18 @@ Lowercase/uppercase pairs follow the [Policy](#policy) variant rule:
 | `C-c t =` | `aggressive-indent-mode`            | aggressive-indent |
 | `C-c t E` | `my/eglot-toggle`                   | eglot start/shutdown |
 
+## Words (package-owned globals)
+
+Spelling and word lookup, bound in `core/dl-prose.el`. `#` pairs with
+`$`; the `C-M-` variant is the adjacent tool.
+
+| Key | Command | Does |
+|---|---|---|
+| `M-$`   | `jinx-correct`                        | correct word at point |
+| `C-M-$` | `jinx-languages`                      | spellcheck languages |
+| `M-#`   | `quick-sdcv-search-input`             | define (Webster 1913, offline); defaults to word at point |
+| `C-M-#` | `powerthesaurus-lookup-synonyms-dwim` | synonyms (online); replaces word at point, `C-u` displays only |
+
 ## Adding a binding
 
 ### To an existing prefix map
