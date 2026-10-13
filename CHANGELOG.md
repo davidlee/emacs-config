@@ -2,6 +2,13 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-10-13 — gnus: Atom feeds, Usenet fallback servers
+
+Atom feeds are Gnus servers (nnatom), listed in `dl-gnus-feeds`; first:
+doctrine.engineering. Subscribe via `^`, the feed's server, `u`.
+Articles missing from the Frugal Usenet server are fetched from its AU,
+EU and bonus servers, in that order (`gnus-refer-article-method`).
+
 ## 2026-10-13 — gnus: Frugal Usenet news server
 
 Gnus reads Usenet from Frugal Usenet (`news.frugalusenet.com`, NNTPS on

@@ -50,6 +50,20 @@ The map is registered as `meow-global-mode' does, ahead of minor modes."
     (should (eq (cadr (assq 'nntp-open-connection-function news))
                 'nntp-open-ssl-stream))))
 
+(ert-deftest dl-gnus/missing-articles-fall-back-across-servers ()
+  "An article missing from the current server is fetched from the other
+Frugal servers in priority order, the bonus (fill) server last."
+  (should (eq (car gnus-refer-article-method) 'current))
+  (should (equal (mapcar (lambda (method) (cadr (assq 'nntp-address method)))
+                   (cdr gnus-refer-article-method))
+                 '("aunews.frugalusenet.com" "eunews.frugalusenet.com"
+                   "bonus.frugalusenet.com"))))
+
+(ert-deftest dl-gnus/feeds-are-atom-servers ()
+  "Each feed is an nnatom server, addressed without its scheme."
+  (should (member '(nnatom "doctrine.engineering/feed.xml")
+                  gnus-secondary-select-methods)))
+
 (ert-deftest dl-gnus/sent-mail-kept-on-server ()
   "Sent mail is copied to Fastmail's Sent folder, already read."
   (should (equal gnus-message-archive-group "nnimap+fastmail:Sent"))
