@@ -2,6 +2,14 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-10-13 — gnus: archive key, sent mail on the server
+
+`y` in a Gnus summary buffer (`my/gnus-summary-archive`) moves the
+process-marked articles, or the current one, to Fastmail's `Archive`
+folder. Sent mail is now copied (Gcc) to Fastmail's `Sent` folder,
+marked read (`gnus-message-archive-group`), instead of a local
+`nnfolder+archive:sent.*` group.
+
 ## 2026-10-12 — org-alert on, buffer-terminator off
 
 `org-alert` now runs (desktop notifications for timed org entries, checked

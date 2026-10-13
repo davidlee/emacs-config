@@ -22,6 +22,9 @@
 (setq user-full-name "David Lee"
   user-mail-address "david@davlee.com")
 
+(defconst dl-gnus-archive-group "nnimap+fastmail:Archive"
+  "Fastmail's Archive folder: where archived mail goes.")
+
 (use-package gnus
   :defer t
   :custom
@@ -32,6 +35,26 @@
         (nnimap-address "imap.fastmail.com")
         (nnimap-stream ssl)
         (nnimap-user ,dl-gnus-login)))))
+
+(use-package gnus-msg
+  :defer t
+  :custom
+  ;; Fastmail does not file SMTP-sent mail; Gcc a copy to its Sent
+  ;; folder so it shows on every client, not in a local nnfolder.
+  (gnus-message-archive-group "nnimap+fastmail:Sent")
+  (gnus-gcc-mark-as-read t))
+
+(declare-function gnus-summary-move-article "gnus-sum")
+
+(defun my/gnus-summary-archive (&optional n)
+  "Archive the process-marked articles, or the next N, as Fastmail does.
+Moves them to `dl-gnus-archive-group'."
+  (interactive "P" gnus-summary-mode)
+  (gnus-summary-move-article n dl-gnus-archive-group))
+
+(use-package gnus-sum
+  :defer t
+  :bind (:map gnus-summary-mode-map ("y" . my/gnus-summary-archive)))
 
 (use-package smtpmail
   :defer t
