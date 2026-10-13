@@ -2,6 +2,14 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-10-13 — diagnostics: Nix linters
+
+nix-mode buffers now run statix lints (empty `let`, useless parens,
+manual `inherit`, …) via flycheck's `statix` checker. flycheck's `nix`
+parse check is disabled: nixd (eglot) reports parse errors and unused
+bindings, with fixes, so deadnix is not wired in. statix and deadnix
+come from the system profile in `~/flakes`.
+
 ## 2026-10-13 — diagnostics: Flymake + flycheck checkers + flyover
 
 Flymake runs in every file-visiting `prog-mode` buffer (was: Elisp

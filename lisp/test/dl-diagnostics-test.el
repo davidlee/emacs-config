@@ -17,6 +17,8 @@
 (require 'flymake-flycheck)
 (require 'flyover)
 
+(declare-function nix-mode "nix-mode")
+
 (define-derived-mode dl-diagnostics-test-mode prog-mode "DiagTest")
 
 (flycheck-define-generic-checker 'dl-diagnostics-test-checker
@@ -78,6 +80,18 @@ The flycheck checkers come back alongside the LSP backend."
       (dolist (checker (cdr case))
         (should-not (memq (flymake-flycheck-diagnostic-function-for checker)
                           flymake-diagnostic-functions))))))
+
+(ert-deftest dl-diagnostics/nix-parse-errors-left-to-nixd ()
+  "nixd (eglot) reports Nix parse errors and unused bindings.
+flycheck's `nix' parse check stays out; statix, which nixd lacks, runs."
+  (skip-unless (and (executable-find "nix-instantiate")
+                    (executable-find "statix")))
+  (require 'nix-mode)
+  (dl-diagnostics-test--visiting nix-mode
+    (should-not (memq (flymake-flycheck-diagnostic-function-for 'nix)
+                      (dl-diagnostics-test--backends)))
+    (should (memq (flymake-flycheck-diagnostic-function-for 'statix)
+                  (dl-diagnostics-test--backends)))))
 
 (ert-deftest dl-diagnostics/buffers-without-files-stay-unchecked ()
   "Hidden buffers put into a programming mode get no Flymake.

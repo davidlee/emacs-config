@@ -52,12 +52,14 @@ Supplied by dl-diagnostics for flyover; Flymake does not define it.")
     (advice-add 'flymake--handle-report :after
                 #'dl-diagnostics--run-update-hook)))
 
-;; Checker library only.  Its twins of Flymake's built-in backends stay
-;; out so each problem is reported once.
+;; Checker library only.  Its twins of Flymake's built-in backends and
+;; of LSP servers stay out so each problem is reported once: nixd
+;; reports Nix parse errors (and unused bindings, so no deadnix).
 (use-package flycheck
   :defer t
   :custom
-  (flycheck-disabled-checkers '(emacs-lisp emacs-lisp-checkdoc sh-shellcheck)))
+  (flycheck-disabled-checkers
+   '(emacs-lisp emacs-lisp-checkdoc sh-shellcheck nix)))
 
 ;; Runs on every `flymake-mode' enable, so it also re-adds the checkers
 ;; after eglot replaces the backend list (eglot sets the list, then

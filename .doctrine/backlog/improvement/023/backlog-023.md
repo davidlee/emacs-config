@@ -27,3 +27,27 @@ State on Sleipnir (2026-10-13): on PATH — `nixd` (eglot's server for
   `flycheck-disabled-checkers` as done for elisp/shellcheck.
 - Formatter: nixd formats via eglot on save (`my/eglot-on-save-setup`);
   confirm which formatter it uses (`nixfmt` vs `alejandra`).
+
+## Outcome (2026-10-13)
+
+Toolset: `statix`, `deadnix` added system-wide (`~/flakes`
+`modules/nixos/nix.nix`), alongside `nixd`, `nil`, `nixfmt`, `alejandra`.
+
+Compared on sample files (eglot+nixd in batch vs each CLI):
+
+| Tool | Reports | nixd covers it? | In Emacs |
+|---|---|---|---|
+| flycheck `nix` (`nix-instantiate --parse`) | parse errors | yes, with fixes | disabled |
+| flycheck `statix` | lints (empty let, useless parens, …) | no | runs |
+| `deadnix` | unused let / lambda bindings | yes (`sema-unused-def-*`, with fixes) | none — no flycheck checker; nixd suffices |
+
+- `dev/dl-diagnostics.el`: `nix` added to `flycheck-disabled-checkers`.
+  Test `dl-diagnostics/nix-parse-errors-left-to-nixd` pins `nix` out,
+  `statix` in.
+- Formatter: already settled — apheleia runs `alejandra`; nixd's
+  formatting is hidden (`dl-nix-leave-formatting-to-apheleia`, pinned by
+  `dl-nix-test`).
+- statix also reports syntax errors (code 0), so a parse error shows
+  twice (nixd + statix) and still shows if nixd is down. Accepted; statix
+  has no flag to drop them.
+- deadnix stays useful as a CLI / treefmt check over a whole repo.
