@@ -33,6 +33,7 @@
 
 ;; M-x dictionary: dict.org's public server (WordNet, Moby Thesaurus, …).
 (setopt dictionary-server "dict.org")
+(setopt dictionary-use-single-buffer t)
 
 ;; Online thesaurus: replaces the word at point; C-u to only display.
 (use-package powerthesaurus
