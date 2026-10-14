@@ -7,10 +7,15 @@ Notable changes to this Emacs config. Loosely dated; not versioned.
 New gptel backend `fireworks` (OpenAI-compatible, key from 1Password
 via `my/op-key "FIREWORKS"`). One model so far:
 `accounts/fireworks/models/nemotron-lightning-3p5-30b-a3b`, a cheap,
-fast reasoning model. The `@nemo` preset selects it. Known gap: the
-`@quick` / `@think` effort presets send OpenRouter's `reasoning`
-object, which Fireworks rejects with a 400 error; don't combine them
-with `@nemo` yet.
+fast reasoning model. The `@nemo` preset selects it.
+
+`@quick` / `@think` now work on every backend. They still set effort
+as `reasoning: {effort}` (the shape OpenAI's Responses API and OpenRouter
+take); `apps/dl-gptel-shape.el` rewrites the request body per backend
+when gptel builds it, so Fireworks gets `reasoning_effort` instead of a
+400. Since that happens after all `@cookies` apply, their order doesn't
+matter: `@think @nemo` = `@nemo @think`. New providers with their own
+dialect get an entry in `dl-gptel-request-shapers`.
 
 ## 2026-10-13 — eglot: code actions on C-c d a
 

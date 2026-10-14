@@ -7,6 +7,7 @@
 (require 'ert)
 (require 'gptel-openai)
 (require 'dl-gptel-presets)
+(require 'dl-gptel-shape)
 
 (defconst dl-gptel-presets-test--tools
   '(("Glob") ("Grep") ("Read") ("Insert") ("Edit") ("Write") ("Mkdir")
@@ -14,6 +15,14 @@
     ("describe_symbol" . "introspection")
     ("org-read" . "mcp-org-mcp"))
   "Stand-ins for the tools the presets name: (NAME . CATEGORY).")
+
+(defconst dl-gptel-presets-test--backends
+  '(("openai-sub" . "api.openai.com")
+    ("openrouter" . "openrouter.ai")
+    ("fireworks" . "api.fireworks.ai"))
+  "Stand-ins for the backends the presets name: (NAME . HOST).
+The host picks gptel's API dialect: Responses for OpenAI, else chat
+completions.")
 
 (defmacro dl-gptel-presets-test--sandbox (&rest body)
   "Run BODY against fake tools and backends, with gptel's options isolated.
@@ -35,12 +44,17 @@ not connected."
              (gptel-make-tool :name name :function #'ignore :args nil
                               :description name
                               :category (or category "test")))
-           (dolist (name '("openai-sub" "openrouter" "fireworks"))
-             (gptel-make-openai name :key "test"))
+           (pcase-dolist (`(,name . ,host) dl-gptel-presets-test--backends)
+             (gptel-make-openai name :key "test" :host host))
            (write-region "#+title: lib\n\nFile notes.\n" nil
                          (expand-file-name "lib.org" dl-gptel-prompt-dir))
            ,@body)
        (delete-directory dl-gptel-prompt-dir t))))
+
+(defun dl-gptel-presets-test--request (&rest presets)
+  "Apply PRESETS in order, then return the request body gptel would send."
+  (mapc #'gptel--apply-preset presets)
+  (gptel--request-data gptel-backend (list '(:role "user" :content "hi"))))
 
 (defun dl-gptel-presets-test--tool-names ()
   "Return the names of the active tools, sorted."
@@ -96,6 +110,21 @@ not connected."
    (should (equal (plist-get gptel--request-params :store) :json-false))
    (should (equal (plist-get gptel--request-params :reasoning)
                   '(:effort "high")))))
+
+(ert-deftest dl-gptel-presets/effort-reaches-fireworks-flat-in-any-order ()
+  "Fireworks gets effort as reasoning_effort, whichever cookie comes first."
+  (dl-gptel-presets-test--sandbox
+   (dolist (order '((nemo think) (think nemo)))
+     (let ((data (apply #'dl-gptel-presets-test--request order)))
+       (should (equal (plist-get data :reasoning_effort) "high"))
+       (should-not (plist-member data :reasoning))))))
+
+(ert-deftest dl-gptel-presets/effort-reaches-openrouter-nested ()
+  "Backends without a shaper get the effort presets' request params as is."
+  (dl-gptel-presets-test--sandbox
+   (let ((data (dl-gptel-presets-test--request 'gem 'quick)))
+     (should (equal (plist-get data :reasoning) '(:effort "low")))
+     (should-not (plist-member data :reasoning_effort)))))
 
 (ert-deftest dl-gptel-presets/see-adds-visible-buffers-but-not-chats ()
   "@see adds the buffers on screen to the context, leaving out gptel chats."

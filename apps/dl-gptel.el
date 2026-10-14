@@ -13,6 +13,7 @@
 
 (require 'dl-secret)
 (require 'dl-gptel-readonly)
+(require 'dl-gptel-shape)
 
 (use-package macher
   :custom
