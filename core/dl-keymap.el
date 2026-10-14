@@ -22,6 +22,8 @@
 ;;   C-c g / SPC G   git    (capital in Meow: SPC g is keypad C-M- prefix)
 ;;   C-c m / SPC M   term   (capital in Meow: SPC m is keypad M- prefix)
 ;;   C-c z / SPC z   fold   (kirigami; routes to active backend)
+;;   C-c d / SPC d   diagnostics (Flymake)
+;;   C-c L / SPC L   LLM    (gptel; lowercase l is org links)
 ;;
 ;; Meow normal-state `o' acts as C-c (`my/meow-ctrl-c'), giving a
 ;; third path: o f f, o j s, and mode-local keys such as o @ or o '.
@@ -81,6 +83,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (defvar-keymap my-term-map        :name "term")
 (defvar-keymap my-fold-map        :name "fold")
 (defvar-keymap my-diagnostics-map :name "diagnostics")
+(defvar-keymap my-llm-map         :name "llm")
 (defvar-keymap my-org-iw-map      :name "org-iw")
 
 ;; Bind prefix maps globally under C-c <letter>.
@@ -99,6 +102,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (define-key global-map (kbd "C-c m") my-term-map)
 (define-key global-map (kbd "C-c z") my-fold-map)
 (define-key global-map (kbd "C-c d") my-diagnostics-map)
+(define-key global-map (kbd "C-c L") my-llm-map)
 
 ;; Prefix labels for which-key.
 (with-eval-after-load 'which-key
@@ -122,7 +126,8 @@ Warns when KEY already has a binding in MAP that differs from CMD."
     "C-c e"   "eval"
     "C-c m"   "term"
     "C-c z"   "fold"
-    "C-c d"   "diagnostics"))
+    "C-c d"   "diagnostics"
+    "C-c L"   "llm"))
 
 ;; Concrete bindings -- starter set, grow as needed.
 (my/bind my-file-map   "f" #'find-file              "find-file")
@@ -236,6 +241,18 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-diagnostics-map "i" #'my/diagnostics-toggle-inline-style "inline: flyover / fancy")
 (my/bind my-diagnostics-map "b" #'flymake-running-backends          "running backends")
 (my/bind my-diagnostics-map "B" #'flymake-switch-to-log-buffer      "log")
+
+;; LLM map — gptel (apps/dl-gptel.el).
+(my/bind my-llm-map "l" #'gptel           "chat")
+(my/bind my-llm-map "s" #'gptel-send      "send")
+(my/bind my-llm-map "m" #'gptel-menu      "menu")
+(my/bind my-llm-map "k" #'gptel-abort     "abort")
+(my/bind my-llm-map "i" #'gptel-inline    "ask inline")
+(my/bind my-llm-map "r" #'gptel-rewrite   "rewrite region")
+(my/bind my-llm-map "a" #'gptel-add       "add to context")
+(my/bind my-llm-map "f" #'gptel-add-file  "add file to context")
+(my/bind my-llm-map "n" #'gptel-annotate  "annotate (Flymake notes)")
+(my/bind my-llm-map "A" #'gptel-agent     "agent")
 
 ;; Org map — cross-buffer entry points only.  In-buffer Org commands stay
 ;; at Org's own `C-c C-<x>' (mode-specific space, Org owns it).
@@ -676,7 +693,8 @@ with point inside."
     (cons "e" my-eval-map)
     (cons "M" my-term-map)
     (cons "z" my-fold-map)
-    (cons "d" my-diagnostics-map))
+    (cons "d" my-diagnostics-map)
+    (cons "L" my-llm-map))
 
   (meow-normal-define-key
     ;; Numeric expansion.

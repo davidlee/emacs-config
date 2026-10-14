@@ -6,7 +6,9 @@
 ;;
 ;;   role     @default @lib       sets the system prompt (and a toolset)
 ;;   tools    @org @ro @web       appends or filters tools
-;;   context  @see                adds the buffers on screen
+;;   context  @see @include       adds the buffers on screen / named ones
+;;   prompt   @expand             runs $:{shell} and $:(elisp) in the prompt
+;;   hook     @notify             desktop notice when the reply lands
 ;;   model    @gpt @deep @glm @gem @nemo
 ;;   effort   @quick @think       merges reasoning effort into the request
 ;;
@@ -22,6 +24,7 @@
 (require 'gptel)
 (require 'dl-notes-paths)
 (require 'dl-gptel-readonly)
+(require 'dl-gptel-cookies)
 
 ;; Autoloaded: mcp.el loads, and org-mcp's server starts, on first use.
 (autoload 'dl-gptel-mcp-org-connect "dl-gptel-mcp")
@@ -87,6 +90,13 @@
          :tools (:append ("WebSearch" "WebFetch")))
     (see :description "context: + the buffers on screen"
          :context (:function dl-gptel-with-visible-buffers))
+    (include :description "context: + the buffers and files named after @include"
+             :context (:function dl-gptel-include-sources))
+    (expand :description "prompt: replace $:{shell} and $:(elisp) by their output"
+            :prompt-transform-functions
+            (:append (dl-gptel-expand-shell dl-gptel-expand-elisp)))
+    (notify :description "hook: desktop notice when the reply lands"
+            :prompt-transform-functions (:append (dl-gptel-notify-on-completion)))
 
     (lib :description "librarian: does what's asked in ~/notes, nothing more"
          :parents (org ro)

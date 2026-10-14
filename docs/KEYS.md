@@ -106,6 +106,7 @@ L1 catches what the source lints can't: foreign packages that grab `C-c <letter>
 | `C-c m` | `my-term-map`    | ghostel + zmx (Meow alias: `SPC M` — see Gotchas) |
 | `C-c z` | `my-fold-map`    | fold (kirigami dispatcher — routes to outline / hs / treesit-fold) |
 | `C-c d` | `my-diagnostics-map` | diagnostics (Flymake — see [Diagnostics](#diagnostics-c-c-d)) |
+| `C-c L` | `my-llm-map` | LLM (gptel — see [LLM](#llm-c-c-l)); lowercase `C-c l` is org-store-link |
 
 ## Fold (`C-c z`)
 
@@ -382,6 +383,27 @@ buffer, uppercase on the project.
 
 In `flymake-mode-map`: `M-n` / `M-p` next / previous diagnostic
 (repeatable by holding Meta). `C-c t m` toggles `flymake-mode`.
+
+## LLM (`C-c L`)
+
+gptel (`apps/dl-gptel.el`). Presets (`@gpt`, `@think`, `@include`, …)
+are typed in the prompt; `apps/dl-gptel-presets.el` lists them.
+
+| Key | Command | |
+|---|---|---|
+| `C-c L l` | `gptel`          | open / switch to a chat buffer |
+| `C-c L s` | `gptel-send`     | send the prompt (or region) from any buffer |
+| `C-c L m` | `gptel-menu`     | transient: model, presets, context, output |
+| `C-c L k` | `gptel-abort`    | stop the request in this buffer |
+| `C-c L i` | `gptel-inline`   | ask about the code at point; reply in an overlay |
+| `C-c L r` | `gptel-rewrite`  | rewrite the region, review as a diff |
+| `C-c L a` | `gptel-add`      | add region / buffer to the context |
+| `C-c L f` | `gptel-add-file` | add a file to the context |
+| `C-c L n` | `gptel-annotate` | LLM notes on the buffer as Flymake diagnostics |
+| `C-c L A` | `gptel-agent`    | agent chat (tools) |
+
+On a gptel-annotate note: `C-c C-i` inspect, `C-c C-a` accept the
+suggested replacement, `C-c C-k` clear. Notes use the `C-c d` keys.
 
 ## File (`C-c f`)
 

@@ -86,6 +86,15 @@ uses the same account rather than falling through to auth-source."
     gptel-backend (gptel-make-openai-oauth "openai-sub")))
 
 (require 'dl-gptel-presets)
+(add-hook 'gptel-mode-hook #'dl-gptel-source-name-setup)
+
+;; LLM notes on a buffer as Flymake diagnostics: M-x gptel-annotate, or
+;; @gptel-annotate "file" in a prompt.  Needs structured output, which
+;; DeepSeek and GLM don't reliably give; use @gpt.
+(use-package gptel-annotate
+  :vc ( :url "https://github.com/karthink/gptel-annotate"
+        :rev :newest)
+  :after gptel)
 
 (use-package gptel-openrouter
   :ensure nil

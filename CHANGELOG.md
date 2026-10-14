@@ -2,6 +2,26 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-10-14 — gptel: C-c L keys, @include / @expand / @notify, gptel-annotate
+
+New `C-c L` family (meow `SPC L`, or `o L`) for gptel: `l` chat, `s`
+send, `m` menu, `k` abort, `i` gptel-inline, `r` rewrite, `a` / `f` add
+region / file to context, `n` gptel-annotate, `A` gptel-agent. See
+docs/KEYS.md.
+
+gptel-annotate (installed with `:vc`) shows an LLM's notes on a buffer
+as Flymake diagnostics, so the `C-c d` keys work on them: `C-c L n`, or
+`@gptel-annotate "file"` in a prompt. Use `@gpt`: it needs structured
+output.
+
+Three presets adapted from gptel-preset-collection
+(`apps/dl-gptel-cookies.el`): `@include "buf" file` adds named buffers
+and files to the context; `@expand` replaces `$:{shell}` and
+`$:(elisp)` in the prompt by their output (e.g. `$:{git diff HEAD}`);
+`@notify` posts a desktop notice when the reply lands. In chat buffers,
+completion after `@include` / `@gptel-annotate` offers buffer and file
+names.
+
 ## 2026-10-14 — gptel: Fireworks backend, @nemo preset
 
 New gptel backend `fireworks` (OpenAI-compatible, key from 1Password
