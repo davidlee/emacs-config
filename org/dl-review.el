@@ -20,34 +20,33 @@
 
 (require 'dl-notes-paths)
 (require 'org-ql)
-(require 'cl-lib)
+
+(declare-function org-ql-search "org-ql-search")
+(declare-function consult-ripgrep "consult")
+(declare-function my/weekly-note "dl-denote-journal")
+(declare-function my/work-weekly-note "dl-denote-journal")
 
 (defvar my/review-stale-days 7
   "Days a WAITING item must be untouched before it counts as stale.
 Used by `my/review-stale' and `my/review-work-stale'.")
 
 (defun my/review--notes-files ()
-  "Return the personal Org files / dirs that the review queries scan."
-  (list dl-notes-inbox-file
-         dl-notes-protocol-file
-         dl-notes-projects-dir
-         dl-notes-areas-dir
-         dl-notes-sources-dir
-         dl-notes-slips-dir
-         dl-notes-journal-dir
-         dl-notes-weekly-dir))
+  "Return the personal Org files that the review queries scan."
+  (cons dl-notes-inbox-file
+        (cons dl-notes-protocol-file
+              (my/review--org-files-in
+               (list dl-notes-projects-dir dl-notes-areas-dir
+                     dl-notes-sources-dir dl-notes-slips-dir
+                     dl-notes-journal-dir dl-notes-weekly-dir)))))
 
 (defun my/review--work-notes-files ()
-  "Return the work Org files / dirs that the review queries scan."
-  (list dl-notes-work-inbox-file
-         dl-notes-work-projects-dir
-         dl-notes-work-areas-dir
-         dl-notes-work-sources-dir
-         dl-notes-work-slips-dir
-         dl-notes-work-journal-dir
-         dl-notes-work-weekly-dir
-         dl-notes-work-meetings-dir
-         dl-notes-work-people-dir))
+  "Return the work Org files that the review queries scan."
+  (cons dl-notes-work-inbox-file
+        (my/review--org-files-in
+         (list dl-notes-work-projects-dir dl-notes-work-areas-dir
+               dl-notes-work-sources-dir dl-notes-work-slips-dir
+               dl-notes-work-journal-dir dl-notes-work-weekly-dir
+               dl-notes-work-meetings-dir dl-notes-work-people-dir))))
 
 (defun my/review--stale-cutoff ()
   "Date string `my/review-stale-days' ago, for `ts :from'."
@@ -75,10 +74,8 @@ TITLE labels the org-ql buffer."
   (org-ql-search files '(todo "WAITING") :title title))
 
 (defun my/review--org-files-in (dirs)
-  "All .org files directly under the existing members of DIRS."
-  (cl-loop for dir in dirs
-           when (file-directory-p dir)
-           append (directory-files dir t "\\.org\\'")))
+  "All .org files under the existing members of DIRS, outside archive/."
+  (mapcan #'dl-notes-org-files (seq-filter #'file-directory-p dirs)))
 
 (defun my/review--journal-files ()
   "Return the personal journal + weekly .org files scanned for open items."
@@ -236,14 +233,6 @@ Ripgrep — works across .org / .md / .html references."
   "Find work references explicitly marked untrusted or unreviewed for trust."
   (interactive)
   (consult-ripgrep dl-notes-work-references-dir "(:untrusted:|trust:\\s+unreviewed)"))
-
-;; Work-scoped org-ql entry point bound to `C-c n W q'.
-
-(defun my/work-org-ql-find ()
-  "Run `org-ql-find' over the work agenda file set."
-  (interactive)
-  (let ((org-agenda-files my/org-agenda-work-files))
-    (call-interactively #'org-ql-find)))
 
 (provide 'dl-review)
 ;;; dl-review.el ends here

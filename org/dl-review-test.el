@@ -106,5 +106,41 @@ A literal would silently point at a stale location when the corpus moves
         (kill-buffer buf))
       (delete-directory dir t))))
 
+;;; VT-5 — corpus reports read the notes inside class directories.
+;;
+;; `org-ql' silently skips a directory in its file list, so the report
+;; scope must be expanded to the Org files themselves.
+
+(ert-deftest dl-review/stale-report-reads-class-directories ()
+  "WAITING items in slips/ and journal/ reach the WAITING reports."
+  (let* ((root (make-temp-file "review-corpus-" t))
+         (dl-notes-inbox-file    (expand-file-name "inbox.org" root))
+         (dl-notes-protocol-file (expand-file-name "protocol.org" root))
+         (dl-notes-projects-dir  (expand-file-name "projects" root))
+         (dl-notes-areas-dir     (expand-file-name "areas" root))
+         (dl-notes-sources-dir   (expand-file-name "sources" root))
+         (dl-notes-slips-dir     (expand-file-name "slips" root))
+         (dl-notes-journal-dir   (expand-file-name "journal" root))
+         (dl-notes-weekly-dir    (expand-file-name "weekly" root))
+         (org-todo-keywords '((sequence "TODO" "WAITING" "|" "DONE"))))
+    (unwind-protect
+        (progn
+          (dolist (dir (list dl-notes-slips-dir dl-notes-journal-dir))
+            (make-directory dir))
+          (dolist (file (list dl-notes-inbox-file dl-notes-protocol-file))
+            (write-region "* TODO triage\n" nil file))
+          (write-region "* WAITING slip reply\n" nil
+                        (expand-file-name "idea.org" dl-notes-slips-dir))
+          (write-region "* WAITING journal reply\n" nil
+                        (expand-file-name "day.org" dl-notes-journal-dir))
+          (should (equal (sort (org-ql-select (my/review--notes-files) '(todo "WAITING")
+                                 :action '(org-get-heading t t))
+                               #'string<)
+                         '("journal reply" "slip reply"))))
+      (dolist (buf (buffer-list))
+        (when (string-prefix-p root (or (buffer-file-name buf) ""))
+          (kill-buffer buf)))
+      (delete-directory root t))))
+
 (provide 'dl-review-test)
 ;;; dl-review-test.el ends here

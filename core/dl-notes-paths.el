@@ -64,6 +64,18 @@ elsewhere the canonical ~/notes path is used.")
 (defconst dl-notes-work-attachments-dir   (expand-file-name "attachments" dl-notes-work-dir))
 (defconst dl-notes-work-archive-dir       (expand-file-name "archive"     dl-notes-work-dir))
 
+(defun dl-notes-org-files (dir &rest excluded)
+  "Org files under DIR at any depth, skipping archive/ and EXCLUDED dirs.
+Expands a directory into files for callers such as `org-ql', which
+silently skip a directory in their file list."
+  (let ((excluded (mapcar (lambda (ex) (directory-file-name (expand-file-name ex)))
+                          excluded)))
+    (directory-files-recursively
+     (expand-file-name dir) "\\.org\\'" nil
+     (lambda (sub)
+       (not (or (equal (file-name-nondirectory sub) "archive")
+                (member sub excluded)))))))
+
 (defun my/notes-ensure-dirs ()
   "Create any missing notes directories.  Idempotent; safe at load time."
   (interactive)

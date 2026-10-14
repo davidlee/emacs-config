@@ -263,20 +263,20 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-org-map     "i" #'org-clock-in-last           "clock-in last")
 (my/bind my-org-map     "O" #'org-clock-out               "clock-out")
 (my/bind my-org-map     "r" #'org-refile                  "refile")
-(my/bind my-org-map     "q" #'my/org-ql-find-here         "org-ql (here)")
+(my/bind my-org-map     "q" #'my/org-ql-find-here         "query (buffer)")
 (my/bind my-org-map     "b" #'org-switchb                 "switch org buffer")
 (my/bind my-org-map     "L" #'org-insert-link-global      "insert link (global)")
 
 ;; Notes (C-c n …) — see plan §4b in ~/.claude/plans/yes-use-dl-for-staged-quiche.md.
 ;; Sub-prefixes for new-by-class / manage / review live below.
 ;;
-;; Phase 5 commands (`consult-notes', `org-ql') aren't installed yet —
+;; Phase 5 commands (`consult-notes') aren't installed yet —
 ;; binding by symbol is fine, the void-function error surfaces only if
 ;; pressed before Phase 5 lands.  `declare-function' silences the
 ;; byte-compiler "not known to be defined" warnings until then.
 (declare-function consult-notes                     "consult-notes")
 (declare-function consult-notes-search-in-all-notes "consult-notes")
-(declare-function org-ql-find                       "org-ql-find")
+(declare-function org-ql-view                       "org-ql-view")
 (declare-function org-roam-node-find       "org-roam-node")
 (declare-function org-roam-node-insert     "org-roam-node")
 (declare-function org-roam-buffer-toggle   "org-roam-mode")
@@ -299,7 +299,9 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-notes-map "o" #'org-open-at-point-global          "open link")
 (my/bind my-notes-map "g" #'org-mark-ring-goto                "go back")
 (my/bind my-notes-map "b" #'denote-backlinks                  "backlinks")
-(my/bind my-notes-map "q" #'org-ql-find                       "ql find (Phase 5)")
+(my/bind my-notes-map "q" #'my/org-ql-find-notes              "query: find")
+(my/bind my-notes-map "Q" #'my/org-ql-search-notes            "query: results")
+(my/bind my-notes-map "V" #'org-ql-view                       "query: saved views")
 
 (my/bind my-notes-new-map "p" #'my/denote-new-project    "project")
 (my/bind my-notes-new-map "a" #'my/denote-new-area       "area")
@@ -340,7 +342,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-notes-work-map "I" (lambda () (interactive) (dired dl-notes-work-intake-dir))    "work intake")
 (my/bind my-notes-work-map "j" #'my/work-journal-note  "work journal")
 (my/bind my-notes-work-map "w" #'my/work-weekly-note   "work weekly")
-(my/bind my-notes-work-map "q" #'my/work-org-ql-find   "work query")
+(my/bind my-notes-work-map "q" #'my/org-ql-find-work-notes "work query")
 
 (my/bind my-notes-work-map "p" #'my/denote-new-work-project   "new work project")
 (my/bind my-notes-work-map "a" #'my/denote-new-work-area      "new work area")

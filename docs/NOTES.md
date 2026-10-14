@@ -78,7 +78,7 @@ any missing dirs so a fresh clone bootstraps without manual `mkdir`.
 org/dl-org.el                 defaults, TODO states, styling
 org/dl-org-capture.el         capture templates + protocol helpers
 org/dl-org-agenda.el          org-agenda-files, custom agenda views
-org/dl-org-ql.el              org-ql install
+org/dl-org-ql.el              org-ql install + notes-scoped find/search
 org/dl-denote.el              Denote core config
 org/dl-denote-templates.el    class constructors (my/denote-new-*)
 org/dl-denote-journal.el      my/journal-note + my/weekly-note
@@ -176,8 +176,9 @@ C-c n i   denote-link                          C-c n N w   weekly
 C-c n o   org-open-at-point-global
 C-c n g   org-mark-ring-goto                   C-c n m r   denote-rename-file
 C-c n b   denote-backlinks                     C-c n m R   …-using-front-matter
-C-c n q   org-ql-find                          C-c n m k   denote-rename-file-keywords
-                                               C-c n m t   denote-rename-file-title
+C-c n q   my/org-ql-find-notes                 C-c n m k   denote-rename-file-keywords
+C-c n Q   my/org-ql-search-notes               C-c n m t   denote-rename-file-title
+C-c n V   org-ql-view
 C-c n v i   my/review-inbox                    (jump to first TODO)
 C-c n v I   my/review-intake                   (dired intake/, newest first)
 C-c n v j   my/review-journal-open             (open journal + weekly items)
@@ -194,7 +195,7 @@ C-c n W i   open work/inbox.org                C-c n W a   new work area
 C-c n W I   dired work/intake/                 C-c n W m   new work meeting
 C-c n W j   my/work-journal-note               C-c n W P   new work person
 C-c n W w   my/work-weekly-note                C-c n W s   new work source
-C-c n W q   my/work-org-ql-find                C-c n W S   new work slip
+C-c n W q   my/org-ql-find-work-notes          C-c n W S   new work slip
                                                C-c n W r   new work reference
                                                C-c n W x   new work index
 

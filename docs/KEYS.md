@@ -153,7 +153,9 @@ Four sub-prefixes under `C-c n`:
 | `C-c n o` | `org-open-at-point-global`          | open link |
 | `C-c n g` | `org-mark-ring-goto`                | go back |
 | `C-c n b` | `denote-backlinks`                  | backlinks |
-| `C-c n q` | `org-ql-find`                       | org-ql query dispatcher |
+| `C-c n q` | `my/org-ql-find-notes`              | jump to a heading by org-ql query (personal notes) |
+| `C-c n Q` | `my/org-ql-search-notes`            | org-ql query → results buffer (personal notes) |
+| `C-c n V` | `org-ql-view`                       | saved org-ql views (`org-ql-views`) |
 | `C-c n r` | `my-roam-map`                       | roam compartment (see [Roam](#c-c-n-r--roam)) |
 
 ### `C-c n N` — new-by-class
@@ -204,7 +206,7 @@ Constructors live directly under `W` (not duplicated into `C-c n N`); review sur
 | `C-c n W I` | dired `work/intake/`        | newest first |
 | `C-c n W j` | `my/work-journal-note`      | today's work journal |
 | `C-c n W w` | `my/work-weekly-note`       | this week's work weekly |
-| `C-c n W q` | `my/work-org-ql-find`       | org-ql over work files |
+| `C-c n W q` | `my/org-ql-find-work-notes` | jump to a heading by org-ql query (work notes) |
 | `C-c n W p` | `my/denote-new-work-project`   | `:work:project:` → `work/projects/` |
 | `C-c n W a` | `my/denote-new-work-area`      | `:work:area:`    → `work/areas/` |
 | `C-c n W m` | `my/denote-new-work-meeting`   | `:work:meeting:` → `work/meetings/` |
@@ -265,7 +267,7 @@ schedule, TODO state, table ops, export) stay at Org's own
 | `C-c o i` | `org-clock-in-last` | resume last clock |
 | `C-c o O` | `org-clock-out` | close clock |
 | `C-c o r` | `org-refile` | refile current heading |
-| `C-c o q` | `my/org-ql-find-here` | org-ql over current buffer (file-scoped; `C-c n q` is corpus-scoped) |
+| `C-c o q` | `my/org-ql-find-here` | jump to a heading by org-ql query (current buffer) |
 | `C-c o b` | `org-switchb` | switch between open Org buffers |
 | `C-c o L` | `org-insert-link-global` | insert a stored link from anywhere |
 

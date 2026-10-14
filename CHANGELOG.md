@@ -2,6 +2,22 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-10-14 — org-ql: notes-wide find and search; review reports see every note
+
+`C-c n q` (`my/org-ql-find-notes`) now jumps to a heading anywhere in
+the personal notes (all of `~/notes` outside `work/` and any `archive/`);
+before, `org-ql-find` searched only the current buffer, like `C-c o q`.
+`C-c n W q` (`my/org-ql-find-work-notes`, was `my/work-org-ql-find`)
+does the same over `work/`. New: `C-c n Q` (`my/org-ql-search-notes`)
+lists the matches in a results buffer (`r` refresh, `C-x C-s` save as a
+view); `C-c n V` (`org-ql-view`) opens the saved views.
+
+Fix: `C-c n v s` / `C-c n v w` (stale / weekly WAITING reports, and the
+work variants) only read the inbox and protocol files, because org-ql
+skips directories in its file list. They now read every note in the
+class directories. One helper, `dl-notes-org-files`, lists the Org
+files below a directory; org-mcp's file scope uses it too.
+
 ## 2026-10-14 — gptel: C-c L keys, @include / @expand / @notify, gptel-annotate
 
 New `C-c L` family (meow `SPC L`, or `o L`) for gptel: `l` chat, `s`

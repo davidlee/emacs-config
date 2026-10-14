@@ -63,11 +63,7 @@ Presets choose the active tools."
 Wider than variable `org-agenda-files', which leaves out slips, backlog and
 reference notes by design: those are not agenda material, but they are
 notes an assistant should read and file into."
-  (seq-remove (lambda (file)
-                (string-match-p "\\(?:\\`\\|/\\)archive/"
-                                (file-relative-name file dl-notes-root)))
-              (directory-files-recursively
-               (expand-file-name dl-notes-root) "\\.org\\'")))
+  (dl-notes-org-files dl-notes-root))
 
 (defun dl-gptel-mcp-org-connect ()
   "Connect gptel to org-mcp, scoped to the notes as they are now.
