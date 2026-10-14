@@ -7,7 +7,7 @@
 ;;   role     @default @lib       sets the system prompt (and a toolset)
 ;;   tools    @org @ro @web       appends or filters tools
 ;;   context  @see                adds the buffers on screen
-;;   model    @gpt @deep @glm @gem
+;;   model    @gpt @deep @glm @gem @nemo
 ;;   effort   @quick @think       merges reasoning effort into the request
 ;;
 ;; Only roles set :system, so mixins stack on any role:
@@ -62,6 +62,9 @@
          :backend "openrouter" :model ~z-ai/glm-latest)
     (gem :description "model: Gemini flash, OpenRouter"
          :backend "openrouter" :model google/gemini-3.8-flash)
+    (nemo :description "model: Nemotron lightning, Fireworks"
+          :backend "fireworks"
+          :model accounts/fireworks/models/nemotron-lightning-3p5-30b-a3b)
 
     (quick :description "effort: low reasoning"
            :request-params (:merge (:reasoning (:effort "low"))))

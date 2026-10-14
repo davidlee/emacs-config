@@ -1,9 +1,10 @@
 ;;; dl-gptel.el --- gptel - minimalist agent chat harness -*- lexical-binding: t; -*-
 
 ;;; Commentary:
-;; Three providers: OpenAI direct, DeepSeek direct, and OpenRouter as the
-;; catch-all router.  Every backend resolves its key through `my/op-key'
-;; (see dl-secret.el) at request time, so no plaintext lands on disk or in
+;; Four providers: OpenAI direct, DeepSeek direct, Fireworks direct (fast,
+;; cheap open-weight models), and OpenRouter as the catch-all router.
+;; Every backend resolves its key through `my/op-key' (see dl-secret.el)
+;; at request time, so no plaintext lands on disk or in
 ;; `process-environment'.  gptel sends requests via `curl --config -' over
 ;; stdin, so the Authorization header never reaches /proc/<pid>/cmdline
 ;; either — do not add a backend `:curl-args' that passes it as `-H'.
@@ -71,6 +72,14 @@ uses the same account rather than falling through to auth-source."
   (gptel-make-deepseek "deepseek"
     :key (lambda () (my/op-key "DEEPSEEK"))
     :stream t)
+
+  ;; OpenAI-compatible; model ids are Fireworks' full resource paths.
+  (gptel-make-openai "fireworks"
+    :host "api.fireworks.ai"
+    :endpoint "/inference/v1/chat/completions"
+    :key (lambda () (my/op-key "FIREWORKS"))
+    :stream t
+    :models '(accounts/fireworks/models/nemotron-lightning-3p5-30b-a3b))
 
   (setq gptel-model 'gpt-5.6-terra
     gptel-backend (gptel-make-openai-oauth "openai-sub")))

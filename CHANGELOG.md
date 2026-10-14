@@ -2,6 +2,16 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-10-14 — gptel: Fireworks backend, @nemo preset
+
+New gptel backend `fireworks` (OpenAI-compatible, key from 1Password
+via `my/op-key "FIREWORKS"`). One model so far:
+`accounts/fireworks/models/nemotron-lightning-3p5-30b-a3b`, a cheap,
+fast reasoning model. The `@nemo` preset selects it. Known gap: the
+`@quick` / `@think` effort presets send OpenRouter's `reasoning`
+object, which Fireworks rejects with a 400 error; don't combine them
+with `@nemo` yet.
+
 ## 2026-10-13 — eglot: code actions on C-c d a
 
 `C-c d a` (`eglot-code-actions`) offers the language server's actions

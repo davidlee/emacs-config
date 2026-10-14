@@ -35,7 +35,7 @@ not connected."
              (gptel-make-tool :name name :function #'ignore :args nil
                               :description name
                               :category (or category "test")))
-           (dolist (name '("openai-sub" "openrouter"))
+           (dolist (name '("openai-sub" "openrouter" "fireworks"))
              (gptel-make-openai name :key "test"))
            (write-region "#+title: lib\n\nFile notes.\n" nil
                          (expand-file-name "lib.org" dl-gptel-prompt-dir))
