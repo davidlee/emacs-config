@@ -25,7 +25,12 @@ interpreted, its timers stall input.  Native-comp JIT follows the .elc."
     (satan-journal-today
       (lambda ()
         (my/journal--ensure-today)
-        (my/journal--today-file dl-notes-journal-dir "journal")))))
+        (my/journal--today-file dl-notes-journal-dir "journal"))))
+  ;; Client of SATAN's durable session daemon (github.com:davidlee/Malebolge).
+  (use-package malebolge
+    :ensure nil
+    :load-path "~/dev/malebolge/emacs"
+    :commands malebolge-attach))
 
 (provide 'dl-satan)
 ;;; dl-satan.el ends here
