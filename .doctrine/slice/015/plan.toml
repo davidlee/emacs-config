@@ -47,7 +47,7 @@ entrance_criteria = [
   { id = "EN-1", text = "PHASE-01 complete." },
 ]
 exit_criteria = [
-  { id = "EX-1", text = "apps/dl-gptel.el: the deepseek backend is built with gptel-make-deepseek, :protocol and :host derived from dl-llm-gateway-url, endpoint path from the URL plus /chat/completions, :key (lambda () (dl-llm-gateway-key \"gptel\")), model deepseek-flash with the capabilities, mime-types and context window copied from gptel's own entry. A dl-gptel--gateway helper exists only if it makes the constructor calls clearer." },
+  { id = "EX-1", text = "apps/dl-gptel.el: the deepseek backend is built with gptel-make-deepseek, :protocol and :host derived from dl-llm-gateway-url, endpoint path from the URL plus /chat/completions, :key (lambda () (dl-llm-gateway-key \"gptel\")), an explicit :models list holding only deepseek-flash with the capabilities, mime-types and context window copied from gptel's own entry (gptel's default list also names deepseek-v4-pro and deprecated models the gateway does not serve). A dl-gptel--gateway helper exists only if it makes the constructor calls clearer." },
   { id = "EX-2", text = "apps/dl-gptel-shape.el: dl-gptel-deepseek-thinking as in design sec-4, and dl-gptel-request-shapers maps deepseek to it and fireworks to dl-gptel-flat-reasoning-effort." },
   { id = "EX-3", text = "apps/dl-gptel-presets.el: @deep is backend deepseek, model deepseek-flash, description says via gateway; the preset commentary says effort on @deep is only on or off." },
   { id = "EX-4", text = "openrouter and fireworks backends and the glm, gem, nemo presets are unchanged." },
@@ -90,7 +90,7 @@ id        = "PHASE-04"
 name      = "Gate G1: live DeepSeek through the gateway"
 objective = "Confirm step [A] end to end with real keys (design sec-9 G1). No code change expected; a failure here re-enters the phase that owns it."
 entrance_criteria = [
-  { id = "EN-1", text = "PHASE-02 and PHASE-03 complete, and the running Emacs has loaded them." },
+  { id = "EN-1", text = "PHASE-02 and PHASE-03 complete and committed; just home-switch run (new .el files reach the flake build only once tracked, AGENTS.md) and Emacs restarted." },
   { id = "EN-2", text = "The user has issued the gptel and minuet keys with the exact commands in design sec-9 (DEC-010; needs sudo)." },
 ]
 exit_criteria = [
