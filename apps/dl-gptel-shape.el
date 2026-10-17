@@ -5,6 +5,7 @@
 ;; Responses API and OpenRouter take it.  Providers that want something
 ;; else get a shaper here, applied when gptel builds the request body —
 ;; after every @cookie, so the backend is final whatever their order.
+;; DeepSeek gets its own shaper because its effort is only on or off.
 ;;
 ;; Hooks `gptel--request-data', which is internal: if a gptel update
 ;; changes it, dl-gptel-presets-test fails rather than requests going
@@ -24,8 +25,17 @@ the nested form."
                  :reasoning_effort effort)
     data))
 
+(defun dl-gptel-deepseek-thinking (data)
+  "Return request DATA flattened, with effort \"low\" sent as \"none\".
+DeepSeek's thinking is on or off; LiteLLM disables it only for \"none\"."
+  (let ((flat (dl-gptel-flat-reasoning-effort data)))
+    (if (equal (plist-get flat :reasoning_effort) "low")
+        (plist-put flat :reasoning_effort "none")
+      flat)))
+
 (defvar dl-gptel-request-shapers
-  '(("fireworks" . dl-gptel-flat-reasoning-effort))
+  '(("deepseek" . dl-gptel-deepseek-thinking)
+    ("fireworks" . dl-gptel-flat-reasoning-effort))
   "Alist of backend name to a function that reshapes its request body.")
 
 (cl-defmethod gptel--request-data :around ((backend gptel-openai) _prompts)

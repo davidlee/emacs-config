@@ -6,6 +6,7 @@
 
 (require 'ert)
 (require 'gptel-openai)
+(require 'gptel-openai-extras)
 (require 'dl-gptel-presets)
 (require 'dl-gptel-shape)
 
@@ -17,12 +18,14 @@
   "Stand-ins for the tools the presets name: (NAME . CATEGORY).")
 
 (defconst dl-gptel-presets-test--backends
-  '(("openai-sub" . "api.openai.com")
-    ("openrouter" . "openrouter.ai")
-    ("fireworks" . "api.fireworks.ai"))
-  "Stand-ins for the backends the presets name: (NAME . HOST).
-The host picks gptel's API dialect: Responses for OpenAI, else chat
-completions.")
+  '(("openai-sub" gptel-make-openai "api.openai.com")
+    ("deepseek" gptel-make-deepseek "127.0.0.1:4000")
+    ("openrouter" gptel-make-openai "openrouter.ai")
+    ("fireworks" gptel-make-openai "api.fireworks.ai"))
+  "Stand-ins for the backends the presets name: (NAME CONSTRUCTOR HOST).
+CONSTRUCTOR gives the backend its real class, which request shaping
+dispatches on.  The host picks gptel's API dialect: Responses for
+OpenAI, else chat completions.")
 
 (defmacro dl-gptel-presets-test--sandbox (&rest body)
   "Run BODY against fake tools and backends, with gptel's options isolated.
@@ -44,8 +47,8 @@ not connected."
              (gptel-make-tool :name name :function #'ignore :args nil
                               :description name
                               :category (or category "test")))
-           (pcase-dolist (`(,name . ,host) dl-gptel-presets-test--backends)
-             (gptel-make-openai name :key "test" :host host))
+           (pcase-dolist (`(,name ,make ,host) dl-gptel-presets-test--backends)
+             (funcall make name :key "test" :host host))
            (write-region "#+title: lib\n\nFile notes.\n" nil
                          (expand-file-name "lib.org" dl-gptel-prompt-dir))
            ,@body)
@@ -55,6 +58,17 @@ not connected."
   "Apply PRESETS in order, then return the request body gptel would send."
   (mapc #'gptel--apply-preset presets)
   (gptel--request-data gptel-backend (list '(:role "user" :content "hi"))))
+
+(defun dl-gptel-presets-test--effort-in-both-orders (model effort)
+  "Apply presets MODEL and EFFORT in both orders; return what each sends.
+One (ORDER REASONING-EFFORT NESTED) per order, NESTED being the
+:reasoning entry of the request body, or nil if there is none."
+  (mapcar (lambda (order)
+            (let ((data (apply #'dl-gptel-presets-test--request order)))
+              (list order
+                    (plist-get data :reasoning_effort)
+                    (plist-member data :reasoning))))
+          (list (list model effort) (list effort model))))
 
 (defun dl-gptel-presets-test--tool-names ()
   "Return the names of the active tools, sorted."
@@ -98,8 +112,15 @@ not connected."
    (dolist (mixin '(deep think web see))
      (gptel--apply-preset mixin))
    (should (equal gptel-system-prompt "File notes."))
-   (should (equal (gptel-backend-name gptel-backend) "openrouter"))
+   (should (equal (gptel-backend-name gptel-backend) "deepseek"))
    (should (member "WebFetch" (dl-gptel-presets-test--tool-names)))))
+
+(ert-deftest dl-gptel-presets/deep-is-deepseek-flash-on-the-gateway ()
+  "@deep picks DeepSeek flash on the deepseek backend, which is the gateway."
+  (dl-gptel-presets-test--sandbox
+   (gptel--apply-preset 'deep)
+   (should (equal (gptel-backend-name gptel-backend) "deepseek"))
+   (should (eq gptel-model 'deepseek-flash))))
 
 (ert-deftest dl-gptel-presets/effort-merges-and-last-wins ()
   "Effort presets merge into the request params; the later one wins."
@@ -118,6 +139,20 @@ not connected."
      (let ((data (apply #'dl-gptel-presets-test--request order)))
        (should (equal (plist-get data :reasoning_effort) "high"))
        (should-not (plist-member data :reasoning))))))
+
+(ert-deftest dl-gptel-presets/quick-turns-deepseek-thinking-off-in-any-order ()
+  "@quick on DeepSeek sends effort \"none\", whichever cookie comes first.
+The control is plain flattening: it sends \"low\", which the gateway
+turns into thinking on, since DeepSeek's thinking is only on or off."
+  (dl-gptel-presets-test--sandbox
+   (should (equal (dl-gptel-presets-test--effort-in-both-orders 'deep 'quick)
+                  '(((deep quick) "none" nil) ((quick deep) "none" nil))))))
+
+(ert-deftest dl-gptel-presets/think-reaches-deepseek-flat-in-any-order ()
+  "@think on DeepSeek sends effort \"high\" flat, whichever cookie comes first."
+  (dl-gptel-presets-test--sandbox
+   (should (equal (dl-gptel-presets-test--effort-in-both-orders 'deep 'think)
+                  '(((deep think) "high" nil) ((think deep) "high" nil))))))
 
 (ert-deftest dl-gptel-presets/effort-reaches-openrouter-nested ()
   "Backends without a shaper get the effort presets' request params as is."

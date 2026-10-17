@@ -2,6 +2,17 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-10-18 — gptel: DeepSeek through the local LLM gateway
+
+gptel's `deepseek` backend now goes through the local LLM gateway
+(`dl-llm-gateway.el`, `http://127.0.0.1:4000/v1`) on gptel's own
+gateway key, offering only `deepseek-flash`. The `@deep` preset uses it
+(backend `deepseek`, model `deepseek-flash`) instead of OpenRouter.
+DeepSeek's thinking is on or off, so on `@deep`, `@quick` now turns it
+off and `@think` turns it on. The `openrouter` backend no longer lists
+DeepSeek models. OpenAI, Fireworks and the other OpenRouter presets are
+unchanged.
+
 ## 2026-10-18 — magit refresh fix; gptel drops an invalid OpenRouter id
 
 Fix: magit 20261001 reads `hi-lock-mode` on every buffer refresh (`g`

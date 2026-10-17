@@ -1,17 +1,21 @@
 ;;; dl-gptel.el --- gptel - minimalist agent chat harness -*- lexical-binding: t; -*-
 
 ;;; Commentary:
-;; Four providers: OpenAI direct, DeepSeek direct, Fireworks direct (fast,
-;; cheap open-weight models), and OpenRouter as the catch-all router.
-;; Every backend resolves its key through `my/op-key' (see dl-secret.el)
-;; at request time, so no plaintext lands on disk or in
+;; Four providers: OpenAI on its OAuth backend, DeepSeek through the
+;; local LLM gateway (see dl-llm-gateway.el) on gptel's own gateway key,
+;; Fireworks direct (fast, cheap open-weight models), and OpenRouter as
+;; the catch-all router.  Fireworks and OpenRouter still resolve their keys
+;; through `my/op-key' (see dl-secret.el) until they move to the gateway.
+;; Every key is read at request time, so no plaintext lands in
 ;; `process-environment'.  gptel sends requests via `curl --config -' over
 ;; stdin, so the Authorization header never reaches /proc/<pid>/cmdline
 ;; either — do not add a backend `:curl-args' that passes it as `-H'.
 
 ;;; Code:
 
+(require 'url-parse)
 (require 'dl-secret)
+(require 'dl-llm-gateway)
 (require 'dl-gptel-readonly)
 (require 'dl-gptel-shape)
 
@@ -65,14 +69,32 @@ Also the value of `gptel-api-key', so gptel's built-in OpenAI backend
 uses the same account rather than falling through to auth-source."
   (my/op-key "OPENAI_ALT"))
 
+(defun dl-gptel--gateway ()
+  "Return gptel connection args for `dl-llm-gateway-url'.
+A plist of :protocol, :host (with its port, as gptel builds the URL
+from protocol, host and endpoint only) and :endpoint (chat completions)."
+  (let* ((url (url-generic-parse-url dl-llm-gateway-url))
+         (port (url-portspec url)))
+    (list :protocol (url-type url)
+          :host (if port (format "%s:%s" (url-host url) port) (url-host url))
+          :endpoint (concat (string-remove-suffix "/" (url-filename url))
+                            "/chat/completions"))))
+
 ;;
 ;; LOAD GPTEL
 ;;
 (use-package gptel
   :config
-  (gptel-make-deepseek "deepseek"
-    :key (lambda () (my/op-key "DEEPSEEK"))
-    :stream t)
+  ;; Through the gateway.  The model list is explicit: gptel's default
+  ;; also names models the gateway does not serve.
+  (apply #'gptel-make-deepseek "deepseek"
+         :key (lambda () (dl-llm-gateway-key "gptel"))
+         :stream t
+         :models '((deepseek-flash
+                    :capabilities (media tool-use reasoning url)
+                    :mime-types ("image/jpeg" "image/png" "image/gif" "image/webp")
+                    :context-window 1000))
+         (dl-gptel--gateway))
 
   ;; OpenAI-compatible; model ids are Fireworks' full resource paths.
   (gptel-make-openai "fireworks"
@@ -118,10 +140,6 @@ uses the same account rather than falling through to auth-source."
       ;;  cat ~/.config/emacs/.cache/gptel-openrouter/models.json| jq '.data[].id' | sort
       :models (gptel-openrouter-get-annotated-models
                 '(
-                   ~deepseek/deepseek-flash-latest
-                   ~deepseek/deepseek-pro-latest
-                   deepseek/deepseek-v4.1-flash
-
                    openrouter/auto
                    openrouter/free
                    openrouter/pareto-code

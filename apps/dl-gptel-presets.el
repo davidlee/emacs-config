@@ -12,6 +12,9 @@
 ;;   model    @gpt @deep @glm @gem @nemo
 ;;   effort   @quick @think       merges reasoning effort into the request
 ;;
+;; On @deep, effort is only a switch: @quick turns DeepSeek's thinking
+;; off, @think turns it on.
+;;
 ;; Only roles set :system, so mixins stack on any role:
 ;;
 ;;   @lib @deep @think where did I put the cordage notes?
@@ -59,8 +62,8 @@
 (defconst dl-gptel-presets
   `((gpt :description "model: GPT 5.6 terra, ChatGPT subscription"
          :backend "openai-sub" :model gpt-5.6-terra)
-    (deep :description "model: DeepSeek flash, OpenRouter"
-          :backend "openrouter" :model ~deepseek/deepseek-flash-latest)
+    (deep :description "model: DeepSeek flash, via gateway"
+          :backend "deepseek" :model deepseek-flash)
     (glm :description "model: GLM, OpenRouter"
          :backend "openrouter" :model ~z-ai/glm-latest)
     (gem :description "model: Gemini flash, OpenRouter"
