@@ -1,1 +1,1 @@
-../../.doctrine/agents/dispatch-worker.md
+../../.doctrine/agents/claude/dispatch-worker.md

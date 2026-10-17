@@ -1,3 +1,6 @@
+
+[install]
+installed-version = "0.46.7"
 # doctrine.toml — project conduct config (installed starter).
 #
 # This is the single canonical home for project-local config (ISS-055). It is
