@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 8
+slug = "delete-unjailed-eca"
+title = "Delete eca's unjailed mode"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-17"
+updated = "2026-10-17"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "Unjailed eca ran under op run but its only provider needs LLM_GATEWAY_KEY, which nothing supplies: it was already broken."
+choice = "Remove dl-eca-jailed, dl-eca-toggle-jail, the op run launch and its test; eca always runs jailed. Emacs needs no eca key."
+alternatives = ["pass the eca key to the child process only"]
+rationale = "Dead, broken path; less code."
+consequences = []
+decided_by = "user (2026-10-18)"
+decided_on = "2026-10-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-015"

@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 10
+slug = "gptel-minuet-gateway-keys"
+title = "gptel and minuet gateway keys"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-17"
+updated = "2026-10-17"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "Gateway budgets are lifetime USD per key; issuing needs sudo."
+choice = "User issues gptel (--models deepseek-flash --budget 20) and minuet (--models deepseek-flash --budget 5) with --out ~/.config/llm-gateway/keys/<client>. gptel's list is widened to the openrouter/ and fireworks/ names after flakes:SL-014 PHASE-05 via `llm-gateway models`. Top-ups via `llm-gateway budget`."
+alternatives = []
+rationale    = ""
+consequences = []
+decided_by = "user (agreed 2026-10-18)"
+decided_on = "2026-10-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-015"

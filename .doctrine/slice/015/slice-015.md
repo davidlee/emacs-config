@@ -50,26 +50,25 @@ The user decided (2026-10-17):
    `setenv`'d, and never put in argv (gptel sends headers via
    `curl --config -`).
 2. **gptel**: the DeepSeek, Fireworks and OpenRouter backends go through
-   the gateway with the `gptel` key. Model lists come from what the
-   gateway serves for that key. OpenAI models stay on the `openai-sub`
-   OAuth backend; the unused `dl-gptel-openai-key` is deleted.
-3. **minuet**: completion requests go to the gateway with the `minuet`
-   key. Its budget is set separately, because autocomplete is the biggest
-   spender.
-4. **Unjailed eca**: no `op run`. It reaches the gateway with the `eca` key
-   (or that mode is removed; see OQ-3).
-5. **Remove the provider-key paths** that no longer have callers:
-   `my/op-key`, plus any `my/op-read-env` callers that only existed for LLM
-   keys. `my/op-read` stays for `org-gcal`.
-6. **Retire the shell exports** in `~/.config/zsh/env.zsh:39-45` once
-   nothing in Emacs or the flakes:SL-013 jails reads them. Outside this repo; see
-   OQ-5.
+   the gateway with the `gptel` key, one backend per provider (DEC-002),
+   with hand-picked gateway model names (DEC-003). DeepSeek is reached only
+   natively, never via OpenRouter (DEC-006). `gptel-openrouter` is dropped
+   (DEC-004). OpenAI models stay on the `openai-sub` OAuth backend; the
+   unused `dl-gptel-openai-key` is deleted.
+3. **minuet**: completion requests go to the gateway's `deepseek-flash`
+   with the `minuet` key (DEC-007). Its budget is set separately.
+4. **Unjailed eca is deleted** (DEC-008): it was already broken, and
+   jailed eca reaches the gateway on its own key.
+5. **Remove the provider-key paths** (DEC-009): `my/op-key`,
+   `my/op-key-vault`, `my/op-read-env`. `my/op-read` stays for `org-gcal`
+   and `my/satan-credential`.
+6. ~~Retire the shell exports~~: deferred to a follow-up (DEC-009). satan
+   (satan:SL-022) and `~/flakes/agents/jailed-agents.nix` still read them.
 7. **Docs**: `docs/emacs/secrets.md`, the commentary in `dl-gptel.el` and
    `dl-eca.el`, and `CHANGELOG.md` (name the backends and commands that
    changed).
-8. **Issue keys**: `gptel`, `minuet` and `eca` (if needed) with
-   `llm-gateway issue … --out ~/.config/llm-gateway/keys/<client>`. Model
-   lists and budgets are settled in design.
+8. **Issue keys** (DEC-010): the user issues `gptel` and `minuet`; gptel's
+   model list widens after flakes:SL-014 PHASE-05.
 
 ## Non-Goals
 
@@ -94,15 +93,17 @@ The user decided (2026-10-17):
 | `lisp/dl-llm-gateway.el` (new; name set in design) | gateway URL and per-client key reader |
 | `lisp/test/dl-llm-gateway-test.el` (new) | key reading and missing-key errors |
 | `apps/dl-gptel.el` | backends go through the gateway |
-| `apps/dl-gptel-shape.el` | per-backend request shaping, reviewed (OQ-2) |
+| `apps/dl-gptel-shape.el` | flatten reasoning for `deepseek` too (DEC-005) |
+| `apps/dl-gptel-presets.el` | presets use gateway names (DEC-006) |
+| `custom-vars.el` | drop the `gptel-openrouter` package-vc entry (DEC-004) |
 | `apps/dl-minuet.el` | endpoint, key and model |
-| `apps/dl-eca.el` | unjailed launch |
+| `apps/dl-eca.el` | unjailed mode deleted |
 | `lisp/dl-secret.el`, `lisp/test/dl-secret-test.el` | `my/op-key` removed if unused |
 | `lisp/test/dl-gptel-presets-test.el`, `lisp/test/dl-eca-test.el` | follow backend, shaping and eca-launch changes |
 | `apps/dl-agent-shell.el` | comment only |
 | `docs/emacs/secrets.md`, `CHANGELOG.md` | docs |
 | `~/.config/eca/config.json` | outside this repo; already points at the gateway for jailed eca |
-| `~/.config/zsh/env.zsh` | outside this repo (OQ-5) |
+| `~/.config/zsh/env.zsh` | outside this repo; deferred (DEC-009) |
 
 ## Risks & assumptions
 
@@ -130,18 +131,14 @@ The user decided (2026-10-17):
 
 ## Open questions
 
-- **OQ-1**: should the gateway module live in `lisp/` (beside
-  `dl-secret.el`) or in `apps/`?
-- **OQ-2**: does LiteLLM pass through OpenRouter's `provider` routing and
-  `reasoning_effort`? If not, does minuet keep acceptable latency without
-  them?
-- **OQ-3**: should unjailed eca move to the gateway, or should unjailed
-  mode (and `dl-eca-toggle-jail`) be deleted, since jailed is the default?
-- **OQ-4**: one gptel backend or one per provider (R3)?
-- **OQ-5**: should removing the `env.zsh` lines happen in this slice, or
-  wait until flakes:SL-013 and flakes:IMP-030 have also removed their readers? The
-  satan broker reads `OPENROUTER`, `OPENAI` and `DEEPSEEK` from the
-  environment until flakes:IMP-030 (satan:SL-022) lands.
+All resolved in design (2026-10-18):
+
+- **OQ-1** (module location): `lisp/dl-llm-gateway.el` (DEC-001).
+- **OQ-2** (LiteLLM passthrough): yes, both fields reach OpenRouter
+  (research); minuet uses native `deepseek-flash` anyway (DEC-007).
+- **OQ-3** (unjailed eca): deleted (DEC-008).
+- **OQ-4** (backends): one per provider (DEC-002).
+- **OQ-5** (`env.zsh`): deferred to a follow-up (DEC-009).
 
 ## Verification / closure intent
 

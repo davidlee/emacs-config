@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 4
+slug = "drop-gptel-openrouter"
+title = "Drop gptel-openrouter"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-17"
+updated = "2026-10-17"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "gptel-openrouter annotates OpenRouter ids from a local cache; gateway names carry an openrouter/ prefix."
+choice = "Remove the gptel-openrouter package and its package-vc entry; the openrouter backend lists plain gateway names."
+alternatives = ["keep it behind a prefix-stripping wrapper"]
+rationale = "Only loss is model descriptions and prices in the menu; avoids a wrapper."
+consequences = []
+decided_by = "user (agreed 2026-10-18)"
+decided_on = "2026-10-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-015"

@@ -12,11 +12,11 @@ after = []                      # slice→work soft sequence: { to, rank }
 
 [[selector]]
 selector = "lisp/dl-llm-gateway.el"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "lisp/test/dl-llm-gateway-test.el"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "apps/dl-gptel*.el"
@@ -24,19 +24,19 @@ intent = "scope-relevant"
 
 [[selector]]
 selector = "apps/dl-minuet.el"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "apps/dl-eca.el"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "apps/dl-agent-shell.el"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "lisp/dl-secret.el"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "lisp/test/dl-secret-test.el"
@@ -44,11 +44,43 @@ intent = "scope-relevant"
 
 [[selector]]
 selector = "docs/emacs/secrets.md"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "CHANGELOG.md"
-intent = "scope-relevant"
+intent = "design-target"
+
+[[selector]]
+selector = "init.el"
+intent = "design-target"
+
+[[selector]]
+selector = "apps/dl-gptel.el"
+intent = "design-target"
+
+[[selector]]
+selector = "apps/dl-gptel-shape.el"
+intent = "design-target"
+
+[[selector]]
+selector = "apps/dl-gptel-presets.el"
+intent = "design-target"
+
+[[selector]]
+selector = "lisp/test/dl-gptel-presets-test.el"
+intent = "design-target"
+
+[[selector]]
+selector = "lisp/test/dl-eca-test.el"
+intent = "design-target"
+
+[[selector]]
+selector = "custom-vars.el"
+intent = "design-target"
+
+[[selector]]
+selector = "AGENTS.md"
+intent = "design-target"
 
 # STRUCTURAL relations are uniform `[[relation]]` rows, never a typed
 # `[relationships]` axis. Slices carry no typed STRUCTURAL

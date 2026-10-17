@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 7
+slug = "minuet-via-gateway-deepseek-flash"
+title = "minuet completes through the gateway's deepseek-flash"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-17"
+updated = "2026-10-17"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "minuet is set up but little used; R4 shows the gateway route well inside its 2.5 s timeout."
+choice = 'Keep minuet. End-point <dl-llm-gateway-url>/chat/completions, key (dl-llm-gateway-key "minuet"), model deepseek-flash. Drop the OpenRouter-only provider field; keep reasoning_effort none (becomes thinking disabled), max_tokens 56, top_p 0.9.'
+alternatives = ["delete minuet", "openrouter/deepseek/deepseek-v4-flash"]
+rationale = "User will try it; native route is faster and steadier."
+consequences = []
+decided_by = "user (2026-10-18)"
+decided_on = "2026-10-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-015"

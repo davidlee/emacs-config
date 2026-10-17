@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 1
+slug = "emacs-gateway-key-module"
+title = "Emacs LLM clients read gateway keys through dl-llm-gateway"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-17"
+updated = "2026-10-17"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-015 moves gptel and minuet off 1Password provider keys onto per-client LLM gateway keys (~/.config/llm-gateway/keys/<client>)."
+choice = "New module lisp/dl-llm-gateway.el: defcustoms dl-llm-gateway-url (http://127.0.0.1:4000/v1) and dl-llm-gateway-key-directory; (dl-llm-gateway-key CLIENT) reads the file on every call (no cache), trims the newline, and raises a user-error naming the client and the `llm-gateway issue` command when missing or unreadable. No 1Password fallback; never setenv; clients pass it as a :key lambda."
+alternatives = ["extend dl-secret.el (violates STD-001; already three concerns)", "cache the key (stale after rotation)", "fall back to 1Password (defeats the gateway)"]
+rationale = "STD-001 one concern per file; naming.md dl-MODULE; a file read per request is cheap and makes rotation immediate."
+consequences = []
+decided_by = "user (agreed 2026-10-18)"
+decided_on = "2026-10-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-015"

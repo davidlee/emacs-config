@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 2
+slug = "gptel-backend-per-gateway-provider"
+title = "gptel keeps one backend per gateway provider"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-17"
+updated = "2026-10-17"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "gptel's DeepSeek, OpenRouter and Fireworks backends move to the LLM gateway; gateway names already carry a provider prefix (flakes:DEC-069)."
+choice = 'Three gptel backends, all on the gateway host with the gptel key: "deepseek" (gptel-make-deepseek, which handles DeepSeek reasoning_content and message alternation), "openrouter" and "fireworks" (gptel-make-openai). One helper in dl-gptel.el supplies the shared host/protocol/key arguments. openai-sub (OAuth) is untouched.'
+alternatives = ['one "gateway" backend with model-keyed shaping and DeepSeek message merging reimplemented']
+rationale = "Presets, request shapers and tests are keyed by backend name; DeepSeek needs the gptel-deepseek type, matching the pi client's thinkingFormat deepseek (flakes:SL-013)."
+consequences = []
+decided_by = "user (agreed 2026-10-18)"
+decided_on = "2026-10-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-015"

@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 3
+slug = "gptel-static-gateway-model-lists"
+title = "gptel's gateway model lists are hand-picked in elisp"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-17"
+updated = "2026-10-17"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "gptel cannot fetch model lists; per-key filtering of the gateway's /v1/models is unverified."
+choice = "Each gateway backend in dl-gptel.el lists its gateway model names statically. A model the key does not allow fails with the gateway's error."
+alternatives = ["GET /v1/models at load (slow, fails when the gateway is down)", "generate a model file from ~/flakes"]
+rationale = "The list is a curated menu, not the full served set; least code, no startup network."
+consequences = ["Lists duplicate part of ~/flakes/agents/gateway.nix and must follow its renames."]
+decided_by = "user (agreed 2026-10-18)"
+decided_on = "2026-10-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-015"

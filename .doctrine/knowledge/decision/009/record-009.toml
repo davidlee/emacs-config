@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 9
+slug = "remove-op-llm-key-paths"
+title = "Remove LLM 1Password key paths from Emacs; defer env.zsh"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-17"
+updated = "2026-10-17"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "After SL-015 no Emacs code resolves LLM provider keys from 1Password."
+choice = "Delete my/op-key, my/op-key-vault, my/op-read-env, dl-gptel-openai-key and the unused dl-gptel-openrouter variable. my/op-read stays (org-gcal, my/satan-credential). The env.zsh LLM exports stay until satan:SL-022 and flakes/agents/jailed-agents.nix stop reading them (follow-up)."
+alternatives = []
+rationale = "Readers outside this repo still depend on the exports."
+consequences = []
+decided_by = "user (agreed 2026-10-18)"
+decided_on = "2026-10-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-015"
