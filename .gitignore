@@ -86,6 +86,7 @@ oauth2-auto.plist
 .doctrine/memory/shipped/
 .doctrine/skills/*
 .doctrine/agents/*
+.doctrine/**/research
 !.doctrine/agents/AGENTS.md
 .doctrine/dispatch/
 .dispatch/
