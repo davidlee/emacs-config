@@ -2,6 +2,17 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-10-18 — magit refresh fix; gptel drops an invalid OpenRouter id
+
+Fix: magit 20261001 reads `hi-lock-mode` on every buffer refresh (`g`
+in `magit-status`) without loading hi-lock, so the refresh failed with
+`void-variable hi-lock-mode`. `dl-magit.el` now loads hi-lock with
+magit.
+
+gptel's `openrouter` backend no longer lists `deepseek/deepseek-flash`,
+which OpenRouter rejects as "not a valid model ID". `@deep` is
+unaffected: it uses `~deepseek/deepseek-flash-latest`.
+
 ## 2026-10-14 — org-ql: notes-wide find and search; review reports see every note
 
 `C-c n q` (`my/org-ql-find-notes`) now jumps to a heading anywhere in

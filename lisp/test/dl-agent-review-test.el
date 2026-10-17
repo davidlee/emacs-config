@@ -15,6 +15,7 @@
      (skip-unless (and (locate-library "magit")
                        (locate-library "magit-filenotify")
                        (locate-library "hunk-notes")))
+     (require 'dl-magit)
      (require 'dl-agent-review)
      (require 'magit-filenotify)
      (require 'hunk-notes)

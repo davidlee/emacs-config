@@ -118,7 +118,6 @@ uses the same account rather than falling through to auth-source."
       ;;  cat ~/.config/emacs/.cache/gptel-openrouter/models.json| jq '.data[].id' | sort
       :models (gptel-openrouter-get-annotated-models
                 '(
-                   deepseek/deepseek-flash
                    ~deepseek/deepseek-flash-latest
                    ~deepseek/deepseek-pro-latest
                    deepseek/deepseek-v4.1-flash

@@ -53,6 +53,7 @@ exit_criteria = [
   { id = "EX-4", text = "openrouter and fireworks backends and the glm, gem, nemo presets are unchanged." },
   { id = "EX-5", text = "CHANGELOG.md names the @deep preset and the deepseek backend change." },
   { id = "EX-6", text = "just check green; paren check ok on every touched .el." },
+  { id = "EX-7", text = "The direct openrouter backend's model list holds no deepseek ids (DEC-006: DeepSeek only natively). Done here, with @deep's move, because @deep used ~deepseek/deepseek-flash-latest on that backend until now; the invalid deepseek/deepseek-flash id was already dropped (flakes:SL-014 handback)." },
 ]
 verification = [
   { id = "VT-1", expects = "RV-016 F-2 control: deep with quick, in either order, sends :reasoning_effort \"none\" and no :reasoning. Runs through the real gptel--request-data around-method with a deepseek stand-in built by gptel-make-deepseek. Observed failing with dl-gptel-flat-reasoning-effort as the deepseek entry (sends \"low\") before the shaper lands.", test_file = "lisp/test/dl-gptel-presets-test.el", keywords = ["gptel-make-deepseek", "quick", "\"none\""], waived = false },

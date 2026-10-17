@@ -15,7 +15,12 @@
 (use-package magit
   :defer 1
   :bind (("C-x g" . magit-status))
-  :hook (git-commit-mode . my/git-commit-disable-ws-butler))
+  :hook (git-commit-mode . my/git-commit-disable-ws-butler)
+  :config
+  ;; magit 20261001's `magit-refresh-buffer' reads `hi-lock-mode' without
+  ;; loading hi-lock, so every refresh signals void-variable until
+  ;; something else loads it.  Drop once magit requires it itself.
+  (require 'hi-lock))
 
 (use-package diff-hl
   :hook ((dired-mode . diff-hl-dired-mode)
