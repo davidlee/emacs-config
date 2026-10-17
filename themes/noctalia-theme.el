@@ -36,7 +36,7 @@
       (on-tertiary "#282828")
       (on-tertiary-container "#e1eae6")
       (outline-color "#76706c")
-      (outline-variant "#4e4a47")
+      (outline-variant "#57514e")
       (primary "#b8bb26")
       (primary-container "#40420b")
       (secondary "#fabd2f")

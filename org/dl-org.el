@@ -37,10 +37,17 @@
   (org-tag-alist
     '( ("@work" . ?w)
        ("@home" . ?h)
-       ("reading" . ?r)
-       ("writing" . ?W)
+       ("read" . ?r)
+       ("write" . ?W)
+       ("tech" . ?t)
        ("idea" . ?i)
-       ("pkm" . ?p)))
+       ("domestic" . ?d)
+       ("admin" . ?a)
+       ("errand" . ?e)
+       ("satan" . ?s)
+       ("unread" . ?u)
+       ("project" . ?p)
+       ("org" . ?o)))
   (org-clock-sound ; for org-timer-start-timer, poor man's pomodoro
     "/mnt/500G/home/david/.local/share/Steam/steamui/sounds/timer_expired_alarm.wav")
   :config

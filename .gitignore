@@ -92,3 +92,4 @@ oauth2-auto.plist
 
 # Machine-local compiled grammars (Darwin/Linux binaries differ).
 /tree-sitter/
+.doctrine/observations/**/.tmp.*
