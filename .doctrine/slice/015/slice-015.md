@@ -98,6 +98,7 @@ The user decided (2026-10-17):
 | `apps/dl-minuet.el` | endpoint, key and model |
 | `apps/dl-eca.el` | unjailed launch |
 | `lisp/dl-secret.el`, `lisp/test/dl-secret-test.el` | `my/op-key` removed if unused |
+| `lisp/test/dl-gptel-presets-test.el`, `lisp/test/dl-eca-test.el` | follow backend, shaping and eca-launch changes |
 | `apps/dl-agent-shell.el` | comment only |
 | `docs/emacs/secrets.md`, `CHANGELOG.md` | docs |
 | `~/.config/eca/config.json` | outside this repo; already points at the gateway for jailed eca |
@@ -105,10 +106,11 @@ The user decided (2026-10-17):
 
 ## Risks & assumptions
 
-- **A1**: flakes:IMP-029 lands OpenRouter, Fireworks and OpenAI on the gateway,
-  covering the models gptel's hand-picked lists use, including
-  `gpt-5.6-terra` and the Fireworks Nemotron model. Any model without a
-  price-map entry drops out or waits (flakes:IMP-029's price-map lag).
+- **A1**: flakes:IMP-029 (delivered by flakes:SL-014) lands OpenRouter and
+  Fireworks on the gateway, covering every model in gptel's hand-picked
+  lists and the Fireworks Nemotron model. OpenAI is deferred to
+  flakes:IMP-035 (flakes:DEC-072); gptel keeps OpenAI on `openai-sub`. One
+  id is corrected here: `qwen/qwen-3.8-flash` → `qwen/qwen3.8-flash`.
 - **R1: provider-specific request fields.** minuet sends OpenRouter's
   `provider: {sort: "throughput"}` and `reasoning_effort`, and
   `dl-gptel-shape.el` shapes bodies per backend. LiteLLM may drop or reject
