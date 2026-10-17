@@ -94,6 +94,7 @@
 (require 'dl-agent-shell)
 (require 'dl-smudge)
 (require 'dl-secret)
+(require 'dl-llm-gateway)
 (require 'dl-gptel)
 (require 'dl-minuet)
 (require 'dl-eca)
