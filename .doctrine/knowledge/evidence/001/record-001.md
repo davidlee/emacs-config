@@ -1,0 +1,1 @@
+Source: SL-015 research (Thread 3), offline run of LiteLLM's param transforms in the gateway's Python env; `litellm/llms/deepseek/chat/transformation.py:21-61`. Shapes DEC-005 and the @quick/@think semantics on the gptel deepseek backend. Also bears on pi's deepseek-flash thinkingLevelMap (flakes:SL-013).

@@ -1,0 +1,25 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 1
+slug = "litellm-collapses-reasoning-effort-to-deepseek-thinking-onoff"
+title = "LiteLLM collapses reasoning_effort to DeepSeek thinking on/off"
+record_kind = "evidence"
+status = "captured"
+created = "2026-10-17"
+updated = "2026-10-17"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+datum = """LiteLLM 1.102.1's DeepSeekChatConfig drops reasoning_effort and sends thinking {type: disabled} for "none", {type: enabled} for any other value; effort levels never reach DeepSeek. OpenRouter routes forward reasoning_effort verbatim."""
+provenance = "experiment"
+confidence = "high"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
