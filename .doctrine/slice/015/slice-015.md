@@ -36,6 +36,11 @@ The user decided (2026-10-17):
 - the Mistral, Voyage and Gemini refs are deleted with the `env.zsh`
   exports;
 - this slice is sequenced after flakes:IMP-029.
+- gptel's OpenAI models stay on the `openai-sub` OAuth backend, not the
+  gateway. The `OPENAI_ALT` path (`dl-gptel-openai-key`, which has no
+  callers) is deleted.
+- minuet is set up but barely used. It moves to the gateway only if
+  latency is acceptable (R4); if not, it may be dropped.
 
 ## Scope & Objectives
 
@@ -44,10 +49,10 @@ The user decided (2026-10-17):
    named client's key file. The key is read when a request is made, never
    `setenv`'d, and never put in argv (gptel sends headers via
    `curl --config -`).
-2. **gptel**: the DeepSeek, Fireworks, OpenRouter and OpenAI-alt backends
-   go through the gateway with the `gptel` key. Model lists come from what
-   the gateway serves for that key. The `openai-sub` OAuth backend stays
-   as it is.
+2. **gptel**: the DeepSeek, Fireworks and OpenRouter backends go through
+   the gateway with the `gptel` key. Model lists come from what the
+   gateway serves for that key. OpenAI models stay on the `openai-sub`
+   OAuth backend; the unused `dl-gptel-openai-key` is deleted.
 3. **minuet**: completion requests go to the gateway with the `minuet`
    key. Its budget is set separately, because autocomplete is the biggest
    spender.
@@ -71,7 +76,10 @@ The user decided (2026-10-17):
 - Adding gateway providers or models: flakes:IMP-029 does that, and is
   a prerequisite.
 - satan (`~/dev/satan`, `~/flakes/features/satan/patcher.nix`):
-  flakes:IMP-030, after flakes:SL-013.
+  flakes:IMP-030, implemented by satan:SL-022 (owns satan's jails, harness,
+  broker, patch path, `satan-credential.el` and the flakes `satan-patcher`
+  module). No shared code: the jail launcher reads satan's key file, so
+  satan needs no elisp key reader.
 - This repo's `flake.nix` jail key forwarding: flakes:SL-013.
 - OAuth sign-ins: gptel `openai-sub`, agent-shell/codex, Claude.
 - `org-gcal`'s Google OAuth client credentials (`org/dl-org-gcal.el`): not
@@ -131,7 +139,7 @@ The user decided (2026-10-17):
 - **OQ-5**: should removing the `env.zsh` lines happen in this slice, or
   wait until flakes:SL-013 and flakes:IMP-030 have also removed their readers? The
   satan broker reads `OPENROUTER`, `OPENAI` and `DEEPSEEK` from the
-  environment until flakes:IMP-030 lands.
+  environment until flakes:IMP-030 (satan:SL-022) lands.
 
 ## Verification / closure intent
 
@@ -152,7 +160,7 @@ flakes:IMP-029.
 
 ## Follow-Ups
 
-- Remove the `env.zsh` exports once satan (flakes:IMP-030) stops reading them, if
+- Remove the `env.zsh` exports once satan (flakes:IMP-030, satan:SL-022) stops reading them, if
   OQ-5 defers it.
 - Update flakes:IMP-030 and flakes:SL-013's non-goal on gptel: gptel is now in
   scope here (user, 2026-10-17).
