@@ -1,0 +1,42 @@
+memory_uid = "mem_01a14a33c5097f13979b8f653005561b"
+memory_key = "mem.pattern.review.codex-exec-reviewer"
+schema_version = 1
+memory_type = "pattern"
+status = "active"
+title = "Codex as adversarial design reviewer"
+summary = "Run Codex as an adversarial reviewer via codex exec read-only; its sandbox cannot reach local sockets"
+created = "2026-10-17"
+updated = "2026-10-17"
+
+[scope]
+paths = []
+globs = []
+commands = ["codex"]
+tags = ["review", "codex"]
+workspace = "default"
+repo = "github.com/davidlee/emacs-config"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "4a58ded77933483e17393fce2622bd5b338977de"
+ref_name = "refs/heads/main"
+checkout_state_id = "a1e715f414d628edc685abf00ec9d982867c755fe77883bd29d3bf5f3b072c8c"
+base_commit = "33a83a751076af9251251fb00a78ca4106bf26bb"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0
+

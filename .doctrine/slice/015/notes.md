@@ -30,20 +30,23 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-18 · design/reviewing (RV-016) · e5e3cf3
+fresh-as-of: 2026-10-18 · ready (PHASE-01 next) · 33a83a7
 
 ### Produced
-- scope corrections and decisions recorded on the slice (commits 7404061, 51f523c)
-- design drafted: 11 sections, 16 design-target selectors, RV-016 opened (e5e3cf3)
-- minted: DEC-001..DEC-010, the design decisions; EVD-001, LiteLLM collapsing DeepSeek effort to on/off
-- minted: CHR-004, retire the env.zsh LLM exports after satan:SL-022; CHR-005, dead AGENTS.md link
-- no code changed; `just check` not run (nothing to check)
+- design locked after RV-016 (Codex pass + verify rounds) (f05c063)
+- plan: PHASE-01..06, sheets materialised; slice ready (5e68053, 21214a7, 265d4e2)
+- revised: DEC-005 — deepseek shaper maps effort low to none; DEC-006 — presets as backend + gateway model
+- off-plan fix: invalid OpenRouter id dropped from gptel; magit hi-lock workaround in dl-magit.el (33a83a7)
+- minted: CHR-006 — drop the magit hi-lock workaround when magit fixes it
+- earlier: CHR-004 — retire env.zsh LLM exports after satan:SL-022; CHR-005 — dead AGENTS.md link
+- no SL-015 code yet; `just check` green at 33a83a7
 
 ### Learned
 - EVD-001 — reasoning_effort becomes thinking on/off on the native DeepSeek route
+- mem.pattern.review.codex-exec-reviewer — Codex CLI as read-only reviewer; no local sockets
+- mem.fact.doctrine.design-section-edit — edit run sections via declare body + materialise
 
 ### Open
-- RV-016 — section reviews and the review-pass disposition are owed by the user before lock
-- DEC-010 — the user issues the `gptel` and `minuet` keys before gate G1
-- flakes:SL-014 PHASE-05 — prerequisite for step [B] (design sec-9)
-- flakes-side follow-ups (flakes:SL-013's gptel non-goal, the README line on unjailed eca) — to raise in ~/flakes (design sec-11)
+- DEC-010 — the user issues the gptel and minuet keys before PHASE-04 (G1)
+- flakes:SL-014 PHASE-05 — prerequisite for PHASE-05 ([B])
+- flakes-side follow-ups (flakes:SL-013's gptel non-goal, README unjailed-eca line) — to raise in ~/flakes (design sec-11)

@@ -1,0 +1,42 @@
+memory_uid = "mem_01a14a33c5207910afbe7ad30415129f"
+memory_key = "mem.fact.doctrine.design-section-edit"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "Editing design sections under a managed run"
+summary = "Edit a managed design section via design apply declare {subject: sec-N, body}, then design materialise"
+created = "2026-10-17"
+updated = "2026-10-17"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["doctrine", "design"]
+workspace = "default"
+repo = "github.com/davidlee/emacs-config"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "4a58ded77933483e17393fce2622bd5b338977de"
+ref_name = "refs/heads/main"
+checkout_state_id = "72533509711b00f5e486373d41c7145d526f7d8e8a4e2d4d4d323f22fef5960b"
+base_commit = "33a83a751076af9251251fb00a78ca4106bf26bb"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0
+
