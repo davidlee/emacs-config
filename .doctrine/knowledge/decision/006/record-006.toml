@@ -12,7 +12,7 @@ tags = []
 
 [facet]                         # every field typed; seeded empty (captured later)
 context = "OpenRouter forwards DeepSeek requests to DeepSeek on the user's own key (BYOK); R4 measured the extra hop at 2-4x time to first token."
-choice = "gptel and minuet reach DeepSeek only via the gateway's native deepseek-flash. @deep -> deepseek/deepseek-flash; @glm -> openrouter/~z-ai/glm-latest; @gem -> openrouter/google/gemini-3.8-flash; @nemo -> fireworks/nemotron-lightning-3p5-30b-a3b. No openrouter/deepseek/* in gptel's lists; ~deepseek/deepseek-pro-latest is a deprecated deepseek-flash alias and is not needed."
+choice = "gptel and minuet reach DeepSeek only via the gateway's native deepseek-flash. Presets (backend, gateway model): @deep -> deepseek, deepseek-flash; @glm -> openrouter, openrouter/~z-ai/glm-latest; @gem -> openrouter, openrouter/google/gemini-3.8-flash; @nemo -> fireworks, fireworks/nemotron-lightning-3p5-30b-a3b. No openrouter/deepseek/* in gptel's lists; ~deepseek/deepseek-pro-latest is a deprecated deepseek-flash alias and is not needed."
 alternatives = ["keep openrouter/deepseek/* for graded effort"]
 rationale = "Same provider and key without OpenRouter's queueing; the own gateway is the single key point."
 consequences = []

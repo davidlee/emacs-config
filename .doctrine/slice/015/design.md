@@ -14,8 +14,9 @@ Decisions: DEC-001 to DEC-010. Evidence:
 ## Risks
 
 - **The gateway's model names drift** from gptel's static lists (DEC-003).
-  A renamed model fails with the gateway's "model not allowed" error,
-  which names what it serves. G2 checks every list once.
+  A renamed model fails with the gateway's 403 `gptel: model '<name>' not
+  allowed`, which names the key and the model but not what is served.
+  G2 compares every list with `gateway.nix` once.
 - **The PHASE-05 timing is outside this slice.** [B] waits on it. [A] is
   useful on its own (DeepSeek, minuet, eca) and leaves no half-moved
   backend: `openrouter` and `fireworks` stay direct until [B].
@@ -27,8 +28,8 @@ Decisions: DEC-001 to DEC-010. Evidence:
   gptel-deepseek with a non-default host is supported: `:host`,
   `:protocol` and `:endpoint` are constructor arguments
   (`gptel-openai-extras.el:336-387`).
-- **Key exposure through gptel's copy-curl action and debug logging.** It
-  is documented and accepted (sec-3).
+- **Key exposure through gptel's copy-curl action (kill-ring and system
+  clipboard) and debug logging.** It is documented and accepted (sec-3).
 
 <!-- doctrine:section sec-11 -->
 ## Out of scope / follow-ups
@@ -98,7 +99,9 @@ missing, unreadable or empty.")
   key; minuet does not. The reader trims, so callers don't depend on that.
 - **Error (R5).** The message reads: `No LLM gateway key for gptel at
   ~/.config/llm-gateway/keys/gptel; issue one: llm-gateway issue gptel
-  --models … --budget … --out ~/.config/llm-gateway/keys/gptel`. It follows
+  --models … --budget … --out ~/.config/llm-gateway/keys/gptel`. The
+  message carries no model or budget: those are the issuer's choice, and
+  the commands this slice uses are in sec-9. It follows
   the precedent in `~/.nix-profile/bin/jailed-eca:2-5`. There is no
   1Password fallback.
 - **No `setenv`, no argv.** Clients pass `(lambda () (dl-llm-gateway-key
@@ -106,9 +109,12 @@ missing, unreadable or empty.")
   send headers in the curl config on stdin (`gptel-request.el:2888-2890`,
   `plz.el:430`). Two paths do expose the key, and both need a deliberate
   act by the user: gptel's *Copy Curl command* puts it on the kill-ring,
-  and `gptel-log-level 'debug` logs it. They are documented in
-  `secrets.md`, not suppressed. The key is loopback-only and capped by its
-  budget.
+  which `select-enable-clipboard` also copies to the system clipboard
+  (and so to any clipboard manager), and `gptel-log-level 'debug` writes
+  the request config, with the `Authorization` header, to the
+  `*gptel-log*` buffer. Both are accepted, documented in `secrets.md`,
+  and not suppressed: redacting them would mean hooking more gptel
+  internals. The key is loopback-only and capped by its budget.
 - **Whether a key exists is not checked at load time.** A missing key
   shows up as a `user-error` on the first request, so Emacs starts cleanly
   before keys are issued.
@@ -163,16 +169,37 @@ gptel's own `:config` (`:55-57`), so nothing is lost.
 `dl-gptel-request-shapers` becomes:
 
 ```elisp
-'(("deepseek" . dl-gptel-flat-reasoning-effort)
+'(("deepseek" . dl-gptel-deepseek-thinking)
   ("fireworks" . dl-gptel-flat-reasoning-effort))
 ```
 
 `openrouter` keeps the nested `reasoning` object, which the gateway's body
-guard accepts (flakes:SL-014 design `:343-357`). On `deepseek-flash`,
-LiteLLM turns `reasoning_effort` into `thinking` on or off
-(`litellm/llms/deepseek/chat/transformation.py:21-61`), so `@quick` and
-`@think` become thinking off and on, not low and high effort. The preset
-commentary says so (Codex review, point 4).
+guard accepts (flakes:SL-014 design `:343-357`).
+
+On `deepseek-flash`, LiteLLM turns `reasoning_effort` into DeepSeek's
+`thinking` switch: `"none"` becomes disabled and every other value
+becomes enabled (`litellm/llms/deepseek/chat/transformation.py:21-61`).
+Flattening alone would leave `@quick` (`"low"`) thinking on, the same as
+`@think`. So `deepseek` gets its own shaper, a pure function beside
+`dl-gptel-flat-reasoning-effort`:
+
+```elisp
+(defun dl-gptel-deepseek-thinking (data)
+  "Return request DATA flattened, with effort \"low\" sent as \"none\".
+DeepSeek's thinking is on or off; LiteLLM disables it only for \"none\"."
+  (let ((flat (dl-gptel-flat-reasoning-effort data)))
+    (if (equal (plist-get flat :reasoning_effort) "low")
+        (plist-put flat :reasoning_effort "none")
+      flat)))
+```
+
+| preset on `@deep` | sent | DeepSeek |
+|---|---|---|
+| none | no `reasoning_effort` | its default |
+| `@quick` | `"none"` | thinking off |
+| `@think` | `"high"` | thinking on |
+
+The preset commentary says effort on `@deep` is only on or off.
 
 ### Presets (DEC-006)
 
@@ -193,8 +220,11 @@ Descriptions change from "OpenRouter" to "via gateway" where it applies.
   and the gateway backends use the gateway host. The stand-in for
   `deepseek` is built with `gptel-make-deepseek`, so the shaper sees the
   real class.
-- New test: `deep` with `think`, in either order, sends
-  `:reasoning_effort "high"` and no `:reasoning`.
+- New tests: `deep` with `think`, in either order, sends
+  `:reasoning_effort "high"` and no `:reasoning`; `deep` with `quick`, in
+  either order, sends `:reasoning_effort "none"` and no `:reasoning`.
+  The `quick` test is the negative control: plain flattening sends
+  `"low"` and must fail it.
 - The existing fireworks-flat and openrouter-nested tests stay. Their
   model names follow the new presets.
 - `@deep` → backend `"deepseek"` (`:101` was `"openrouter"`).
@@ -269,7 +299,9 @@ None of them has a test. Also removed: `apps/dl-gptel.el`'s
   - the gptel example is rewritten to use the gateway;
   - the API table drops `my/op-read-env` and adds the gateway reader;
   - the env-var flow is kept, described as serving satan and org-gcal;
-  - the kill-ring and debug-log exposure is noted.
+  - the exposure is noted: *Copy Curl command* puts the key on the
+    kill-ring and so the system clipboard, and debug logging writes it to
+    `*gptel-log*`.
 - `AGENTS.md:112`: the one-liner mentions gateway keys.
 - `apps/dl-gptel.el:3-10` commentary: three gateway backends plus OAuth.
   The `curl --config -` and no-`:curl-args` warning stays.
@@ -287,9 +319,9 @@ None of them has a test. Also removed: `apps/dl-gptel.el`'s
 | `lisp/test/dl-llm-gateway-test.el` | new |
 | `init.el` | `(require 'dl-llm-gateway)` beside `dl-secret` (`:96`) |
 | `apps/dl-gptel.el` | gateway backends; gptel-openrouter and dead code removed |
-| `apps/dl-gptel-shape.el` | `deepseek` shaper entry |
+| `apps/dl-gptel-shape.el` | `dl-gptel-deepseek-thinking` and its `deepseek` entry |
 | `apps/dl-gptel-presets.el` | preset backends, models and descriptions |
-| `lisp/test/dl-gptel-presets-test.el` | stand-ins and the deepseek effort test |
+| `lisp/test/dl-gptel-presets-test.el` | stand-ins and the deepseek `@quick` / `@think` tests |
 | `apps/dl-minuet.el` | gateway endpoint, key and model |
 | `apps/dl-eca.el`, `lisp/test/dl-eca-test.el` | unjailed mode removed |
 | `lisp/dl-secret.el` | `my/op-key`, `my/op-key-vault`, `my/op-read-env` removed |
@@ -321,21 +353,51 @@ and their presets keep `my/op-key` and their direct hosts. The `@deep`
 preset moves, and so does the shaper entry for `deepseek`, which must
 exist before `@deep` + `@think` reaches native DeepSeek.
 
-**G1 (VH: checked by the user).** With the `gptel` and `minuet` keys
-issued (DEC-010):
-- a gptel `@deep` chat completes, with and without `@think`;
+**Keys (DEC-010), issued by the user before G1** (needs sudo):
+
+```sh
+llm-gateway issue gptel  --models deepseek-flash --budget 20 \
+  --out ~/.config/llm-gateway/keys/gptel
+llm-gateway issue minuet --models deepseek-flash --budget 5 \
+  --out ~/.config/llm-gateway/keys/minuet
+```
+
+Budgets are lifetime USD per key; `llm-gateway budget` tops one up.
+
+**G1 (VH: checked by the user).** With both keys issued:
+- a gptel `@deep` chat completes plain, with `@quick` and with `@think`;
+  the `@quick` reply carries no reasoning and the `@think` reply does
+  (plain `@deep` gets DeepSeek's default, either way);
 - a minuet completion appears in a buffer;
 - the gateway ledger (`llm-gateway list`) shows spend on the `gptel` and
   `minuet` aliases.
 
-**[B] after flakes:SL-014 PHASE-05.** Run `llm-gateway models gptel …` to
-add the `openrouter/` and `fireworks/` names. Move those backends and
+**[B] after flakes:SL-014 PHASE-05.** Widen the `gptel` key.
+`llm-gateway models` replaces the key's whole allowed list, so the command
+names `deepseek-flash` as well as every `openrouter/` and `fireworks/` name
+in sec-4's backend table, as one comma-separated argument. It refuses a
+name missing from the model list baked into the CLI at build time:
+
+```sh
+llm-gateway models gptel deepseek-flash,openrouter/openrouter/auto,openrouter/openrouter/free,openrouter/openrouter/pareto-code,openrouter/qwen/qwen3.8-flash,openrouter/z-ai/glm-5.3-flash,openrouter/~z-ai/glm-flash-latest,openrouter/~z-ai/glm-latest,openrouter/google/gemini-3.8-flash,openrouter/google/gemini-3-flash-preview,openrouter/xiaomi/mimo-v2.6-pro,openrouter/xiaomi/mimo-v2.6-flash,fireworks/nemotron-lightning-3p5-30b-a3b
+``` Move those backends and
 presets to the gateway, delete `my/op-key`, `my/op-key-vault` and
 `my/op-read-env`, and update the docs.
 
 **G2 (VH).** For each preset (`@glm`, `@gem`, `@nemo`), one chat completes
-through the gateway. Each model in gptel's lists is checked against both
-the served list and the `gptel` key's allowed list (Codex review, point 5).
+through the gateway. Every model in gptel's lists is checked against
+both sides:
+- the key: `llm-gateway list` shows the `gptel` key allowing each name;
+- the running service: its `/v1/models` lists each name. The key goes in
+  a header read from a file descriptor, never in argv:
+
+  ```sh
+  curl -sf -H @<(printf 'Authorization: Bearer %s' "$(< ~/.config/llm-gateway/keys/gptel)") \
+    http://127.0.0.1:4000/v1/models | jq -r '.data[].id' | sort
+  ```
+
+A miss at runtime shows only as a 403 `gptel: model '<name>' not
+allowed`, which does not list the alternatives.
 
 **VT (checked by ert, under `just check`):**
 - `dl-llm-gateway-key` returns the trimmed contents of
@@ -343,12 +405,20 @@ the served list and the `gptel` key's allowed list (Codex review, point 5).
 - it signals a `user-error` naming the client and `llm-gateway issue` when
   the file is missing, unreadable (mode 000) or empty;
 - a stub `op` on `PATH` that records any call is never called;
-- the request body for `@deep` + `@think` has `:reasoning_effort` and no
+- the request body for `@deep` + `@think` has `:reasoning_effort "high"`,
+  and for `@deep` + `@quick` `:reasoning_effort "none"`, neither with
   `:reasoning`; the fireworks and openrouter tests still pass;
 - `@deep` selects backend `deepseek`, model `deepseek-flash`;
 - the eca wrapper tests pass, and the toggle test is gone.
 
 **VA (checked by the agent), at close:**
-`rg 'my/op-key|my/op-read-env|op run|_API_KEY' apps/ lisp/` matches only
-`org-gcal`, satan's credential code, and the `env.zsh` sourcing.
+- removed code is gone: `rg -g '*.el' -g '!elpa/**'
+  'my/op-key|my/op-read-env|dl-eca--launch-settings|dl-eca-jailed|dl-eca-toggle-jail|"op" "run"|op run'`
+  matches nothing (the last two catch both the list form at
+  `apps/dl-eca.el:41` and the commentary);
+- the search is live (positive control): the same `rg` run before the
+  removals matches `lisp/dl-secret.el` and `apps/dl-eca.el`;
+- retained consumers still work: `my/op-read`, `my/satan-credential` and
+  the env-file sourcing are still defined in `lisp/dl-secret.el`, and
+  `org/dl-org-gcal.el` still loads under `just check`.
 

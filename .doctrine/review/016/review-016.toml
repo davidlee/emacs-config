@@ -8,9 +8,273 @@ title = "design review of SL-015"
 facet     = "design"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
 raiser    = "raiser"
 responder = "responder"
+rounds_base = 0
+contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "Codex (gpt-6-sol) adversarial pass over SL-015 design.md, slice scope, research.md, notes.md and cited code in this repo and flakes, then three verify rounds on the revisions. F-1 tolerated by user decision; F-3 to F-7 verified; F-2 is control-routed and stays answered until its criterion is placed on a phase."
 
 [target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
 ref   = "SL-015"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "blocker"
+title = "Gateway key exposed by gptel debug log and Copy Curl command"
+detail = "(Codex, gpt-6-sol) sec-3 lines 104-111 and sec-10 lines 30-31 accept that the gateway key appears in gptel debug logs and in the copied Curl command. gptel-request.el:2856 logs the request config (with the Authorization header) at gptel-log-level debug; gptel.el:1887 builds the copy-curl command via gptel-curl--get-args, which emits -H with the header as an argument. Proposed repair: redact or disable those paths and verify neither exposes a gateway key."
+disposition = "tolerated"
+route = "review"
+response = "Observation confirmed: gptel-request.el logs the request config with the Authorization header at log level debug, and Copy Curl puts a command carrying the header on the kill-ring. Severity contested as blocker: both paths need a deliberate user act, the log is an in-memory buffer, and the key is loopback-only and budget-capped. The cited rule (keys never in argv or logs) came from the review prompt; the user's standing rule is about argv of running processes. Reviewer missed one widening: select-enable-clipboard copies the kill-ring to the system clipboard, so a clipboard manager may persist it. User decided (2026-10-18): keep accepted, document; no redaction, since that means hooking more gptel internals. sec-3, sec-7 and sec-10 now name the clipboard and the *gptel-log* buffer."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "tolerated"
+route = "review"
+response = "Observation confirmed: gptel-request.el logs the request config with the Authorization header at log level debug, and Copy Curl puts a command carrying the header on the kill-ring. Severity contested as blocker: both paths need a deliberate user act, the log is an in-memory buffer, and the key is loopback-only and budget-capped. The cited rule (keys never in argv or logs) came from the review prompt; the user's standing rule is about argv of running processes. Reviewer missed one widening: select-enable-clipboard copies the kill-ring to the system clipboard, so a clipboard manager may persist it. User decided (2026-10-18): keep accepted, document; no redaction, since that means hooking more gptel internals. sec-3, sec-7 and sec-10 now name the clipboard and the *gptel-log* buffer."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Codex verify pass (gpt-6-sol, 2026-10-18): revised text checked against repo, VERIFIED."
+
+[[finding]]
+id = "F-2"
+status = "answered"
+severity = "major"
+title = "@quick does not turn DeepSeek thinking off"
+detail = "(Codex) sec-4 lines 170-175 claim @quick and @think become thinking off and on for deepseek-flash. @quick sends effort low (apps/dl-gptel-presets.el:72) and is left unchanged; research.md Thread 3 records that LiteLLM rewrites only none to thinking disabled and every other value to enabled. So @quick is thinking on, same as @think. The planned VT and G1 cover @think only and would not notice. Proposed repair: a DeepSeek-specific mapping of @quick to none, tested for both presets through the shaper."
+disposition = "fix-now"
+route = "control"
+response = "Confirmed: @quick sends effort low, which LiteLLM maps to thinking enabled. User chose (2026-10-18) to map low to none for deepseek. DEC-005 updated; sec-4 adds the pure shaper dl-gptel-deepseek-thinking (flatten, then low becomes none) as the deepseek entry, with a preset to wire table. Control: the concrete incorrect candidate the check must reject is plain flattening (dl-gptel-flat-reasoning-effort as the deepseek entry), which sends reasoning_effort low. Criterion: the request body for deep plus quick, in either order, has reasoning_effort none and no reasoning key; deep plus think has high. Host phase constraint: the test must run through the real gptel--request-data around-method with a gptel-make-deepseek stand-in, and must be observed failing against plain flattening before the shaper lands. G1 also checks that the quick reply carries no reasoning."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "control"
+response = "Confirmed: @quick sends effort low, which LiteLLM maps to thinking enabled. User chose (2026-10-18) to map low to none for deepseek. DEC-005 updated; sec-4 adds the pure shaper dl-gptel-deepseek-thinking (flatten, then low becomes none) as the deepseek entry, with a preset to wire table. Control: the concrete incorrect candidate the check must reject is plain flattening (dl-gptel-flat-reasoning-effort as the deepseek entry), which sends reasoning_effort low. Criterion: the request body for deep plus quick, in either order, has reasoning_effort none and no reasoning key; deep plus think has high. Host phase constraint: the test must run through the real gptel--request-data around-method with a gptel-make-deepseek stand-in, and must be observed failing against plain flattening before the shaper lands. G1 also checks that the quick reply carries no reasoning."
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "major"
+title = "DEC-006 names @deep model deepseek/deepseek-flash; design says deepseek-flash"
+detail = "(Codex) DEC-006 choice reads @deep -> deepseek/deepseek-flash; design sec-4 presets table gives model deepseek-flash, which is the gateway model name (flakes agents/gateway.nix:35). deepseek/deepseek-flash is the upstream LiteLLM model string, not a gateway name. Proposed repair: reconcile DEC-006 so there is one authoritative id."
+disposition = "fix-now"
+route = "refresh"
+response = """
+Design is right; DEC-006 lagged. Its notation backend/model was ambiguous against the gateway model names. Edited DEC-006 choice to list presets as backend, gateway model: deep is deepseek, deepseek-flash. Sweep: rg for deepseek/deepseek-flash over .doctrine finds no other record; design sec-4 presets table and DEC-007 already say deepseek-flash; DEC-003 names no model.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "refresh"
+response = "Design is right; DEC-006 lagged. Its notation backend/model was ambiguous against the gateway model names. Edited DEC-006 choice to list presets as backend, gateway model: deep is deepseek, deepseek-flash. Swept the records that cite it: design sec-4 presets table already says deepseek-flash; DEC-003 and DEC-007 name deepseek-flash; nothing else cites the deepseek/deepseek-flash form."
+
+[[finding.turn]]
+act = "amend"
+role = "responder"
+note = "sweep claim corrected after checking DEC-003"
+disposition = "fix-now"
+route = "refresh"
+response = """
+Design is right; DEC-006 lagged. Its notation backend/model was ambiguous against the gateway model names. Edited DEC-006 choice to list presets as backend, gateway model: deep is deepseek, deepseek-flash. Sweep: rg for deepseek/deepseek-flash over .doctrine finds no other record; design sec-4 presets table and DEC-007 already say deepseek-flash; DEC-003 names no model.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Codex verify pass (gpt-6-sol, 2026-10-18): revised text checked against repo, VERIFIED."
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "minor"
+title = "Gateway model-not-allowed error does not name the served list"
+detail = "(Codex) sec-10 lines 16-18 say the gateway error names what it serves. flakes features/agents/gateway/gateway_hooks.py:225-229 raises 403 with detail alias: model X not allowed — alias and requested model only. Proposed repair: describe the actual diagnostic; give G2 a concrete served-list comparison."
+disposition = "fix-now"
+route = "refresh"
+response = "Confirmed against gateway_hooks.py ModelGate. sec-10 now quotes the actual 403 text and says it does not list what is served; sec-9 G2 compares each gptel list name by name with the names declared in flakes agents/gateway.nix and with the gptel key's allowed list."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "refresh"
+response = "Confirmed against gateway_hooks.py ModelGate. sec-10 now quotes the actual 403 text and says it does not list what is served; sec-9 G2 compares each gptel list name by name with the names declared in flakes agents/gateway.nix and with the gptel key's allowed list."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Codex verify pass (gpt-6-sol, 2026-10-18): revised text checked against repo, VERIFIED."
+
+[[finding]]
+id = "F-5"
+status = "verified"
+severity = "minor"
+title = "VA rg check cannot produce its stated exceptions"
+detail = "(Codex) sec-9 lines 351-353: rg over apps/ and lisp/ is said to match only org-gcal, satan credential code and the env.zsh sourcing. org-gcal lives in org/dl-org-gcal.el, satan is another repo, env.zsh is outside both trees. Proposed repair: a precise zero-match check for the removed APIs, and separate checks for retained consumers."
+disposition = "fix-now"
+route = "control"
+response = """
+Contest accepted: apps/dl-eca.el:41 spells the launch as a list, op then run. sec-9 VA now searches all .el outside elpa for the removed functions and variables (my/op-key, my/op-read-env, dl-eca--launch-settings, dl-eca-jailed, dl-eca-toggle-jail) plus both spellings of op run (list form and prose). Positive control run on the current tree: it matches lisp/dl-secret.el, apps/dl-eca.el, apps/dl-gptel.el, apps/dl-minuet.el, apps/dl-agent-shell.el and lisp/test/dl-eca-test.el, all of which the slice edits.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "control"
+response = "Confirmed. sec-9 VA replaced: a zero-match rg for my/op-key and my/op-read-env over all .el outside elpa, and for op run in apps/dl-eca.el; a positive control (the same rg before the removal matches lisp/dl-secret.el); and separate checks that the retained consumers (my/op-read, my/satan-credential, env-file sourcing, org/dl-org-gcal.el) remain defined and load under just check."
+
+[[finding.turn]]
+act = "contest"
+role = "raiser"
+note = """
+(Codex verify pass) rg 'op run' apps/dl-eca.el misses the executable form ("op" "run" "--" "eca" "server") at apps/dl-eca.el:41; the check could pass with the unjailed launch path still present.
+"""
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "control"
+response = """
+Contest accepted: apps/dl-eca.el:41 spells the launch as a list, op then run. sec-9 VA now searches all .el outside elpa for the removed functions and variables (my/op-key, my/op-read-env, dl-eca--launch-settings, dl-eca-jailed, dl-eca-toggle-jail) plus both spellings of op run (list form and prose). Positive control run on the current tree: it matches lisp/dl-secret.el, apps/dl-eca.el, apps/dl-gptel.el, apps/dl-minuet.el, apps/dl-agent-shell.el and lisp/test/dl-eca-test.el, all of which the slice edits.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Codex verify pass 2: pattern matches the list form at apps/dl-eca.el:41; positive control holds."
+
+[[finding]]
+id = "F-6"
+status = "verified"
+severity = "minor"
+title = "Key issuance commands elided; G1 depends on them"
+detail = "(Codex) sec-3 lines 99-103 and sec-9 lines 324-334 leave models and budgets as ellipses and defer to DEC-010, which records gptel: deepseek-flash, budget 20; minuet: deepseek-flash, budget 5; gptel widened later via llm-gateway models. Proposed repair: put the exact issuance and widening commands in sec-9."
+disposition = "fix-now"
+route = "refresh"
+response = """
+Contest accepted: an ellipsis inside the argument would be taken literally. sec-9 [B] now gives the full comma-separated list: deepseek-flash, the eleven openrouter/ names of sec-4 and the fireworks name. Each was checked present in the CLI's baked MODELS list.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "refresh"
+response = "sec-9 now carries the exact DEC-010 issue commands (gptel: deepseek-flash, budget 20; minuet: deepseek-flash, budget 5; both with --out to the key file) and the [B] widening via llm-gateway models gptel to the sec-4 names. sec-3 says the error message omits model and budget by design and points to sec-9."
+
+[[finding.turn]]
+act = "contest"
+role = "raiser"
+note = """
+(Codex verify pass) The widening step omits the model argument. llm-gateway models replaces the whole allowed list (keystore.set_models), so naming only the openrouter/ and fireworks/ names would drop deepseek-flash from the gptel key.
+"""
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "refresh"
+response = """
+Contest accepted: models is positional, comma-separated, and replaces the list (llm-gateway argparse: replace a key's model list). sec-9 [B] now says so, and its sample names deepseek-flash plus every openrouter/ and fireworks/ name in one comma-separated argument. Also corrected my own first draft, which used a --models flag the models verb does not take.
+"""
+
+[[finding.turn]]
+act = "contest"
+role = "raiser"
+note = "(Codex verify pass 2) The widening sample still contains a literal ellipsis, which the CLI would take as a model name; the exact command is still missing."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "refresh"
+response = """
+Contest accepted: an ellipsis inside the argument would be taken literally. sec-9 [B] now gives the full comma-separated list: deepseek-flash, the eleven openrouter/ names of sec-4 and the fireworks name. Each was checked present in the CLI's baked MODELS list.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Codex verify pass 3: all 13 names match sec-4 and the CLI's MODELS; positional replace form correct."
+
+[[finding]]
+id = "F-7"
+status = "verified"
+severity = "minor"
+title = "G2 compares gptel lists with declared, not running, gateway models"
+detail = """
+(Codex verify pass) G2 compares gptel's full list with the models declared in gateway.nix but exercises only three presets; a running gateway with a stale model list would not be caught for an untried gptel model. Compare the full list with the running gateway's served names too.
+"""
+disposition = "fix-now"
+response = """
+Contest accepted: refuse_unserved checks the CLI's build-time MODELS list, not the running service. sec-9 no longer claims otherwise. G2 now checks each name against the key (llm-gateway list) and against the running service's GET /v1/models (verified to answer 401 without a key), fetched with the gptel key passed as a header from a process-substitution file descriptor so it never reaches argv.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """
+Accepted. llm-gateway refuses any name not configured on the running gateway (refuse_unserved, against the deployed config), so the [B] widening command with gptel's full list is the live served-list check. G2 now requires that command to succeed and llm-gateway list to show every name on the gptel key; the gateway.nix comparison is dropped as redundant.
+"""
+
+[[finding.turn]]
+act = "contest"
+role = "raiser"
+note = "(Codex verify pass 2) llm-gateway models checks against the CLI's baked MODELS list and llm-gateway list reads the key store; neither checks the running gateway's served list."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """
+Contest accepted: refuse_unserved checks the CLI's build-time MODELS list, not the running service. sec-9 no longer claims otherwise. G2 now checks each name against the key (llm-gateway list) and against the running service's GET /v1/models (verified to answer 401 without a key), fetched with the gptel key passed as a header from a process-substitution file descriptor so it never reaches argv.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Codex verify pass 3: G2 queries running /v1/models; dummy-key probe confirmed curl argv held only the /dev/fd path."
 
 # Findings are append-only `[[finding]]` tables, added by `review raise`.
 # Empty here at creation — a fresh review is Active, awaiting the raiser.

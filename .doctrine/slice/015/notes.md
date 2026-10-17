@@ -18,6 +18,15 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 - Doctrine gotcha: a `design apply` declare cannot use `needs` to point at
   nodes created in the same payload ("unknown node"). Create the nodes in
   one apply, then add `needs` in a second.
+- Review pass (RV-016, 2026-10-18): Codex (gpt-6-sol) adversarial pass,
+  then three verify rounds; concluded. No further pass needed: the
+  remaining doubts are runtime facts a reviewer cannot settle in a
+  read-only sandbox, and the plan already checks them —
+  - the `@quick` → `"none"` control (F-2), placed on a phase at `/plan`;
+  - G2's `/v1/models` query against the live gateway (Codex could not
+    reach local sockets);
+  - G1's observation that `@quick` replies carry no reasoning.
+  A further pass would probe exactly those, so it would duplicate G1/G2.
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->

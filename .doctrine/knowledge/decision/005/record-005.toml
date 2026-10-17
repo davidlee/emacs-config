@@ -12,7 +12,7 @@ tags = []
 
 [facet]                         # every field typed; seeded empty (captured later)
 context = "The gateway body guard admits both reasoning (OpenRouter nested) and reasoning_effort (flakes:SL-014 design)."
-choice = 'dl-gptel-request-shapers flattens (:reasoning (:effort E)) to :reasoning_effort for "deepseek" and "fireworks"; "openrouter" keeps the nested form.'
+choice = 'dl-gptel-request-shapers flattens (:reasoning (:effort E)) to :reasoning_effort for "fireworks"; "deepseek" gets its own shaper that flattens and maps effort "low" to "none", so @quick means thinking off and @think thinking on (LiteLLM turns every value but "none" into thinking enabled); "openrouter" keeps the nested form.'
 alternatives = ["flatten for every gateway backend", "key shaping on host"]
 rationale = "Each upstream gets its own dialect; the existing name-keyed alist needs one entry added."
 consequences = []

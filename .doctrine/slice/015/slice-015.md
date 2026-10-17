@@ -93,7 +93,7 @@ The user decided (2026-10-17):
 | `lisp/dl-llm-gateway.el` (new; name set in design) | gateway URL and per-client key reader |
 | `lisp/test/dl-llm-gateway-test.el` (new) | key reading and missing-key errors |
 | `apps/dl-gptel.el` | backends go through the gateway |
-| `apps/dl-gptel-shape.el` | flatten reasoning for `deepseek` too (DEC-005) |
+| `apps/dl-gptel-shape.el` | a `deepseek` shaper: flatten reasoning, effort `low` sent as `none` (DEC-005) |
 | `apps/dl-gptel-presets.el` | presets use gateway names (DEC-006) |
 | `custom-vars.el` | drop the `gptel-openrouter` package-vc entry (DEC-004) |
 | `apps/dl-minuet.el` | endpoint, key and model |
@@ -143,18 +143,19 @@ All resolved in design (2026-10-18):
 ## Verification / closure intent
 
 - ert: the gateway key reader resolves a client's file, errors on a
-  missing or unreadable file, and never calls 1Password.
-- `rg 'my/op-key|_API_KEY|op run' apps/ lisp/` shows only `org-gcal` and
-  documented exceptions.
+  missing or unreadable file, and never calls 1Password. `@deep` with
+  `@quick` sends thinking off (`"none"`) and with `@think` thinking on.
+- The removed key functions match nothing in the repo's `.el` files, with
+  a positive control and checks on the retained consumers (design sec-9).
 - Manual (VH): a gptel request on each backend and a minuet completion
   succeed, and `llm-gateway list` shows spend on the `gptel` and `minuet`
-  keys. Unjailed eca starts and chats (if kept).
+  keys.
 - `just check` green.
 
 ## Summary
 
-Point gptel, minuet and unjailed eca at the LLM gateway, each with its own
-key file. Remove their 1Password provider-key paths. Sequenced after
+Point gptel and minuet at the LLM gateway, each with its own key file,
+and delete unjailed eca. Remove their 1Password provider-key paths. Sequenced after
 flakes:IMP-029.
 
 ## Follow-Ups
