@@ -2,6 +2,17 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-10-18 — minuet through the local LLM gateway; eca toggle removed
+
+minuet's completions now go through the local LLM gateway
+(`dl-llm-gateway.el`, `http://127.0.0.1:4000/v1`) on minuet's own gateway
+key, using `deepseek-flash` with thinking off, instead of OpenRouter.
+`minuet-request-timeout` is unchanged.
+
+eca always runs sandboxed as `jailed-eca`, which reaches the gateway on its
+own key. The unjailed mode is gone: `dl-eca-toggle-jail` and the
+`dl-eca-jailed` option are removed.
+
 ## 2026-10-18 — gptel: DeepSeek through the local LLM gateway
 
 gptel's `deepseek` backend now goes through the local LLM gateway

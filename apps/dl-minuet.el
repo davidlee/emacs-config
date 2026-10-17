@@ -1,4 +1,6 @@
 ;;; dl-minuet.el --- Minuet -*- lexical-binding: t; -*-
+(require 'dl-llm-gateway)
+
 (use-package minuet
   :config
   (setq minuet-provider 'openai-compatible)
@@ -6,14 +8,15 @@
   (setq minuet-auto-suggestion-throttle-delay 1.5) ;; Increase to reduce costs and avoid rate limits
   (setq minuet-auto-suggestion-debounce-delay 0.6) ;; Increase to reduce costs and avoid rate limits
 
-  (plist-put minuet-openai-compatible-options :end-point "https://openrouter.ai/api/v1/chat/completions")
-  (plist-put minuet-openai-compatible-options :api-key (lambda () (my/op-read-env "OPENROUTER_API_KEY")))
-  (plist-put minuet-openai-compatible-options :model "deepseek/deepseek-v4-flash")
+  ;; Local LLM gateway, on minuet's own key (one key per consumer).
+  (plist-put minuet-openai-compatible-options :end-point
+             (concat dl-llm-gateway-url "/chat/completions"))
+  (plist-put minuet-openai-compatible-options :api-key
+             (lambda () (dl-llm-gateway-key "minuet")))
+  (plist-put minuet-openai-compatible-options :model "deepseek-flash")
 
-
-  ;; Prioritize throughput for faster completion
-  (minuet-set-optional-options minuet-openai-compatible-options :provider '(:sort "throughput"))
-  ;; Disable thinking to avoid first token latency
+  ;; Thinking off, for first-token latency: LiteLLM maps "none" to
+  ;; DeepSeek's thinking: disabled.
   (minuet-set-optional-options minuet-openai-compatible-options :reasoning_effort "none")
   (minuet-set-optional-options minuet-openai-compatible-options :max_tokens 56)
   (minuet-set-optional-options minuet-openai-compatible-options :top_p 0.9))
