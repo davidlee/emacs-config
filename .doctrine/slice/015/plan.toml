@@ -1,0 +1,155 @@
+# Implementation plan for SL-015 — the authored, durable phase plan.
+#
+# This is the single source of each phase's objective, criteria, verification,
+# and links. Runtime status lives separately under .doctrine/state/ (phase
+# tracking) — never record progress here. Hand-edit freely: the tool reads this
+# file but does not rewrite it.
+schema  = "doctrine.plan.overview"
+version = 1
+slice   = "SL-015"
+
+[specs]
+primary       = []
+collaborators = []
+
+[requirements]
+targets      = []
+dependencies = []
+
+# Ids are PHASE-NN, immutable, never reused; array order IS execution order.
+
+[[phase]]
+id        = "PHASE-01"
+name      = "Gateway access module"
+objective = "Add lisp/dl-llm-gateway.el (design sec-3): the gateway URL, the key directory, and dl-llm-gateway-key, which reads and trims a named client's key file on every call and signals a user-error naming the client and the llm-gateway issue command when the file is missing, unreadable or empty. No 1Password fallback, no setenv, no cache, no dependency on dl-secret or any client."
+entrance_criteria = [
+  { id = "EN-1", text = "SL-015 design locked (RV-016 conducted)." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "lisp/dl-llm-gateway.el defines dl-llm-gateway-url, dl-llm-gateway-key-directory and dl-llm-gateway-key as in design sec-3, and requires neither dl-secret nor any gptel or minuet feature." },
+  { id = "EX-2", text = "init.el requires dl-llm-gateway beside dl-secret; Emacs starts cleanly with no key files present." },
+  { id = "EX-3", text = "Both new files are git-added (flake builds see only tracked files)." },
+  { id = "EX-4", text = "just check green; bin/elisp-locate-paren-error ok on every touched .el." },
+]
+verification = [
+  { id = "VT-1", expects = "dl-llm-gateway-key returns the trimmed contents of <dir>/<client>, read fresh on each call (a rewritten file is seen on the next call)", test_file = "lisp/test/dl-llm-gateway-test.el", keywords = ["dl-llm-gateway-key", "dl-llm-gateway-key-directory"], waived = false },
+  { id = "VT-2", expects = "a missing, unreadable (mode 000) or empty key file signals user-error whose message names the client and llm-gateway issue", test_file = "lisp/test/dl-llm-gateway-test.el", keywords = ["user-error", "llm-gateway issue", "#o000"], waived = false },
+  { id = "VT-3", expects = "a stub op on PATH that records any call is never called by the reader, on success or on error", test_file = "lisp/test/dl-llm-gateway-test.el", keywords = ["exec-path", "\"op\""], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-02"
+name      = "gptel DeepSeek through the gateway"
+objective = "Step [A] for gptel (design sec-4, sec-9): the deepseek backend becomes gptel-make-deepseek on the gateway with the gptel key and model deepseek-flash; dl-gptel-deepseek-thinking becomes the deepseek shaper (effort low sent as none); @deep moves to backend deepseek. openrouter and fireworks stay direct on my/op-key until PHASE-05."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-01 complete." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "apps/dl-gptel.el: the deepseek backend is built with gptel-make-deepseek, :protocol and :host derived from dl-llm-gateway-url, endpoint path from the URL plus /chat/completions, :key (lambda () (dl-llm-gateway-key \"gptel\")), model deepseek-flash with the capabilities, mime-types and context window copied from gptel's own entry. A dl-gptel--gateway helper exists only if it makes the constructor calls clearer." },
+  { id = "EX-2", text = "apps/dl-gptel-shape.el: dl-gptel-deepseek-thinking as in design sec-4, and dl-gptel-request-shapers maps deepseek to it and fireworks to dl-gptel-flat-reasoning-effort." },
+  { id = "EX-3", text = "apps/dl-gptel-presets.el: @deep is backend deepseek, model deepseek-flash, description says via gateway; the preset commentary says effort on @deep is only on or off." },
+  { id = "EX-4", text = "openrouter and fireworks backends and the glm, gem, nemo presets are unchanged." },
+  { id = "EX-5", text = "CHANGELOG.md names the @deep preset and the deepseek backend change." },
+  { id = "EX-6", text = "just check green; paren check ok on every touched .el." },
+]
+verification = [
+  { id = "VT-1", expects = "RV-016 F-2 control: deep with quick, in either order, sends :reasoning_effort \"none\" and no :reasoning. Runs through the real gptel--request-data around-method with a deepseek stand-in built by gptel-make-deepseek. Observed failing with dl-gptel-flat-reasoning-effort as the deepseek entry (sends \"low\") before the shaper lands.", test_file = "lisp/test/dl-gptel-presets-test.el", keywords = ["gptel-make-deepseek", "quick", "\"none\""], waived = false },
+  { id = "VT-2", expects = "deep with think, in either order, sends :reasoning_effort \"high\" and no :reasoning", test_file = "lisp/test/dl-gptel-presets-test.el", keywords = ["think", "\"high\"", ":reasoning_effort"], waived = false },
+  { id = "VT-3", expects = "@deep selects backend deepseek and model deepseek-flash", test_file = "lisp/test/dl-gptel-presets-test.el", keywords = ["\"deepseek\"", "deepseek-flash"], waived = false },
+  { id = "VT-4", expects = "the existing fireworks-flat and openrouter-nested shaping tests still pass", test_file = "lisp/test/dl-gptel-presets-test.el", keywords = ["fireworks", "openrouter", ":reasoning"], waived = false },
+  { id = "VA-1", text = "The VT-1 red run (plain flattening sends \"low\") is recorded in the phase notes with its output." },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-03"
+name      = "minuet to the gateway; unjailed eca deleted"
+objective = "Step [A] for the other clients: minuet uses the gateway's deepseek-flash with the minuet key and thinking off (design sec-5); eca's unjailed mode and toggle are deleted and the jailed settings become plain :custom values (design sec-6)."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-01 complete." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "apps/dl-minuet.el requires dl-llm-gateway and sets end-point, api-key function, model deepseek-flash, reasoning_effort none, max_tokens 56 and top_p 0.9 as in design sec-5; the OpenRouter provider field and my/op-read-env call are gone; minuet-request-timeout unchanged." },
+  { id = "EX-2", text = "apps/dl-eca.el: dl-eca--launch-settings, dl-eca-jailed, dl-eca-toggle-jail and the unjailed/op run commentary are removed; eca-custom-command, eca-process-wrapper-function and eca-send-process-id are :custom values on the eca use-package; commentary says jailed eca gets its key from the gateway key file." },
+  { id = "EX-3", text = "lisp/test/dl-eca-test.el loses toggle-switches-launch-settings; the wrapper tests stay." },
+  { id = "EX-4", text = "CHANGELOG.md names the minuet change and the removal of dl-eca-toggle-jail." },
+  { id = "EX-5", text = "just check green; paren check ok on every touched .el." },
+]
+verification = [
+  { id = "VT-1", expects = "the eca wrapper tests pass", test_file = "lisp/test/dl-eca-test.el", keywords = ["dl-eca--run-in-first-root"], waived = false },
+  { id = "VA-1", text = "rg over .el outside elpa for dl-eca--launch-settings, dl-eca-jailed, dl-eca-toggle-jail matches nothing; rg for OPENROUTER, :provider and my/op-read-env in apps/dl-minuet.el matches nothing." },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-04"
+name      = "Gate G1: live DeepSeek through the gateway"
+objective = "Confirm step [A] end to end with real keys (design sec-9 G1). No code change expected; a failure here re-enters the phase that owns it."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-02 and PHASE-03 complete, and the running Emacs has loaded them." },
+  { id = "EN-2", text = "The user has issued the gptel and minuet keys with the exact commands in design sec-9 (DEC-010; needs sudo)." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "VH-1 to VH-3 pass and the outcome is recorded in slice notes." },
+]
+verification = [
+  { id = "VH-1", text = "A gptel @deep chat completes plain, with @quick and with @think; the @quick reply carries no reasoning and the @think reply does." },
+  { id = "VH-2", text = "A minuet completion appears in a buffer." },
+  { id = "VH-3", text = "llm-gateway list shows spend on the gptel and minuet aliases." },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-05"
+name      = "gptel OpenRouter and Fireworks through the gateway"
+objective = "Step [B] (design sec-4, sec-9): the openrouter and fireworks backends move to the gateway with the gptel key and gateway model names; gptel-openrouter and the dead gptel code are removed; glm, gem and nemo follow; then gate G2."
+entrance_criteria = [
+  { id = "EN-1", text = "flakes:SL-014 PHASE-05 complete: OpenRouter and Fireworks are live on the gateway." },
+  { id = "EN-2", text = "PHASE-04 passed." },
+  { id = "EN-3", text = "The user has widened the gptel key with the exact llm-gateway models gptel command in design sec-9 (the full list, deepseek-flash included)." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "apps/dl-gptel.el: openrouter and fireworks are gptel-make-openai backends on the gateway host with the gptel key and the model lists of design sec-4; no my/op-key call remains in the file, dl-gptel-openai-key is removed, and (require 'dl-secret) is dropped." },
+  { id = "EX-2", text = "The gptel-openrouter use-package block, its package-vc entry in custom-vars.el, the stale cache comment and dl-gptel-openrouter are removed." },
+  { id = "EX-3", text = "apps/dl-gptel-presets.el: glm, gem and nemo use the gateway names of design sec-4; descriptions say via gateway." },
+  { id = "EX-4", text = "apps/dl-gptel.el commentary describes three gateway backends plus OAuth; the curl --config - and no-:curl-args warning stays." },
+  { id = "EX-5", text = "CHANGELOG.md names the @glm, @gem and @nemo presets, the gptel backend move and the gptel-openrouter removal." },
+  { id = "EX-6", text = "just check green; paren check ok on every touched .el." },
+]
+verification = [
+  { id = "VT-1", expects = "test backend stand-ins use the gateway host for deepseek, openrouter and fireworks, and the presets tests use the gateway model names", test_file = "lisp/test/dl-gptel-presets-test.el", keywords = ["127.0.0.1", "openrouter/~z-ai/glm-latest", "fireworks/nemotron-lightning-3p5-30b-a3b"], waived = false },
+  { id = "VT-2", expects = "fireworks still sends flat reasoning_effort and openrouter the nested reasoning object, through the gateway backends", test_file = "lisp/test/dl-gptel-presets-test.el", keywords = [":reasoning_effort", ":reasoning"], waived = false },
+  { id = "VA-1", text = "rg over .el outside elpa for gptel-openrouter, dl-gptel-openrouter and dl-gptel-openai-key matches nothing." },
+  { id = "VH-1", text = "G2: one chat each on @glm, @gem and @nemo completes through the gateway." },
+  { id = "VH-2", text = "G2: every model in gptel's lists appears in llm-gateway list for the gptel key and in the running gateway's /v1/models, fetched with the curl command in design sec-9 (key via file descriptor, never argv)." },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-06"
+name      = "Remove 1Password provider-key paths; docs"
+objective = "Delete my/op-key, my/op-key-vault and my/op-read-env now that nothing calls them, and bring the docs to the final state (design sec-7, sec-9 VA)."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-05 complete." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "lisp/dl-secret.el no longer defines my/op-key, my/op-key-vault or my/op-read-env; my/op-read, my/op-forget, my/op-session-p, my/satan-credential, my/scrub-op-refs-env and the env-file sourcing remain." },
+  { id = "EX-2", text = "apps/dl-agent-shell.el's commented example no longer names my/op-key." },
+  { id = "EX-3", text = "docs/emacs/secrets.md: an LLM gateway keys section (reader, per-client files, llm-gateway issue/budget/models, link to the flakes rotation procedure, the Copy Curl clipboard and debug-log exposure); the gptel example uses the gateway; the API table drops my/op-read-env and adds the reader; the env-var flow is described as serving satan and org-gcal." },
+  { id = "EX-4", text = "AGENTS.md's secrets.md one-liner mentions gateway keys." },
+  { id = "EX-5", text = "CHANGELOG.md notes the removed functions." },
+  { id = "EX-6", text = "just check green; paren check ok on every touched .el." },
+]
+verification = [
+  { id = "VT-1", expects = "the retained dl-secret tests pass", test_file = "lisp/test/dl-secret-test.el", keywords = ["my/op-read", "my/op-session-p"], waived = false },
+  { id = "VA-1", text = "Positive control first: before the removals, the design sec-9 VA rg (my/op-key, my/op-read-env, dl-eca--launch-settings, dl-eca-jailed, dl-eca-toggle-jail, the op run list form and prose; all .el outside elpa) matches lisp/dl-secret.el. After them it matches nothing." },
+  { id = "VA-2", text = "my/op-read, my/satan-credential and the env-file sourcing are still defined in lisp/dl-secret.el, and org/dl-org-gcal.el still loads under just check." },
+]
+specs        = []
+requirements = []
