@@ -77,9 +77,7 @@
         (try-readwrite "/run/user/1000/emacs/server")
       ];
 
-      apiKeyJailOptions = with jailLib.combinators; [
-        (try-fwd-env "OPENROUTER_API_KEY")
-        (ro-bind "/usr/bin/env" "/usr/bin/env")
+      soundJailOptions = with jailLib.combinators; [
         pulse
         (try-readonly "/mnt/500G/home/david/.local/share/Steam/friends/voice_hang_up.wav")
       ];
@@ -94,7 +92,7 @@
         (set-env "PGPASSWORD" "postgres")
       ];
 
-      jailEnvOptions = apiKeyJailOptions ++ supabaseJailOptions ++ mcpJailOptions;
+      jailEnvOptions = soundJailOptions ++ supabaseJailOptions ++ mcpJailOptions;
       # workspaceDeps = [ "/home/david/.emacs.d/" ];
       workspaceDeps = [
         "/home/david/flakes/"
@@ -109,6 +107,11 @@
       # flake (~/dev/satan) at SL-012 PHASE-04. The jailed harness is
       # provisioned onto PATH via ~/flakes home.packages, not from here.
 
+      # Every jail reaches models through the local LLM gateway with the
+      # shared `pi` key (~/.config/llm-gateway/keys/pi); no provider key
+      # enters a jail. Reached only inside the Linux-only jailPkgs.
+      gateway = jailLib.gatewayClient "pi";
+
       jailPkgs = lib.optionalAttrs isLinux {
         jailed-pi = jailLib.makeJailedPi {
           profile = "specDev";
@@ -116,39 +119,18 @@
           maxSubagentDepth = 2;
           extraPkgs = projectPkgs;
           extraOptions = jailEnvOptions;
-          inherit workspaceDeps;
-          # Patch-agent adapter pre-resolves op:// refs via
-          # `my/op-read-env' (Emacs session cache) and exports the
-          # plaintext into `process-environment' before spawning, so
-          # skip the outer `op run' wrapper that would prompt
-          # biometric per launch.  `passApiKeysFromEnv = true' keeps
-          # the bwrap `--setenv VAR "$VAR"' forwarding so the
-          # caller-side env still flows into the jail.
-          useOpEnv = false;
-          passApiKeysFromEnv = true;
+          inherit gateway workspaceDeps;
         };
         jailed-pi-research = jailLib.makeJailedPi {
           name = "pi-research";
           profile = "research";
           extraPkgs = projectPkgs;
-          extraOptions = apiKeyJailOptions;
+          extraOptions = soundJailOptions;
           subagents = [
             "pi"
-            "dirge"
             "claude"
           ];
-          inherit workspaceDeps;
-        };
-        jailed-opencode = jailLib.makeJailedOpencode {
-          profile = "specDev";
-          extraPkgs = projectPkgs;
-          extraOptions = jailEnvOptions;
-          subagents = [
-            "pi"
-            "dirge"
-            "claude"
-          ];
-          inherit workspaceDeps;
+          inherit gateway workspaceDeps;
         };
         jailed-claude = jailLib.makeJailedClaude {
           profile = "specDev";
@@ -156,21 +138,9 @@
           extraOptions = jailEnvOptions;
           subagents = [
             "pi"
-            "dirge"
             "claude"
           ];
-          inherit workspaceDeps;
-        };
-        jailed-dirge = jailLib.makeJailedDirge {
-          profile = "specDev";
-          extraPkgs = projectPkgs;
-          extraOptions = apiKeyJailOptions;
-          subagents = [
-            "pi"
-            "dirge"
-            "claude"
-          ];
-          inherit workspaceDeps;
+          inherit gateway workspaceDeps;
         };
         # jailed-codex = jailLib.makeJailedCodex {
         #   profile = "specDev";
@@ -191,10 +161,10 @@
           extraPkgs = projectPkgs;
           subagents = [
             "pi"
-            "dirge"
             "claude"
           ];
           extraOptions = jailEnvOptions;
+          inherit gateway;
         };
         bubblewrap = pkgs.bubblewrap;
       };
@@ -215,7 +185,7 @@
 
       linuxCommands = lib.optionals isLinux [
         (mkCommand "jpi" ''
-          exec op run -- jailed-pi "$@"
+          exec jailed-pi "$@"
         '')
         (mkCommand "jcl" ''
           case "''${1:-}" in
