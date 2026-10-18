@@ -18,11 +18,15 @@
 (require 'dl-llm-gateway)
 (require 'dl-gptel-readonly)
 (require 'dl-gptel-shape)
+(require 'dl-gptel-macher)
 
 (use-package macher
   :custom
   ;; The org UI has structured conversations and nice content folding.
   (macher-action-buffer-ui 'org)
+  ;; Not the $HOME repo: see dl-gptel-macher.el.
+  (macher-workspace-functions
+   '(dl-gptel-macher-workspace-project macher-workspace-file))
 
   :hook
   ;; Set up action buffer behavior to your liking.  Alternately, do

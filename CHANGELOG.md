@@ -2,6 +2,18 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-10-18 — gptel send no longer hangs in buffers under ~
+
+Fix: sending from `gptel-menu` (or `gptel-send`) in a buffer whose
+project is the `$HOME` dotfiles repo, such as a gptel chat buffer in `~`,
+pinned Emacs at 100% CPU. macher lists every project file, untracked
+ones included (about 2.9M under `~`), before it builds the project
+summary for the system prompt. macher now never treats `$HOME` as a
+project workspace (`dl-gptel-macher-workspace-project` in
+`macher-workspace-functions`). A project of its own under `~` is
+unaffected. To break a hang like this, run `pkill -USR2 emacs`: it
+opens the debugger with a backtrace.
+
 ## 2026-10-18 — minuet through the local LLM gateway; eca toggle removed
 
 minuet's completions now go through the local LLM gateway
