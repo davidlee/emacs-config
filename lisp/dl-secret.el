@@ -89,41 +89,6 @@ Signals an error if `op' is missing, unauthenticated, or the ref is bad."
         (puthash ref val my/op--cache)
         val))))
 
-(defun my/op-read-env (var &optional refresh)
-  "Return the value of environment variable VAR.
-If VAR's value begins with `op://', resolve it via 1Password and return the
-resolved string; otherwise return the value as-is. Returns nil when VAR is
-unset. With non-nil REFRESH, bypass the op cache."
-  (when-let* ((raw (getenv var)))
-    (if (string-prefix-p "op://" raw)
-      (my/op-read raw refresh)
-      raw)))
-
-(defcustom my/op-key-vault "API_KEYS"
-  "1Password vault holding API credentials.
-
-Items in it are named `<ID>_API_KEY' with the secret in the `credential'
-field — see `my/op-key'."
-  :type 'string
-  :group 'my)
-
-(defun my/op-key (id &optional refresh)
-  "Return the API key for provider ID, e.g. \"OPENAI_ALT\".
-
-Derives the ref from `my/op-key-vault' by the convention shared with
-~/nushell/keys.nu and ~/flakes/pub/jailed-agents.nix:
-
-    op://VAULT/<ID>_API_KEY/credential
-
-so a new provider needs no declaration here. Prefer this over
-`my/op-read-env' for keys that have no reason to sit in the process
-environment — a ref only reaches `process-environment' (and from there
-any child process) if `~/.config/zsh/env.zsh' declares it.
-
-Cached per session; with non-nil REFRESH, bypass the cache."
-  (my/op-read (format "op://%s/%s_API_KEY/credential" my/op-key-vault id)
-    refresh))
-
 (defun my/op-forget ()
   "Clear cached 1Password secrets for this Emacs session."
   (interactive)

@@ -53,6 +53,27 @@ to a function returning those lines."
     (should-not (my/op-session-p))
     (should (equal (funcall argv) '("whoami")))))
 
+;;; `my/op-read' resolves op:// refs for org-gcal; cached per session.
+
+(ert-deftest dl-secret-op-read-resolves-and-caches ()
+  (dl-secret-test--with-stub-op (argv 0 "k3y\n")
+    (should (equal (my/op-read "op://v/i/f") "k3y"))
+    (should (equal (gethash "op://v/i/f" my/op--cache) "k3y"))
+    (should (equal (my/op-read "op://v/i/f") "k3y"))
+    (should (equal (funcall argv) '("read --no-newline op://v/i/f")))))
+
+(ert-deftest dl-secret-op-read-refresh-bypasses-cache ()
+  (dl-secret-test--with-stub-op (argv 0 "fresh")
+    (puthash "op://v/i/f" "stale" my/op--cache)
+    (should (equal (my/op-read "op://v/i/f") "stale"))
+    (should-not (funcall argv))
+    (should (equal (my/op-read "op://v/i/f" t) "fresh"))
+    (should (equal (funcall argv) '("read --no-newline op://v/i/f")))))
+
+(ert-deftest dl-secret-op-read-signals-on-failure ()
+  (dl-secret-test--with-stub-op (argv 1)
+    (should-error (my/op-read "op://v/i/f"))
+    (should-not (gethash "op://v/i/f" my/op--cache))))
 
 (provide 'dl-secret-test)
 ;;; dl-secret-test.el ends here

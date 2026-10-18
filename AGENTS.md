@@ -109,7 +109,7 @@ Full detail: [docs/emacs/traps.md](docs/emacs/traps.md).
 ## More
 
 - [docs/emacs/naming.md](docs/emacs/naming.md) — `dl-MODULE` / `my/` / `--private` conventions.
-- [docs/emacs/secrets.md](docs/emacs/secrets.md) — 1Password env-var flow, `dl-secret.el` API.
+- [docs/emacs/secrets.md](docs/emacs/secrets.md) — LLM gateway key files, 1Password env-var flow, `dl-secret.el` API.
 - [docs/emacs/debug-commands.md](docs/emacs/debug-commands.md) — rebuild, inspect, cache reset.
 - [docs/satan/INDEX.md](docs/satan/INDEX.md) — SATAN agent runtime (governance, memory, patch-agent, …).
 

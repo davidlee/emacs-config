@@ -22,15 +22,7 @@
     '("npx" "-y" "@agentclientprotocol/codex-acp"))
 
   ;; ChatGPT subscription, not an API key: `codex login status' reports
-  ;; "Logged in using ChatGPT" and codex-acp reuses those credentials.  A
-  ;; subscription carries no API credits, so the OpenAI key in dl-gptel.el
-  ;; is not an alternative here until that account is topped up.  If it is:
-  ;;
-  ;;   (agent-shell-openai-make-authentication
-  ;;     :api-key (lambda () (my/op-key "OPENAI_ALT")))
-  ;;
-  ;; — but note the filter below builds every agent's client to test it, so
-  ;; a key-resolving lambda would hit 1Password each time the picker opens.
+  ;; "Logged in using ChatGPT" and codex-acp reuses those credentials.
   (setq agent-shell-openai-authentication
     (agent-shell-openai-make-authentication :login t))
 

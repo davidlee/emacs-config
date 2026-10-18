@@ -2,6 +2,19 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-10-18 — 1Password provider-key helpers removed
+
+`my/op-key`, `my/op-key-vault` (a user option) and `my/op-read-env` are
+removed from `dl-secret.el`: gptel and minuet read their keys from LLM
+gateway key files (`dl-llm-gateway-key`), so nothing in the config
+called them. `my/op-read`, `my/op-forget`, `my/op-session-p` and the
+env-file sourcing stay, for org-gcal and satan. The stale example in
+`dl-agent-shell.el` that named `my/op-key` is gone.
+
+`docs/emacs/secrets.md` now documents the gateway key files, the
+`llm-gateway` commands that manage them, and the 1Password flow that
+remains. No commands or keys change.
+
 ## 2026-10-18 — gptel: OpenRouter and Fireworks through the local LLM gateway
 
 gptel's `openrouter` and `fireworks` backends now go through the local
