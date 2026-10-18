@@ -56,7 +56,7 @@ Emacs restarted.
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-18 · audit (RV-017 concluded) · e4e2c86
+fresh-as-of: 2026-10-18 · done (RV-017 reconciled) · a119fb2
 
 ### Produced
 - PHASE-01 — `lisp/dl-llm-gateway.el` key reader + tests (c58e527)
@@ -81,6 +81,6 @@ fresh-as-of: 2026-10-18 · audit (RV-017 concluded) · e4e2c86
 - mem.fact.doctrine.design-section-edit — edit run sections via declare body + materialise
 
 ### Open
-- DEC-005 — superseded at /reconcile per RV-017 brief (flat effort on all gateway backends)
+- DEC-011 — flat reasoning_effort on all gateway backends (supersedes DEC-005)
 - flakes:IMP-038 — gateway-side test pinning flat effort per provider
 - flakes-side follow-ups (flakes:SL-013's gptel non-goal, README unjailed-eca line, CHR-007) — to raise in ~/flakes (design sec-11)
