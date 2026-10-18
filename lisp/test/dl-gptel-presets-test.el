@@ -17,15 +17,18 @@
     ("org-read" . "mcp-org-mcp"))
   "Stand-ins for the tools the presets name: (NAME . CATEGORY).")
 
+(defconst dl-gptel-presets-test--gateway-host "127.0.0.1:4000"
+  "The LLM gateway's host and port, as gptel is given them.")
+
 (defconst dl-gptel-presets-test--backends
-  '(("openai-sub" gptel-make-openai "api.openai.com")
-    ("deepseek" gptel-make-deepseek "127.0.0.1:4000")
-    ("openrouter" gptel-make-openai "openrouter.ai")
-    ("fireworks" gptel-make-openai "api.fireworks.ai"))
+  `(("openai-sub" gptel-make-openai "api.openai.com")
+    ("deepseek" gptel-make-deepseek ,dl-gptel-presets-test--gateway-host)
+    ("openrouter" gptel-make-openai ,dl-gptel-presets-test--gateway-host)
+    ("fireworks" gptel-make-openai ,dl-gptel-presets-test--gateway-host))
   "Stand-ins for the backends the presets name: (NAME CONSTRUCTOR HOST).
 CONSTRUCTOR gives the backend its real class, which request shaping
 dispatches on.  The host picks gptel's API dialect: Responses for
-OpenAI, else chat completions.")
+OpenAI, else chat completions.  All but openai-sub are the gateway.")
 
 (defmacro dl-gptel-presets-test--sandbox (&rest body)
   "Run BODY against fake tools and backends, with gptel's options isolated.
@@ -122,6 +125,17 @@ One (ORDER REASONING-EFFORT NESTED) per order, NESTED being the
    (should (equal (gptel-backend-name gptel-backend) "deepseek"))
    (should (eq gptel-model 'deepseek-flash))))
 
+(ert-deftest dl-gptel-presets/model-presets-use-gateway-names ()
+  "@glm, @gem and @nemo name their backend and the gateway's model name."
+  (dl-gptel-presets-test--sandbox
+   (pcase-dolist (`(,preset ,backend ,model)
+                  '((glm "openrouter" openrouter/~z-ai/glm-latest)
+                    (gem "openrouter" openrouter/google/gemini-3.8-flash)
+                    (nemo "fireworks" fireworks/nemotron-lightning-3p5-30b-a3b)))
+     (gptel--apply-preset preset)
+     (should (equal (gptel-backend-name gptel-backend) backend))
+     (should (eq gptel-model model)))))
+
 (ert-deftest dl-gptel-presets/effort-merges-and-last-wins ()
   "Effort presets merge into the request params; the later one wins."
   (dl-gptel-presets-test--sandbox
@@ -135,10 +149,8 @@ One (ORDER REASONING-EFFORT NESTED) per order, NESTED being the
 (ert-deftest dl-gptel-presets/effort-reaches-fireworks-flat-in-any-order ()
   "Fireworks gets effort as reasoning_effort, whichever cookie comes first."
   (dl-gptel-presets-test--sandbox
-   (dolist (order '((nemo think) (think nemo)))
-     (let ((data (apply #'dl-gptel-presets-test--request order)))
-       (should (equal (plist-get data :reasoning_effort) "high"))
-       (should-not (plist-member data :reasoning))))))
+   (should (equal (dl-gptel-presets-test--effort-in-both-orders 'nemo 'think)
+                  '(((nemo think) "high" nil) ((think nemo) "high" nil))))))
 
 (ert-deftest dl-gptel-presets/quick-turns-deepseek-thinking-off-in-any-order ()
   "@quick on DeepSeek sends effort \"none\", whichever cookie comes first.
@@ -154,12 +166,13 @@ turns into thinking on, since DeepSeek's thinking is only on or off."
    (should (equal (dl-gptel-presets-test--effort-in-both-orders 'deep 'think)
                   '(((deep think) "high" nil) ((think deep) "high" nil))))))
 
-(ert-deftest dl-gptel-presets/effort-reaches-openrouter-nested ()
-  "Backends without a shaper get the effort presets' request params as is."
+(ert-deftest dl-gptel-presets/effort-reaches-openrouter-flat-in-any-order ()
+  "OpenRouter models get flat reasoning_effort, whichever cookie comes first.
+The gateway's contract is the flat field (flakes:SPEC-001 FR-006,
+flakes:DEC-074), not OpenRouter's nested :reasoning object."
   (dl-gptel-presets-test--sandbox
-   (let ((data (dl-gptel-presets-test--request 'gem 'quick)))
-     (should (equal (plist-get data :reasoning) '(:effort "low")))
-     (should-not (plist-member data :reasoning_effort)))))
+   (should (equal (dl-gptel-presets-test--effort-in-both-orders 'gem 'quick)
+                  '(((gem quick) "low" nil) ((quick gem) "low" nil))))))
 
 (ert-deftest dl-gptel-presets/see-adds-visible-buffers-but-not-chats ()
   "@see adds the buffers on screen to the context, leaving out gptel chats."

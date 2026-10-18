@@ -1,20 +1,19 @@
 ;;; dl-gptel.el --- gptel - minimalist agent chat harness -*- lexical-binding: t; -*-
 
 ;;; Commentary:
-;; Four providers: OpenAI on its OAuth backend, DeepSeek through the
-;; local LLM gateway (see dl-llm-gateway.el) on gptel's own gateway key,
-;; Fireworks direct (fast, cheap open-weight models), and OpenRouter as
-;; the catch-all router.  Fireworks and OpenRouter still resolve their keys
-;; through `my/op-key' (see dl-secret.el) until they move to the gateway.
-;; Every key is read at request time, so no plaintext lands in
-;; `process-environment'.  gptel sends requests via `curl --config -' over
-;; stdin, so the Authorization header never reaches /proc/<pid>/cmdline
-;; either — do not add a backend `:curl-args' that passes it as `-H'.
+;; OpenAI on its OAuth backend (`openai-sub'), and three backends through
+;; the local LLM gateway (see dl-llm-gateway.el) on gptel's own gateway
+;; key: DeepSeek natively, OpenRouter, and Fireworks (fast, cheap
+;; open-weight models).  Gateway model names are listed explicitly, as
+;; the gateway serves them.  The key is read at request time, so no
+;; plaintext lands in `process-environment'.  gptel sends requests via
+;; `curl --config -' over stdin, so the Authorization header never
+;; reaches /proc/<pid>/cmdline either — do not add a backend
+;; `:curl-args' that passes it as `-H'.
 
 ;;; Code:
 
 (require 'url-parse)
-(require 'dl-secret)
 (require 'dl-llm-gateway)
 (require 'dl-gptel-readonly)
 (require 'dl-gptel-shape)
@@ -64,15 +63,6 @@
   ;; Optional - set up macher as soon as gptel is loaded.
   (require 'macher))
 
-(defvar dl-gptel-openrouter nil
-  "The OpenRouter backend, or nil before `gptel-openrouter' has loaded.")
-
-(defun dl-gptel-openai-key ()
-  "Return the OpenAI API key: the alt credential, not $OPENAI_API_KEY.
-Also the value of `gptel-api-key', so gptel's built-in OpenAI backend
-uses the same account rather than falling through to auth-source."
-  (my/op-key "OPENAI_ALT"))
-
 (defun dl-gptel--gateway ()
   "Return gptel connection args for `dl-llm-gateway-url'.
 A plist of :protocol, :host (with its port, as gptel builds the URL
@@ -84,6 +74,10 @@ from protocol, host and endpoint only) and :endpoint (chat completions)."
           :endpoint (concat (string-remove-suffix "/" (url-filename url))
                             "/chat/completions"))))
 
+(defun dl-gptel--key ()
+  "Return gptel's key for the LLM gateway, read afresh on every request."
+  (dl-llm-gateway-key "gptel"))
+
 ;;
 ;; LOAD GPTEL
 ;;
@@ -92,7 +86,7 @@ from protocol, host and endpoint only) and :endpoint (chat completions)."
   ;; Through the gateway.  The model list is explicit: gptel's default
   ;; also names models the gateway does not serve.
   (apply #'gptel-make-deepseek "deepseek"
-         :key (lambda () (dl-llm-gateway-key "gptel"))
+         :key #'dl-gptel--key
          :stream t
          :models '((deepseek-flash
                     :capabilities (media tool-use reasoning url)
@@ -100,13 +94,33 @@ from protocol, host and endpoint only) and :endpoint (chat completions)."
                     :context-window 1000))
          (dl-gptel--gateway))
 
-  ;; OpenAI-compatible; model ids are Fireworks' full resource paths.
-  (gptel-make-openai "fireworks"
-    :host "api.fireworks.ai"
-    :endpoint "/inference/v1/chat/completions"
-    :key (lambda () (my/op-key "FIREWORKS"))
-    :stream t
-    :models '(accounts/fireworks/models/nemotron-lightning-3p5-30b-a3b))
+  ;; Gateway names are `openrouter/<OpenRouter id>', so OpenRouter's own
+  ;; routers carry a double prefix.  No DeepSeek ids: that is `deepseek'.
+  ;; Plain symbols carry no capabilities, so images are not sent.
+  (apply #'gptel-make-openai "openrouter"
+         :key #'dl-gptel--key
+         :stream t
+         :models '(openrouter/openrouter/auto
+                   openrouter/openrouter/free
+                   openrouter/openrouter/pareto-code
+
+                   openrouter/qwen/qwen3.8-flash
+                   openrouter/z-ai/glm-5.3-flash
+                   openrouter/~z-ai/glm-flash-latest
+                   openrouter/~z-ai/glm-latest
+
+                   openrouter/google/gemini-3.8-flash
+                   openrouter/google/gemini-3-flash-preview
+
+                   openrouter/xiaomi/mimo-v2.6-pro
+                   openrouter/xiaomi/mimo-v2.6-flash)
+         (dl-gptel--gateway))
+
+  (apply #'gptel-make-openai "fireworks"
+         :key #'dl-gptel--key
+         :stream t
+         :models '(fireworks/nemotron-lightning-3p5-30b-a3b)
+         (dl-gptel--gateway))
 
   (setq gptel-model 'gpt-5.6-terra
     gptel-backend (gptel-make-openai-oauth "openai-sub")))
@@ -121,46 +135,6 @@ from protocol, host and endpoint only) and :endpoint (chat completions)."
   :vc ( :url "https://github.com/karthink/gptel-annotate"
         :rev :newest)
   :after gptel)
-
-(use-package gptel-openrouter
-  :ensure nil
-  :vc (:url "https://github.com/darcamo/gptel-openrouter.git")
-  :after gptel
-  :config
-  (require 'macher)
-  ;; The default backend, set below: OpenRouter routes everything, and its
-  ;; own key is the one with credit on it.
-  ;;
-  ;; OpenRouter is the router, so its model list is hand-picked — the
-  ;; upstream catalogue is thousands long.  `openai/*' entries are
-  ;; deliberately absent: GPT models belong on the direct backend above,
-  ;; which bills the alt key.
-  (setq dl-gptel-openrouter
-    (gptel-make-openai "openrouter"
-      :host "openrouter.ai"
-      :endpoint "/api/v1/chat/completions"
-      :key (lambda () (my/op-key "OPENROUTER"))
-      :stream t
-      ;;  cat ~/.config/emacs/.cache/gptel-openrouter/models.json| jq '.data[].id' | sort
-      :models (gptel-openrouter-get-annotated-models
-                '(
-                   openrouter/auto
-                   openrouter/free
-                   openrouter/pareto-code
-
-                   qwen/qwen-3.8-flash
-                   z-ai/glm-5.3-flash
-                   ~z-ai/glm-flash-latest
-                   ~z-ai/glm-latest
-
-                   google/gemini-3.8-flash
-                   google/gemini-3-flash-preview
-
-                   xiaomi/mimo-v2.6-pro
-                   xiaomi/mimo-v2.6-flash
-
-                   ;;
-                   )))))
 
 ;;
 ;; Tools

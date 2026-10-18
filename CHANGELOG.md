@@ -2,6 +2,26 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-10-18 — gptel: OpenRouter and Fireworks through the local LLM gateway
+
+gptel's `openrouter` and `fireworks` backends now go through the local
+LLM gateway (`dl-llm-gateway.el`, `http://127.0.0.1:4000/v1`) on gptel's
+own gateway key, like `deepseek`. Model names are the gateway's:
+`@glm` is `openrouter/~z-ai/glm-latest`, `@gem` is
+`openrouter/google/gemini-3.8-flash`, and `@nemo` is
+`fireworks/nemotron-lightning-3p5-30b-a3b`. The other OpenRouter models
+are listed under the same `openrouter/` prefix.
+
+`@quick` and `@think` are unchanged in use, but OpenRouter models now get
+the effort as the gateway's flat `reasoning_effort`, as Fireworks and
+DeepSeek do.
+
+The `gptel-openrouter` package is removed: gptel no longer has its
+annotated OpenRouter model list, so images are not sent to the
+OpenRouter models (`@gem`, `@glm`). `M-x package-delete` clears the
+leftover `elpa/gptel-openrouter`. Removed symbols: `dl-gptel-openrouter`
+and `dl-gptel-openai-key`; no commands are removed.
+
 ## 2026-10-18 — gptel send no longer hangs in buffers under ~
 
 Fix: sending from `gptel-menu` (or `gptel-send`) in a buffer whose
@@ -44,8 +64,9 @@ in `magit-status`) without loading hi-lock, so the refresh failed with
 magit.
 
 gptel's `openrouter` backend no longer lists `deepseek/deepseek-flash`,
-which OpenRouter rejects as "not a valid model ID". `@deep` is
-unaffected: it uses `~deepseek/deepseek-flash-latest`.
+which OpenRouter rejects as "not a valid model ID". `@deep` was
+unaffected (it then used `~deepseek/deepseek-flash-latest`; it now goes
+through the gateway, see above).
 
 ## 2026-10-14 — org-ql: notes-wide find and search; review reports see every note
 

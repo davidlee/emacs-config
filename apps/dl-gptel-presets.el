@@ -64,13 +64,13 @@
          :backend "openai-sub" :model gpt-5.6-terra)
     (deep :description "model: DeepSeek flash, via gateway"
           :backend "deepseek" :model deepseek-flash)
-    (glm :description "model: GLM, OpenRouter"
-         :backend "openrouter" :model ~z-ai/glm-latest)
-    (gem :description "model: Gemini flash, OpenRouter"
-         :backend "openrouter" :model google/gemini-3.8-flash)
-    (nemo :description "model: Nemotron lightning, Fireworks"
+    (glm :description "model: GLM, via gateway"
+         :backend "openrouter" :model openrouter/~z-ai/glm-latest)
+    (gem :description "model: Gemini flash, via gateway"
+         :backend "openrouter" :model openrouter/google/gemini-3.8-flash)
+    (nemo :description "model: Nemotron lightning, via gateway"
           :backend "fireworks"
-          :model accounts/fireworks/models/nemotron-lightning-3p5-30b-a3b)
+          :model fireworks/nemotron-lightning-3p5-30b-a3b)
 
     (quick :description "effort: low reasoning"
            :request-params (:merge (:reasoning (:effort "low"))))

@@ -2,10 +2,12 @@
 
 ;;; Commentary:
 ;; Presets speak one dialect: effort is (:reasoning (:effort E)), as the
-;; Responses API and OpenRouter take it.  Providers that want something
-;; else get a shaper here, applied when gptel builds the request body —
-;; after every @cookie, so the backend is final whatever their order.
-;; DeepSeek gets its own shaper because its effort is only on or off.
+;; Responses API (the openai-sub backend) takes it.  Every gateway backend
+;; gets a shaper here that flattens it to reasoning_effort, the LLM
+;; gateway's contract (flakes:SPEC-001 FR-006).  Shapers are applied when
+;; gptel builds the request body — after every @cookie, so the backend is
+;; final whatever their order.  DeepSeek gets its own shaper because its
+;; effort is only on or off.
 ;;
 ;; Hooks `gptel--request-data', which is internal: if a gptel update
 ;; changes it, dl-gptel-presets-test fails rather than requests going
@@ -18,7 +20,7 @@
 
 (defun dl-gptel-flat-reasoning-effort (data)
   "Return request DATA with (:reasoning (:effort E)) as :reasoning_effort E.
-For OpenAI chat-completions providers, such as Fireworks, that reject
+For OpenAI chat-completions providers, such as the LLM gateway, that reject
 the nested form."
   (if-let* ((effort (plist-get (plist-get data :reasoning) :effort)))
       (plist-put (map-delete (copy-sequence data) :reasoning)
@@ -35,6 +37,7 @@ DeepSeek's thinking is on or off; LiteLLM disables it only for \"none\"."
 
 (defvar dl-gptel-request-shapers
   '(("deepseek" . dl-gptel-deepseek-thinking)
+    ("openrouter" . dl-gptel-flat-reasoning-effort)
     ("fireworks" . dl-gptel-flat-reasoning-effort))
   "Alist of backend name to a function that reshapes its request body.")
 

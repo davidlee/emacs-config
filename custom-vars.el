@@ -35,8 +35,6 @@
  '(package-vc-selected-packages
     '((gptel-annotate :url "https://github.com/karthink/gptel-annotate")
        (eca :url "https://github.com/editor-code-assistant/eca-emacs")
-       (gptel-openrouter :url
-         "https://github.com/darcamo/gptel-openrouter.git")
        (claude-code-ide :url
          "https://github.com/manzaltu/claude-code-ide.el")
        (ghostel :url "https://github.com/dakra/ghostel")

@@ -121,10 +121,12 @@ exit_criteria = [
   { id = "EX-4", text = "apps/dl-gptel.el commentary describes three gateway backends plus OAuth; the curl --config - and no-:curl-args warning stays." },
   { id = "EX-5", text = "CHANGELOG.md names the @glm, @gem and @nemo presets, the gptel backend move and the gptel-openrouter removal." },
   { id = "EX-6", text = "just check green; paren check ok on every touched .el." },
+  { id = "EX-7", text = "apps/dl-gptel-shape.el maps openrouter to dl-gptel-flat-reasoning-effort (no new shaper); its commentary says every gateway backend sends flat reasoning_effort (flakes:SPEC-001 FR-006, flakes:DEC-074; user-directed 2026-10-18)." },
 ]
 verification = [
   { id = "VT-1", expects = "test backend stand-ins use the gateway host for deepseek, openrouter and fireworks, and the presets tests use the gateway model names", test_file = "lisp/test/dl-gptel-presets-test.el", keywords = ["127.0.0.1", "openrouter/~z-ai/glm-latest", "fireworks/nemotron-lightning-3p5-30b-a3b"], waived = false },
-  { id = "VT-2", expects = "fireworks still sends flat reasoning_effort and openrouter the nested reasoning object, through the gateway backends", test_file = "lisp/test/dl-gptel-presets-test.el", keywords = [":reasoning_effort", ":reasoning"], waived = false },
+  { id = "VT-2", expects = "fireworks still sends flat reasoning_effort and openrouter the nested reasoning object, through the gateway backends", test_file = "lisp/test/dl-gptel-presets-test.el", keywords = [":reasoning_effort", ":reasoning"], waived = true },
+  { id = "VT-3", expects = "fireworks and openrouter each send flat reasoning_effort and no :reasoning, in either cookie order, through the gateway backends (flakes:SPEC-001 FR-006, flakes:DEC-074; supersedes VT-2's nested-openrouter expectation, user-directed 2026-10-18)", test_file = "lisp/test/dl-gptel-presets-test.el", keywords = ["openrouter-flat", "fireworks", ":reasoning_effort"], waived = false },
   { id = "VA-1", text = "rg over .el outside elpa for gptel-openrouter, dl-gptel-openrouter and dl-gptel-openai-key matches nothing." },
   { id = "VH-1", text = "G2: one chat each on @glm, @gem and @nemo completes through the gateway." },
   { id = "VH-2", text = "G2: every model in gptel's lists appears in llm-gateway list for the gptel key and in the running gateway's /v1/models, fetched with the curl command in design sec-9 (key via file descriptor, never argv)." },
