@@ -28,6 +28,22 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
   - G1's observation that `@quick` replies carry no reasoning.
   A further pass would probe exactly those, so it would duplicate G1/G2.
 
+## G1 (PHASE-04) — 2026-10-18, user-observed
+
+Prereqs done by the user: `gptel` and `minuet` keys issued, `just home-switch`,
+Emacs restarted.
+
+- VH-1 pass: a gptel chat routed to `@deep` completed plain; `@quick` replied
+  fast with no reasoning block; `@think` replied with a reasoning block. This is
+  also first live evidence that flat `reasoning_effort` maps correctly on
+  DeepSeek through the gateway (flakes:DEC-074 lists that as unverified;
+  flakes:IMP-038 owns the pinning test).
+- VH-2 pass: a minuet completion appeared in a buffer.
+- VH-3 pass: `llm-gateway list` shows spend on `gptel` (0.0008 USD) and
+  `minuet` (0.0005 USD), both on `deepseek-flash`.
+- Side finding, fixed outside the slice in `177c5f4`: macher treated the
+  `$HOME` repo as a workspace and scanned every file under `~`.
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
 fresh-as-of: 2026-10-18 · ready (PHASE-01 next) · 33a83a7
