@@ -245,6 +245,14 @@ silently-frozen feed (not mere capture lag) trips the louder signal."
         "CRIT" "WARN"))
    (t "WARN")))
 
+(defun sleipnir-doctor--probe->doctor (name status)
+  "Doctor status for sensor NAME reporting STATUS.
+No browser segments today is Firefox being closed, not a fault: the
+panopticon provider's raw/firefox check owns that feed's liveness."
+  (if (and (equal name "browser") (equal status "missing"))
+      "OK"
+    (sleipnir-doctor--sensor-status->doctor status)))
+
 (defun sleipnir-doctor--satan-sensors ()
   "Probe the panopticon feeds the evidence assembler reads.
 The current window is replayed from panopticon's raw desktop log at
@@ -279,7 +287,7 @@ overall status."
                           (format "segments/browser-%s.jsonl" today) root)
                          start end 1 now)))))
            (statuses (mapcar (lambda (p)
-                               (sleipnir-doctor--sensor-status->doctor (cdr p)))
+                               (sleipnir-doctor--probe->doctor (car p) (cdr p)))
                              probes))
            (overall (cond ((member "CRIT" statuses) "CRIT")
                           ((member "WARN" statuses) "WARN")
@@ -376,14 +384,28 @@ overall status."
      ((not (file-exists-p db))
       (sleipnir-doctor--check "Org" "roam-db" "CRIT" "db file missing"))
      (t
-      (let ((age-secs (float-time
-                       (time-subtract
-                        nil (file-attribute-modification-time
-                             (file-attributes db))))))
-        (sleipnir-doctor--check
-         "Org" "roam-db"
-         (if (> age-secs 86400) "WARN" "OK")
-         (sleipnir-doctor--human-duration age-secs)))))))
+      (let* ((db-mtime (float-time (file-attribute-modification-time
+                                    (file-attributes db))))
+             (notes (and (boundp 'dl-notes-root)
+                         (file-directory-p dl-notes-root)
+                         (directory-files-recursively dl-notes-root "\\.org\\'")))
+             (newest (and notes
+                          (apply #'max (mapcar (lambda (f)
+                                                 (float-time (file-attribute-modification-time
+                                                              (file-attributes f))))
+                                               notes)))))
+        (let ((status (sleipnir-doctor--roam-db-status db-mtime newest)))
+          (sleipnir-doctor--check
+           "Org" "roam-db" status
+           (concat (sleipnir-doctor--human-duration (- (float-time) db-mtime))
+                   (if (equal status "WARN") ", notes changed since" "")))))))))
+
+(defun sleipnir-doctor--roam-db-status (db-mtime newest-note-mtime)
+  "WARN when a note is over an hour newer than the db: it is out of sync.
+An old db alone is fine; it only changes when notes do."
+  (if (and newest-note-mtime (> (- newest-note-mtime db-mtime) 3600))
+      "WARN"
+    "OK"))
 
 (defun sleipnir-doctor--org-agenda-files ()
   (let* ((files (cond
