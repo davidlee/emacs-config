@@ -45,7 +45,10 @@
         else {};
       doctrine-pkg = doctrine.packages.${system}.default;
       wrappedEmacs = inputs.emacs.packages.${system}.default;
-      projectPkgs = with pkgs;
+      # The tool set minus the agents. Exported as `packages.dev-tools` for the
+      # oubliette room's `toolsPackage`, where the agents come from the room
+      # (IMP-025).
+      devToolPkgs = with pkgs;
         [
           zigPackage # ghostel compile
           nodejs_latest # acp
@@ -57,12 +60,16 @@
           sqlite
           socat
           bun
-          (jailLib.unjailed.codex or codex) # llm-agents build on linux
-          (jailLib.unjailed.claude)
           helix
           gdb # debugging emacs
         ]
-        ++ [doctrine-pkg]
+        ++ [doctrine-pkg];
+      projectPkgs =
+        devToolPkgs
+        ++ [
+          (jailLib.unjailed.codex or pkgs.codex) # llm-agents build on linux
+          (jailLib.unjailed.claude)
+        ]
         ++ lib.optionals isLinux [
           jailLib.agentsByName.claude
           jailLib.agentsByName.pi
@@ -198,7 +205,17 @@
         '')
       ];
     in {
-      packages = lib.optionalAttrs isLinux jailPkgs;
+      packages =
+        lib.optionalAttrs isLinux jailPkgs
+        // {
+          # The devshell's tool set as one closure, so the VM and the devshell
+          # can't drift.
+          dev-tools = pkgs.buildEnv {
+            name = "emacs-config-dev-tools";
+            paths = devToolPkgs;
+            ignoreCollisions = true;
+          };
+        };
 
       devShell = pkgs.mkShell {
         packages =

@@ -5,10 +5,10 @@ id = 25
 slug = "export-a-dev-tools-closure-for-the-microvm-capsule"
 title = "Export a dev-tools closure for the microvm capsule"
 kind = "improvement"
-status = "open"
-resolution = ""                 # seeded empty so `backlog edit` sets it in place
+status = "resolved"
+resolution = "done"
 created = "2026-10-16"
-updated = "2026-10-16"
+updated = "2026-10-18"
 tags = ["capsule", "nix", "oubliette"]
 
 # outbound-only. Cross-kind structural edges (e.g. references with a role
