@@ -447,7 +447,8 @@ An old db alone is fine; it only changes when notes do."
 (sleipnir-doctor--register 'patch-review    #'sleipnir-doctor--patch-pending-review)
 (sleipnir-doctor--register 'patch-worktrees #'sleipnir-doctor--patch-worktrees)
 (sleipnir-doctor--register 'org-notes-root  #'sleipnir-doctor--org-notes-root)
-(sleipnir-doctor--register 'org-roam-db     #'sleipnir-doctor--org-roam-db)
+;; Off: org-roam is not loaded, so its db never syncs; kept for a return.
+;; (sleipnir-doctor--register 'org-roam-db     #'sleipnir-doctor--org-roam-db)
 (sleipnir-doctor--register 'org-agenda      #'sleipnir-doctor--org-agenda-files)
 (sleipnir-doctor--register 'org-inbox       #'sleipnir-doctor--org-inbox)
 
