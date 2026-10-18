@@ -57,37 +57,37 @@ notification daemon must never break a secret read."
   (ignore-errors
     (require 'notifications)
     (notifications-notify
-     :title "1Password read"
-     :body (format "%s → %s" (or my/op-read-context "emacs") ref)
-     :timeout 4000)))
+      :title "1Password read"
+      :body (format "%s → %s" (or my/op-read-context "emacs") ref)
+      :timeout 4000)))
 
 (defun my/op-read (ref &optional refresh)
   "Resolve a 1Password REF (op://vault/item/field) to its plaintext value.
 Cached for the Emacs session. With non-nil REFRESH, bypass the cache.
 Signals an error if `op' is missing, unauthenticated, or the ref is bad."
   (or (and (not refresh) (gethash ref my/op--cache))
-      (progn
-        (my/op--announce ref)
-        (let* ((stderr-file (make-temp-file "op-stderr-"))
-                (status nil)
-                (stdout
-                  (unwind-protect
-                    (with-output-to-string
-                      (with-current-buffer standard-output
-                        (setq status
-                          (call-process my/op-cli nil
-                            (list standard-output stderr-file)
-                            nil "read" "--no-newline" ref))))
-                    (when (file-exists-p stderr-file)
-                      (let ((err (with-temp-buffer
-                                   (insert-file-contents stderr-file)
-                                   (string-trim (buffer-string)))))
-                        (delete-file stderr-file)
-                        (unless (eq status 0)
-                          (error "op read %s failed (%s): %s" ref status err))))))
-                (val (string-trim stdout)))
-          (puthash ref val my/op--cache)
-          val))))
+    (progn
+      (my/op--announce ref)
+      (let* ((stderr-file (make-temp-file "op-stderr-"))
+              (status nil)
+              (stdout
+                (unwind-protect
+                  (with-output-to-string
+                    (with-current-buffer standard-output
+                      (setq status
+                        (call-process my/op-cli nil
+                          (list standard-output stderr-file)
+                          nil "read" "--no-newline" ref))))
+                  (when (file-exists-p stderr-file)
+                    (let ((err (with-temp-buffer
+                                 (insert-file-contents stderr-file)
+                                 (string-trim (buffer-string)))))
+                      (delete-file stderr-file)
+                      (unless (eq status 0)
+                        (error "op read %s failed (%s): %s" ref status err))))))
+              (val (string-trim stdout)))
+        (puthash ref val my/op--cache)
+        val))))
 
 (defun my/op-read-env (var &optional refresh)
   "Return the value of environment variable VAR.
@@ -138,23 +138,6 @@ session, not to a read inside one, so this answers \"would a read
 prompt?\" without risking the prompt.  A missing `op' binary signals."
   (eq 0 (call-process my/op-cli nil nil nil "whoami")))
 
-(defun my/satan-credential (op &rest args)
-  "1Password backend for SATAN's credential seam (`satan-credential-function').
-
-OP is one of:
-  lookup REF          cached plaintext or nil; never runs `op'
-  session-p           `my/op-session-p'
-  read REF CONTEXT    `my/op-read' with `my/op-read-context' bound to
-                      CONTEXT; may prompt; signals on failure
-  forget REF          evict REF alone from `my/op--cache'"
-  (pcase op
-    ('lookup (gethash (car args) my/op--cache))
-    ('session-p (my/op-session-p))
-    ('read (let ((my/op-read-context (cadr args)))
-             (my/op-read (car args))))
-    ('forget (remhash (car args) my/op--cache))
-    (_ (error "my/satan-credential: unknown op %S" op))))
-
 (defun my/scrub-op-refs-env (env)
   "Drop any KEY=op://… entries from ENV (a `process-environment' list).
 
@@ -167,11 +150,11 @@ opaque 401 whose error message ends in `****tial' (the tail of
 \"KEY not set\" at the boundary, where it's diagnosable."
   (cl-remove-if (lambda (kv)
                   (and (stringp kv)
-                       (let ((eq (string-match "=" kv)))
-                         (and eq
-                              (string-prefix-p "op://"
-                                               (substring kv (1+ eq)))))))
-                env))
+                    (let ((eq (string-match "=" kv)))
+                      (and eq
+                        (string-prefix-p "op://"
+                          (substring kv (1+ eq)))))))
+    env))
 
 ;;;; Env-file sourcing
 ;;
@@ -184,7 +167,7 @@ opaque 401 whose error message ends in `****tial' (the tail of
 
 (defcustom my/env-source-files
   '("~/.config/zsh/env.zsh"
-    "~/.config/zsh/work.identity.zsh")
+     "~/.config/zsh/work.identity.zsh")
   "Shell env files to parse on load.
 
 Each file is read for lines matching `[export] NAME=VALUE'. Surrounding

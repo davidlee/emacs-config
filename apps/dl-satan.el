@@ -21,7 +21,7 @@ interpreted, its timers stall input.  Native-comp JIT follows the .elc."
     (satan-goad-enabled t)
     (satan-patch-runner-enabled t)
     ;; 1Password backend (dl-secret.el, required below; resolved at call time).
-    (satan-credential-function #'my/satan-credential)
+
     (satan-journal-today
       (lambda ()
         (my/journal--ensure-today)
