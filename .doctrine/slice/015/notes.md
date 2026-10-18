@@ -44,6 +44,16 @@ Emacs restarted.
 - Side finding, fixed outside the slice in `177c5f4`: macher treated the
   `$HOME` repo as a workspace and scanned every file under `~`.
 
+## G2 (PHASE-05) — 2026-10-18, user-observed
+
+- VH-2 pass: the gateway's `/v1/models`, fetched with the `gptel` key per design
+  sec-9, lists exactly the 13 names gptel uses (deepseek-flash, 11 openrouter/,
+  1 fireworks/).
+- VH-1 pass: `@nemo` (fireworks), `@glm` and `@gem` (openrouter) each completed
+  through the gateway with a reasoning trace; `@gem` + `@quick` replied with no
+  reasoning. First live evidence of flat `reasoning_effort` on OpenRouter and
+  Fireworks via the gateway (flakes:SPEC-001 FR-006; flakes:IMP-038 pins it).
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
 fresh-as-of: 2026-10-18 · PHASE-04 · ecdc205
