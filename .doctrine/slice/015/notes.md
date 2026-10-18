@@ -56,29 +56,31 @@ Emacs restarted.
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-18 · PHASE-04 · ecdc205
+fresh-as-of: 2026-10-18 · audit (RV-017 concluded) · e4e2c86
 
 ### Produced
-- PHASE-01 done — `lisp/dl-llm-gateway.el` key reader + tests; required from init.el (c58e527)
-- PHASE-02 done — gptel DeepSeek and `@deep` on the gateway; `dl-gptel-deepseek-thinking` shaper; VT-1 red recorded in the sheet (83ae69a)
-- PHASE-03 done — minuet on the gateway; unjailed eca and `dl-eca-toggle-jail` removed (fc56d8f)
-- PHASE-04 (G1) passed — VH-1..3 user-observed; see `## G1` (ecdc205)
-- adapted: deepseek-flash model entry omits gptel cost fields (gateway records spend); PHASE-02/EX-1 checked by full-init batch smoke, not ert
-- off-slice: macher no longer treats the $HOME repo as a workspace (177c5f4)
-- minted: IMP-026 — ERT coverage for dl-gptel.el backend construction; CHR-007 — flakes still installs unjailed eca
+- PHASE-01 — `lisp/dl-llm-gateway.el` key reader + tests (c58e527)
+- PHASE-02 — gptel DeepSeek / `@deep` on the gateway; deepseek shaper (83ae69a)
+- PHASE-03 — minuet on the gateway; unjailed eca removed (fc56d8f)
+- PHASE-04 — G1 passed (ecdc205)
+- PHASE-05 — OpenRouter + Fireworks on the gateway, flat effort per flakes:SPEC-001 FR-006 (user-directed); gptel-openrouter dropped (a007f3c); G2 passed (1deecc2)
+- PHASE-06 — `my/op-key`, `my/op-key-vault`, `my/op-read-env` removed; `my/op-read` tests; secrets docs (e4e2c86)
+- RV-017 — audit: 7 findings, 3 design-wrong → reconciliation brief
+- cross-slice: satan:SL-022 removed `my/satan-credential` (cf9d419, ceb3062); phase deltas pinned to own commits
+- minted: IMP-026 — ERT for dl-gptel.el backends; IMP-028 — per-model :capabilities; CHR-007 — flakes still installs unjailed eca; CHR-008 — `doctrine check gate` has no just recipe
 - earlier: CHR-004 — retire env.zsh LLM exports after satan:SL-022; CHR-005 — dead AGENTS.md link; CHR-006 — drop the magit hi-lock workaround
-- `.doctrine/observations/` (3 friction notes from the orchestrator) left untracked, pending the user
-- `just check` 219/219 at fc56d8f (last SL-015 code change)
+- `.doctrine/observations/` (orchestrator friction) still untracked, pending the user
+- `just check` 219/219 at e4e2c86
 
 ### Learned
-- EVD-002 — flat reasoning_effort toggles DeepSeek reasoning through the gateway, live
+- EVD-002 — flat reasoning_effort toggles reasoning through the gateway (DeepSeek, OpenRouter, Fireworks: G1/G2)
 - EVD-001 — LiteLLM collapses reasoning_effort to DeepSeek thinking on/off
-- mem.fact.gptel.host-needs-port — gptel `:host` must carry the port; `url-host` drops it
+- mem.fact.gptel.host-needs-port — gptel `:host` must carry the port
 - mem.fact.gptel.deepseek-not-autoloaded-in-tests — tests must require gptel-openai-extras
-- mem.pattern.review.codex-exec-reviewer — Codex CLI as read-only reviewer; no local sockets
+- mem.pattern.review.codex-exec-reviewer — Codex CLI as read-only reviewer
 - mem.fact.doctrine.design-section-edit — edit run sections via declare body + materialise
 
 ### Open
-- flakes:DEC-074 — clients send flat reasoning_effort; SL-015 conforms; flakes:IMP-038 pins it gateway-side
-- flakes:SL-014 PHASE-05 + widening the gptel key — prerequisites for PHASE-05 ([B])
+- DEC-005 — superseded at /reconcile per RV-017 brief (flat effort on all gateway backends)
+- flakes:IMP-038 — gateway-side test pinning flat effort per provider
 - flakes-side follow-ups (flakes:SL-013's gptel non-goal, README unjailed-eca line, CHR-007) — to raise in ~/flakes (design sec-11)

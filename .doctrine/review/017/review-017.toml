@@ -1,0 +1,248 @@
+id    = 17
+slug  = "reconciliation-review-of-sl-015"
+title = "reconciliation review of SL-015"
+# no status — a review's status is DERIVED from its findings, so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "reconciliation"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+rounds_base = 0
+contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = """
+Conformance self-audit of SL-015 at e4e2c86. Examined:
+- `slice conformance` (16 conformant, 0 undelivered, 2 undeclared, dispositioned F-3/F-4);
+- `verify-vt` (all attributable pass; PHASE-05 VT-2 waived by user direction);
+- `just check` 219/219;
+- user-observed G1/G2;
+- the key-handling invariants, against dl-llm-gateway.el and gptel's curl argv construction;
+- wire-contract conformance to flakes:SPEC-001 FR-006;
+- canon drift from the PHASE-05 user direction and from satan:SL-022's cf9d419.
+Seven findings, none blocking: three design-wrong, routed to the reconciliation brief; one tolerated; three follow-ups (IMP-028, IMP-026, CHR-008).
+"""
+
+[target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
+ref   = "SL-015"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "minor"
+title = "DEC-005 and design sec-4 say OpenRouter keeps nested reasoning; code sends flat reasoning_effort"
+detail = """
+Expected (DEC-005 choice; design sec-4 "Request shaping"): "openrouter" keeps the nested (:reasoning (:effort E)) form.
+Observed: apps/dl-gptel-shape.el `dl-gptel-request-shapers` maps "openrouter" to `dl-gptel-flat-reasoning-effort` (a007f3c). This was a user-directed change on 2026-10-18 to conform to flakes:SPEC-001 FR-006 and flakes:DEC-074 (clients send flat reasoning_effort). G2 VH-1 confirmed it live: @gem with @quick gave no reasoning. PHASE-05 plan: VT-2 waived, VT-3 and EX-7 appended.
+Canon still describes the superseded form.
+"""
+disposition = "design-wrong"
+response = """
+The canon is wrong; the code is right, as the user directed with flakes:SPEC-001 FR-006 as canon. Reconcile: supersede DEC-005 with a decision that all three gateway backends send flat reasoning_effort, keeping deepseek's low→none mapping; edit design sec-4 "Request shaping" to match. Brief: Governance (DEC-005) and Per-slice (design sec-4).
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+The canon is wrong; the code is right, as the user directed with flakes:SPEC-001 FR-006 as canon. Reconcile: supersede DEC-005 with a decision that all three gateway backends send flat reasoning_effort, keeping deepseek's low→none mapping; edit design sec-4 "Request shaping" to match. Brief: Governance (DEC-005) and Per-slice (design sec-4).
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "minor"
+title = "Design sec-9 and PHASE-06 criteria describe a dl-secret surface that no longer exists"
+detail = """
+Expected (design sec-9 VA list; PHASE-06 EX-1/VA-2): `my/satan-credential` stays in lisp/dl-secret.el.
+Observed: satan:SL-022 removed it, along with its tests and `satan-credential-function` in apps/dl-satan.el (cf9d419, under that slice's DEC-042). That removal is correct.
+Also stale in design sec-9:
+- the VA-1 positive control expects matches in apps/dl-eca.el, but PHASE-03 removed that code;
+- the line numbers for dl-secret.el and dl-secret-test.el are wrong, because cf9d419 reindented both.
+PHASE-06 VA-2 says org-gcal loads "under just check", but `just check` never loads org/dl-org-gcal.el. It was checked by a full-init batch smoke instead.
+"""
+disposition = "design-wrong"
+response = """
+SL-022's removal is correct, so the design must stop asserting the old surface. Reconcile by editing design sec-9: drop my/satan-credential from the retained list and cite cf9d419 and satan:SL-022 DEC-042; drop the dl-eca.el positive-control expectation; replace the stale dl-secret line numbers with symbol names. Plan criteria are immutable and off the reconcile surface. PHASE-06 EX-1 and VA-2 stay as written, and the phase-06 sheet already records the drift and the smoke evidence.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+SL-022's removal is correct, so the design must stop asserting the old surface. Reconcile by editing design sec-9: drop my/satan-credential from the retained list and cite cf9d419 and satan:SL-022 DEC-042; drop the dl-eca.el positive-control expectation; replace the stale dl-secret line numbers with symbol names. Plan criteria are immutable and off the reconcile surface. PHASE-06 EX-1 and VA-2 stay as written, and the phase-06 sheet already records the drift and the smoke evidence.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "minor"
+title = "Conformance: lisp/test/dl-secret-test.el edited but not a design-target"
+detail = """
+Expected: every path edited by a phase is matched by a design-target selector.
+Observed: `doctrine slice conformance 15` lists lisp/test/dl-secret-test.el as undeclared. PHASE-06 (e4e2c86) added three `my/op-read` tests, because cf9d419 had deleted the only coverage of `my/op-read`, which org-gcal still uses. The design declared lisp/dl-secret.el but not its test.
+"""
+disposition = "design-wrong"
+response = """
+The touch is legitimate, because it restores coverage that cf9d419 removed. Reconcile with `doctrine slice selector add 15 lisp/test/dl-secret-test.el` (design-target), the load-bearing change, and mirror it in the design's target-path list.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+The touch is legitimate, because it restores coverage that cf9d419 removed. Reconcile with `doctrine slice selector add 15 lisp/test/dl-secret-test.el` (design-target), the load-bearing change, and mirror it in the design's target-path list.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "nit"
+title = "Conformance: plan.toml hand-edited inside the PHASE-05 delta"
+detail = """
+Observed: `slice conformance 15` lists .doctrine/slice/015/plan.toml as undeclared. a007f3c hand-edited PHASE-05 to waive VT-2 and append VT-3 and EX-7, append-only with ids preserved, because no doctrine verb amends plan criteria. `verify-vt` reports "WAIVED VT-2 — (no reason recorded)", because no verb records a waiver reason. Friction is recorded in .doctrine/observations/.
+"""
+disposition = "tolerated"
+response = """
+plan.toml is the slice's own doctrine artefact, edited append-only and co-committed with the phase that motivated it. No verb exists to amend it. Adding plan.toml as a design-target would be wrong, since design targets are source. The missing waiver reason is tooling friction, already recorded as an observation. Accepted.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "tolerated"
+response = """
+plan.toml is the slice's own doctrine artefact, edited append-only and co-committed with the phase that motivated it. No verb exists to amend it. Adding plan.toml as a design-target would be wrong, since design targets are source. The missing waiver reason is tooling friction, already recorded as an observation. Accepted.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-5"
+status = "verified"
+severity = "minor"
+title = "Dropping gptel-openrouter lost per-model capabilities: images no longer sent to vision models"
+detail = """
+Expected (behaviour before PHASE-05): gptel-openrouter supplied per-model capability metadata, so gptel would attach images for vision models such as gemini.
+Observed: the openrouter and fireworks gateway backends in apps/dl-gptel.el list bare model symbols with no :capabilities or :mime-types, so gptel treats none as media-capable. Design sec-4 specified capabilities only for deepseek-flash (design.md:139). Tools still work. Noted in a code comment and in the CHANGELOG.
+"""
+disposition = "follow-up"
+response = """
+This is real code work, not canon: give the gateway model lists gptel's plist form with :capabilities and :mime-types. The user chose to capture it, not fix it now (2026-10-18). Owned by IMP-028.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "follow-up"
+response = """
+This is real code work, not canon: give the gateway model lists gptel's plist form with :capabilities and :mime-types. The user chose to capture it, not fix it now (2026-10-18). Owned by IMP-028.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-6"
+status = "verified"
+severity = "minor"
+title = "No ERT test loads apps/dl-gptel.el; backend construction is only smoke-checked"
+detail = """
+Expected: backend URLs and keys are covered by the commit gate.
+Observed: no file in lisp/test requires apps/dl-gptel.el. The gateway :host/:endpoint split (`dl-gptel--gateway`; the port trap is in mem.fact.gptel.host-needs-port), the model lists and `dl-gptel--key` are verified only by a full-init batch smoke (PHASE-02/05) and the G1/G2 live checks. A regression would pass `just check`.
+"""
+disposition = "follow-up"
+response = """
+Code work, owned by IMP-026: extract the pure URL→backend-plist helper so ERT can pin the host:port and endpoint. The G1/G2 live checks cover current behaviour, so the risk now is only to future edits.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "follow-up"
+response = """
+Code work, owned by IMP-026: extract the pure URL→backend-plist helper so ERT can pin the host:port and endpoint. The G1/G2 live checks cover current behaviour, so the risk now is only to future edits.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-7"
+status = "verified"
+severity = "nit"
+title = "doctrine check gate fails: justfile has no gate recipe"
+detail = """
+Expected: `doctrine check gate` runs the project's verification gate.
+Observed: "error: justfile does not contain recipe `gate`". The project's commit gate is `just check` (AGENTS.md), which passes 219/219 at e4e2c86. The gate wiring does not match the justfile.
+"""
+disposition = "follow-up"
+response = """
+This is project tooling, outside SL-015's scope. `just check` was used as the gate and passes 219/219. Owned by CHR-008.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "follow-up"
+response = """
+This is project tooling, outside SL-015's scope. `just check` was used as the gate and passes 219/219. Owned by CHR-008.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+# Findings are append-only `[[finding]]` tables, added by `review raise`.
+# Empty here at creation — a fresh review is Active, awaiting the raiser.
