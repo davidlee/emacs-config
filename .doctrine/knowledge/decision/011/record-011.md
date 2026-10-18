@@ -1,0 +1,1 @@
+Supersedes DEC-005. User direction 2026-10-18 in the SL-015 session: "flakes:SPEC-001 is canon for this now"; then, at audit, "fix DEC-005 at reconcile" and "agreed" to this reconcile proposal. Implemented in a007f3c (SL-015 PHASE-05); finding RV-017 F-1.

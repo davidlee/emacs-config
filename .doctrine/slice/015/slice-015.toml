@@ -40,7 +40,8 @@ intent = "design-target"
 
 [[selector]]
 selector = "lisp/test/dl-secret-test.el"
-intent = "scope-relevant"
+intent = "design-target"
+note = "RV-017 F-3: my/op-read tests after cf9d419"
 
 [[selector]]
 selector = "docs/emacs/secrets.md"

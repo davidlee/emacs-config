@@ -140,6 +140,9 @@ three constructor calls clearer (Codex review, point 6).
 | `openrouter` | `gptel-make-openai` | `openrouter/openrouter/auto`, `openrouter/openrouter/free`, `openrouter/openrouter/pareto-code`, `openrouter/qwen/qwen3.8-flash` (id corrected from `qwen-3.8-flash`), `openrouter/z-ai/glm-5.3-flash`, `openrouter/~z-ai/glm-flash-latest`, `openrouter/~z-ai/glm-latest`, `openrouter/google/gemini-3.8-flash`, `openrouter/google/gemini-3-flash-preview`, `openrouter/xiaomi/mimo-v2.6-pro`, `openrouter/xiaomi/mimo-v2.6-flash` |
 | `fireworks` | `gptel-make-openai` | `fireworks/nemotron-lightning-3p5-30b-a3b` |
 
+The openrouter and fireworks models are bare names with no
+`:capabilities`, so gptel sends them no images (IMP-028).
+
 - Gateway names are `openrouter/<OpenRouter id>` (`~/flakes/agents/gateway.nix:22-30`),
   so OpenRouter's own routers carry a double prefix:
   `openrouter/openrouter/auto`. Every name is checked against
@@ -170,11 +173,14 @@ gptel's own `:config` (`:55-57`), so nothing is lost.
 
 ```elisp
 '(("deepseek" . dl-gptel-deepseek-thinking)
+  ("openrouter" . dl-gptel-flat-reasoning-effort)
   ("fireworks" . dl-gptel-flat-reasoning-effort))
 ```
 
-`openrouter` keeps the nested `reasoning` object, which the gateway's body
-guard accepts (flakes:SL-014 design `:343-357`).
+All three gateway backends send flat `reasoning_effort`, the gateway's one
+reasoning control (flakes:SPEC-001 FR-006, flakes:DEC-074). `openrouter`
+moved off the nested `reasoning` object in PHASE-05 by user direction
+(2026-10-18); DEC-011 supersedes DEC-005.
 
 On `deepseek-flash`, LiteLLM turns `reasoning_effort` into DeepSeek's
 `thinking` switch: `"none"` becomes disabled and every other value
@@ -225,8 +231,9 @@ Descriptions change from "OpenRouter" to "via gateway" where it applies.
   either order, sends `:reasoning_effort "none"` and no `:reasoning`.
   The `quick` test is the negative control: plain flattening sends
   `"low"` and must fail it.
-- The existing fireworks-flat and openrouter-nested tests stay. Their
-  model names follow the new presets.
+- The fireworks-flat test now covers openrouter too: both send flat
+  `reasoning_effort` in either preset order (PHASE-05 VT-3). Model names
+  follow the new presets.
 - `@deep` → backend `"deepseek"` (`:101` was `"openrouter"`).
 
 <!-- doctrine:section sec-5 -->
@@ -284,9 +291,9 @@ Emacs needs no `eca` key.
 None of them has a test. Also removed: `apps/dl-gptel.el`'s
 `dl-gptel-openai-key` (`:62-66`), which has no callers, and its
 `(require 'dl-secret)` once no `my/op-key` call remains. `my/op-read`,
-`my/op-forget`, `my/op-session-p`, `my/satan-credential`,
-`my/scrub-op-refs-env` and the env-file sourcing all stay. satan and
-`org-gcal` use them.
+`my/op-forget`, `my/op-session-p`, `my/scrub-op-refs-env` and the
+env-file sourcing all stay. satan and `org-gcal` use them.
+`my/satan-credential` was removed by satan:SL-022 (cf9d419, its DEC-042).
 
 **Kept as they are:** the `env.zsh` LLM exports. satan (satan:SL-022) and
 `~/flakes/agents/jailed-agents.nix` still read them. Follow-up below.
@@ -325,6 +332,7 @@ None of them has a test. Also removed: `apps/dl-gptel.el`'s
 | `apps/dl-minuet.el` | gateway endpoint, key and model |
 | `apps/dl-eca.el`, `lisp/test/dl-eca-test.el` | unjailed mode removed |
 | `lisp/dl-secret.el` | `my/op-key`, `my/op-key-vault`, `my/op-read-env` removed |
+| `lisp/test/dl-secret-test.el` | `my/op-read` tests (its coverage went with cf9d419) |
 | `custom-vars.el` | gptel-openrouter `package-vc` entry removed |
 | `apps/dl-agent-shell.el` | comment |
 | `docs/emacs/secrets.md`, `AGENTS.md`, `CHANGELOG.md` | docs |
@@ -418,7 +426,9 @@ allowed`, which does not list the alternatives.
   `apps/dl-eca.el:41` and the commentary);
 - the search is live (positive control): the same `rg` run before the
   removals matches `lisp/dl-secret.el` and `apps/dl-eca.el`;
-- retained consumers still work: `my/op-read`, `my/satan-credential` and
+- retained consumers still work: `my/op-read` (with its own tests) and
   the env-file sourcing are still defined in `lisp/dl-secret.el`, and
-  `org/dl-org-gcal.el` still loads under `just check`.
+  `org/dl-org-gcal.el` loads in a full-init batch smoke (`just check`
+  does not load it).
+
 

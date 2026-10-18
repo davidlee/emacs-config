@@ -111,3 +111,49 @@ Standing risks, accepted as follow-ups:
 ### Not for reconcile
 - F-4: tolerated.
 - F-5, F-6, F-7: backlog items IMP-028, IMP-026 and CHR-008.
+
+## Reconciliation Outcome
+
+The user agreed to the proposal on 2026-10-18 ("agreed").
+
+### Direct edits applied
+Written through the design run (`design apply` + `materialise`, revision 40):
+- **design.md sec-4** (F-1, F-5):
+  - the shaper alist gains openrouter → `dl-gptel-flat-reasoning-effort`;
+  - the "openrouter keeps nested" paragraph now says all three backends send
+    flat `reasoning_effort` (flakes:SPEC-001 FR-006), and that DEC-011
+    supersedes DEC-005;
+  - the tests bullet now cites PHASE-05 VT-3;
+  - the backend table gets a note on missing `:capabilities` (IMP-028).
+- **design.md sec-7** (F-2): `my/satan-credential` is out of the retained list;
+  its removal by satan:SL-022 is cited (cf9d419, DEC-042).
+- **design.md sec-8** (F-3): new row for `lisp/test/dl-secret-test.el`.
+- **design.md sec-9** (F-2): the retained-consumers VA bullet drops
+  `my/satan-credential` and records the org-gcal full-init smoke.
+- **Selector registry** (F-3): `slice selector add --intent design-target 15
+  lisp/test/dl-secret-test.el`. Conformance is now 17 conformant,
+  0 undelivered, and 1 undeclared (plan.toml, tolerated as F-4).
+
+### Brief items not applied (inspected, not applicable)
+- **F-2, the sec-9 `apps/dl-eca.el` positive control:** it describes a search
+  run *before* the removals, so it is still accurate.
+- **F-2, the sec-7 dl-secret line numbers:** they describe the file as it was
+  when the design was written, and each sits beside its symbol name.
+
+### Governance
+- **DEC-011** (accepted, decided by the user on 2026-10-18): gptel sends flat
+  `reasoning_effort` on every gateway backend. It supersedes DEC-005, which is
+  now `superseded`. Linked: DEC-011 shapes SL-015. Covers F-1. No REV was
+  needed: no ADR, spec, requirement, policy or standard was touched.
+
+### Side effect
+Editing sec-4/7/8/9 invalidated those sections' RV-016 attestations and the
+run's design-accepted act. The run is still stage `locked`, and RV-016 now
+reads STALE. This is the run's own response to the post-implementation
+reconcile, not new drift.
+
+### Withdrawn / tolerated / follow-up
+- F-4 tolerated (plan.toml hand-edit).
+- F-5 → IMP-028, F-6 → IMP-026, F-7 → CHR-008.
+
+The reconcile pass is complete; handoff to /close.

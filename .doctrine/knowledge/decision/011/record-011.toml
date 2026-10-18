@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 11
+slug = "gptel-sends-flat-reasoning-effort-on-every-gateway-backend"
+title = "gptel sends flat reasoning_effort on every gateway backend"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-18"
+updated = "2026-10-18"
+tags = ["gateway", "gptel"]
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "The gateway's client contract is flat reasoning_effort on every served model (flakes:SPEC-001 FR-006, flakes:DEC-074); the nested OpenRouter reasoning object is admitted only for older clients. DEC-005 had openrouter keep the nested form."
+choice = 'dl-gptel-request-shapers sends flat reasoning_effort for every gateway backend: openrouter and fireworks use dl-gptel-flat-reasoning-effort; deepseek uses dl-gptel-deepseek-thinking, which flattens and also maps "low" to "none" so @quick means thinking off.'
+alternatives = ["keep openrouter nested (DEC-005)"]
+rationale = "One wire shape for all gateway backends, as the gateway spec requires; reuses the existing flat shaper (one alist entry). Verified live at G2: @gem with @quick replies without reasoning (EVD-002)."
+consequences = ["PHASE-05 VT-2 waived and VT-3 appended", "a nested-reasoning dropout on the gateway side would not affect gptel"]
+decided_by = "user (2026-10-18)"
+decided_on = "2026-10-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = ["DEC-005"]   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-015"
