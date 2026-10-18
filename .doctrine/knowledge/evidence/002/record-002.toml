@@ -1,0 +1,25 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 2
+slug = "flat-reasoning-effort-toggles-deepseek-reasoning-through-the-gateway-live"
+title = "Flat reasoning_effort toggles DeepSeek reasoning through the gateway (live)"
+record_kind = "evidence"
+status = "captured"
+created = "2026-10-18"
+updated = "2026-10-18"
+tags = ["deepseek", "gateway", "gptel"]
+
+[facet]                         # every field typed; seeded empty (captured later)
+datum = 'Through the LLM gateway (LiteLLM, deepseek-flash alias), gptel @deep with @quick (reasoning_effort "none") replied with no reasoning block and @think replied with one; minuet (reasoning_effort "none") completed. Flat reasoning_effort is admitted and mapped to DeepSeek thinking on/off live.'
+provenance = "experiment"
+confidence = "medium"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)

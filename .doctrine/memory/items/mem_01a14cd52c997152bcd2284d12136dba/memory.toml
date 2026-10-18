@@ -1,0 +1,46 @@
+memory_uid = "mem_01a14cd52c997152bcd2284d12136dba"
+memory_key = "mem.fact.gptel.host-needs-port"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "gptel :host must carry the port; url-host drops it"
+summary = "gptel builds its URL from :protocol, :host and :endpoint only; when splitting a base URL with url-parse, put host:port into :host"
+created = "2026-10-18"
+updated = "2026-10-18"
+
+[scope]
+paths = ["apps/dl-gptel.el"]
+globs = []
+commands = []
+tags = ["gptel", "gateway"]
+workspace = "default"
+repo = "github.com/davidlee/emacs-config"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "9588046fe6ad56245860a7461659066251cee4bb"
+ref_name = "refs/heads/main"
+checkout_state_id = "41686077beb90d307efc929fe28c787d34cb42f9cb57ba05c486c245900b45c2"
+base_commit = "ecdc205f096bd9eb31f796b928267b98696403bd"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "none"
+weight = 0
+
+[[source]]
+kind = "commit"
+ref = "83ae69a"
+

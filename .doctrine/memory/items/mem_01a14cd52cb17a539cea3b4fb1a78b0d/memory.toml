@@ -1,0 +1,46 @@
+memory_uid = "mem_01a14cd52cb17a539cea3b4fb1a78b0d"
+memory_key = "mem.fact.gptel.deepseek-not-autoloaded-in-tests"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "Tests must require gptel-openai-extras for gptel-make-deepseek"
+summary = "Under emacs -Q / batch ERT, gptel's autoloads are not loaded; gptel-make-deepseek is void until (require 'gptel-openai-extras)"
+created = "2026-10-18"
+updated = "2026-10-18"
+
+[scope]
+paths = ["lisp/test/"]
+globs = []
+commands = []
+tags = ["gptel", "testing"]
+workspace = "default"
+repo = "github.com/davidlee/emacs-config"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "9588046fe6ad56245860a7461659066251cee4bb"
+ref_name = "refs/heads/main"
+checkout_state_id = "fee779b39bf8da4ff3f906ea82994be48a64bc067bb9503477a2d048a5b4db93"
+base_commit = "ecdc205f096bd9eb31f796b928267b98696403bd"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "none"
+weight = 0
+
+[[source]]
+kind = "commit"
+ref = "83ae69a"
+

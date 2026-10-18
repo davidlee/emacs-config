@@ -1,0 +1,1 @@
+SL-015 G1 (PHASE-04 VH-1/VH-2), user-observed 2026-10-18; see SL-015 notes `## G1`. Live corroboration of EVD-001 (offline transform run). Bears on flakes:DEC-074, which lists flat reasoning_effort on DeepSeek as unverified; flakes:IMP-038 owns the pinning test. Confidence medium: a qualitative observation of the reply, not a captured request/response body.

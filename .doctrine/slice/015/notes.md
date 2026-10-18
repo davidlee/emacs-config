@@ -46,23 +46,29 @@ Emacs restarted.
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-18 · ready (PHASE-01 next) · 33a83a7
+fresh-as-of: 2026-10-18 · PHASE-04 · ecdc205
 
 ### Produced
-- design locked after RV-016 (Codex pass + verify rounds) (f05c063)
-- plan: PHASE-01..06, sheets materialised; slice ready (5e68053, 21214a7, 265d4e2)
-- revised: DEC-005 — deepseek shaper maps effort low to none; DEC-006 — presets as backend + gateway model
-- off-plan fix: invalid OpenRouter id dropped from gptel; magit hi-lock workaround in dl-magit.el (33a83a7)
-- minted: CHR-006 — drop the magit hi-lock workaround when magit fixes it
-- earlier: CHR-004 — retire env.zsh LLM exports after satan:SL-022; CHR-005 — dead AGENTS.md link
-- no SL-015 code yet; `just check` green at 33a83a7
+- PHASE-01 done — `lisp/dl-llm-gateway.el` key reader + tests; required from init.el (c58e527)
+- PHASE-02 done — gptel DeepSeek and `@deep` on the gateway; `dl-gptel-deepseek-thinking` shaper; VT-1 red recorded in the sheet (83ae69a)
+- PHASE-03 done — minuet on the gateway; unjailed eca and `dl-eca-toggle-jail` removed (fc56d8f)
+- PHASE-04 (G1) passed — VH-1..3 user-observed; see `## G1` (ecdc205)
+- adapted: deepseek-flash model entry omits gptel cost fields (gateway records spend); PHASE-02/EX-1 checked by full-init batch smoke, not ert
+- off-slice: macher no longer treats the $HOME repo as a workspace (177c5f4)
+- minted: IMP-026 — ERT coverage for dl-gptel.el backend construction; CHR-007 — flakes still installs unjailed eca
+- earlier: CHR-004 — retire env.zsh LLM exports after satan:SL-022; CHR-005 — dead AGENTS.md link; CHR-006 — drop the magit hi-lock workaround
+- `.doctrine/observations/` (3 friction notes from the orchestrator) left untracked, pending the user
+- `just check` 219/219 at fc56d8f (last SL-015 code change)
 
 ### Learned
-- EVD-001 — reasoning_effort becomes thinking on/off on the native DeepSeek route
+- EVD-002 — flat reasoning_effort toggles DeepSeek reasoning through the gateway, live
+- EVD-001 — LiteLLM collapses reasoning_effort to DeepSeek thinking on/off
+- mem.fact.gptel.host-needs-port — gptel `:host` must carry the port; `url-host` drops it
+- mem.fact.gptel.deepseek-not-autoloaded-in-tests — tests must require gptel-openai-extras
 - mem.pattern.review.codex-exec-reviewer — Codex CLI as read-only reviewer; no local sockets
 - mem.fact.doctrine.design-section-edit — edit run sections via declare body + materialise
 
 ### Open
-- DEC-010 — the user issues the gptel and minuet keys before PHASE-04 (G1)
-- flakes:SL-014 PHASE-05 — prerequisite for PHASE-05 ([B])
-- flakes-side follow-ups (flakes:SL-013's gptel non-goal, README unjailed-eca line) — to raise in ~/flakes (design sec-11)
+- flakes:DEC-074 — clients send flat reasoning_effort; SL-015 conforms; flakes:IMP-038 pins it gateway-side
+- flakes:SL-014 PHASE-05 + widening the gptel key — prerequisites for PHASE-05 ([B])
+- flakes-side follow-ups (flakes:SL-013's gptel non-goal, README unjailed-eca line, CHR-007) — to raise in ~/flakes (design sec-11)
