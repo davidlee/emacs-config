@@ -11,8 +11,7 @@
 (declare-function satan-run-dirs-for-date "satan-run" (runs-dir date-prefix))
 (declare-function satan-broker--failure-streak-count "satan-broker" (runs-dir))
 (declare-function satan-run--id-from-leaf "satan-run" (name))
-(declare-function satan-patch-runner-active-p "satan-patch-runner" ())
-(declare-function satan-patch-store-list "satan-patch-store" (&rest args))
+(declare-function satan-patch-inbox-running-p "satan-patch-inbox" ())
 (declare-function satan-desktop-at "satan-desktop" (root time))
 (declare-function satan-memory-evidence--segments-status "satan-memory-evidence" (path start end limit now))
 (declare-function eglot--managed-servers "eglot" ())
@@ -20,8 +19,6 @@
 
 (defvar satan-runs-dir)
 (defvar satan-budget-daily-tokens)
-(defvar satan-patch-runner-enabled)
-(defvar satan-patch-worktree-root)
 (defvar satan-tools-activity-dir)
 (defvar dl-notes-root)
 (defvar dl-notes-inbox-file)
@@ -84,7 +81,7 @@ left the observer unable to confirm any intraday intervention."
   (and (featurep 'satan-broker) (boundp 'satan-runs-dir)))
 
 (defun sleipnir-doctor--satan-patch-available-p ()
-  (and (featurep 'satan-patch-store) (featurep 'satan-patch-runner)))
+  (featurep 'satan-patch-inbox))
 
 (defun sleipnir-doctor--sensors-available-p ()
   (and (featurep 'satan-memory-evidence)
@@ -302,60 +299,12 @@ overall status."
 ;; ---------------------------------------------------------------------------
 
 (defun sleipnir-doctor--patch-runner ()
+  "The patch runner is a separate service; here, only the client's watch."
   (if (not (sleipnir-doctor--satan-patch-available-p))
-      (sleipnir-doctor--check "Patch" "runner" "OK" "not loaded")
-    (let* ((enabled (and (boundp 'satan-patch-runner-enabled)
-                         satan-patch-runner-enabled))
-           (active (and (fboundp 'satan-patch-runner-active-p)
-                        (satan-patch-runner-active-p))))
-      (sleipnir-doctor--check
-       "Patch" "runner" "OK"
-       (format "%s%s"
-               (if enabled "enabled" "disabled")
-               (if active (format ", active: %s" active) ""))))))
-
-(defun sleipnir-doctor--patch-queue ()
-  (if (not (fboundp 'satan-patch-store-list))
-      (sleipnir-doctor--check "Patch" "queue" "OK" "not loaded")
-    (let ((result (satan-patch-store-list :state "queued")))
-      (pcase (car result)
-        ('ok
-         (let ((n (length (cdr result))))
-           (sleipnir-doctor--check "Patch" "queue"
-                                   (if (> n 5) "WARN" "OK")
-                                   (format "%d queued" n))))
-        ('error
-         (sleipnir-doctor--check "Patch" "queue" "CRIT"
-                                 (format "query failed: %s" (cdr result))))))))
-
-(defun sleipnir-doctor--patch-pending-review ()
-  (if (not (fboundp 'satan-patch-store-list))
-      (sleipnir-doctor--check "Patch" "pending-review" "OK" "not loaded")
-    (let ((result (satan-patch-store-list :state "needs_review")))
-      (pcase (car result)
-        ('ok
-         (let ((n (length (cdr result))))
-           (sleipnir-doctor--check "Patch" "pending-review"
-                                   (if (> n 0) "WARN" "OK")
-                                   (format "%d awaiting review" n))))
-        ('error
-         (sleipnir-doctor--check "Patch" "pending-review" "CRIT"
-                                 (format "query failed: %s" (cdr result))))))))
-
-(defun sleipnir-doctor--patch-worktrees ()
-  (if (not (and (boundp 'satan-patch-worktree-root)
-                (file-directory-p satan-patch-worktree-root)))
-      (sleipnir-doctor--check "Patch" "worktrees" "OK" "not configured")
-    (let* ((entries (directory-files satan-patch-worktree-root nil "\\`[^.]"))
-           (dirs (cl-remove-if-not
-                  (lambda (e)
-                    (file-directory-p
-                     (expand-file-name e satan-patch-worktree-root)))
-                  entries))
-           (n (length dirs)))
-      (sleipnir-doctor--check "Patch" "worktrees"
-                              (if (> n 3) "WARN" "OK")
-                              (format "%d active" n)))))
+      (sleipnir-doctor--check "Patch" "inbox-watch" "OK" "not loaded")
+    (if (satan-patch-inbox-running-p)
+        (sleipnir-doctor--check "Patch" "inbox-watch" "OK" "running")
+      (sleipnir-doctor--check "Patch" "inbox-watch" "WARN" "not running"))))
 
 ;; ---------------------------------------------------------------------------
 ;; Org / Notes
@@ -443,9 +392,6 @@ An old db alone is fine; it only changes when notes do."
 (sleipnir-doctor--register 'satan-tick      #'sleipnir-doctor--satan-last-tick)
 (sleipnir-doctor--register 'satan-sensors   #'sleipnir-doctor--satan-sensors)
 (sleipnir-doctor--register 'patch-runner    #'sleipnir-doctor--patch-runner)
-(sleipnir-doctor--register 'patch-queue     #'sleipnir-doctor--patch-queue)
-(sleipnir-doctor--register 'patch-review    #'sleipnir-doctor--patch-pending-review)
-(sleipnir-doctor--register 'patch-worktrees #'sleipnir-doctor--patch-worktrees)
 (sleipnir-doctor--register 'org-notes-root  #'sleipnir-doctor--org-notes-root)
 ;; Off: org-roam is not loaded, so its db never syncs; kept for a return.
 ;; (sleipnir-doctor--register 'org-roam-db     #'sleipnir-doctor--org-roam-db)
