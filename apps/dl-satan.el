@@ -19,8 +19,6 @@ interpreted, its timers stall input.  Native-comp JIT follows the .elc."
     (satan-notes-root "~/notes")
     (satan-mcp-enabled t)
     (satan-goad-enabled t)
-    ;; fenced: SL-023 cutover (DEC-063 step 1); runner is Malebolge
-    (satan-patch-runner-enabled nil)
     (satan-journal-today
       (lambda ()
         (my/journal--ensure-today)
