@@ -27,7 +27,7 @@ interpreted, its timers stall input.  Native-comp JIT follows the .elc."
   (use-package malebolge
     :ensure nil
     :load-path "~/dev/malebolge/emacs"
-    :commands malebolge-attach))
+    :commands (malebolge-attach malebolge-start malebolge-stop)))
 
 (provide 'dl-satan)
 ;;; dl-satan.el ends here
