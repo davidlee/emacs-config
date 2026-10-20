@@ -75,14 +75,12 @@
           jailLib.agentsByName.pi
         ];
 
-      mcpJailOptions = with jailLib.combinators; [
-        # expose SATAN MCP
-        (try-readwrite "/run/user/1000/satan/mcp/mcp.sock")
-        (try-fwd-env "XDG_RUNTIME_DIR")
-        (try-fwd-env "SATAN_MCP_SOCKET")
-        # (allow arbitrary elisp execution):
-        (try-readwrite "/run/user/1000/emacs/server")
-      ];
+      mcpJailOptions =
+        jailLib.satanMcpOptions
+        ++ [
+          # (allow arbitrary elisp execution):
+          (jailLib.combinators.try-readwrite "/run/user/1000/emacs/server")
+        ];
 
       soundJailOptions = with jailLib.combinators; [
         pulse
