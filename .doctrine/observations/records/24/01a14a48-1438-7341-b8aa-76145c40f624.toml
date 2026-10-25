@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14a48-1438-7341-b8aa-76145c40f624"
+recorded_at = "2026-10-17T14:33:20.184867384Z"
+kind = "friction"
+summary = "No ert test loads apps/dl-gptel.el; backend construction verified only by batch full-init smoke"
+detail = "SL-015 PHASE-02: the gateway backend's :host must carry the port (url-host drops it) and gptel-make-deepseek is not autoloaded under -Q. Neither is caught by just check because dl-gptel.el is never loaded by tests; the worker used a scratch full-init smoke. A loadable home for dl-gptel--gateway would make it ert-testable."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

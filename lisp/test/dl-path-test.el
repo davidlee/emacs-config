@@ -27,4 +27,18 @@
   (should (equal (butlast exec-path)
                  (parse-colon-path (getenv "PATH")))))
 
+;; `dl-path-live-shell'
+
+(ert-deftest dl-path/live-shell-keeps-existing-shell ()
+  "An executable $SHELL is left alone."
+  (should (equal (dl-path-live-shell "/bin/sh" '("zsh")) "/bin/sh")))
+
+(ert-deftest dl-path/live-shell-replaces-missing-shell ()
+  "A $SHELL left dangling by a profile move falls back to the first shell found."
+  (should (equal (dl-path-live-shell "/nonexistent/nu" '("no-such-shell" "sh"))
+                 (executable-find "sh"))))
+
+(ert-deftest dl-path/live-shell-replaces-unset-shell ()
+  (should (equal (dl-path-live-shell nil '("sh")) (executable-find "sh"))))
+
 ;;; dl-path-test.el ends here

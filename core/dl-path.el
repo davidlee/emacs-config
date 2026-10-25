@@ -69,12 +69,23 @@ DIRS are expanded: child processes take a leading tilde literally."
                         (list exec-directory)))
 
 ;; Pin the subprocess shell to a POSIX shell. `shell-file-name' defaults to
-;; $SHELL, which is now nushell; nushell ships builtin `find'/`grep' that
+;; $SHELL, which may be nushell; nushell ships builtin `find'/`grep' that
 ;; shadow the POSIX tools and reject their flags (e.g. `find -H'), breaking
 ;; `project--files-in-directory', `grep', `compile', and any
 ;; `shell-command'. Nushell can still be the interactive login shell — Emacs
 ;; only needs POSIX syntax for the strings it shells out.
 (setq shell-file-name (or (executable-find "bash") "/bin/sh"))
+
+(defun dl-path-live-shell (shell fallbacks)
+  "Return SHELL if it is executable, else the first of FALLBACKS on `exec-path'."
+  (if (and shell (file-executable-p shell))
+      shell
+    (seq-some #'executable-find fallbacks)))
+
+;; $SHELL comes from the systemd user environment, which keeps a path a
+;; profile move has since removed (nu left /run/current-system/sw/bin).
+;; ghostel and other terminals launch $SHELL, so repair it before they load.
+(setenv "SHELL" (dl-path-live-shell (getenv "SHELL") '("zsh" "bash")))
 
 (require 'use-package-ensure-system-package)
 

@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14d19-3cca-7d92-8031-ad0d450be681"
+recorded_at = "2026-10-18T03:41:02.026854422Z"
+kind = "friction"
+summary = "verify-vt UNATTRIBUTABLE was the only signal of cross-slice drift"
+detail = "SL-015 PHASE-06: satan:SL-022 (cf9d419) deleted the tests VT-1 relied on; verify-vt reporting UNATTRIBUTABLE was the only signal. It also stays UNATTRIBUTABLE until the change is committed, which looks like a failure from the worker's side."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

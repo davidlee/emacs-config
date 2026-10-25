@@ -90,6 +90,7 @@
 (require 'dl-ediff)
 (require 'dl-claude)
 (require 'dl-gnus)
+(require 'dl-erc)
 ;; (require 'dl-eaf)
 (require 'dl-agent-shell)
 (require 'dl-smudge)

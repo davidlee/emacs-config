@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14a48-143b-7f43-84c4-a32554f24a78"
+recorded_at = "2026-10-17T14:33:20.18735319Z"
+kind = "friction"
+summary = "slice research drift reported after plan.md/plan.toml added"
+detail = "SL-015 planners: doctrine slice research 15 reports drift whose only cause is the added plan files, not research content; a --restamp is needed to clear it. Left unrestamped."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

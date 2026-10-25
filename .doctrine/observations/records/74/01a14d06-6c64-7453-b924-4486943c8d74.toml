@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14d06-6c64-7453-b924-4486943c8d74"
+recorded_at = "2026-10-18T03:20:29.028512538Z"
+kind = "friction"
+summary = "No verb amends plan criteria or records a waiver reason"
+detail = "SL-015 PHASE-05: a user-directed adaptation needed VT-2 waived and VT-3/EX-7 appended. doctrine slice plan only scaffolds; slice phase only sets status. plan.toml was hand-edited append-only by the worker. verify-vt then shows 'WAIVED VT-2 — (no reason recorded)' with no verb to set the reason. Also: verify-vt is keyword-only, so VT-2 would have kept passing after its meaning flipped."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

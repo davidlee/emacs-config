@@ -2,6 +2,20 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-10-26 — a missing $SHELL falls back to zsh, then bash
+
+`dl-path.el` checks `$SHELL` at startup; if it names a file that no
+longer exists (a stale systemd user environment after nu left
+`/run/current-system/sw/bin`), it is replaced with zsh, else bash.
+`M-x ghostel` failed with "no such file or directory" before.
+
+## 2026-10-24 — ERC connects to Libera.Chat and joins #lobsters
+
+`M-x dl-erc-lobsters` asks for an IRC nickname, connects to Libera.Chat
+over TLS, and joins `#lobsters`. ERC's `/join`, `/part`, `/nick`, and
+`/quit` commands manage channels and the connection. No account password
+or nickname is stored.
+
 ## 2026-10-18 — 1Password provider-key helpers removed
 
 `my/op-key`, `my/op-key-vault` (a user option) and `my/op-read-env` are

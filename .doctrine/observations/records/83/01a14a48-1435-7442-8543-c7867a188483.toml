@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14a48-1435-7442-8543-c7867a188483"
+recorded_at = "2026-10-17T14:33:20.181928423Z"
+kind = "friction"
+summary = "just check prints only LOADERR on a test-file load failure, no backtrace"
+detail = "SL-015 PHASE-01 worker: when a test file failed to load (missing module), just check emitted a one-line LOADERR summary with no stack trace; diagnosing needs a focused ert run."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"
