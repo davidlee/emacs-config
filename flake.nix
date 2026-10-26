@@ -99,13 +99,16 @@
 
       jailEnvOptions = soundJailOptions ++ supabaseJailOptions ++ mcpJailOptions;
       # workspaceDeps = [ "/home/david/.emacs.d/" ];
+      # Read-only; the agents write only workspaceDepsRw.
       workspaceDeps = [
         "/home/david/flakes/"
-        "/home/david/notes/"
-        "/home/david/.local/state/behaviour/"
         "/home/david/dev/satan-attrd/"
         "/home/david/dev/satan-patcher/"
         "/home/david/dev/panopticon/"
+      ];
+      workspaceDepsRw = [
+        "/home/david/notes/"
+        "/home/david/.local/state/behaviour/"
       ];
 
       # SATAN harness + jail options moved to the standalone satan repo
@@ -124,7 +127,7 @@
           maxSubagentDepth = 2;
           extraPkgs = projectPkgs;
           extraOptions = jailEnvOptions;
-          inherit gateway workspaceDeps;
+          inherit gateway workspaceDeps workspaceDepsRw;
         };
         jailed-pi-research = jailLib.makeJailedPi {
           name = "pi-research";
@@ -135,7 +138,7 @@
             "pi"
             "claude"
           ];
-          inherit gateway workspaceDeps;
+          inherit gateway workspaceDeps workspaceDepsRw;
         };
         jailed-claude = jailLib.makeJailedClaude {
           profile = "specDev";
@@ -145,19 +148,19 @@
             "pi"
             "claude"
           ];
-          inherit gateway workspaceDeps;
+          inherit gateway workspaceDeps workspaceDepsRw;
         };
         # jailed-codex = jailLib.makeJailedCodex {
         #   profile = "specDev";
         #   extraPkgs = projectPkgs;
         #   extraOptions = jailEnvOptions;
-        #   inherit workspaceDeps;
+        #   inherit workspaceDeps workspaceDepsRw;
         # };
         # jailed-zero = jailLib.makeJailedZerostack {
         #   profile = "specDev";
         #   extraPkgs = projectPkgs;
         #   extraOptions = jailEnvOptions;
-        #   inherit workspaceDeps;
+        #   inherit workspaceDeps workspaceDepsRw;
         # };
         jailed-shell = jailLib.makeJailedAgent {
           name = "shell";
