@@ -91,6 +91,7 @@
 (require 'dl-claude)
 (require 'dl-gnus)
 (require 'dl-erc)
+(require 'dl-elpher)
 ;; (require 'dl-eaf)
 (require 'dl-agent-shell)
 (require 'dl-smudge)

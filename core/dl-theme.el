@@ -1,22 +1,41 @@
 ;;; dl-theme.el --- Theme settings -*- lexical-binding: t; -*-
 
+(use-package ef-themes
+  :ensure t
+  :init
+  ;; - Evaluate `(info "(ef-themes) Working with other Modus themes or taking over Modus")'
+  ;; - Visit <https://protesilaos.com/emacs/ef-themes#h:6585235a-5219-4f78-9dd5-6a64d87d1b6e>
+  (ef-themes-take-over-modus-themes-mode 1)
+  :bind
+  :config
+  (setopt modus-themes-mixed-fonts t)
+  (setopt modus-themes-italic-constructs t))
+
 (use-package standard-themes
   :init
   (standard-themes-take-over-modus-themes-mode 1)
   :bind
-  ;; ()
   :config
   (setq modus-themes-mixed-fonts t)
-  (setq modus-themes-italic-constructs t)
-  (modus-themes-load-theme 'standard-dark))
+  (setq modus-themes-italic-constructs t))
+
+(use-package au-themes
+  :vc (:url "https://github.com/szymonwilczek/au-themes" :rev :newest)
+  :config
+  ())
+
+(use-package foxglove-themes
+  :vc (:url "https://gitlab.com/vegasharmon/foxglove-themes" :rev :newest)
+  :config
+  (load-theme 'foxglove-dark :no-confirm))
+
+;; theme cycling
 
 (defvar my--themes
-  '(doom-one doom-gruvbox doom-nord doom-material doom-ayu-dark
-     doom-zenburn doom-one-light doom-one doom-acario-light
-     doom-laserwave doom-molokai doom-moonlight doom-dracula))
+  '(standard-dark au-salina-night foxglove-dark))
 
 (defvar my--theme-shortlist
-  '())
+  '(standard-dark au-salina-night foxglove-dark))
 
 (defvar my--current-theme-index -1
   "Index of the currently selected theme in `my--themes'.")
@@ -47,27 +66,28 @@
 ;; so repoint that entry in place, across every enabled theme's spec, to
 ;; the -empty peer.  Runs after each theme enable so `my--rotate-themes'
 ;; is covered too.
-(defun my/break-doom-gnus-face-cycle (&rest _)
-  "Repoint `gnus-group-news-low-empty' off `gnus-group-news-low'.
-Breaks the latent doom-themes-base inheritance cycle Emacs 30 rejects."
-  (when-let ((spec (get 'gnus-group-news-low-empty 'theme-face)))
-    (dolist (theme-entry spec)
-      (dolist (clause (cadr theme-entry))
-        (let ((plist (cadr clause)))
-          (when (eq (plist-get plist :inherit) 'gnus-group-news-low)
-            (setcar (cdr clause)
-              (plist-put plist :inherit 'gnus-group-news-1-empty))))))
-    (put 'gnus-group-news-low-empty 'theme-face spec)
-    ;; At init gnus is not loaded, so the face has no defface yet even
-    ;; though doom has stamped its `theme-face' — `face-spec-recalc'
-    ;; would signal "Invalid face".  The corrected spec above is what
-    ;; breaks the cycle; it applies when gnus defines and realises the
-    ;; face later.  Only recalc now if the face already exists.
-    (when (facep 'gnus-group-news-low-empty)
-      (face-spec-recalc 'gnus-group-news-low-empty nil))))
 
-(add-hook 'enable-theme-functions #'my/break-doom-gnus-face-cycle)
-(my/break-doom-gnus-face-cycle)
+;; (defun my/break-doom-gnus-face-cycle (&rest _)
+;;   "Repoint `gnus-group-news-low-empty' off `gnus-group-news-low'.
+;; Breaks the latent doom-themes-base inheritance cycle Emacs 30 rejects."
+;;   (when-let* ((spec (get 'gnus-group-news-low-empty 'theme-face)))
+;;     (dolist (theme-entry spec)
+;;       (dolist (clause (cadr theme-entry))
+;;         (let ((plist (cadr clause)))
+;;           (when (eq (plist-get plist :inherit) 'gnus-group-news-low)
+;;             (setcar (cdr clause)
+;;               (plist-put plist :inherit 'gnus-group-news-1-empty))))))
+;;     (put 'gnus-group-news-low-empty 'theme-face spec)
+;;     ;; At init gnus is not loaded, so the face has no defface yet even
+;;     ;; though doom has stamped its `theme-face' — `face-spec-recalc'
+;;     ;; would signal "Invalid face".  The corrected spec above is what
+;;     ;; breaks the cycle; it applies when gnus defines and realises the
+;;     ;; face later.  Only recalc now if the face already exists.
+;;     (when (facep 'gnus-group-news-low-empty)
+;;       (face-spec-recalc 'gnus-group-news-low-empty nil))))
+
+;; (add-hook 'enable-theme-functions #'my/break-doom-gnus-face-cycle)
+;; (my/break-doom-gnus-face-cycle)
 
 ;; (use-package doom-themes
 ;;   ;;  :bind

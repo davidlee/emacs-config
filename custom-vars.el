@@ -5,7 +5,15 @@
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(custom-safe-themes
-    '("18b7b96ac1036862778f89c5f43a9e1a2dab55d98a0618f9e34d514816734060"
+    '("f9575ecd8da2a02c114e427f2ebb49ffee94285c5963f33a0abf357c5a33a1d9"
+       "06a790303792ecba4f975b0ec70592d4f62eab19f444c96b44966f0d104482cc"
+       "2eeea47f7fcbda7821513121906a776a6d32c421eb102b813aa58a5ac8e08af1"
+       "f4b3d8cb463a21e546c2befb0c23dbfe0f75570d4d75da297b04a52ad02c9dce"
+       "48a575111485ab285e07ca63f064e0ae453dc8ed06d965e0d73fe29d35e607dd"
+       "71b359ee97ce15f47a953999cfbeeb1e0a11b59f4438b7fae3a45b6507a8ab5e"
+       "efdafed27cc10b5c61c67e29bd90f6aafc6861f556cd99e3d588392669af7860"
+       "9ab00137ac061fa70ba5a2c89f527fd106ca3987e38a26ac8ccac0a08e8339a0"
+       "18b7b96ac1036862778f89c5f43a9e1a2dab55d98a0618f9e34d514816734060"
        "17570f818a8a3877994453342e3425a3b4fa4b3ebac050b4ecbbee958f1ca133"
        "7dafc13a94124433b68285e3a8860744a02042a40b0105fe4f4af8768676de91"
        "8ca212d6ef076ad444f44bf6e57a9841930cbeb0c3f7d7525a21e20a57a3d7f6"
@@ -31,9 +39,16 @@
        default))
  '(org-timeblock-current-time-indicator t)
  '(org-timeblock-span 1)
- '(package-selected-packages '(gptel-annotate lambda-line super-save))
+ '(package-selected-packages
+    '(au-themes ef-themes elpher foxglove-themes gptel-annotate
+       lambda-line super-save))
  '(package-vc-selected-packages
-    '((gptel-annotate :url "https://github.com/karthink/gptel-annotate")
+    '((elpher :url "https://github.com/emacsmirror/elpher.git")
+       (au-themes :url "https://github.com/szymonwilczek/au-themes")
+       (foxglove-themes :url
+         "https://gitlab.com/vegasharmon/foxglove-themes")
+       (gptel-annotate :url
+         "https://github.com/karthink/gptel-annotate")
        (eca :url "https://github.com/editor-code-assistant/eca-emacs")
        (claude-code-ide :url
          "https://github.com/manzaltu/claude-code-ide.el")

@@ -2,6 +2,13 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-10-26 — ERC: `dl-erc-libera` joins several channels
+
+`M-x dl-erc-lobsters` is renamed `M-x dl-erc-libera`. After connecting
+it autojoins `#lobsters`, `#emacs`, `#emacs-social`, `##rust`,
+`#rust-offtopic`, `##programming`, `#zig` and `##llm`, each in its own
+buffer; `C-c C-b` (`erc-switch-to-buffer`) moves between them.
+
 ## 2026-10-26 — a missing $SHELL falls back to zsh, then bash
 
 `dl-path.el` checks `$SHELL` at startup; if it names a file that no
