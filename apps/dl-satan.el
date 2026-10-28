@@ -27,7 +27,16 @@ interpreted, its timers stall input.  Native-comp JIT follows the .elc."
   (use-package malebolge
     :ensure nil
     :load-path "~/dev/malebolge/emacs"
-    :commands (malebolge-attach malebolge-start malebolge-stop)))
+    :commands (malebolge-attach malebolge-start malebolge-stop)
+    ;; Theme faces, not hex, so a theme change carries through. Under
+    ;; foxglove-dark the package's defaults (function-name, constant) are
+    ;; plain text colour. SATAN is `error' (red) and status `shadow' by default;
+    ;; wakes inherit the thread face.
+    :custom-face
+    (malebolge-tool-face ((t :inherit success)))
+    ;; foxglove-dark has no orange ink; warning's amber sat too near SATAN's red.
+    (malebolge-thread-face ((t :inherit warning :weight normal :foreground "#e8915a")))
+    (malebolge-reap-face ((t :inherit warning :weight bold :underline t)))))
 
 (provide 'dl-satan)
 ;;; dl-satan.el ends here
