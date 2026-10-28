@@ -8,7 +8,8 @@ Notable changes to this Emacs config. Loosely dated; not versioned.
 `nostr-create-note`, `nostr-account-status`). The private key is read
 from 1Password (`dl-nostr-secret-ref`, default `op://Private/NOSTR/nsec`)
 instead of nostr.el's GPG key file; the status page's "Private key file:
-missing" line is expected. Relays: primal, damus and nos.lol. The database lives in
+missing" line is expected. Relays: primal, damus and nos.lol. In the timeline, `/` (search) and
+`o` (open an npub) reach nostr instead of meow's motion bindings. The database lives in
 `var/nostr-db.sqlite`.
 The Rust signing backend is built by hand: `cargo build --release` in
 `elpa/nostr`, again after every `package-vc-upgrade`.

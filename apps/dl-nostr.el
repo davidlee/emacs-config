@@ -7,6 +7,7 @@
 ;; GPG file exists).  The second is private; recheck it on upgrade.
 
 (require 'dl-secret)
+(require 'dl-keymap-shadow)
 
 (defcustom dl-nostr-secret-ref "op://Private/NOSTR/nsec"
   "1Password ref holding the Nostr private key (nsec or hex)."
@@ -17,6 +18,11 @@
   "Return the Nostr private key from 1Password."
   (let ((my/op-read-context "nostr"))
     (string-trim (my/op-read dl-nostr-secret-ref))))
+
+(defun dl-nostr--yield-meow-keys ()
+  "Give the timeline back `/' (search) and `o' (open npub) from meow.
+Meow's motion state binds them; its arrows and `SPC' (leader) stay."
+  (dl-keymap-shadow-yield 'meow-motion-mode "/" "o"))
 
 (use-package nostr
   :vc (:url "https://github.com/trevarj/nostr.el"
@@ -37,7 +43,8 @@
   (nostr-db-path
     (expand-file-name "var/nostr-db.sqlite" user-emacs-directory))
   (nostr-relay-urls
-    '("wss://relay.primal.net" "wss://relay.damus.io" "wss://nos.lol")))
+    '("wss://relay.primal.net" "wss://relay.damus.io" "wss://nos.lol"))
+  :hook (nostr-timeline-mode . dl-nostr--yield-meow-keys))
 
 (with-eval-after-load 'nostr-backend
   (advice-add 'nostr-backend-load-secret :override #'dl-nostr--load-secret))

@@ -34,5 +34,24 @@ CALLS-VAR is bound to a list of (REF . CONTEXT), newest first."
       (should (equal (nostr-setup--load-secret) "nsec1test"))
       (should (= (length calls) 2)))))
 
+(ert-deftest dl-nostr/timeline-keys-beat-meow-motion ()
+  "Search (`/') and open-identifier (`o') work in the timeline under meow.
+Meow's motion map otherwise takes them; its arrows stay.
+The map is registered as `meow-global-mode' does, ahead of minor modes."
+  (skip-unless (require 'nostr-timeline nil t))
+  (require 'meow)
+  (require 'dl-keymap)
+  (meow-setup)
+  (let ((emulation-mode-map-alists
+          (cons `((meow-motion-mode . ,meow-motion-state-keymap))
+            emulation-mode-map-alists)))
+    (with-temp-buffer
+      (use-local-map nostr-timeline-mode-map)
+      (meow-motion-mode)
+      (run-hooks 'nostr-timeline-mode-hook)
+      (should (eq (key-binding "/") #'nostr-search-open))
+      (should (eq (key-binding "o") #'nostr-open-identifier))
+      (should (eq (key-binding (kbd "<down>")) #'meow-next)))))
+
 (provide 'dl-nostr-test)
 ;;; dl-nostr-test.el ends here
