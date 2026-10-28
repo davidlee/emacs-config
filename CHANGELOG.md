@@ -2,6 +2,15 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-10-28 — emacsclient raises the frame it reuses
+
+`dl-umbriel.el` focuses the frame a client's file opens in. Under
+Wayland the server's own `select-frame-set-input-focus' was a no-op,
+so `emacsclient FILE` (and `emacsclient -r -n`) left the frame behind
+the terminal. On `server-switch-hook` it asks umbriel to focus the
+window this process owns with the frame's title. New `-c` frames were
+already focused.
+
 ## 2026-10-28 — nostr client, key from 1Password
 
 `dl-nostr.el` adds trevarj's nostr.el (`M-x nostr-open`,
