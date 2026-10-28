@@ -37,7 +37,7 @@
   (nostr-db-path
     (expand-file-name "var/nostr-db.sqlite" user-emacs-directory))
   (nostr-relay-urls
-    '("wss://relay.primal.net" "wss://relay.damus.io")))
+    '("wss://relay.primal.net" "wss://relay.damus.io" "wss://nos.lol")))
 
 (with-eval-after-load 'nostr-backend
   (advice-add 'nostr-backend-load-secret :override #'dl-nostr--load-secret))
