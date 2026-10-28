@@ -2,6 +2,16 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-10-28 — nostr client, key from 1Password
+
+`dl-nostr.el` adds trevarj's nostr.el (`M-x nostr-open`,
+`nostr-create-note`, `nostr-account-status`). The private key is read
+from 1Password (`dl-nostr-secret-ref`, default `op://Private/NOSTR/nsec`)
+instead of nostr.el's GPG key file; the status page's "Private key file:
+missing" line is expected. The database lives in `var/nostr-db.sqlite`.
+The Rust signing backend is built by hand: `cargo build --release` in
+`elpa/nostr`, again after every `package-vc-upgrade`.
+
 ## 2026-10-26 — ERC: `dl-erc-libera` joins several channels
 
 `M-x dl-erc-lobsters` is renamed `M-x dl-erc-libera`. After connecting

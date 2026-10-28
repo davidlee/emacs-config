@@ -92,6 +92,7 @@
 (require 'dl-gnus)
 (require 'dl-erc)
 (require 'dl-elpher)
+(require 'dl-nostr)
 ;; (require 'dl-eaf)
 (require 'dl-agent-shell)
 (require 'dl-smudge)
