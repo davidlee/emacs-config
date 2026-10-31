@@ -142,7 +142,10 @@ graphical frame the daemon goes on to create."
 (use-package solaire-mode
   :commands solaire-global-mode
   :config
-  (solaire-global-mode +1))
+  (solaire-global-mode +1)
+  :custom
+  (dolist (face '(mode-line mode-line-inactive))
+    (setf (alist-get face solaire-mode-remap-modeline) nil)))
 
 ;; Olivetti centres prose at `olivetti-body-width'. visual-fill-column does
 ;; the same thing — partition mode hooks so they don't trample each other.

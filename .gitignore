@@ -14,6 +14,7 @@ oauth2.*
 /.spec-driver/run/events.jsonl
 /supabase/*
 /tldr
+*.sqlite
 
 .spec-driver
 

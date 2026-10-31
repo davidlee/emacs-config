@@ -41,9 +41,10 @@
  '(org-timeblock-span 1)
  '(package-selected-packages
     '(au-themes ef-themes elpher foxglove-themes gptel-annotate
-       lambda-line super-save))
+       lambda-line nostr super-save))
  '(package-vc-selected-packages
-    '((elpher :url "https://github.com/emacsmirror/elpher.git")
+    '((nostr :url "https://github.com/trevarj/nostr.el" :branch "master")
+       (elpher :url "https://github.com/emacsmirror/elpher.git")
        (au-themes :url "https://github.com/szymonwilczek/au-themes")
        (foxglove-themes :url
          "https://gitlab.com/vegasharmon/foxglove-themes")

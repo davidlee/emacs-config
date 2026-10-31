@@ -2,6 +2,16 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-10-31 — disable pixel-precision scrolling
+
+Mouse-wheel scrolling uses ordinary scrolling instead of pixel-precision
+interpolation, which was observed hanging Emacs in redisplay.
+
+## 2026-10-30 — report Umbriel focus failures
+
+`emacsclient` frame focus runs Umbriel without the dev shell's `LD_LIBRARY_PATH`
+and reports failed Umbriel commands in `*Messages*`.
+
 ## 2026-10-28 — emacsclient raises the frame it reuses
 
 `dl-umbriel.el` focuses the frame a client's file opens in. Under

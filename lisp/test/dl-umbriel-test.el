@@ -6,6 +6,11 @@
 (require 'cl-lib)
 (require 'dl-umbriel)
 
+(ert-deftest dl-umbriel/host-environment-removes-library-path ()
+  (let ((process-environment '("LD_LIBRARY_PATH=/devshell/lib" "PATH=/bin")))
+    (should (equal (dl-umbriel--host-environment) '("PATH=/bin")))
+    (should (equal (getenv "LD_LIBRARY_PATH") "/devshell/lib"))))
+
 (defconst dl-umbriel-test--windows
   '(((id . "theirs") (pid . 7) (title . "notes.org"))
     ((id . "other") (pid . 42) (title . "inbox"))
@@ -34,9 +39,10 @@ The frame is WINDOW-SYSTEM's and bears TITLE; this process is pid 42."
               ((symbol-function 'emacs-pid) (lambda () 42))
               ((symbol-function 'dl-umbriel--windows)
                (lambda () dl-umbriel-test--windows))
-              ((symbol-function 'call-process)
-               (lambda (_program _infile _dest _display &rest args)
-                 (push args calls) 0)))
+              ((symbol-function 'make-process)
+               (lambda (&rest args)
+                 (push (cdr (plist-get args :command)) calls)
+                 (kill-buffer (plist-get args :buffer)))))
       (dl-umbriel-focus-frame)
       (nreverse calls))))
 

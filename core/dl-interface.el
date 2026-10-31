@@ -8,14 +8,6 @@
         mac-command-modifier 'super
         mac-right-option-modifier nil))
 
-(defun my/pixel-scroll-setup ()
-  (interactive)
-  ;; Leave `pixel-scroll-precision-large-scroll-height' at its nil default:
-  ;; large jumps snap instantly instead of interpolating. Setting it low (was
-  ;; 1) made every big scroll animate, and interpolating a huge jump can fail
-  ;; to converge -> infinite redisplay loop / 100% CPU hang.
-  (setq pixel-scroll-precision-interpolation-factor 1))
-
 (use-package emacs
   :ensure nil
   :custom
@@ -103,7 +95,6 @@
   :config
   ;; Misc. UI tweaks
   (blink-cursor-mode -1)
-  (pixel-scroll-precision-mode)
   (xterm-mouse-mode 1)
   ;;(cua-mode)
 
@@ -119,11 +110,6 @@
   ;; Make right-click do something sensible
   (when (display-graphic-p)
     (context-menu-mode))
-
-  (when (boundp 'pixel-scroll-precision-mode)
-    (my/pixel-scroll-setup)
-    (add-hook 'prog-mode-hook #'pixel-scroll-precision-mode)
-    (add-hook 'org-mode-hook #'pixel-scroll-precision-mode))
 
   ;; Highlight the current line in code and prose buffers.
   (dolist (hook '(text-mode-hook prog-mode-hook))

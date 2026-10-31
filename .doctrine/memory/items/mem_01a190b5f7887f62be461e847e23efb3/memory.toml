@@ -1,0 +1,43 @@
+memory_uid = "mem_01a190b5f7887f62be461e847e23efb3"
+memory_key = "mem.fact.emacs.pixel-scroll-redisplay-hang"
+schema_version = 1
+lifespan = "episodic"
+memory_type = "fact"
+status = "active"
+title = "Pixel scroll interpolation can hang Emacs redisplay"
+summary = "A mouse-wheel pixel-scroll interpolation hung Emacs 31.1 inside C redisplay at 100% CPU; the nil large-scroll threshold did not prevent mouse interpolation."
+created = "2026-10-31"
+updated = "2026-10-31"
+
+[scope]
+paths = ["core/dl-interface.el"]
+globs = []
+commands = []
+tags = ["emacs", "scrolling"]
+workspace = "default"
+repo = "github.com/davidlee/emacs-config"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "7624b831a32f3aa92b14dfc45326095fd2c84637"
+ref_name = "refs/heads/main"
+checkout_state_id = "c51317f7beaffa7688ef189a6e23e10c8a4f6a168db80701b99b677c5cac7e97"
+base_commit = "1bf5a3e6c54a89d77ab5fc328dd1ac0a9dcfe6b2"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "high"
+weight = 0
+
