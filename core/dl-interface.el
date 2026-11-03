@@ -1,12 +1,23 @@
 ;;; dl-interface.el --- UI settings -*- lexical-binding: t; -*-
 
-
 ;; Mac Port modifiers: left Option is Meta, Command is Super, and right
 ;; Option retains macOS character composition. Linux uses its own defaults.
 (when (eq system-type 'darwin)
+  ;; emacs-mac port
+  (defvar mac-option-modifier)
+  (defvar mac-command-modifier)
+  (defvar mac-right-option-modifier)
   (setq mac-option-modifier 'meta
         mac-command-modifier 'super
-        mac-right-option-modifier nil))
+        mac-right-option-modifier nil)
+
+  ;; standard NS build
+  (defvar ns-alternate-modifier)
+  (defvar ns-command-modifier)
+  (defvar ns-right-alternate-modifier)
+  (setq ns-alternate-modifier 'meta
+        ns-command-modifier 'super
+        ns-right-alternate-modifier nil))
 
 (use-package emacs
   :ensure nil
@@ -21,7 +32,7 @@
   ;; so panopticon's sway segments get a path-scoped signal for the
   ;; SATAN observer's positive predicate (perceptual-design §S5 P1).
   (frame-title-format
-    '((:eval (or (buffer-file-name) "%b")) " - GNU Emacs at " system-name))
+   '((:eval (or (buffer-file-name) "%b")) " - GNU Emacs at " system-name))
 
   (tooltip-mode -1)
   (tooltip-use-echo-area t)
@@ -32,18 +43,18 @@
   (confirm-nonexistent-file-or-buffer nil)
 
   (default-frame-alist '((fullscreen . maximised)
-                          (vertical-scroll-bars . nil)
-                          (horizontal-scroll-bars . nil)
-                          ;; pgtk draws GTK CSD titlebar; drop it (all frames)
-                          (undecorated . t)
+                         (vertical-scroll-bars . nil)
+                         (horizontal-scroll-bars . nil)
+                         ;; pgtk draws GTK CSD titlebar; drop it (all frames)
+                         (undecorated . t)
 
-                          ;; No bg/fg here: a daemon has no graphical frame
-                          ;; when init runs, so nothing overwrites a hardcoded
-                          ;; pair and every client frame opens black on white,
-                          ;; theme or no theme.  `my/sync-frame-colors-to-theme'
-                          ;; (dl-theme.el) keeps these in step with the theme.
-                          (ns-appearance . dark)
-                          (ns-transparent-titlebar . t)))
+                         ;; No bg/fg here: a daemon has no graphical frame
+                         ;; when init runs, so nothing overwrites a hardcoded
+                         ;; pair and every client frame opens black on white,
+                         ;; theme or no theme.  `my/sync-frame-colors-to-theme'
+                         ;; (dl-theme.el) keeps these in step with the theme.
+                         (ns-appearance . dark)
+                         (ns-transparent-titlebar . t)))
 
   (display-time-default-load-average nil)
 
@@ -115,10 +126,10 @@
   (dolist (hook '(text-mode-hook prog-mode-hook))
     (add-hook hook #'hl-line-mode)))
 
-
 (use-package spacious-padding
   :config
-  (spacious-padding-mode 1))
+  (spacious-padding-mode nil)
+  :commands (spacious-padding-mode))
 
 (use-package diminish
   :defer t) ; disable
@@ -137,12 +148,15 @@
 (use-package beacon
   :diminish beacon-mode
   :config
-  (beacon-mode 1))
+  (beacon-mode 1)
+  :commands (beacon-mode))
 
 (use-package zoom-window
-  :config (zoom-window-setup))
+  :config (zoom-window-setup)
+  :commands (zoom-window-setup))
+
 (custom-set-variables
-  '(zoom-window-mode-line-color "#005500"))
+ '(zoom-window-mode-line-color "#005500"))
 
 ;; Terminal frames (`emacsclient -t', e.g. over ssh): the kitty keyboard
 ;; protocol delivers modified keys (`C-,' `C-;' `C-=' `C-M-<arrow>')

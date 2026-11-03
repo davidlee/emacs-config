@@ -20,9 +20,11 @@ interpreted, its timers stall input.  Native-comp JIT follows the .elc."
     (satan-mcp-enabled t)
     (satan-goad-enabled t)
     (satan-journal-today
-      (lambda ()
-        (my/journal--ensure-today)
-        (my/journal--today-file dl-notes-journal-dir "journal"))))
+     (lambda ()
+       (my/journal--ensure-today)
+       (my/journal--today-file dl-notes-journal-dir "journal"))))
+
+
   ;; Client of SATAN's durable session daemon (github.com:davidlee/Malebolge).
   (use-package malebolge
     :ensure nil
@@ -37,6 +39,11 @@ interpreted, its timers stall input.  Native-comp JIT follows the .elc."
     ;; foxglove-dark has no orange ink; warning's amber sat too near SATAN's red.
     (malebolge-thread-face ((t :inherit warning :weight normal :foreground "#e8915a")))
     (malebolge-reap-face ((t :inherit warning :weight bold :underline t)))))
+
+(require 'malebolge-mail)
+(setopt malebolge-mail-plans-directory "~/.local/state/malebolge/mail-plans"
+        malebolge-mail-acts-directory  "~/.local/state/malebolge/mail-acts")
+
 
 (provide 'dl-satan)
 ;;; dl-satan.el ends here

@@ -34,6 +34,7 @@
 ;; a collision warning.
 
 ;; dl-declare-insert-from-flymake
+
 (declare-function aggressive-indent-mode "aggressive-indent")
 (declare-function avy-goto-char-2 "avy")
 (declare-function avy-goto-char-timer "avy")
@@ -494,6 +495,10 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 ;; reviews under `W v', so personal namespaces stay clean.
 (my/bind my-notes-map      "W" my-notes-work-map        "work")
 (my/bind my-notes-work-map "v" my-notes-work-review-map "review")
+
+(defvar dl-notes-work-file)
+(defvar dl-notes-work-inbox-file)
+(defvar dl-notes-work-intake-dir)
 
 (my/bind my-notes-work-map "h" (lambda () (interactive) (find-file dl-notes-work-file))       "open work.org")
 (my/bind my-notes-work-map "i" (lambda () (interactive) (find-file dl-notes-work-inbox-file)) "work inbox")
