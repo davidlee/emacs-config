@@ -89,12 +89,20 @@
   (my/set-face-font 'mode-line 'modeline :height 140 :weight 'semibold)
   (my/set-face-font 'mode-line-inactive 'modeline :height 140 :weight 'regular))
 
+(defun my/refresh-window-margins ()
+  "Re-apply margin settings of the current buffer in windows showing it.
+Margins take effect on `set-window-buffer'.  Never pulls the buffer into
+the selected window: hidden work buffers (formatter scratch, background
+visits) run mode hooks too, and must not pop up."
+  (dolist (window (get-buffer-window-list nil nil t))
+    (set-window-buffer window (current-buffer))))
+
 (define-minor-mode my/gutter-padding-mode
   "Add a little space between gutter and buffer text."
   :init-value nil
   :lighter nil
   (setq left-margin-width (if my/gutter-padding-mode 1 0))
-  (set-window-buffer nil (current-buffer)))
+  (my/refresh-window-margins))
 
 (add-hook 'prog-mode-hook #'my/gutter-padding-mode)
 (add-hook 'text-mode-hook #'my/gutter-padding-mode)
@@ -102,19 +110,16 @@
 (add-hook 'prog-mode-hook #'my/apply-fonts)
 
 (defun my/apply-line-number-faces ()
-  "Apply stable line-number faces."
-
+  "Give both line-number faces one family, height and weight.
+Declared in the `user' theme, not via `set-face-attribute': theme specs
+on these faces (e.g. `spacious-padding') recalc on new frames and wipe
+ad-hoc edits, leaving the two faces in different families (misaligned)."
   (interactive)
   (let ((family (my/font-role 'line-number)))
-    (set-face-attribute 'line-number nil
-      :family family
-      :height 1.0
-      :weight 'regular)
-    (set-face-attribute 'line-number-current-line nil
-      :inherit 'line-number
-      :family family
-      :height 1.0
-      :weight 'regular)))
+    (custom-theme-set-faces 'user
+      `(line-number ((t :family ,family :height 1.0 :weight regular)))
+      `(line-number-current-line
+         ((t :inherit line-number :family ,family :height 1.0 :weight regular))))))
 
 (defvar my/org-face-styles
   '((org-document-title  :role org-heading :height 1.6  :weight semibold)
@@ -268,15 +273,7 @@ Re-applied after theme load so rotating themes can't clobber them."
 ;; survive `<f5>' (themes reset every face they touch).
 (my/apply-fonts)
 
-(defun my/face-timer-hax (frame)
-  "ffuu"
-  (run-with-timer 0.1 nil
-    (lambda ()
-      (with-selected-frame frame
-        (my/apply-line-number-faces)))))
-
 (add-hook 'enable-theme-functions #'my/apply-fonts)
-(add-hook 'after-make-frame-functions #'my/face-timer-hax)
 
 (provide 'dl-faces)
 ;;; dl-faces.el ends here

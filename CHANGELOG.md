@@ -2,6 +2,17 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-11-03 — no stray scratch popups; stable line-number alignment
+
+Hidden prog-mode buffers (apheleia's formatting scratch) no longer get
+shown in the selected window or minibuffer: `my/gutter-padding-mode` and
+org margin setup share `my/refresh-window-margins`, which only touches
+windows already showing the buffer. Line-number faces
+(`my/apply-line-number-faces`, also run by `my/apply-fonts`) are declared
+in the `user` theme, so theme recalcs on new `emacsclient` frames no
+longer leave the current line in a different font family. Removed the
+`after-make-frame-functions` timer hack.
+
 ## 2026-10-31 — disable pixel-precision scrolling
 
 Mouse-wheel scrolling uses ordinary scrolling instead of pixel-precision

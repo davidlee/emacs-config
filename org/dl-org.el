@@ -98,11 +98,7 @@
   (add-hook 'post-command-hook #'my/org-hl-line-strip-bg 90 t)
   ;; Option B: disable hl-line entirely in org if remap isn't enough
   ;; (hl-line-mode -1)
-  ;; Margins apply on `set-window-buffer'; refresh only windows already
-  ;; showing this buffer.  Background visits (org-alert, agenda) must not
-  ;; pull the buffer into the selected window.
-  (dolist (window (get-buffer-window-list nil nil t))
-    (set-window-buffer window (current-buffer))))
+  (my/refresh-window-margins))
 
 (add-hook 'org-mode-hook #'my/org-setup-margins)
 
