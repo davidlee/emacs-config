@@ -126,6 +126,11 @@
   (dolist (hook '(text-mode-hook prog-mode-hook))
     (add-hook hook #'hl-line-mode)))
 
+;; Add frame borders and window dividers
+(modify-all-frames-parameters
+ '((right-divider-width . 20)
+   (internal-border-width . 25)))
+
 (use-package spacious-padding
   :config
   (spacious-padding-mode nil)

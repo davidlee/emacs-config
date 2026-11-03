@@ -16,6 +16,21 @@
     (should-not line-prefix)
     (should-not wrap-prefix)))
 
+(ert-deftest dl-faces/visual-wrap-continuation-keeps-the-pad ()
+  "List-item continuation lines align with their first line's text."
+  (with-temp-buffer
+    (text-mode)
+    (visual-wrap-prefix-mode 1)
+    (insert "- item\n")
+    (display-line-numbers-mode 1)
+    (jit-lock-fontify-now)
+    (should (equal (get-text-property 1 'wrap-prefix)
+                   '(space :align-to (3 . width))))
+    (display-line-numbers-mode -1)
+    (jit-lock-fontify-now)
+    (should (equal (get-text-property 1 'wrap-prefix)
+                   '(space :align-to (2 . width))))))
+
 (ert-deftest dl-faces/line-number-faces-survive-theme-recalc ()
   "Line-number alignment settings outlive a theme recalculation of the faces.
 Themes (and `spacious-padding') recalc faces on new frames; ad-hoc

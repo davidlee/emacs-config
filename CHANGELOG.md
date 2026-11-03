@@ -2,6 +2,19 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-11-03 — no light bar between split windows
+
+The window dividers (and fringes) drew as a light bar: their colours were
+copied from `default` once at load, when a daemon start has no frame yet
+(`unspecified-bg`). `my/blend-borders-into-background` (`core/dl-faces.el`)
+now declares them in the `user` theme on load and on every theme enable
+(`enable-theme-functions`); plain `set-face-*` edits were wiped when
+`foxglove-dark`'s own `window-divider` spec recalculated on a new frame:
+fringes match the background, dividers are 4% lighter, so they show but stay
+quiet. Divider width (20px) and outer border (25px) are frame parameters in
+`core/dl-interface.el`; both moved out of `org/dl-org.el`, which they never
+belonged to.
+
 ## 2026-11-03 — padding between line numbers and text
 
 `my/gutter-padding-mode` (a left margin, which sits *outside* the line

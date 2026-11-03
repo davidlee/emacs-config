@@ -32,24 +32,24 @@
   (org-fontify-quote-and-verse-blocks t)
   (org-id-link-to-org-use-id 'create-if-interactive)
   (org-todo-keywords
-    '((sequence "TODO(t)" "NEXT(n)" "STARTED(s)" "WAITING(w@/!)" "MAYBE(m/!)"
-        "|" "DONE(d!)" "CANCELED(c@)" "MOVED(v@)")))
+   '((sequence "TODO(t)" "NEXT(n)" "STARTED(s)" "WAITING(w@/!)" "MAYBE(m/!)"
+               "|" "DONE(d!)" "CANCELED(c@)" "MOVED(v@)")))
   (org-tag-alist
-    '( ("@work" . ?w)
-       ("@home" . ?h)
-       ("read" . ?r)
-       ("write" . ?W)
-       ("tech" . ?t)
-       ("idea" . ?i)
-       ("domestic" . ?d)
-       ("admin" . ?a)
-       ("errand" . ?e)
-       ("satan" . ?s)
-       ("unread" . ?u)
-       ("project" . ?p)
-       ("org" . ?o)))
+   '( ("@work" . ?w)
+      ("@home" . ?h)
+      ("read" . ?r)
+      ("write" . ?W)
+      ("tech" . ?t)
+      ("idea" . ?i)
+      ("domestic" . ?d)
+      ("admin" . ?a)
+      ("errand" . ?e)
+      ("satan" . ?s)
+      ("unread" . ?u)
+      ("project" . ?p)
+      ("org" . ?o)))
   (org-clock-sound ; for org-timer-start-timer, poor man's pomodoro
-    "/mnt/500G/home/david/.local/share/Steam/steamui/sounds/timer_expired_alarm.wav")
+   "/mnt/500G/home/david/.local/share/Steam/steamui/sounds/timer_expired_alarm.wav")
   :config
   (require 'ox-md)) ; markdown export
 
@@ -68,17 +68,6 @@
   :config
   (global-org-modern-mode))
 
-;; Add frame borders and window dividers
-(modify-all-frames-parameters
-  '((right-divider-width . 40)
-     (internal-border-width . 40)))
-(dolist (face '(window-divider
-                 window-divider-first-pixel
-                 window-divider-last-pixel))
-  (face-spec-reset-face face)
-  (set-face-foreground face (face-attribute 'default :background)))
-(set-face-background 'fringe (face-attribute 'default :background))
-
 (use-package org-bullets
   :hook (org-mode .(lambda  () org-bullets-mode 1))
   :after org-modern)
@@ -92,7 +81,7 @@
 (defun my/org-setup-margins ()
   "Buffer-local margin + hl-line tweaks for org buffers."
   (setq left-margin-width 2
-    right-margin-width 2)
+        right-margin-width 2)
   ;; hl-line overlay clobbers org-modern pill backgrounds (text properties
   ;; lose to overlays). Intercept overlay after each highlight to strip bg.
   (add-hook 'post-command-hook #'my/org-hl-line-strip-bg 90 t)
@@ -113,11 +102,11 @@
   :ensure nil
   :demand t
   :bind (:map org-timeblock-mode-map
-          ([remap meow-prev] . org-timeblock-backward-block)
-          ([remap meow-next] . org-timeblock-forward-block)
-          :map org-timeblock-list-mode-map
-          ([remap meow-prev] . org-timeblock-list-previous-line)
-          ([remap meow-next] . org-timeblock-list-next-line)))
+              ([remap meow-prev] . org-timeblock-backward-block)
+              ([remap meow-next] . org-timeblock-forward-block)
+              :map org-timeblock-list-mode-map
+              ([remap meow-prev] . org-timeblock-list-previous-line)
+              ([remap meow-next] . org-timeblock-list-next-line)))
 
 (use-package org-alert
   :custom
@@ -147,39 +136,39 @@
     (unless (and (stringp markdown) (not (string-empty-p markdown)))
       (user-error "Clipboard has no text"))
     (let ((stderr-file (make-temp-file "org-paste-pandoc-"))
-           (coding-system-for-read 'utf-8-unix)
-           (coding-system-for-write 'utf-8-unix))
+          (coding-system-for-read 'utf-8-unix)
+          (coding-system-for-write 'utf-8-unix))
       (unwind-protect
-        (let ((org-text
-                (with-temp-buffer
-                  (let ((status (call-process-region
+          (let ((org-text
+                 (with-temp-buffer
+                   (let ((status (call-process-region
                                   markdown nil "pandoc" nil (list t stderr-file) nil
                                   "-f" "markdown" "-t" "org")))
-                    (unless (equal status 0)
-                      (user-error "Pandoc failed (%s): %s" status
-                        (with-temp-buffer
-                          (insert-file-contents stderr-file)
-                          (string-trim (buffer-string)))))
-                    (require 'org-element)
-                    (require 'org-table)
-                    ;; Work backwards so alignment cannot move a later table.
-                    (dolist (pos (reverse
+                     (unless (equal status 0)
+                       (user-error "Pandoc failed (%s): %s" status
+                                   (with-temp-buffer
+                                     (insert-file-contents stderr-file)
+                                     (string-trim (buffer-string)))))
+                     (require 'org-element)
+                     (require 'org-table)
+                     ;; Work backwards so alignment cannot move a later table.
+                     (dolist (pos (reverse
                                    (org-element-map (org-element-parse-buffer) 'table
                                      (lambda (table)
                                        (when (eq (org-element-property :type table) 'org)
                                          (org-element-property :begin table))))))
-                      (when pos
-                        (goto-char pos)
-                        ;; Pandoc normally emits an Org rule; accept a
-                        ;; Markdown-style header separator as well.
-                        (forward-line 1)
-                        (when (looking-at
+                       (when pos
+                         (goto-char pos)
+                         ;; Pandoc normally emits an Org rule; accept a
+                         ;; Markdown-style header separator as well.
+                         (forward-line 1)
+                         (when (looking-at
                                 "[ \t]*|[ \t]*:?-\\{3,\\}:?[ \t]*\\(?:|[ \t]*:?-\\{3,\\}:?[ \t]*\\)+|?[ \t]*$")
-                          (replace-match "|-"))
-                        (goto-char pos)
-                        (org-table-align)))
-                    (buffer-substring-no-properties (point-min) (point-max))))))
-          (insert org-text))
+                           (replace-match "|-"))
+                         (goto-char pos)
+                         (org-table-align)))
+                     (buffer-substring-no-properties (point-min) (point-max))))))
+            (insert org-text))
         (delete-file stderr-file)))))
 
 
