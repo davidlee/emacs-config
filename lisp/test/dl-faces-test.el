@@ -42,5 +42,19 @@ Themes (and `spacious-padding') recalc faces on new frames; ad-hoc
       (should (equal (face-attribute face :family nil) family))
       (should (eq (face-attribute face :weight nil) 'regular)))))
 
+(ert-deftest dl-faces/graphical-frame-refires-theme-hooks ()
+  "A new graphical frame re-runs `enable-theme-functions' for enabled themes.
+A daemon's first frame is a terminal, where theme-derived colours are
+unresolved; the hooks are idempotent, so they re-run once a real frame exists."
+  (let* ((seen nil)
+         (enable-theme-functions (list (lambda (theme) (push theme seen))))
+         (custom-enabled-themes '(alpha beta)))
+    (cl-letf (((symbol-function 'display-graphic-p) (lambda (&rest _) nil)))
+      (my/refire-theme-hooks-on-graphical-frame (selected-frame))
+      (should-not seen))
+    (cl-letf (((symbol-function 'display-graphic-p) (lambda (&rest _) t)))
+      (my/refire-theme-hooks-on-graphical-frame (selected-frame))
+      (should (equal (sort seen #'string<) '(alpha beta))))))
+
 (provide 'dl-faces-test)
 ;;; dl-faces-test.el ends here

@@ -299,15 +299,18 @@ start) the background is `unspecified-bg', so wait for a real colour."
 (my/blend-borders-into-background)
 (add-hook 'enable-theme-functions #'my/blend-borders-into-background)
 
-(defun my/blend-borders-into-graphical-frame (frame)
-  "Run `my/blend-borders-into-background' once FRAME is graphical.
-A daemon starts on a terminal frame, where `default' has no usable
-background; the colours only resolve when a graphical frame appears."
+(defun my/refire-theme-hooks-on-graphical-frame (frame)
+  "Re-run `enable-theme-functions' for the enabled themes once FRAME is graphical.
+A daemon starts on a terminal frame, where theme-derived colours (`default'
+bg/fg, `unspecified-bg') are unresolved, so hooks that read them skip or
+misread at the first theme load.  They are idempotent, so re-run them when
+a real frame appears."
   (when (display-graphic-p frame)
     (with-selected-frame frame
-      (my/blend-borders-into-background))))
+      (dolist (theme custom-enabled-themes)
+        (run-hook-with-args 'enable-theme-functions theme)))))
 
-(add-hook 'after-make-frame-functions #'my/blend-borders-into-graphical-frame)
+(add-hook 'after-make-frame-functions #'my/refire-theme-hooks-on-graphical-frame)
 
 (provide 'dl-faces)
 ;;; dl-faces.el ends here

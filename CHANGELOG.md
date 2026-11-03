@@ -2,6 +2,16 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-11-03 — theme hooks re-run on the first graphical frame
+
+A daemon starts on a terminal frame, where `default`'s colours don't resolve
+(`unspecified-bg`), so hooks on `enable-theme-functions` that read them
+skipped at startup and never re-ran: the divider bar below, and
+`my/sync-frame-colors-to-theme` (`default-frame-alist` bg/fg stayed empty).
+`my/refire-theme-hooks-on-graphical-frame` (`core/dl-faces.el`, on
+`after-make-frame-functions`) now re-runs `enable-theme-functions` for the
+enabled themes on each graphical frame. Hooks there must stay idempotent.
+
 ## 2026-11-03 — no light bar between split windows
 
 The window dividers (and fringes) drew as a light bar: their colours were

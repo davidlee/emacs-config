@@ -108,6 +108,7 @@ Full detail: [docs/emacs/traps.md](docs/emacs/traps.md).
 
 ## More
 
+- [docs/emacs/daemon-frames.md](docs/emacs/daemon-frames.md) — first frame is a terminal: unresolved face colours, `unspecified-bg`, re-firing theme hooks.
 - [docs/emacs/naming.md](docs/emacs/naming.md) — `dl-MODULE` / `my/` / `--private` conventions.
 - [docs/emacs/secrets.md](docs/emacs/secrets.md) — LLM gateway key files, 1Password env-var flow, `dl-secret.el` API.
 - [docs/emacs/debug-commands.md](docs/emacs/debug-commands.md) — rebuild, inspect, cache reset.
