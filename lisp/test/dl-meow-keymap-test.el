@@ -242,5 +242,20 @@ The replayed key is recorded, so the echo area and which-key show it."
   (should (equal (dl-meow-keymap-test--replay-keys 'my/meow-outline-prefix "z")
                  (vconcat (kbd "C-c @ z")))))
 
+;;; Indentation of binding tables
+
+(ert-deftest dl-meow-keymap/define-key-tables-indent-as-body ()
+  "Binding tables passed to `meow-*-define-key' and which-key labels indent two columns, not under the call."
+  (dolist (fn '(meow-motion-define-key meow-leader-define-key
+                meow-normal-define-key
+                which-key-add-key-based-replacements))
+    (with-temp-buffer
+      (emacs-lisp-mode)
+      (insert (format "(%s\n'(\"a\" . b))" fn))
+      (indent-region (point-min) (point-max))
+      (goto-char (point-min))
+      (forward-line 1)
+      (should (= (current-indentation) 2)))))
+
 (provide 'dl-meow-keymap-test)
 ;;; dl-meow-keymap-test.el ends here

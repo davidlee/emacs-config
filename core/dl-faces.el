@@ -99,9 +99,12 @@
 (add-hook 'prog-mode-hook #'my/gutter-padding-mode)
 (add-hook 'text-mode-hook #'my/gutter-padding-mode)
 (add-hook 'display-line-numbers-mode-hook #'my/apply-fonts) ;; hopefully fix spacing issue with ruler
+(add-hook 'prog-mode-hook #'my/apply-fonts)
 
 (defun my/apply-line-number-faces ()
   "Apply stable line-number faces."
+
+  (interactive)
   (let ((family (my/font-role 'line-number)))
     (set-face-attribute 'line-number nil
       :family family
@@ -264,7 +267,16 @@ Re-applied after theme load so rotating themes can't clobber them."
 ;; Apply at startup; re-apply on theme rotation so font/face attrs
 ;; survive `<f5>' (themes reset every face they touch).
 (my/apply-fonts)
+
+(defun my/face-timer-hax (frame)
+  "ffuu"
+  (run-with-timer 0.1 nil
+    (lambda ()
+      (with-selected-frame frame
+        (my/apply-line-number-faces)))))
+
 (add-hook 'enable-theme-functions #'my/apply-fonts)
+(add-hook 'after-make-frame-functions #'my/face-timer-hax)
 
 (provide 'dl-faces)
 ;;; dl-faces.el ends here

@@ -16,6 +16,22 @@
   (project-mode-line t))           ; show project name in modeline
 
 
+;; `otpp-override-mode' runs project commands in the *tab's* project, so
+;; `project-find-file' ignores the project the current buffer is in.
+;; These run a command against the buffer's own project instead.
+
+(defun dl-project-call-here (command)
+  "Call COMMAND interactively on the project inferred from `default-directory'.
+Prompts for a project only when there is none.  Overrides the tab-root
+rebinding of `otpp-override-mode'."
+  (let ((project-current-directory-override default-directory))
+    (call-interactively command)))
+
+(defun my/project-find-file-here ()
+  "Find a file in the project the current buffer belongs to."
+  (interactive)
+  (dl-project-call-here #'project-find-file))
+
 ;; project-x keeps a layout (window state + open files) per project root.
 ;; When to save is ours: its interval timer saved whichever project was
 ;; current, so at startup the fresh layout overwrote the saved one.

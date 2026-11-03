@@ -22,7 +22,8 @@
        ("Sources"    ?s ,dl-notes-sources-dir)
        ("Slips"      ?S ,dl-notes-slips-dir)
        ("References" ?r ,dl-notes-references-dir)
-       ("Indexes"    ?i ,dl-notes-indexes-dir)))
+       ("Indexes"    ?i ,dl-notes-indexes-dir)
+       ("Backlog"    ?b ,dl-notes-backlog-dir)))
   :config
   (when (fboundp 'consult-notes-denote-mode)
     (consult-notes-denote-mode 1)))

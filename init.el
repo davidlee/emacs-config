@@ -102,11 +102,12 @@
 (require 'dl-gptel)
 (require 'dl-minuet)
 (require 'dl-eca)
-(require 'dl-bough)
+;;(require 'dl-bough)
 
 (require 'dl-keybind)
 (require 'dl-dired)
 (require 'dl-dirvish)
+(require 'dl-sediment)
 
 ;; elisp: util
 (require 'dl-insert-elisp-header)

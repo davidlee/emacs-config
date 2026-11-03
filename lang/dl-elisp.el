@@ -17,7 +17,7 @@
   (electric-pair-delete-adjacent-pairs t)
   (electric-pair-open-newline-between-pairs t)
   :config
-  (setq-default lisp-indent-offset 2)
+  (setq-default lisp-indent-offset nil)
   (setq-default indent-tabs-mode nil))
 
 ;; Built-in Elisp mode bindings.

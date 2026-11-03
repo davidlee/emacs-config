@@ -42,6 +42,7 @@ elsewhere the canonical ~/notes path is used.")
 (defconst dl-notes-indexes-dir        (my/notes-path "indexes"))
 (defconst dl-notes-references-dir     (my/notes-path "references"))
 (defconst dl-notes-attachments-dir    (my/notes-path "attachments"))
+(defconst dl-notes-backlog-dir        (my/notes-path "backlog"))
 (defconst dl-notes-archive-dir        (my/notes-path "archive"))
 ;; Gitignored: symlinks into the blog repo (see `dl-denote-blog').
 (defconst dl-notes-blog-dir           (my/notes-path "blog"))
@@ -85,6 +86,7 @@ silently skip a directory in their file list."
                      dl-notes-slips-dir dl-notes-indexes-dir
                      dl-notes-references-dir dl-notes-attachments-dir
                      dl-notes-archive-dir
+                     dl-notes-backlog-dir
                      dl-notes-work-dir dl-notes-work-intake-dir
                      dl-notes-work-journal-dir dl-notes-work-weekly-dir
                      dl-notes-work-meetings-dir dl-notes-work-people-dir

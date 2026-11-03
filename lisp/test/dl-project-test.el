@@ -50,6 +50,38 @@ walk that hung Emacs."
                                 (dl-project-test--relative-files sub))))
         (delete-directory elsewhere t)))))
 
+;;; Inferred project
+
+(defun dl-project-test--probe-root ()
+  "Root of the project `project-current' infers right now."
+  (interactive)
+  (project-root (project-current t)))
+
+(ert-deftest dl-project/here-infers-from-buffer-not-tab-root ()
+  "`dl-project-call-here' ignores an `otpp'-style rebinding of `default-directory'.
+`otpp-override-mode' wraps project commands so they run in the tab's
+project; the buffer's own project must still win."
+  (dl-project-test--with-marker-dir sub
+    (let* ((tab-root (file-name-as-directory (make-temp-file "dl-tab-" t)))
+           (advice (lambda (cmd &rest args)
+                    (let ((default-directory tab-root))
+                      (apply #'funcall-interactively cmd args)))))
+      (unwind-protect
+          (progn
+            (advice-add 'dl-project-test--probe-root :around advice)
+            (let ((default-directory tab-root))
+              (call-process "git" nil nil nil "init" "-q"))
+            (write-region "" nil (expand-file-name "t.el" tab-root))
+            (let ((default-directory sub))
+              (should (file-equal-p
+                       (call-interactively 'dl-project-test--probe-root)
+                       tab-root))
+              (should (file-equal-p
+                       (dl-project-call-here 'dl-project-test--probe-root)
+                       sub))))
+        (advice-remove 'dl-project-test--probe-root advice)
+        (delete-directory tab-root t)))))
+
 ;;; Layout saving (project-x)
 
 (add-to-list 'load-path (expand-file-name "elpa/project-x" user-emacs-directory))

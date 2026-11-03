@@ -37,15 +37,15 @@
   "Widen if buffer is narrowed; otherwise narrow to region, defun, or org subtree."
   (interactive)
   (cond ((buffer-narrowed-p) (widen))
-    ((use-region-p) (narrow-to-region (region-beginning) (region-end)))
-    ((derived-mode-p 'org-mode) (org-narrow-to-subtree))
-    (t (narrow-to-defun))))
+        ((use-region-p) (narrow-to-region (region-beginning) (region-end)))
+        ((derived-mode-p 'org-mode) (org-narrow-to-subtree))
+        (t (narrow-to-defun))))
 
 (defun my/eglot-toggle ()
   "Start eglot in current buffer, or shut it down if already managed."
   (interactive)
   (if (bound-and-true-p eglot--managed-mode)
-    (call-interactively #'eglot-shutdown)
+      (call-interactively #'eglot-shutdown)
     (call-interactively #'eglot)))
 
 (defun my/bind (map key cmd &optional desc)
@@ -53,10 +53,10 @@
 Warns when KEY already has a binding in MAP that differs from CMD."
   (let ((existing (lookup-key map (kbd key))))
     (when (and existing
-            (not (numberp existing))
-            (not (eq existing cmd)))
+               (not (numberp existing))
+               (not (eq existing cmd)))
       (message "my/bind: overriding %s in %S: %S -> %S"
-        key map existing cmd)))
+               key map existing cmd)))
   (define-key map (kbd key) cmd)
   (when desc
     (with-eval-after-load 'which-key
@@ -130,7 +130,8 @@ Warns when KEY already has a binding in MAP that differs from CMD."
     "C-c L"   "llm"))
 
 ;; Concrete bindings -- starter set, grow as needed.
-(my/bind my-file-map   "f" #'find-file              "find-file")
+(my/bind my-file-map   "f" #'my/project-find-file-here "find-file infer proj")
+(my/bind my-file-map   "F" #'find-file              "find-file")
 (my/bind my-file-map   "s" #'save-buffer            "save")
 (my/bind my-file-map   "S" #'write-file             "save-as")
 (my/bind my-file-map   "r" #'consult-recent-file    "recent")
@@ -144,14 +145,12 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-file-map   "K" #'my/delete-current-buffer-file "delete file + buffer")
 (my/bind my-file-map   "M" #'my/move-file           "move file")
 ;; Project family lives at C-c p — see `my-project-map' below.
-
 (my/bind my-buffer-map "b" #'consult-buffer         "switch")
 (my/bind my-buffer-map "k" #'kill-current-buffer    "kill")
 (my/bind my-buffer-map "i" #'ibuffer                "ibuffer")
 (my/bind my-buffer-map "n" #'my/next-user-buffer    "next (skip *…* / dired)")
 (my/bind my-buffer-map "p" #'my/previous-user-buffer "prev (skip *…* / dired)")
 (my/bind my-buffer-map "t" #'my/tmp-buffer          "tmp buffer (same mode)")
-
 (declare-function hydra-window-resize/body "dl-keybind")
 (my/bind my-window-map "<left>"  #'windmove-left        "left")
 (my/bind my-window-map "<down>"  #'windmove-down        "down")
@@ -170,7 +169,6 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-window-map "C"       #'my/rotate-windows-backward "cycle back")
 (my/bind my-window-map "x"       #'my/window-exchange-buffer  "exchange buffer (ace)")
 (my/bind my-window-map "P"       #'my/toggle-window-dedicated "pin (dedicated)")
-
 (my/bind my-git-map    "g" #'magit-status           "status")
 (my/bind my-git-map    "l" #'git-link               "link")
 
@@ -419,7 +417,6 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-toggle-map "R" #'rainbow-mode                     "rainbow (colors)")
 (my/bind my-toggle-map "=" #'aggressive-indent-mode           "aggressive-indent")
 (my/bind my-toggle-map "E" #'my/eglot-toggle                  "eglot")
-
 ;; org-incremental-writing
 (my/bind my-org-iw-map "a" #'org-iw-add         "org-iw-add")
 (my/bind my-org-iw-map "v" #'org-iw-visit-next  "org-iw-visit-next")
@@ -454,17 +451,17 @@ Warns when KEY already has a binding in MAP that differs from CMD."
   "Cut the active selection, or delete one character forward."
   (interactive)
   (if (region-active-p)
-    (meow-kill)
+      (meow-kill)
     (meow-delete)))
 
 (defun my/meow-select-to-line-end ()
   "Extend the selection's right edge to the logical line end."
   (interactive)
   (let* ((beg (if (region-active-p) (region-beginning) (point)))
-          (right (if (region-active-p) (region-end) (point)))
-          (end (save-excursion
-                 (goto-char right)
-                 (line-end-position))))
+         (right (if (region-active-p) (region-end) (point)))
+         (end (save-excursion
+                (goto-char right)
+                (line-end-position))))
     (meow--select (meow--make-selection '(select . transient) beg end) t)))
 
 (defun my/meow-change-to-line-end ()
@@ -482,8 +479,8 @@ Each event is wrapped as (t . EVENT) so it is recorded in
 `this-command-keys': otherwise only the first lands there, and the echo
 area and which-key show C-c instead of C-c @."
   (setq unread-command-events
-    (mapcar (lambda (event) (cons t event))
-      (listify-key-sequence (kbd keys)))))
+        (mapcar (lambda (event) (cons t event))
+                (listify-key-sequence (kbd keys)))))
 
 (defun my/meow-ctrl-c ()
   "Act as \\`C-c'."
@@ -504,13 +501,13 @@ area and which-key show C-c instead of C-c @."
 Without a selection, the current line.  A selection ending at a line
 start (linewise) excludes that line."
   (let* ((active (region-active-p))
-          (beg (if active (region-beginning) (point)))
-          (end (if active (region-end) (point))))
+         (beg (if active (region-beginning) (point)))
+         (end (if active (region-end) (point))))
     (cons (save-excursion (goto-char beg) (line-beginning-position))
-      (save-excursion
-        (goto-char end)
-        (when (and (bolp) (> end beg)) (backward-char))
-        (line-end-position)))))
+          (save-excursion
+            (goto-char end)
+            (when (and (bolp) (> end beg)) (backward-char))
+            (line-end-position)))))
 
 (defun my/meow--edit-lines (edit &rest args)
   "Call EDIT with the selected lines' bounds and ARGS, keeping the selection
@@ -545,10 +542,10 @@ active so the command can repeat."
   "Apply CHANGE-REGION to the selection, else the whole word at point.
 Point and the selection are kept."
   (pcase-let ((`(,beg . ,end)
-                (if (region-active-p)
-                  (cons (region-beginning) (region-end))
-                  (or (bounds-of-thing-at-point 'word)
-                    (user-error "No word at point")))))
+               (if (region-active-p)
+                   (cons (region-beginning) (region-end))
+                 (or (bounds-of-thing-at-point 'word)
+                     (user-error "No word at point")))))
     (funcall change-region beg end))
   (setq deactivate-mark nil))
 
@@ -566,37 +563,37 @@ Point and the selection are kept."
 ;; inner text (e.g. `, (' or `, "'), then edit the flanking delimiters.
 (defconst my/meow-surround-things
   '((round  ?\( . ?\))
-     (square ?\[ . ?\])
-     (curly  ?\{ . ?\})
-     (angle  ?\< . ?\>)
-     (string ?\" . ?\"))
+    (square ?\[ . ?\])
+    (curly  ?\{ . ?\})
+    (angle  ?\< . ?\>)
+    (string ?\" . ?\"))
   "Delimiter pairs by meow thing.  Any other character pairs with itself.")
 
 (defun my/meow--surround-pair (char)
   "Return (OPEN . CLOSE) for CHAR, which may be either delimiter."
   (let ((pairs (mapcar #'cdr my/meow-surround-things)))
     (or (assq char pairs)
-      (rassq char pairs)
-      (cons char char))))
+        (rassq char pairs)
+        (cons char char))))
 
 (defun my/meow--surround-input-pair (char)
   "Like `my/meow--surround-pair', but CHAR may also be a thing letter.
 Letters come from `meow-char-thing-table', as `,' / `.' read them
 \(r → (), c → {}, ...)."
   (or (alist-get (alist-get char meow-char-thing-table)
-        my/meow-surround-things)
-    (my/meow--surround-pair char)))
+                 my/meow-surround-things)
+      (my/meow--surround-pair char)))
 
 (defun my/meow--surround-bounds ()
   "Return the selection's (BEG . END) when a delimiter pair flanks it."
   (unless (region-active-p)
     (user-error "Select the text inside the delimiters first"))
   (let ((beg (region-beginning))
-         (end (region-end)))
+        (end (region-end)))
     (unless (and (> beg (point-min))
-              (< end (point-max))
-              (equal (my/meow--surround-pair (char-before beg))
-                (cons (char-before beg) (char-after end))))
+                 (< end (point-max))
+                 (equal (my/meow--surround-pair (char-before beg))
+                        (cons (char-before beg) (char-after end))))
       (user-error "Selection is not inside a delimiter pair"))
     (cons beg end)))
 
@@ -606,8 +603,8 @@ The selection stays on the content.  Without one, insert the pair
 with point inside."
   (interactive "cSurround with: ")
   (pcase-let ((`(,open . ,close) (my/meow--surround-input-pair char))
-               (beg (if (region-active-p) (region-beginning) (point)))
-               (end (if (region-active-p) (region-end) (point))))
+              (beg (if (region-active-p) (region-beginning) (point)))
+              (end (if (region-active-p) (region-end) (point))))
     (save-excursion
       (goto-char end)
       (insert close)
@@ -628,7 +625,7 @@ with point inside."
   "Replace the delimiter pair around the selection with CHAR's pair."
   (interactive "cReplace surround with: ")
   (pcase-let ((`(,beg . ,end) (my/meow--surround-bounds))
-               (`(,open . ,close) (my/meow--surround-input-pair char)))
+              (`(,open . ,close) (my/meow--surround-input-pair char)))
     ;; In place, so the selection's markers stay put.
     (subst-char-in-region end (1+ end) (char-after end) close)
     (subst-char-in-region (1- beg) beg (char-before beg) open))
@@ -640,6 +637,11 @@ with point inside."
     "d" #'my/meow-surround-delete
     "r" #'my/meow-surround-replace)
   "Meow normal `m': surround the selection.")
+
+;; Binding tables read as bodies: indent two columns, not under the call.
+(dolist (fn '(meow-motion-define-key meow-leader-define-key meow-normal-define-key
+                                     which-key-add-key-based-replacements))
+  (function-put fn 'lisp-indent-function 0))
 
 (defun meow-setup ()
   (setq meow-cheatsheet-layout meow-cheatsheet-layout-qwerty)
