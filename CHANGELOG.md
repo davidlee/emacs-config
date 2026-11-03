@@ -2,6 +2,14 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-11-03 — padding between line numbers and text
+
+`my/gutter-padding-mode` (a left margin, which sits *outside* the line
+numbers) is gone. `my/pad-line-numbers`, on `display-line-numbers-mode-hook`,
+sets a one-column `line-prefix`/`wrap-prefix` so text is spaced off the
+numbers, only in buffers that show them. Adjust the pad string there.
+Org buffers using `org-indent-mode` override `line-prefix` and are unaffected.
+
 ## 2026-11-03 — no stray scratch popups; stable line-number alignment
 
 Hidden prog-mode buffers (apheleia's formatting scratch) no longer get

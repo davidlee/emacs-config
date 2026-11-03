@@ -97,15 +97,15 @@ visits) run mode hooks too, and must not pop up."
   (dolist (window (get-buffer-window-list nil nil t))
     (set-window-buffer window (current-buffer))))
 
-(define-minor-mode my/gutter-padding-mode
-  "Add a little space between gutter and buffer text."
-  :init-value nil
-  :lighter nil
-  (setq left-margin-width (if my/gutter-padding-mode 1 0))
-  (my/refresh-window-margins))
+(defun my/pad-line-numbers ()
+  "Space the text off the line numbers while `display-line-numbers-mode' is on.
+`line-prefix' is drawn after the number; margins sit outside it.
+`wrap-prefix' keeps continuation lines aligned."
+  (let ((pad (and display-line-numbers-mode " ")))
+    (setq-local line-prefix pad
+                wrap-prefix pad)))
 
-(add-hook 'prog-mode-hook #'my/gutter-padding-mode)
-(add-hook 'text-mode-hook #'my/gutter-padding-mode)
+(add-hook 'display-line-numbers-mode-hook #'my/pad-line-numbers)
 (add-hook 'display-line-numbers-mode-hook #'my/apply-fonts) ;; hopefully fix spacing issue with ruler
 (add-hook 'prog-mode-hook #'my/apply-fonts)
 

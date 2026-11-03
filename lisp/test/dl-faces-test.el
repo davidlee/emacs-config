@@ -6,27 +6,15 @@
 (require 'org)                        ; dl-faces sets org faces at load
 (require 'dl-faces)
 
-(ert-deftest dl-faces/hidden-prog-buffer-keeps-out-of-window ()
-  "A hidden buffer entering a `prog-mode' (e.g. a formatter scratch) never
-takes over the selected window."
-  (let ((shown (generate-new-buffer "dl-faces-test-shown"))
-        (hidden (generate-new-buffer " dl-faces-test-hidden")))
-    (unwind-protect
-        (save-window-excursion
-          (switch-to-buffer shown)
-          (with-current-buffer hidden (my/gutter-padding-mode 1))
-          (should (eq (window-buffer) shown)))
-      (mapc #'kill-buffer (list shown hidden)))))
-
-(ert-deftest dl-faces/displayed-buffer-gets-gutter-padding ()
-  "Enabling gutter padding in a displayed buffer applies it to the window."
-  (let ((buf (generate-new-buffer "dl-faces-test-gutter")))
-    (unwind-protect
-        (save-window-excursion
-          (switch-to-buffer buf)
-          (my/gutter-padding-mode 1)
-          (should (equal (window-margins) '(1))))
-      (kill-buffer buf))))
+(ert-deftest dl-faces/line-numbers-pad-the-text-while-shown ()
+  "Text is prefixed off the line numbers only while they are displayed."
+  (with-temp-buffer
+    (display-line-numbers-mode 1)
+    (should (equal line-prefix " "))
+    (should (equal wrap-prefix " "))
+    (display-line-numbers-mode -1)
+    (should-not line-prefix)
+    (should-not wrap-prefix)))
 
 (ert-deftest dl-faces/line-number-faces-survive-theme-recalc ()
   "Line-number alignment settings outlive a theme recalculation of the faces.
