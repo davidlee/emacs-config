@@ -23,6 +23,11 @@ Returned path is abbreviated (\"~/...\") so it matches what
   "Add DIR under `user-emacs-directory' to `trusted-content'."
   (add-to-list 'trusted-content (my/expand-emacs-dir dir)))
 
+(defun dl-path-config-load-path ()
+  "Absolute directories of my Lisp and external checkouts, as -L arguments."
+  (mapcar (lambda (dir) (expand-file-name dir user-emacs-directory))
+    (append my/lisp-dirs my/checkout-lisp-dirs)))
+
 ;; Load both my code and external checkouts.
 (mapc #'my/add-load-path-dir
   (append my/lisp-dirs my/checkout-lisp-dirs))

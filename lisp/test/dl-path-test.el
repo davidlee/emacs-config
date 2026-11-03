@@ -41,4 +41,13 @@
 (ert-deftest dl-path/live-shell-replaces-unset-shell ()
   (should (equal (dl-path-live-shell nil '("sh")) (executable-find "sh"))))
 
+(ert-deftest dl-path/config-load-path-lets-a-bare-emacs-require-config-libs ()
+  "A child `emacs -Q' given the config's -L dirs finds `dl-project' and `dl-keymap'.
+This is Flymake's byte-compile subprocess: it inherits no `load-path'."
+  (let* ((args (mapcan (lambda (dir) (list "-L" dir)) (dl-path-config-load-path)))
+         (exit (apply #'call-process (expand-file-name invocation-name invocation-directory)
+                      nil nil nil "-Q" "--batch" (append args '("--eval"
+                      "(unless (and (locate-library \"dl-project\") (locate-library \"dl-consult-notes\")) (kill-emacs 1))")))))
+    (should (zerop exit))))
+
 ;;; dl-path-test.el ends here

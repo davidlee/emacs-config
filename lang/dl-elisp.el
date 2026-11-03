@@ -20,6 +20,17 @@
   (setq-default lisp-indent-offset nil)
   (setq-default indent-tabs-mode nil))
 
+;; Flymake's byte-compile child is a bare `emacs -Q': hand it the config's
+;; Lisp dirs, or `(require ...)' of my own libraries is "no such file".
+(require 'dl-path)
+(setq-default elisp-flymake-byte-compile-load-path
+  (cons "./" (dl-path-config-load-path)))
+
+;; Turn Flymake's "not known to be defined" warnings into declare-function forms.
+(use-package dl-declare
+  :ensure nil
+  :commands dl-declare-insert-from-flymake)
+
 ;; Built-in Elisp mode bindings.
 (use-package elisp-mode
   :ensure nil
