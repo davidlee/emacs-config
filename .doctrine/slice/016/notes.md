@@ -69,6 +69,31 @@ verified here — two were wrong.
 
 - PHASE-01 (2026-11-04): client requests + transport in apps/dl-umbriel.el (git mv), focus in apps/dl-umbriel-focus.el on the client; 29 umbriel tests green; F-9 test mutation-checked; VA-1 live read-only probe passed. Added public `dl-umbriel-echo-failure` (one failure echo for focus and row actions). Baseline red from the user's uncommitted dl-keybind.el remap (policy lint L2), not ours.
 
+## Implementation run
+
+From PHASE-02 (2026-11-04): /pi-orchestrate from the session seat. pi
+(quotient) does phase work; the seat keeps gates, contract-test reads,
+mutation checks, VA-1 and doctrine state.
+
+- Form: project forms at `.quotient/forms/{read,write}` (df0b4b5): emacs,
+  just, read-only `~/dev/satan` and `~/.local/src/umbriel`. No
+  `UMBRIEL_SOCKET`/`XDG_RUNTIME_DIR` in the sandbox, so neither tests nor
+  delegates can reach the compositor; VA-1 is the seat's. A rebuild changing
+  the form needs the user's `quotient allow`.
+- Delegates can read the repo root, including `*.secret.el`; the form
+  cannot mask files inside the root. Briefs never point at them.
+- Sandbox-only `just check` failures (not form gaps; host gate is
+  authoritative): `dl-agent-review-external-edit-comments-and-cleanup`,
+  `dl-nix/apheleia-formats-with-alejandra` (no alejandra), LOADERR
+  `dl-modeline-test`/`dl-org-iw-test` (org-iw not bound). Workers run
+  targeted `^dl-umbriel` ERT; the seat runs `just check` on the host.
+- Host gate: `just check` from the session shell. Baseline red only on
+  `dl-policy-lint/l2-real-config` (user's uncommitted dl-keybind.el).
+- Other writers: user's uncommitted `completion/dl-corfu.el`,
+  `core/dl-keybind.el`, `core/dl-keymap.el`. Commit explicit paths only.
+
+## Autonomy log
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
 fresh-as-of: 2026-11-04 · slice started; PHASE-01 completed, PHASE-02 next · deb8ab9
