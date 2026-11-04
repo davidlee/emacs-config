@@ -67,6 +67,8 @@ verified here — two were wrong.
 
 ## Progress
 
+- PHASE-04 (2026-11-04): apps/dl-umbriel-buffer.el (mode, render, header, throttle, stale, point/start/folds, my/umbriel, g, kill) + 25 tests (115 umbriel total). Mutation checks: 14/15 killed; `set-buffer-modified-p nil` removal survives because `magit-section-update-highlight` also clears the flag (kept, as magit does). VA-1: umbriel test files with UMBRIEL_SOCKET at a counting scratch listener → 115/115 pass, 0 accepts (positive control: one `dl-umbriel-stream-open` → 1 accept); with UMBRIEL_SOCKET/WAYLAND_DISPLAY/XDG_RUNTIME_DIR unset → 115/115 pass. VA-2 (live render) left for the user. Host `just check`: 352 tests, only baseline red `dl-policy-lint/l2-real-config`.
+
 - PHASE-02 (2026-11-04): stream half of apps/dl-umbriel.el — held state (one record, three writers), change hook, waiter, stream open/close, stream lines, refresh. 31 new tests (54 umbriel total); mutation-checked; VA-1 live passed (17 windows, 6 workspaces, 0 skipped). pi-orchestrated: tests and code by separate pi runs, review by pi; seat fixed 6 issues.
 - PHASE-01 (2026-11-04): client requests + transport in apps/dl-umbriel.el (git mv), focus in apps/dl-umbriel-focus.el on the client; 29 umbriel tests green; F-9 test mutation-checked; VA-1 live read-only probe passed. Added public `dl-umbriel-echo-failure` (one failure echo for focus and row actions). Baseline red from the user's uncommitted dl-keybind.el remap (policy lint L2), not ours.
 
@@ -112,6 +114,16 @@ mutation checks, VA-1 and doctrine state.
 - PHASE-03 · named workspace with no name selects `""`, not a fallback to index (review F3): design says name when named; the compositor's rejection stays visible · decided
 - PHASE-03 · non-alist / nil entries in held state (review F4/F5) → ISS-012, fix at the stream parse boundary, not the model · deferred
 - PHASE-03 · sorting via Emacs 30+ `sort :key` (stable, copying, `value<`) instead of a hand-rolled comparator · decided (refactor)
+- PHASE-04 · kill hook added by `my/umbriel` beside the stream open, not in the mode body (who opens registers the close; mode stays display-only) · decided
+- PHASE-04 · `dl-umbriel-buffer-mode-map` created now as an inline `defvar-keymap` holding only `g`; PHASE-05 adds the row keys inline · decided
+- PHASE-04 · per-window point AND window-start restore (magit-mode's refresh pattern); design names goto-successor only, but erase-buffer resets every window-point and window-start (reviews VERIFIED) · decided; design § Repaint — audit
+- PHASE-04 · design § Repaint "Keeping folds … without extra code" is wrong: the cache sets `hidden` but only `magit-section-show` on the root makes the overlays; repaint also resets magit's highlight state and the modified flag, as `magit-refresh-buffer` does (both reviews, VERIFIED) · decided; design drift — audit
+- PHASE-04 · kill hook closes the stream first, then cancels the repaint timer (close announces → hook would re-arm after a cancel) · decided
+- PHASE-04 · every entry point uses `dl-umbriel-buffer--live` (named *and* in the mode): a foreign buffer named *umbriel* is never drawn into · decided
+- PHASE-04 · header `%` doubling checked by evaluating the `:eval` form: `format-mode-line` returns "" in batch · decided (test)
+- PHASE-04 · a window moved to another workspace gets a new ident, so point falls to a sibling (design accepts; Opus review: DEC-022 rationale "ids keep point on the same window" oversells it for drags between workspaces) · drift — audit
+- PHASE-04 · init.el require and keys left to PHASE-05 as planned; CHANGELOG tells the user to `load-library` until then · decided
+- PHASE-04 · VA-2 (live render against the compositor) left for the user per charter · deferred
 
 ### pi passes (PHASE-02)
 
@@ -134,6 +146,21 @@ mutation checks, VA-1 and doctrine state.
 | review | review | $0.084 | 13 findings, all VERIFIED or reasoned: 4 mutants surviving the tests (id-order, choices count, floating order, label part order), selector flattened raw name. Good value |
 | test gaps | implement (test session) | $0.031 | +8 tests (30); noticed the specified `\n` near-miss was not sensitive and added a tab/space pair |
 | code fixes | implement (impl session) | $0.009 | raw addressing, owner computed once |
+
+### pi passes (PHASE-04)
+
+| run | profile | cost | outcome |
+|---|---|---|---|
+| red tests | implement | $0.041 | timed out at 15 min wall clock after 18 requests probing `format-mode-line` in batch (returns ""); no file written |
+| red tests (cont.) | implement (same session) | $0.052 | 18 tests; validated against a /tmp reference stub (all passed), red on missing feature |
+| test gaps | implement (same session) | $0.005 | +3: kill cancels timer, due-after-kill harmless, no buffer schedules nothing |
+| implementation | implement (fresh) | $0.046 | 21/21 first try, 233 lines, zero warnings |
+| review | review | $0.071 | 14 findings; fold overlay missing (HIGH, VERIFIED), highlight lost, modified flag, kill re-arm, fold test too weak. Good value |
+| Claude review | Opus general-purpose | ~113k tokens | concurred on all of pi's majors; added window-start reset (VERIFIED), foreign-buffer guard, cross-workspace point fallback |
+| review tests | implement (test session) | $0.046 | +4 tests, 5 red for the right reasons; timer stubs made discriminating (full-suite fragility the seat found) |
+| review code | implement (impl session) | $0.021 | R-1..R-7, 115/115 green incl. under global-auto-revert-mode |
+
+pi misses: the timer stubs failed on any `cancel-timer`, so the full suite (auto-revert on `after-change-major-mode-hook`) went red though targeted ERT was green — only `just check` showed it. The fold test asserted the `hidden` slot, not invisibility. Neither reviewer nor the seat's mutations caught the fold defect before the probes; design text had asserted "no extra code".
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
