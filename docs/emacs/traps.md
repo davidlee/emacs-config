@@ -1,6 +1,6 @@
 ---
 name: emacs-traps
-description: The four Nix-integration traps that have bitten this Emacs config
+description: The six Nix-integration traps that have bitten this Emacs config
 metadata:
   type: reference
   topic: emacs
@@ -11,7 +11,7 @@ metadata:
 
 # Nix-integration traps
 
-Four things that have bitten this config. Quick reference; for orientation see [AGENTS.md](../../AGENTS.md).
+Six things that have bitten this config. Quick reference; for orientation see [AGENTS.md](../../AGENTS.md).
 
 ## 1. Flake builds see only git-tracked files
 
@@ -83,3 +83,27 @@ Diagnose: `coredumpctl info <PID>` — `Signal: 11 (SEGV)`, and a stack frame in
 Fix / prevent: `just clean-eln` purges stale gens (keeps the live one); it runs
 automatically at the tail of `just home-switch`. eln-cache is fully regenerable,
 so purging only costs a one-time background recompile.
+
+## 6. A dev-shell `LD_LIBRARY_PATH` breaks every subprocess
+
+direnv exports `LD_LIBRARY_PATH` pointing into the flake's library store paths.
+Emacs inherits it when the daemon starts from that shell, and passes it to every
+subprocess it launches — so a binary built against a *different* glibc picks up
+the dev-shell's `libc.so.6` and dies in the dynamic loader:
+
+```text
+$ LD_LIBRARY_PATH=/nix/store/…-glibc-2.40-218/lib umbriel -h
+umbriel: symbol lookup error: /nix/store/…/libc.so.6:
+  undefined symbol: __nptl_change_stack_perm, version GLIBC_PRIVATE
+```
+
+**It exits 127** — the same status a *missing* binary gives — so a caller that
+only checks the status reads this as "tool not installed" or "nothing running".
+The symbol error is on stderr, and stderr is usually thrown away.
+
+Fix: scrub the variable from the environment you hand the child, never from
+`process-environment` globally. `dl-umbriel--host-environment`
+(`lisp/dl-umbriel.el:12`) is the pattern: `seq-remove` the `LD_LIBRARY_PATH=`
+entry and bind the result around `call-process` / `make-process`. Every new
+launch path — a new query, a new action, a long-lived stream — must do the same;
+this is a per-call obligation, not a startup one.

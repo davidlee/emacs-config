@@ -2,6 +2,22 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-11-04 — sixth Nix trap: the dev-shell `LD_LIBRARY_PATH`
+
+`docs/emacs/traps.md` gains § 6. direnv's `LD_LIBRARY_PATH` reaches child
+processes, so a binary built against another glibc dies in the dynamic loader —
+reproduced as `symbol lookup error: … undefined symbol:
+__nptl_change_stack_perm, version GLIBC_PRIVATE` — and **exits 127**, the same
+status a missing binary gives, with the diagnosis on stderr only. A caller that
+checks only the status reads it as "nothing running". The rule is to bind a
+scrubbed `process-environment` around each `call-process` / `make-process`, as
+`dl-umbriel--host-environment` does. `AGENTS.md`'s trap list corrected from
+five to six; the traps page's own count (which said four) too.
+
+Found while scoping SL-016 (umbriel window and workspace control surface),
+where every launch path — query, action, long-lived subscribe — now inherits
+the obligation.
+
 ## 2026-11-03 — theme hooks re-run on the first graphical frame
 
 A daemon starts on a terminal frame, where `default`'s colours don't resolve

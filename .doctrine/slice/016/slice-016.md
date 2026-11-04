@@ -34,6 +34,15 @@ two frames showing the same buffer are indistinguishable, and
 slice can promise about "the Emacs windows" and is why naming/tagging them is a
 follow-up rather than a phase.
 
+**"Unavailable" is four failures wearing two exit codes.** From the CLI's own
+paths: binary missing (127), loader failure from a stray `LD_LIBRARY_PATH`
+(127, diagnosis on stderr only), no compositor (`error: cannot connect to
+umbriel socket`), and a stream closed with no line (exit 1). The current helper
+collapses all four to `nil` (`lisp/dl-umbriel.el:25-36`), so a broken client is
+indistinguishable from an empty desktop. The slice therefore owes more than an
+empty-state message: it must name which failure it is showing. The loader case
+is now `docs/emacs/traps.md` § 6.
+
 ## Scope & Objectives
 
 1. **One client layer.** Keep `dl-umbriel--host-environment` (strip
@@ -45,18 +54,37 @@ follow-up rather than a phase.
 2. **Live state from the event stream.** One long-lived
    `umbriel subscribe windows,workspaces` process, newline-framed: each line is
    `{"event":…,"data":…}` carrying a *full snapshot* of that family. Replace
-   held state per event; never merge deltas. Closes and restarts reconnect.
-   Manual refresh stays available for the process-not-running case.
+   held state per event; never merge deltas. Manual refresh stays available for the
+   process-not-running case. The child is safe to hold open: the CLI flushes per
+   line and treats a closed reader as the end of the stream, so Emacs cannot
+   stall it by not draining, and a killed child exits cleanly. **Freshness is
+   therefore process liveness**, reported as running / exited (with stderr) /
+   never started — not as a timestamp.
 
 3. **A pure model over the parsed snapshots.** Accessors and the join that
-   groups windows under their workspace id, plus the display strings the buffer
+   groups windows under their workspace, plus the display strings the buffer
    shows. No compositor calls, no buffer mutation — testable against fixtures.
+
+   The model carries **two different addressing fields per workspace**, because
+   the compositor does: the opaque `id` (synthesised `OUTPUT:serial`) joins a
+   window to its workspace, while every workspace *action* takes a name or an
+   index plus `--output`. Windows are the reverse — addressed by the opaque
+   `id`. A row that keeps only what it displays cannot act; a row that keeps
+   only ids cannot act on a workspace.
 
 4. **The buffer.** `magit-section`, two top-level sections — workspaces, then
    windows nested under their workspace — each row showing the state that
    matters (name, layout, active/focused, occupancy; app id, title, placement,
-   flags). Refresh without losing point; a visibly stale or unavailable state
-   rather than an empty list when the compositor is absent.
+   flags).
+
+   Two signals must stay separate: `active` (seat-global) and `focused`
+   (workspace-remembered) — a scratchpad or layer surface holding the keyboard
+   makes them disagree. And the compositor's `visible` means "on the active
+   workspace, not a hidden tab, not minimized", **not** "on screen": a window
+   can be visible and scrolled out of view.
+
+   Refresh without losing point, and a state that names its own failure rather
+   than an empty list when the compositor is absent.
 
 5. **Actions from the section at point.** v1 set:
    - window: `window-focus`, `window-move-to-workspace`, `window-toggle-floating`,
@@ -70,15 +98,17 @@ follow-up rather than a phase.
    Every action re-reads (or awaits the next snapshot) rather than assuming the
    effect it asked for.
 
-6. **Keys.** `my-umbriel-map` at `C-c u` carries the commands; the
-   `project-vc-dir "hello"` placeholder is removed. `C-c L` stays
-   `my-llm-map`.
+6. **Keys.** `my-umbriel-map` (`core/dl-keymap.el:249`) at `C-c u` carries the
+   commands. The commented placeholder at `core/dl-keymap.el:433`
+   (`;; (my/bind my-umbriel-map "u" #'something "hello" )`) is deleted, not
+   inherited. `C-c L` stays `my-llm-map`. No new family key is claimed, so the
+   `C-c <letter>` allow-list and IMP-019 are untouched.
 
 7. **The theory, written down.** `docs/emacs/umbriel.md`: the socket and its
    three access paths (query, action, subscribe), the snapshot-replacement
-   rule, the activation-token reason focus needs the compositor, the
-   `LD_LIBRARY_PATH` trap, frame identity limits, and the rule that Emacs holds
-   no authority over layout state.
+   rule, the activation-token reason focus needs the compositor, frame identity
+   limits, and the rule that Emacs holds no authority over layout state. The
+   loader trap is cited from `docs/emacs/traps.md` § 6, not restated.
 
 8. **Tests and changelog.** ERT for the model, the argv/JSON construction and the
    stream framing; a `CHANGELOG.md` entry naming the commands and keys.
@@ -97,6 +127,10 @@ follow-up rather than a phase.
   config, not in zmux — which is what this slice is. Composing zmx sessions into
   the buffer would require mapping ghostel buffers to frames, which needs the
   same missing frame identity.
+
+  `apps/dl-zmx.el` here predates `~/dev/zmux` (2026-10-01 vs 2026-11-02) and is
+  **lag, not drift**; replacing it is **CHR-009**. This slice neither depends on
+  nor blocks that work.
 - Overview, screencast, effect presets, layers, outputs, input-capture
   permissions, tearing, colour management, virtual outputs.
 - Talking to the socket directly with `socat`/`make-network-process` instead of
@@ -106,8 +140,15 @@ follow-up rather than a phase.
 
 ## Affected surface
 
-- `lisp/dl-umbriel.el` — client, model, buffer, actions (existing 65 lines grow;
-  split into a second file only if it stops reading as one responsibility)
+- `lisp/dl-umbriel.el` — the compositor client: environment scrub, query,
+  action, stream, model (existing 65 lines grow)
+- `lisp/dl-umbriel-buffer.el` — *likely*, the `magit-section` buffer and its
+  commands. STD-001 ("one concern per file", `required`) makes the split a
+  governance question rather than a taste one, and `dl-org.el` +
+  `dl-org-capture.el` (+ 6 more, each required separately) is the precedent.
+  The design decides and justifies it; whichever way it goes, a new file is
+  `git add`ed before any `home-manager switch` (trap 1).
+- `init.el` — requires the new file beside `dl-umbriel` (`:23`)
 - `lisp/test/dl-umbriel-test.el` — the existing ERT file, extended
 - `core/dl-keymap.el` — populate `my-umbriel-map`, drop the placeholder
 - `docs/emacs/umbriel.md` — new, the theory
@@ -131,6 +172,14 @@ follow-up rather than a phase.
 - Assumes `umbriel` remains on `PATH` in a plain shell and that the JSON field
   names in `ipc_commands.cpp` are the contract. A field rename upstream breaks
   the buffer silently; the model's accessors should default rather than error.
+- **Every `umbriel` launch must run under a scrubbed environment.** The devshell
+  exports `LD_LIBRARY_PATH`; a child that inherits it dies in the dynamic loader
+  and exits **127**, the same status as a missing binary. One scrub point,
+  applied per call (`dl-umbriel--host-environment`, `lisp/dl-umbriel.el:12`), for
+  query, action and stream alike. See `docs/emacs/traps.md` § 6.
+- Emacs has never owned a long-lived child here (`set-process-filter` appears
+  nowhere in this config today), so the risk is not complexity but silence: an
+  unnoticed dead child renders a plausible, permanently stale buffer.
 
 ## Verification / closure intent
 
@@ -139,7 +188,9 @@ follow-up rather than a phase.
 - ERT covers: workspace/window accessors and the workspace-join over fixtures;
   action argv construction and the JSON request shape; the stream filter
   against hand-fed lines, including a malformed line and a family the buffer
-  ignores; the buffer rendering a fixture without a compositor.
+  ignores; the buffer rendering a fixture without a compositor; and that the
+  four failure modes (missing binary, loader failure, no compositor, stream
+  closed) reach distinct states rather than one `nil`.
 - Manual host check, recorded in the slice notes: open the buffer, change focus
   and workspace from umbriel's own binds, confirm the buffer tracks without a
   manual refresh; run each v1 action and confirm the compositor's reply in the

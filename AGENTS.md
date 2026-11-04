@@ -96,13 +96,14 @@ from `init.el`.
 | Set `:ensure nil` + want package available | Add to `extraEmacsPackages` in `emacs.nix` |
 | Adding stuff that has nothing to do with a text editor | [read](./docs/satan/refactor/extraction-policy.md)| 
 
-## five traps 
+## six traps 
 
 1. **Flake builds see only git-tracked files** — untracked `.el` is invisible to the parser.
 2. **`:ensure nil`** — emacs-overlay refuses to install. Use `extraEmacsPackages` instead.
 3. **Never `setq` preloaded native-comp vars** — `append` to `native-comp-driver-options`.
 4. **`trusted-content` entries must be in `~/` form** — `abbreviate-file-name` before adding.
 5. **Stale `eln-cache` gens SIGSEGV the editor** — rebuilds leave old ABI `.eln` dirs behind; a mismatched one jumps to garbage and crashes (looks like a lock-up while typing). `just clean-eln` purges them; runs at the tail of `just home-switch`.
+6. **A dev-shell `LD_LIBRARY_PATH` breaks every subprocess** — direnv's lib entries reach child processes, so a binary built against another glibc dies in the loader with `symbol lookup error` and **exit 127**, indistinguishable from "not installed". Bind a scrubbed `process-environment` around each `call-process` / `make-process` (see `dl-umbriel--host-environment`).
 
 Full detail: [docs/emacs/traps.md](docs/emacs/traps.md).
 
