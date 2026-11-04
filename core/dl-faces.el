@@ -144,6 +144,12 @@ Heights must be floats so they multiply through `default' and scale
 with `text-scale-adjust' (C-mousewheel).  Edit and call
 `my/apply-org-faces' to re-apply.")
 
+;; face for hl-line - have a darker thingy
+(defun my/apply-hl-line-faces ()
+  (let ((bg (face-attribute 'default :background nil t)))
+    (when (color-defined-p bg)
+      (set-face-background 'hl-line (color-darken-name bg 25)))))
+
 (defun my/apply-org-faces ()
   "Apply `my/org-face-styles' to org faces."
   (interactive)
@@ -238,7 +244,8 @@ Variadic to fit `enable-theme-functions', which passes the theme."
                       :height 1.0)
 
   (my/apply-ui-faces)
-  (my/apply-org-faces))
+  (my/apply-org-faces)
+  (my/apply-hl-line-faces))
 
 (with-eval-after-load 'lambda-line
   (my/apply-lambda-line-faces))

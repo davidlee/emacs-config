@@ -246,6 +246,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (defvar-keymap my-diagnostics-map :name "diagnostics")
 (defvar-keymap my-llm-map         :name "llm")
 (defvar-keymap my-org-iw-map      :name "org-iw")
+(defvar-keymap my-umbriel-map     :name "umbriel")
 
 ;; Bind prefix maps globally under C-c <letter>.
 (define-key global-map (kbd "C-c f") my-file-map)
@@ -264,6 +265,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (define-key global-map (kbd "C-c z") my-fold-map)
 (define-key global-map (kbd "C-c d") my-diagnostics-map)
 (define-key global-map (kbd "C-c L") my-llm-map)
+(define-key global-map (kbd "C-c u") my-umbriel-map)
 
 ;; Prefix labels for which-key.
 (with-eval-after-load 'which-key
@@ -288,7 +290,8 @@ Warns when KEY already has a binding in MAP that differs from CMD."
     "C-c m"   "term"
     "C-c z"   "fold"
     "C-c d"   "diagnostics"
-    "C-c L"   "llm"))
+    "C-c L"   "llm"
+    "C-c u"   "umbriel"))
 
 ;; Concrete bindings -- starter set, grow as needed.
 (my/bind my-file-map   "f" #'my/project-find-file-here "find-file infer proj")
@@ -425,6 +428,12 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-org-map     "q" #'my/org-ql-find-here         "query (buffer)")
 (my/bind my-org-map     "b" #'org-switchb                 "switch org buffer")
 (my/bind my-org-map     "L" #'org-insert-link-global      "insert link (global)")
+
+;; Umbriel map - do window manager stuff
+;; (my/bind my-umbriel-map "u" #'something "hello" )
+;;
+;; XXXXXXX
+;;
 
 ;; Notes (C-c n …) — see plan §4b in ~/.claude/plans/yes-use-dl-for-staged-quiche.md.
 ;; Sub-prefixes for new-by-class / manage / review live below.

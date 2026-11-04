@@ -1,5 +1,8 @@
 ;;; dl-corfu.el --- completion setup -*- lexical-binding: t; -*-
 
+;; C-M-i
+;; Alt-Tab is taken
+
 (use-package corfu
   :custom
   ;; corfu-auto disabled: a capf recursing on every keystroke overflowed the
@@ -8,6 +11,7 @@
   ;; the recursing capf is identified/fixed. See CHANGELOG 2026-07-22.
   (corfu-auto nil)
   (corfu-cycle t)
+  :commands (global-corfu-mode corfu-margin-formatters kind-icon-margin-formatter)
   :config
   (global-corfu-mode))
 
@@ -17,6 +21,9 @@
   :after corfu
   :config
   (add-to-list 'corfu-margin-formatters #'kind-icon-margin-formatter))
+
+;; Use HIPPIE-EXPAND instead of dabbrev-expand
+(global-set-key [remap dabbrev-expand] 'hippie-expand)
 
 ;; Use Dabbrev with Corfu
 ;; (use-package dabbrev
@@ -30,7 +37,6 @@
 ;;   (add-to-list 'dabbrev-ignored-buffer-modes 'pdf-view-mode)
 ;;   (add-to-list 'dabbrev-ignored-buffer-modes 'tags-table-mode))
 
-
 ;;
 ;; Cape
 ;;
@@ -38,6 +44,5 @@
   :init
   (add-to-list 'completion-at-point-functions #'cape-file)
   (add-to-list 'completion-at-point-functions #'cape-dabbrev))
-
 
 (provide 'dl-corfu)

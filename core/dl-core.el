@@ -54,6 +54,9 @@
   (calendar-mark-holidays-flag t)
   (calendar-mark-today t)
 
+  ;; (text-mode-ispell-word-completion nil)
+  (read-extended-command-predicate #'command-completion-default-include-p)
+
   :config
   ;; don't warn when loading stuff from custom-vars.el
   (load custom-file 'noerror 'nomessage)

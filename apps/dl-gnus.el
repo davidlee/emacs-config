@@ -23,7 +23,7 @@
   "Fastmail account login, shared by IMAP and SMTP.")
 
 (setq user-full-name "David Lee"
-  user-mail-address "david@davlee.com")
+      user-mail-address "david@davlee.com")
 
 (defconst dl-gnus-archive-group "nnimap+fastmail:Archive"
   "Fastmail's Archive folder: where archived mail goes.")
@@ -36,9 +36,9 @@ asks for, e.g. \"563\"):
   (secrets-create-item \"Login\" \"Frugal Usenet\" (read-passwd \"Password: \")
     :host HOST :user USER :port \"563\")"
   `(nntp ,name
-     (nntp-address ,host)
-     (nntp-port-number 563)
-     (nntp-open-connection-function nntp-open-ssl-stream)))
+         (nntp-address ,host)
+         (nntp-port-number 563)
+         (nntp-open-connection-function nntp-open-ssl-stream)))
 
 (defconst dl-gnus-feeds '("doctrine.engineering/feed.xml")
   "Atom feeds read in Gnus, each its own nnatom server.
@@ -50,25 +50,25 @@ Addresses omit the scheme; nnatom fetches over https.")
   ;; No primary server: mail, news and feeds are all secondary.
   (gnus-select-method '(nnnil ""))
   (gnus-secondary-select-methods
-    `((nnimap "fastmail"
-        (nnimap-address "imap.fastmail.com")
-        (nnimap-stream ssl)
-        (nnimap-user ,dl-gnus-login))
-       ;; Mailing lists as newsgroups; public, no login.  Plain NNTP:
-       ;; its TLS port (563) does not answer.
-       (nntp "gmane" (nntp-address "news.gmane.io"))
-       ;; Frugal Usenet: subscription lapsed; uncomment on renewal.
-       ;; ,(dl-gnus--frugal "frugal" "news.frugalusenet.com")
-       ,@(mapcar (lambda (feed) `(nnatom ,feed)) dl-gnus-feeds))))
-  ;; With Frugal: Gnus has no server failover.  An article missing from
-  ;; the current server (expired, taken down) is asked of these in
-  ;; order, the bonus server (another backbone) last.  Not subscribable:
-  ;; each would duplicate every group.
-  ;; (gnus-refer-article-method
-  ;;   `(current
-  ;;      ,(dl-gnus--frugal "frugal-au" "aunews.frugalusenet.com")
-  ;;      ,(dl-gnus--frugal "frugal-eu" "eunews.frugalusenet.com")
-  ;;      ,(dl-gnus--frugal "frugal-bonus" "bonus.frugalusenet.com")))
+   `((nnimap "fastmail"
+             (nnimap-address "imap.fastmail.com")
+             (nnimap-stream ssl)
+             (nnimap-user ,dl-gnus-login))
+     ;; Mailing lists as newsgroups; public, no login.  Plain NNTP:
+     ;; its TLS port (563) does not answer.
+     (nntp "gmane" (nntp-address "news.gmane.io"))
+     ;; Frugal Usenet: subscription lapsed; uncomment on renewal.
+     ;; ,(dl-gnus--frugal "frugal" "news.frugalusenet.com")
+     ,@(mapcar (lambda (feed) `(nnatom ,feed)) dl-gnus-feeds))))
+;; With Frugal: Gnus has no server failover.  An article missing from
+;; the current server (expired, taken down) is asked of these in
+;; order, the bonus server (another backbone) last.  Not subscribable:
+;; each would duplicate every group.
+;; (gnus-refer-article-method
+;;   `(current
+;;      ,(dl-gnus--frugal "frugal-au" "aunews.frugalusenet.com")
+;;      ,(dl-gnus--frugal "frugal-eu" "eunews.frugalusenet.com")
+;;      ,(dl-gnus--frugal "frugal-bonus" "bonus.frugalusenet.com")))
 
 (use-package gnus-msg
   :defer t
@@ -89,7 +89,7 @@ Moves them to `dl-gnus-archive-group'."
 (defun dl-gnus--yield-meow-keys ()
   "Give the summary buffer back `/' (limit) and `!' (tick) from meow.
 Meow's motion state binds them; its `o' (`C-c') and `SPC' (leader) stay."
-  (dl-keymap-shadow-yield 'meow-motion-mode "/" "!"))
+  (dl-keymap-shadow-yield 'meow-motion-mode "/" "!" "g"))
 
 (use-package gnus-sum
   :defer t
@@ -108,7 +108,7 @@ Meow's motion state binds them; its `o' (`C-c') and `SPC' (leader) stay."
   ;; login, which with no stored credential it never has: it just
   ;; fails "530 Authentication required".
   (smtpmail-servers-requiring-authorization
-    (rx bos "smtp.fastmail.com" eos)))
+   (rx bos "smtp.fastmail.com" eos)))
 
 (use-package message
   :defer t
