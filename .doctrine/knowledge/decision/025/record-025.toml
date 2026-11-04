@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 25
+slug = "umbriel-focus-then-act-restores-previous-focus"
+title = "umbriel focus-then-act restores the previous focus; row move is silent"
+record_kind = "decision"
+status = "accepted"
+created = "2026-11-04"
+updated = "2026-11-04"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "VH-1 (2026-11-04): the user found that every focused-only row action (center, cycle extent, column move, layout scroll, move to workspace) leaves focus on the row's window, because DEC-016's focus-then-act sends window-focus <row id> first. umbriel (not the user's project) offers no window id on those actions; window-move-to-workspace-silent exists (docs/user/actions.md:224)."
+choice = "Amends DEC-016. For `focused` addressing on a window row, when the held focused workspace's focused_window is known and differs from the row id, the plan is [window-focus ROW, ACTION, window-focus PREVIOUS]. window-move-to-workspace becomes window-move-to-workspace-silent so the view does not jump before focus returns. Other addressings, workspace rows and RET are unchanged. A failure still stops the remaining steps (DEC-021): the restore is not sent after a failed action."
+alternatives = ["keep DEC-016 as is: focus stays on the row's window", "ask umbriel for window ids on these actions: not the user's project, out of reach"]
+rationale = "The user acts from Emacs and expects to stay there; restoring the previously focused window (normally the Emacs frame) keeps the row-at-point meaning of DEC-016 without leaving focus on the target. Trial at the user's request."
+consequences = ["one extra request per focused-only row action; a brief focus flicker", "previous focus comes from held state and can be stale if the buffer lags; restoring a vanished window fails and is echoed", "supersedes DEC-016's consequence that -silent is not in v1", "VH-1 re-check of the affected rows; drift for audit: design.md section Addressing table"]
+decided_by = "user (session 2026-11-04: \"I want to try #2 to see if that works better.\")"
+decided_on = "2026-11-04"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-016"
