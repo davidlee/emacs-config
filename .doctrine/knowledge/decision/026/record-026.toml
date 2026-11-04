@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 26
+slug = "umbriel-buffer-drops-layout-scroll"
+title = "umbriel buffer drops the layout-scroll row actions and keys"
+record_kind = "decision"
+status = "proposed"
+created = "2026-11-04"
+updated = "2026-11-04"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "VH-1 (2026-11-04): C-<left>/C-<right> and [/] (layout-scroll-left/right, `focused` addressing) did nothing useful: the action scrolls the focused window's strip, so the plan focuses the row's window first, which leaves focus outside Emacs without DEC-025, and with DEC-025's restore the strip likely scrolls back to Emacs. Scrolling a strip is a viewport action, not an action on the row at point; umbriel's own bindings already scroll."
+choice = "Amends DEC-024 and DEC-016: remove my/umbriel-scroll-left and my/umbriel-scroll-right from the action table, and C-<left>, C-<right>, [ and ] from dl-umbriel-buffer-mode-map. Column move (M-<left>/<, M-<right>/>) stays."
+alternatives = ["send layout-scroll without focus or restore: scrolls Emacs's own strip, the same as umbriel's binding", "keep the keys and document the limit"]
+rationale = "Least code; removes the one row action whose effect does not belong to the row at point. Chosen by the user."
+consequences = ["the buffer has no strip-scroll keys; use umbriel's own bindings", "drift for audit: design.md section Keys table, the DEC-024 key list, VH-1 runsheet step 10 and the CHANGELOG umbriel entry"]
+decided_by = "user (session 2026-11-04: option 1, \"1\")"
+decided_on = "2026-11-04"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-016"
