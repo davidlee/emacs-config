@@ -68,6 +68,7 @@ verified here — two were wrong.
 ## Progress
 
 - PHASE-05 (2026-11-04, in progress — VH-1 outstanding): action half of apps/dl-umbriel-buffer.el (table, macro, pure `--plan`, prompts, completion, global switch/layout, row keys); core/dl-keymap.el umbriel lines (C-c u u/w/l/f, SPC u); init.el requires dl-umbriel-buffer. 41 new tests (156 umbriel). Mutation checks: 17 mutants over EX-1/2/3/4/7, D-3 and review fixes R-1..R-7, all killed except one equivalent (nil focused output never matches). VA-1: 156/156 with UMBRIEL_SOCKET at a counting listener → 0 accepts (positive control 1); with socket vars unset → 156/156. Host `just check`: 393 tests, only baseline red `dl-policy-lint/l2-real-config` (core/dl-keybind.el:125). verify-vt PHASE-05 VT-1..5 PASS.
+  DEC-025 follow-up (VH-1 finding): restore-after-act + silent move; +8 tests (164 umbriel); mutations 8/8 killed; VA-1 0 accepts (positive control 1); host `just check` 401, only baseline red.
 - PHASE-04 (2026-11-04): apps/dl-umbriel-buffer.el (mode, render, header, throttle, stale, point/start/folds, my/umbriel, g, kill) + 25 tests (115 umbriel total). Mutation checks: 14/15 killed; `set-buffer-modified-p nil` removal survives because `magit-section-update-highlight` also clears the flag (kept, as magit does). VA-1: umbriel test files with UMBRIEL_SOCKET at a counting scratch listener → 115/115 pass, 0 accepts (positive control: one `dl-umbriel-stream-open` → 1 accept); with UMBRIEL_SOCKET/WAYLAND_DISPLAY/XDG_RUNTIME_DIR unset → 115/115 pass. VA-2 (live render) left for the user. Host `just check`: 352 tests, only baseline red `dl-policy-lint/l2-real-config`.
 
 - PHASE-02 (2026-11-04): stream half of apps/dl-umbriel.el — held state (one record, three writers), change hook, waiter, stream open/close, stream lines, refresh. 31 new tests (54 umbriel total); mutation-checked; VA-1 live passed (17 windows, 6 workspaces, 0 skipped). pi-orchestrated: tests and code by separate pi runs, review by pi; seat fixed 6 issues.
@@ -136,6 +137,7 @@ mutation checks, VA-1 and doctrine state.
 - PHASE-05 · keys resolved by `declare-function` + symbol binding (dl-keymap.el has no autoload convention); EX-6 subprocess test shows both load orders resolve · decided
 - PHASE-05 · no Claude review of the trust boundary: pi review covered kill/F-19/F-6/EX-4 with probes, all its findings accepted and mutation-tested; seat read every boundary function · decided
 - PHASE-05 · VH-1 (user runs the mutating actions live) outstanding; phase left in_progress · deferred
+- PHASE-05 · DEC-025 (user, during VH-1): `focused` window rows restore the previous focus; previous = `focused_window` of the one focused held workspace, unknown when it is absent/nil/"" or zero/two workspaces are focused (same reading as `--off-pointer-p`, now sharing `--focused-workspace`); row move is `window-move-to-workspace-silent` · decided; drift: design.md § Addressing table and DEC-016's consequence ("-silent not in v1", focus stays on the row) superseded by DEC-025 — audit
 
 ### pi passes (PHASE-02)
 
@@ -184,6 +186,8 @@ pi misses: the timer stubs failed on any `cancel-timer`, so the full suite (auto
 | review | review | $0.080 | 7 findings, all accepted: two-focused F-6 fail-open, unknown prompt kind sends unconfirmed kill, newline in title forges kill prompt (VERIFIED), float pid, unguarded second plan, no addressing fallback, empty workspaces prompt |
 | review tests | implement (test session) | $0.035 | +8 tests; 6 red for the right reason, 2 pin current behaviour |
 | review code | implement (impl session) | ~$0.03 | R-1..R-7, 156/156 |
+| DEC-025 red tests | implement | $0.041 | 8 tests + table/move update; 6 red for the right reason. Two docstrings with unescaped `""` (seat fixed) |
+| DEC-025 green | implement (fresh) | $0.015 | 164/164 first try; shared `--focused-workspace` with `--off-pointer-p`. Mutations 8/8 killed (omitted, prev==row, after failed action, workspace row, non-silent, "" known, two focused, window addressing) |
 
 pi misses: implementation trusted `completing-read`'s REQUIRE-MATCH to exclude empty input. Test writer fed a workspace label to the layout prompt in one loop test (masked until the empty-input guard). Seat's own miss: first mutation runner put the mutant dir last on `-L` (the first `-L` wins), so every mutant "survived" — a sanity mutant caught it.
 
