@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 23
+slug = "dl-umbriel-focus-moves-to-its-own-file-on-the-socket-client"
+title = "dl-umbriel-focus moves to its own file on the socket client"
+record_kind = "decision"
+status = "accepted"
+created = "2026-11-04"
+updated = "2026-11-04"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "dl-umbriel-focus-frame queries windows synchronously then runs window-focus via the CLI; DEC-014 gives it its own file in apps/; DEC-017 makes requests async. Its test asserts CLI argv, which no longer exists once no process is executed."
+choice = "apps/dl-umbriel-focus.el keeps dl-umbriel-window-id (pure) and dl-umbriel-focus-frame on server-switch-hook, rebuilt as: async windows query -> match (pid, frame name) -> window-focus action request. Its tests move to lisp/test/dl-umbriel-focus-test.el and assert the request objects, replacing the argv test. dl-umbriel--host-environment and dl-umbriel--windows are deleted (no binary is executed)."
+alternatives = ["leave it on the CLI (two transports)"]
+rationale = "One transport; the focus tests assert what is actually sent (request objects) rather than CLI words."
+consequences = ["Frame-name matching keeps its known ambiguity (same title, first match); unchanged here"]
+decided_by   = ""
+decided_on   = ""
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-016"

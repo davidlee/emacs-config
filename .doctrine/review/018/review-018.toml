@@ -1,0 +1,489 @@
+id    = 18
+slug  = "design-review-of-sl-016"
+title = "design review of SL-016"
+# no status — a review's status is DERIVED from its findings, so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "design"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+rounds_base = 0
+contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "Agent hostile pass over all 13 sections of SL-016 design.md: transport/framing/encoding, failure kinds vs connect evidence, stream lifecycle and waiters, model addressing (id vs selector), action table and sequencing, repaint/point, keys vs DEC-024, governance (STD-001 split, naming.md, AGENTS.md traps 1/6), code impact vs selectors, verification coverage. 3 findings (2 minor, 1 nit), all fixed."
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "Pass 2: quotient adversarial review (review profile, deepseek-flash, run 5d7180ea; no access to umbriel source, magit-section or emacs — its Emacs/upstream claims were verified here). 16 findings raised as F-4..F-19: 14 integrated (2 with their mechanism corrected), 2 refuted with source evidence (F-12 folding, F-13 reconnect snapshot)."
+
+[target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
+ref   = "SL-016"
+
+[[finding]]
+id = "F-1"
+status = "answered"
+severity = "minor"
+title = "Transport omits :coding and :noquery on connections"
+detail = "sec-client never states the connection's coding system or query flag. Window titles are non-ASCII; with :coding 'utf-8-unix the filter receives decoded multibyte text and the decoder carries partial UTF-8 sequences across chunk boundaries (verified in emacs 31.1 --batch over a local socket; json-serialize returns unibyte UTF-8 that passes the encoder unchanged). Without :noquery t, a live stream makes Emacs prompt on exit. Fix: sec-client states both for request and stream connections; a client test asserts them in the faked make-network-process arguments."
+disposition = "fix-now"
+response = "sec-client now requires :coding 'utf-8-unix and :noquery t on every connection, with the evidence; sec-verification adds the test."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "sec-client now requires :coding 'utf-8-unix and :noquery t on every connection, with the evidence; sec-verification adds the test."
+
+[[finding]]
+id = "F-2"
+status = "answered"
+severity = "minor"
+title = "Waiter: no evaluation at registration; never fires when the stream is not open"
+detail = """sec-state (DEC-020) evaluates a waiter's predicate only on later changes, and only stream close fails pending waiters. A waiter registered when the predicate already holds waits for an unrelated change; one registered with status never or failed is neither fired nor failed — it outlives a stream that does not exist, against DEC-020's 'a waiter never outlives the stream'. Fix: evaluate once at registration; if the stream is not open, call back at once with the current failure (or (:failure closed "stream not open") for never). Add both cases to the client tests."""
+disposition = "fix-now"
+response = "sec-state: predicate checked at registration; registering with the stream not open fails at once. DEC-020 consequences updated. Tests added to sec-verification."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "sec-state: predicate checked at registration; registering with the stream not open fails at once. DEC-020 consequences updated. Tests added to sec-verification."
+
+[[finding]]
+id = "F-3"
+status = "answered"
+severity = "nit"
+title = "Focus-then-act ordering rests on an unstated server fact"
+detail = 'sec-actions sequences window-focus then the action on the first reply. That is sound only if the reply is sent after the action took effect. Evidence: src/server/ipc.cpp:595 returns IpcCommands::action(...) synchronously from the request handler, so {"ok":null} follows execution. Fix: cite it in sec-actions so the assumption is visible.'
+disposition = "fix-now"
+response = "sec-actions cites src/server/ipc.cpp:595: the reply follows the action's execution."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "sec-actions cites src/server/ipc.cpp:595: the reply follows the action's execution."
+
+[[finding]]
+id = "F-4"
+status = "answered"
+severity = "blocker"
+title = "[quotient] Buffer row keys shadowed by meow"
+detail = "Reviewer: meow normal state binds 12 of 14 buffer keys and outranks the mode map; my-umbriel-map missing from the leader mirror. (quotient review profile, deepseek-flash; run 5d7180ea)"
+disposition = "fix-now"
+response = "Settled in prose by source evidence. Letter shadowing refuted: a special-mode descendant binds no letter to self-insert, so meow starts it in motion state (meow-helpers.el:238), and this config's motion state binds only arrows, shifted arrows, bang, slash, o and the leader (core/dl-keymap.el:823-835). Valid part integrated: sec-keys mirrors my-umbriel-map onto SPC u; DEC-024 consequence added."
+route = "review"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Letter-shadowing claim refuted: a special-mode descendant binds no letter to self-insert, so meow starts it in motion state (meow-helpers.el:238 meow--mode-guess-state), and this config's motion state binds only arrows, S-arrows, !, /, o and the leader (core/dl-keymap.el:823-835). Valid part integrated: sec-keys adds SPC u to the leader mirror and states the motion-state reasoning; DEC-024 consequence added."
+
+[[finding.turn]]
+act = "amend"
+role = "responder"
+note = "Route the severe finding for lock (reviewing gate)."
+disposition = "fix-now"
+route = "review"
+response = "Settled in prose by source evidence. Letter shadowing refuted: a special-mode descendant binds no letter to self-insert, so meow starts it in motion state (meow-helpers.el:238), and this config's motion state binds only arrows, shifted arrows, bang, slash, o and the leader (core/dl-keymap.el:823-835). Valid part integrated: sec-keys mirrors my-umbriel-map onto SPC u; DEC-024 consequence added."
+
+[[finding]]
+id = "F-5"
+status = "answered"
+severity = "blocker"
+title = "[quotient] Policy lint rejects the buffer-keymap write"
+detail = "Reviewer: my-policy-lint L2 forbids define-key/keymap-set outside family prefixes and my/bind into non my-*-map maps (core/dl-policy-lint.el:272-318). (quotient review profile, deepseek-flash; run 5d7180ea)"
+disposition = "fix-now"
+response = "Settled in prose. Verified against core/dl-policy-lint.el:272-318: sec-keys makes the buffer map a defvar-keymap with inline bindings, so no forbidden writer touches it. The existing policy-lint L2/L3 real-config tests in just check already reject a regression; DEC-024 consequence added."
+route = "review"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Verified. sec-keys: dl-umbriel-buffer-mode-map is a defvar-keymap with inline bindings; DEC-024 consequence added."
+
+[[finding.turn]]
+act = "amend"
+role = "responder"
+note = "Route the severe finding for lock (reviewing gate)."
+disposition = "fix-now"
+route = "review"
+response = "Settled in prose. Verified against core/dl-policy-lint.el:272-318: sec-keys makes the buffer map a defvar-keymap with inline bindings, so no forbidden writer touches it. The existing policy-lint L2/L3 real-config tests in just check already reject a regression; DEC-024 consequence added."
+
+[[finding]]
+id = "F-6"
+status = "answered"
+severity = "major"
+title = "[quotient] workspace-set-layout can hit another output's workspace"
+detail = "Reviewer: set-layout has no output field and targets the active workspace; a switch on another output need not move focus. (quotient review profile, deepseek-flash; run 5d7180ea)"
+disposition = "fix-now"
+response = "Fixed in sec-actions: the active-workspace plan refuses when the target workspace's output differs from the output of the held workspace marked focused (focused means active on the cursor output, ipc_commands.cpp:831; set-layout acts there, focus.cpp:540). Criterion: a pure plan test with two outputs, focused workspace on DP-1 and the row on DP-2, must return a refusal and no requests. Incorrect candidate it must reject: a plan that emits switch then set-layout for the DP-2 row. Host phase needs the pure plan function and two-output fixtures; no compositor."
+route = "control"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Verified: activeWorkspace = active workspace of preferredOutput = output under the cursor (focus.cpp:540, server_outputs.cpp:117); workspace 'focused' is exactly that (ipc_commands.cpp:831). sec-actions: the active-workspace plan refuses when the row's output differs from the focused workspace's output; test added; DEC-016 consequence added."
+
+[[finding.turn]]
+act = "amend"
+role = "responder"
+note = "Route the severe finding for lock (reviewing gate)."
+disposition = "fix-now"
+route = "control"
+response = "Fixed in sec-actions: the active-workspace plan refuses when the target workspace's output differs from the output of the held workspace marked focused (focused means active on the cursor output, ipc_commands.cpp:831; set-layout acts there, focus.cpp:540). Criterion: a pure plan test with two outputs, focused workspace on DP-1 and the row on DP-2, must return a refusal and no requests. Incorrect candidate it must reject: a plan that emits switch then set-layout for the DP-2 row. Host phase needs the pure plan function and two-output fixtures; no compositor."
+
+[[finding]]
+id = "F-7"
+status = "answered"
+severity = "major"
+title = "[quotient] Windows that do not join are dropped"
+detail = 'Reviewer: only workspace "" goes to the trailing group; an unknown id (families arrive separately) or nil is dropped. (quotient review profile, deepseek-flash; run 5d7180ea)'
+disposition = "fix-now"
+response = "Fixed in sec-model: the trailing group holds every window that joins no held workspace. Criterion: group over a fixture whose windows include one with an unknown workspace id and one with a nil workspace returns every input window exactly once. Incorrect candidate it must reject: a group that buckets only the empty-string workspace and silently drops the rest. Host phase needs only the pure model and fixtures."
+route = "control"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Verified in design text. sec-model: the trailing group holds every window that joins no held workspace; never dropped; test added. Repaint suppression until both families arrive not adopted: the misgrouping is transient and now visible rather than lost."
+
+[[finding.turn]]
+act = "amend"
+role = "responder"
+note = "Route the severe finding for lock (reviewing gate)."
+disposition = "fix-now"
+route = "control"
+response = "Fixed in sec-model: the trailing group holds every window that joins no held workspace. Criterion: group over a fixture whose windows include one with an unknown workspace id and one with a nil workspace returns every input window exactly once. Incorrect candidate it must reject: a group that buckets only the empty-string workspace and silently drops the rest. Host phase needs only the pure model and fixtures."
+
+[[finding]]
+id = "F-8"
+status = "answered"
+severity = "major"
+title = "[quotient] Failed write or silent server leaves callback uncalled"
+detail = "Reviewer: process-send-string may signal; a non-replying server never calls back; sentinel should parse unterminated pending text. (quotient review profile, deepseek-flash; run 5d7180ea)"
+disposition = "fix-now"
+response = "Fixed in sec-client: a signalling write is caught and delivered as closed; the unterminated-reply part is refuted (ipc.cpp:359 appends a newline to every reply); a server that accepts and never replies is tolerated (no timeout, DEC-017; one request per action). Must hold against: a connection the server closes before or while the request is written, and a connection closed after a partial line; in both the callback runs exactly once with closed. Need not hold against: a server that accepts and never replies or closes. Criterion: with the faked transport, a send whose write signals and a close after a partial chunk each yield one closed result. Host phase needs the faked make-network-process helper."
+route = "probe"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Signalling write now caught → (:failure closed). Unterminated-text parsing refuted: the server appends a newline to every reply (ipc.cpp:359). Silent server tolerated and stated in sec-client: no timeout per DEC-017, and each action is its own request so nothing else blocks."
+
+[[finding.turn]]
+act = "amend"
+role = "responder"
+note = "Route the severe finding for lock (reviewing gate)."
+disposition = "fix-now"
+route = "probe"
+response = "Fixed in sec-client: a signalling write is caught and delivered as closed; the unterminated-reply part is refuted (ipc.cpp:359 appends a newline to every reply); a server that accepts and never replies is tolerated (no timeout, DEC-017; one request per action). Must hold against: a connection the server closes before or while the request is written, and a connection closed after a partial line; in both the callback runs exactly once with closed. Need not hold against: a server that accepts and never replies or closes. Criterion: with the faked transport, a send whose write signals and a close after a partial chunk each yield one closed result. Host phase needs the faked make-network-process helper."
+
+[[finding]]
+id = "F-9"
+status = "answered"
+severity = "major"
+title = "[quotient] delivered flag order vs synchronous delete-process sentinel"
+detail = "Reviewer: delete-process runs the sentinel synchronously; the fake cannot catch a wrong order. (quotient review profile, deepseek-flash; run 5d7180ea)"
+disposition = "fix-now"
+response = "Fixed in sec-client: the delivered flag is set before the callback and before delete-process, because delete-process runs the sentinel synchronously (observed in Emacs 31.1 batch). Criterion: with a fake delete-process that invokes the captured sentinel with a deleted event, one reply line yields exactly one callback call carrying the ok result. Incorrect candidate it must reject: an implementation that sets the flag after deleting the process, which would deliver ok then closed. Host phase needs that fake in the shared client test helper."
+route = "control"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Verified in emacs 31.1 --batch (sentinel ran between before/after delete). sec-client fixes the order (flag, callback, delete); the test fake's delete-process calls the sentinel."
+
+[[finding.turn]]
+act = "amend"
+role = "responder"
+note = "Route the severe finding for lock (reviewing gate)."
+disposition = "fix-now"
+route = "control"
+response = "Fixed in sec-client: the delivered flag is set before the callback and before delete-process, because delete-process runs the sentinel synchronously (observed in Emacs 31.1 batch). Criterion: with a fake delete-process that invokes the captured sentinel with a deleted event, one reply line yields exactly one callback call carrying the ok result. Incorrect candidate it must reject: an implementation that sets the flag after deleting the process, which would deliver ok then closed. Host phase needs that fake in the shared client test helper."
+
+[[finding]]
+id = "F-10"
+status = "answered"
+severity = "major"
+title = "[quotient] Repaint from window-buffer-change-functions runs in redisplay"
+detail = "Reviewer: editing the buffer from a display hook is unsafe. (quotient review profile, deepseek-flash; run 5d7180ea)"
+disposition = "fix-now"
+response = "Settled in prose: sec-buffer makes the window-buffer-change-functions hook only schedule the throttled repaint; it never edits the buffer from redisplay."
+route = "review"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "sec-buffer: the hook only schedules the throttled repaint; it never edits."
+
+[[finding.turn]]
+act = "amend"
+role = "responder"
+note = "Route the severe finding for lock (reviewing gate)."
+disposition = "fix-now"
+route = "review"
+response = "Settled in prose: sec-buffer makes the window-buffer-change-functions hook only schedule the throttled repaint; it never edits the buffer from redisplay."
+
+[[finding]]
+id = "F-11"
+status = "answered"
+severity = "major"
+title = "[quotient] Idle-timer coalescing behaviour during drags"
+detail = "Reviewer: cancelling and re-arming an idle timer starves while events flow. (quotient review profile, deepseek-flash; run 5d7180ea)"
+disposition = "fix-now"
+response = "Mechanism corrected and fixed: during a drag Emacs is idle and an idle timer at or below current idleness is already due, so it would repaint per event; sec-buffer uses a run-at-time throttle of 0.1 s; DEC-022 amended. Criterion: several state changes delivered before the timer fires produce exactly one repaint, and a change after it fires schedules exactly one more. Incorrect candidate it must reject: cancel-and-rearm per change (idle or plain), which repaints per event when already idle or never during a continuous burst. Host phase needs a stubbed run-at-time or a counted repaint function."
+route = "control"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Mechanism reframed on evidence: during a drag Emacs is idle, and an idle timer at or below current idleness is already due (run-with-idle-timer docstring), so it would repaint every event rather than starve. Either way the idle timer is wrong: sec-buffer now uses a run-at-time 0.1 s throttle (bounded cost and latency); DEC-022 amended."
+
+[[finding.turn]]
+act = "amend"
+role = "responder"
+note = "Route the severe finding for lock (reviewing gate)."
+disposition = "fix-now"
+route = "control"
+response = "Mechanism corrected and fixed: during a drag Emacs is idle and an idle timer at or below current idleness is already due, so it would repaint per event; sec-buffer uses a run-at-time throttle of 0.1 s; DEC-022 amended. Criterion: several state changes delivered before the timer fires produce exactly one repaint, and a change after it fires schedules exactly one more. Incorrect candidate it must reject: cancel-and-rearm per change (idle or plain), which repaints per event when already idle or never during a continuous burst. Host phase needs a stubbed run-at-time or a counted repaint function."
+
+[[finding]]
+id = "F-12"
+status = "answered"
+severity = "major"
+title = "[quotient] Folding destroyed by every repaint"
+detail = "Reviewer (magit source unreadable to it): re-insert recreates sections with default visibility. (quotient review profile, deepseek-flash; run 5d7180ea)"
+disposition = "aligned"
+response = "Refuted by source and settled in prose: magit-section caches visibility by ident on show and hide (magit-section-cache-visibility default t, magit-section.el:167, 954, 976) and magit-insert-section consults that cache when recreating a section (magit-section.el:131, 2010). sec-buffer states it; verification asserts a fold survives repaint."
+route = "review"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "aligned"
+response = "Refuted: magit-section caches visibility by ident on show/hide (magit-section-cache-visibility default t, magit-section.el:167, 954, 976) and magit-insert-section consults it via magit-section-set-visibility-hook (:131, :2010). sec-buffer now states this and verification asserts a fold survives repaint."
+
+[[finding.turn]]
+act = "amend"
+role = "responder"
+note = "Route the severe finding for lock (reviewing gate)."
+disposition = "aligned"
+route = "review"
+response = "Refuted by source and settled in prose: magit-section caches visibility by ident on show and hide (magit-section-cache-visibility default t, magit-section.el:167, 954, 976) and magit-insert-section consults that cache when recreating a section (magit-section.el:131, 2010). sec-buffer states it; verification asserts a fold survives repaint."
+
+[[finding]]
+id = "F-13"
+status = "answered"
+severity = "major"
+title = "[quotient] Reconnect without refresh relies on unverified initial snapshot"
+detail = "Reviewer: if dedupe is server-side, a reconnect may receive no events. (quotient review profile, deepseek-flash; run 5d7180ea)"
+disposition = "aligned"
+response = "Refuted by source and settled in prose: the subscribe handler emits the initial state of every requested family on each new subscription (ipc.cpp:619-640), so a reconnect receives fresh snapshots. sec-state cites it."
+route = "review"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "aligned"
+response = "Refuted: the subscribe handler appends initial-state lines for each requested family on every new subscription (ipc.cpp:619-640). sec-state cites it."
+
+[[finding.turn]]
+act = "amend"
+role = "responder"
+note = "Route the severe finding for lock (reviewing gate)."
+disposition = "aligned"
+route = "review"
+response = "Refuted by source and settled in prose: the subscribe handler emits the initial state of every requested family on each new subscription (ipc.cpp:619-640), so a reconnect receives fresh snapshots. sec-state cites it."
+
+[[finding]]
+id = "F-14"
+status = "answered"
+severity = "major"
+title = "[quotient] Buffer tests may connect to the live compositor"
+detail = "Reviewer: just check inherits the host env, so the socket path resolves. (quotient review profile, deepseek-flash; run 5d7180ea)"
+disposition = "fix-now"
+response = "Fixed in sec-buffer and sec-verification: the mode body never connects; only my/umbriel opens the stream; tests bind process-environment and render without my/umbriel. Criterion: run the umbriel test files with UMBRIEL_SOCKET pointing at a scratch listening socket that counts accepted connections; the count must be zero except in tests that explicitly fake the transport. Incorrect candidate it must reject: a mode body or render path that calls stream-open. Host phase needs a scratch local server socket in the test helper and the suite run with the socket variable set and unset."
+route = "control"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Accepted. sec-buffer: the mode body never connects; my/umbriel opens the stream. sec-verification: tests bind process-environment, render without my/umbriel, and pass with WAYLAND_DISPLAY set and unset."
+
+[[finding.turn]]
+act = "amend"
+role = "responder"
+note = "Route the severe finding for lock (reviewing gate)."
+disposition = "fix-now"
+route = "control"
+response = "Fixed in sec-buffer and sec-verification: the mode body never connects; only my/umbriel opens the stream; tests bind process-environment and render without my/umbriel. Criterion: run the umbriel test files with UMBRIEL_SOCKET pointing at a scratch listening socket that counts accepted connections; the count must be zero except in tests that explicitly fake the transport. Incorrect candidate it must reject: a mode body or render path that calls stream-open. Host phase needs a scratch local server socket in the test helper and the suite run with the socket variable set and unset."
+
+[[finding]]
+id = "F-15"
+status = "answered"
+severity = "minor"
+title = "[quotient] skipped never resets; subscribe ack counted"
+detail = 'Reviewer: counter accumulates across connections; an {"ok"} ack would count. (quotient review profile, deepseek-flash; run 5d7180ea)'
+disposition = "fix-now"
+response = "Reset on stream-open integrated (sec-state, test). Ack refuted: a successful subscribe replies with initial-state event lines only (ipc.cpp:619-640)."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Reset on stream-open integrated (sec-state, test). Ack refuted: a successful subscribe replies with initial-state event lines only (ipc.cpp:619-640)."
+
+[[finding]]
+id = "F-16"
+status = "answered"
+severity = "minor"
+title = "[quotient] Signalling waiter predicate kills the hook"
+detail = "Reviewer: an erroring predicate aborts every consumer. (quotient review profile, deepseek-flash; run 5d7180ea)"
+disposition = "fix-now"
+response = "sec-state: waiters run after the hook, each under with-demoted-errors; a signalling waiter drops itself. Test added."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "sec-state: waiters run after the hook, each under with-demoted-errors; a signalling waiter drops itself. Test added."
+
+[[finding]]
+id = "F-17"
+status = "answered"
+severity = "minor"
+title = "[quotient] Compositor text raw in header-line and rows"
+detail = "Reviewer: % in header-line; newlines in titles. (quotient review profile, deepseek-flash; run 5d7180ea)"
+disposition = "fix-now"
+response = "sec-buffer doubles %; sec-model normalises newlines/tabs in labels. Tests added."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "sec-buffer doubles %; sec-model normalises newlines/tabs in labels. Tests added."
+
+[[finding]]
+id = "F-18"
+status = "answered"
+severity = "minor"
+title = "[quotient] tab order, count source, pid default"
+detail = "Reviewer: tab_index tie-break; window_count vs joined rows; pid default unspecified. (quotient review profile, deepseek-flash; run 5d7180ea)"
+disposition = "fix-now"
+response = "sec-model: tab_index tie-break, count from the join, pid default -1 (confirmed like any other per DEC-019). Tests updated."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "sec-model: tab_index tie-break, count from the join, pid default -1 (confirmed like any other per DEC-019). Tests updated."
+
+[[finding]]
+id = "F-19"
+status = "answered"
+severity = "minor"
+title = "[quotient] Kill target must be captured before the prompt"
+detail = "Reviewer: a repaint during y-or-n-p could redirect the kill. (quotient review profile, deepseek-flash; run 5d7180ea)"
+disposition = "fix-now"
+response = "sec-actions: target captured from point before any prompt and carried into the plan; test added. Also: C-c u w deferred prompt messages instead when a minibuffer is active."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "sec-actions: target captured from point before any prompt and carried into the plan; test added. Also: C-c u w deferred prompt messages instead when a minibuffer is active."
+
+# Findings are append-only `[[finding]]` tables, added by `review raise`.
+# Empty here at creation — a fresh review is Active, awaiting the raiser.

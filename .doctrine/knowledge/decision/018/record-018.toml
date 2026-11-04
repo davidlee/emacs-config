@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 18
+slug = "umbriel-stream-one-client-owned-connection-opened-by-the-buffer-reconnect-only-on-request"
+title = "umbriel stream: one client-owned connection, opened by the buffer, reconnect only on request"
+record_kind = "decision"
+status = "accepted"
+created = "2026-11-04"
+updated = "2026-11-04"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "The subscribe connection is long-lived; the compositor evicts it past 256 KiB undrained and it ends when the compositor restarts. No retry policy exists to inherit."
+choice = "dl-umbriel.el owns at most one subscribe connection (windows, workspaces). Opening the buffer opens it if not open; killing the buffer closes it. Its sentinel records (:failure closed DETAIL) in the held status and notifies; nothing reconnects automatically. Refresh in the buffer (g) reopens a closed stream — whose first events are fresh snapshots — and is the only reconnect."
+alternatives = ["global stream from startup", "automatic reconnect with backoff"]
+rationale = "Lifetime tied to the one consumer; an explicit reconnect cannot storm, and a closed stream is shown, not hidden."
+consequences = ["A buried (not killed) buffer keeps the stream open; repaint is still skipped while undisplayed (DEC-022)"]
+decided_by   = ""
+decided_on   = ""
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-016"

@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 19
+slug = "umbriel-window-kill-confirms-and-refuses-this-emacs"
+title = "umbriel window-kill confirms, and refuses this Emacs"
+record_kind = "decision"
+status = "accepted"
+created = "2026-11-04"
+updated = "2026-11-04"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "actions.md:174: window-kill kills the PROCESS owning the window, not the window. For an Emacs frame that is this Emacs; for a terminal it is every tab it holds."
+choice = "window-kill on a row asks y-or-n-p naming app_id, title and pid. A window whose pid equals (emacs-pid) is refused with a message (use delete-frame). pid -1 (X11 without _NET_WM_PID) is confirmed like any other."
+alternatives = ["no confirmation", "confirm only for Emacs windows"]
+rationale = "Killing a process is irreversible and wider than the row suggests; killing Emacs from its own buffer is never what the row means."
+consequences = ["docs/emacs/umbriel.md states that window-kill kills the owning process"]
+decided_by   = ""
+decided_on   = ""
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-016"

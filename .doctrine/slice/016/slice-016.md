@@ -43,23 +43,37 @@ indistinguishable from an empty desktop. The slice therefore owes more than an
 empty-state message: it must name which failure it is showing. The loader case
 is now `docs/emacs/traps.md` § 6.
 
+**The socket removes half of those failures.** The JSON protocol is documented
+for programs (`docs/user/ipc.md`: one object per line, typed action fields
+validated by name, `{"ok":…}` / `{"err":…}` replies), and Emacs speaks a UNIX
+socket natively (`make-network-process :family 'local`). Talking to it directly
+executes nothing, so missing binary and loader failure cannot occur, errors
+arrive as parsed `{"err":…}` rather than scraped stderr, and query, action and
+stream share one transport. The compositor evicts a subscriber that stops
+draining past 256 KiB (`src/server/ipc.cpp:711`); this holds through the CLI
+too, so a stream ending under us is handled either way. Decided 2026-11-04 in
+the design run (user assent), reversing the earlier non-goal.
+
 ## Scope & Objectives
 
-1. **One client layer.** Keep `dl-umbriel--host-environment` (strip
-   `LD_LIBRARY_PATH`, which otherwise breaks the `umbriel` binary) as the single
-   environment scrub point, and add one place that launches an action and one
-   that parses a JSON reply. Queries stay synchronous (`call-process`), actions
-   asynchronous (`make-process`), as the existing code already does.
+1. **One socket client.** Resolve the socket path the way the CLI does
+   (`UMBRIEL_SOCKET`, else `$XDG_RUNTIME_DIR/umbriel-$WAYLAND_DISPLAY.sock`),
+   connect with `make-network-process :family 'local`, and frame replies by
+   newline. One place sends a request object and parses its reply; queries,
+   actions and the stream all go through it. Actions are typed request objects
+   (`{"cmd":"action","action":…,<fields>}`), not CLI words. No `umbriel`
+   process is executed, so `dl-umbriel--host-environment` and trap 6 cease to
+   apply to this client.
 
-2. **Live state from the event stream.** One long-lived
-   `umbriel subscribe windows,workspaces` process, newline-framed: each line is
-   `{"event":…,"data":…}` carrying a *full snapshot* of that family. Replace
-   held state per event; never merge deltas. Manual refresh stays available for the
-   process-not-running case. The child is safe to hold open: the CLI flushes per
-   line and treats a closed reader as the end of the stream, so Emacs cannot
-   stall it by not draining, and a killed child exits cleanly. **Freshness is
-   therefore process liveness**, reported as running / exited (with stderr) /
-   never started — not as a timestamp.
+2. **Live state from the event stream.** One long-lived socket connection
+   sending `{"cmd":"subscribe","events":["windows","workspaces"]}`,
+   newline-framed: each line is `{"event":…,"data":…}` carrying a *full
+   snapshot* of that family. Replace held state per event; never merge deltas.
+   Manual refresh stays available for the connection-down case. The compositor
+   evicts a subscriber that stops draining past 256 KiB, so a stalled Emacs
+   loses the stream rather than stalling the compositor. **Freshness is
+   therefore connection liveness**, reported as open / closed (with reason) /
+   never opened — not as a timestamp.
 
 3. **A pure model over the parsed snapshots.** Accessors and the join that
    groups windows under their workspace, plus the display strings the buffer
@@ -101,17 +115,19 @@ is now `docs/emacs/traps.md` § 6.
 6. **Keys.** `my-umbriel-map` (`core/dl-keymap.el:249`) at `C-c u` carries the
    commands. The commented placeholder at `core/dl-keymap.el:433`
    (`;; (my/bind my-umbriel-map "u" #'something "hello" )`) is deleted, not
-   inherited. `C-c L` stays `my-llm-map`. No new family key is claimed, so the
+   inherited. Bindings per DEC-024: `C-c u` u/w/l/f globally; row keys in the
+   buffer, with directional actions on both modified arrows and brackets.
+   `C-c L` stays `my-llm-map`. No new family key is claimed, so the
    `C-c <letter>` allow-list and IMP-019 are untouched.
 
 7. **The theory, written down.** `docs/emacs/umbriel.md`: the socket and its
    three access paths (query, action, subscribe), the snapshot-replacement
    rule, the activation-token reason focus needs the compositor, frame identity
-   limits, and the rule that Emacs holds no authority over layout state. The
-   loader trap is cited from `docs/emacs/traps.md` § 6, not restated.
+   limits, the rule that Emacs holds no authority over layout state, and why
+   Emacs uses the socket rather than the CLI.
 
-8. **Tests and changelog.** ERT for the model, the argv/JSON construction and the
-   stream framing; a `CHANGELOG.md` entry naming the commands and keys.
+8. **Tests and changelog.** ERT for the model, the request-object construction
+   and the line framing; a `CHANGELOG.md` entry naming the commands and keys.
 
 ## Non-Goals
 
@@ -133,24 +149,28 @@ is now `docs/emacs/traps.md` § 6.
   nor blocks that work.
 - Overview, screencast, effect presets, layers, outputs, input-capture
   permissions, tearing, colour management, virtual outputs.
-- Talking to the socket directly with `socat`/`make-network-process` instead of
-  the CLI.
 - Mouse-driven control, and any local mirror of layout state that could
   disagree with the compositor.
 
 ## Affected surface
 
-- `lisp/dl-umbriel.el` — the compositor client: environment scrub, query,
-  action, stream, model (existing 65 lines grow)
-- `lisp/dl-umbriel-buffer.el` — *likely*, the `magit-section` buffer and its
-  commands. STD-001 ("one concern per file", `required`) makes the split a
-  governance question rather than a taste one, and `dl-org.el` +
-  `dl-org-capture.el` (+ 6 more, each required separately) is the precedent.
-  The design decides and justifies it; whichever way it goes, a new file is
-  `git add`ed before any `home-manager switch` (trap 1).
-- `init.el` — requires the new file beside `dl-umbriel` (`:23`)
-- `lisp/test/dl-umbriel-test.el` — the existing ERT file, extended
-- `core/dl-keymap.el` — populate `my-umbriel-map`, drop the placeholder
+Split per DEC-014 (STD-001: one concern per file), in `apps/` beside the
+other external-program integrations; every new file is
+`git add`ed before any `home-manager switch` (trap 1).
+
+- `apps/dl-umbriel.el` — the socket client: path, transport, stream, held
+  state, failures (existing 65 lines `git mv`ed from `lisp/`, rebuilt; header rewritten)
+- `apps/dl-umbriel-model.el` — new, the pure model and display strings
+- `apps/dl-umbriel-buffer.el` — new, the `magit-section` buffer, its commands
+  and buffer keymap
+- `apps/dl-umbriel-focus.el` — new, the `server-switch-hook` frame focus,
+  moved out of `dl-umbriel.el` and rebuilt on the client (DEC-023)
+- `init.el` — requires `dl-umbriel-focus` and `dl-umbriel-buffer` in place of
+  `dl-umbriel` (`:23`)
+- `lisp/test/dl-umbriel-test.el` (client), `dl-umbriel-model-test.el`,
+  `dl-umbriel-buffer-test.el`, `dl-umbriel-focus-test.el` — one per source file;
+  the stale red focus test is replaced
+- `core/dl-keymap.el` — populate `my-umbriel-map` (DEC-024), drop the placeholder
 - `docs/emacs/umbriel.md` — new, the theory
 - `CHANGELOG.md` — release note
 
@@ -160,37 +180,37 @@ is now `docs/emacs/traps.md` § 6.
   empty, no socket in `/run/user/1000`). Fixtures and `cl-letf` fakes carry the
   testable layers; the live check is manual, on the host, and the slice's exit
   criteria must say so rather than pretend otherwise.
-- The subscribe process outlives buffers. Its lifetime, and reconnection after a
-  compositor restart, are the parts most likely to rot silently — an exited
-  child must surface as stale state, not as a plausible-looking stale buffer.
+- The subscribe connection is long-lived (opened by the buffer, closed when it
+  is killed, DEC-018). Its lifetime, and reconnection after a compositor
+  restart, are the parts most likely to rot silently — a closed connection
+  must surface as stale state, not as a plausible-looking stale buffer.
 - The stream is verbose during pointer drags (the compositor reports carried and
   dragged windows while the drag is held). Rendering must not become the
   bottleneck: repaint coalesced, and only the buffer that is displayed.
 - Frame titles are not unique, so any command phrased as "the Emacs window"
   cannot be more precise than "some window whose title matches". Out of scope
   here, but the doc must not imply otherwise.
-- Assumes `umbriel` remains on `PATH` in a plain shell and that the JSON field
-  names in `ipc_commands.cpp` are the contract. A field rename upstream breaks
+- Assumes Emacs's environment carries `UMBRIEL_SOCKET` or `XDG_RUNTIME_DIR` +
+  `WAYLAND_DISPLAY` (the CLI needs the same), that the socket-path rule in
+  `docs/user/ipc.md` stays stable, and that the JSON field names in
+  `ipc_commands.cpp` and the action fields in `ipc.md` are the contract. A field rename upstream breaks
   the buffer silently; the model's accessors should default rather than error.
-- **Every `umbriel` launch must run under a scrubbed environment.** The devshell
-  exports `LD_LIBRARY_PATH`; a child that inherits it dies in the dynamic loader
-  and exits **127**, the same status as a missing binary. One scrub point,
-  applied per call (`dl-umbriel--host-environment`, `lisp/dl-umbriel.el:12`), for
-  query, action and stream alike. See `docs/emacs/traps.md` § 6.
-- Emacs has never owned a long-lived child here (`set-process-filter` appears
-  nowhere in this config today), so the risk is not complexity but silence: an
-  unnoticed dead child renders a plausible, permanently stale buffer.
+- Emacs has never owned a long-lived connection here (`set-process-filter`
+  appears nowhere in this config today), so the risk is not complexity but
+  silence: an unnoticed closed connection renders a plausible, permanently stale
+  buffer.
 
 ## Verification / closure intent
 
 - `just check` green (ERT suite), `bin/elisp-locate-paren-error` clean on every
   touched `.el`.
 - ERT covers: workspace/window accessors and the workspace-join over fixtures;
-  action argv construction and the JSON request shape; the stream filter
+  action request-object construction against `ipc.md`'s field table; the line
+  filter
   against hand-fed lines, including a malformed line and a family the buffer
   ignores; the buffer rendering a fixture without a compositor; and that the
-  four failure modes (missing binary, loader failure, no compositor, stream
-  closed) reach distinct states rather than one `nil`.
+  failure modes (socket path unresolvable, socket absent or refused, connection
+  closed, `{"err":…}` reply) reach distinct states rather than one `nil`.
 - Manual host check, recorded in the slice notes: open the buffer, change focus
   and workspace from umbriel's own binds, confirm the buffer tracks without a
   manual refresh; run each v1 action and confirm the compositor's reply in the
@@ -208,11 +228,15 @@ switching workspaces and changing layout stop being terminal work.
 
 ## Follow-Ups
 
-- **Frame identity.** Give each frame a unique, stable name so a window can be
-  addressed as this frame, not merely a window with this title. Everything below
-  depends on it.
-- **Tagging Emacs windows** to act on a set (all ghostel sessions, all notes
-  frames) at once.
+- **Frame identity — IDE-003.** A creation-time handshake: each frame briefly
+  carries a unique title token, the first snapshot showing it binds frame →
+  window id (stable for the window's life), and `emacsclient -F` can add a role.
+  Built on this slice's stream, id-keyed state and snapshot waiter (DEC-020).
+  Everything below depends on it.
+- **Tagging windows** to act on a set (all ghostel sessions, all notes frames).
+  Emacs frames: frame parameters once IDE-003 lands. Other apps' windows: an
+  Emacs-side map, or compositor-held `k:v` metadata if umbriel's developers take
+  up the idea (the user is raising it; upstream is not ours to change).
 - **Collect Emacs frames onto one workspace**, and its inverse: scatter.
 - **Scratchpad management** — which windows are scratchpad members, revealed or
   hidden, from the same buffer.

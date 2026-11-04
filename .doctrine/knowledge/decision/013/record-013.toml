@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 13
+slug = "umbriel-model-raw-parsed-alists-defaulting-accessors-join-on-workspace-id"
+title = "umbriel model: raw parsed alists, defaulting accessors, join on workspace id"
+record_kind = "decision"
+status = "accepted"
+created = "2026-11-04"
+updated = "2026-11-04"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "The buffer needs workspaces with their windows, two focus signals, and display strings, testable without a compositor. json-parse maps false to :false (truthy) by default (verified in emacs --batch -Q)."
+choice = """Parse with :object-type alist :array-type list :false-object nil :null-object nil. Accessors are alist-get with a default, so a renamed field degrades to a default rather than an error. Join: windows grouped by their 'workspace' id onto workspaces' 'id'; windows with workspace "" (scratchpad, unassigned) form a trailing group. Order: workspaces by output then index; windows by column, row (tiled first), then floating, then title. Display strings are pure functions of one entry: workspace = name-or-index, layout, window_count, active/focused/urgent marks; window = app_id, title, placement (tile c,r / float / tab i), and separate active and focused marks plus visible/minimized/fullscreen/urgent/xwayland flags. 'visible' is labelled as such, never as on-screen."""
+alternatives = ["cl-defstruct records converted at parse", "keep :false and test with eq"]
+rationale = "Least code, no conversion layer to drift from the wire format, defaults absorb upstream renames, and nil booleans make every predicate honest."
+consequences = ["Every parse site uses one shared parse function with these options", "Tests use hand-written alist fixtures"]
+decided_by   = ""
+decided_on   = ""
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-016"

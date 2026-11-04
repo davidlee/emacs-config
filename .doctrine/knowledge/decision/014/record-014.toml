@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 14
+slug = "umbriel-code-splits-into-four-single-concern-files"
+title = "umbriel code splits into four single-concern files"
+record_kind = "decision"
+status = "accepted"
+created = "2026-11-04"
+updated = "2026-11-04"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "STD-001 (required): a file's name states its one concern. Concerns here: talking to the compositor (socket, framing, request/reply, the stream connection and its state, failure classification); the pure model over snapshots; the magit-section buffer and its commands; focusing the frame emacsclient reuses. Precedent dl-org.el + dl-org-capture.el."
+choice = "apps/dl-umbriel.el = socket client (transport, stream, held state, failures); apps/dl-umbriel-model.el = pure model and display strings; apps/dl-umbriel-buffer.el = buffer, commands, buffer keymap; apps/dl-umbriel-focus.el = server-switch-hook frame focus, rebuilt on the client. apps/ because it holds integrations with external programs (dl-zmx, dl-ghostel); lisp/ is being dissolved by a separate chore. init.el requires dl-umbriel-focus and dl-umbriel-buffer; tests stay in the shared test directory (lisp/test today), one file per source file."
+alternatives = ["two files: client+model / buffer (model mixes into transport)", "three files: keep focus in dl-umbriel.el (its header concern then lies)"]
+rationale = "Each file passes the STD-001 name test; the pure model is testable with no process code loaded; the focus feature keeps its own header and reason."
+consequences = ["New files must be git added before home-manager switch (trap 1); dl-umbriel.el moves from lisp/ to apps/ via git mv and its header is rewritten; a later desktop/ directory is warranted only if non-umbriel desktop code arrives"]
+decided_by   = ""
+decided_on   = ""
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-016"

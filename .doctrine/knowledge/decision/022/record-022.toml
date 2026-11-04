@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 22
+slug = "umbriel-buffer-magit-section-tree-idle-coalesced-repaint-while-displayed-magits-point-restoration"
+title = "umbriel buffer: magit-section tree, idle-coalesced repaint while displayed, magit's point restoration"
+record_kind = "decision"
+status = "accepted"
+created = "2026-11-04"
+updated = "2026-11-04"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "Installed magit-section (20261024) provides magit-section-get-relative-position and magit-section-goto-successor, the pair magit-mode uses to keep point across refresh, and a visibility cache. Drag events can be frequent."
+choice = "Header: stream status sentence (open / closed: reason / never opened) and skipped-line count when non-zero. Root sections: one per workspace (ordered per DEC-013), its windows nested; then an 'Unassigned' section for windows that join no held workspace. Section values are workspace id / window id so identity survives repaint. On the state hook, the buffer schedules one repaint with a run-at-time throttle (0.1 s; changes while one is pending ride it); it repaints only if displayed in some window, else marks itself stale, and window-buffer-change-functions schedules the same repaint when next displayed (never edits from the hook). Repaint captures the section at point and its relative position, re-renders, and calls magit-section-goto-successor; folds survive via magit-section-visibility-cache."
+alternatives = ["tabulated-list-mode", "repaint every event synchronously"]
+rationale = "Reuses magit's own refresh pattern; coalescing bounds drag cost; ids as values keep point on the same window across reorders."
+consequences = ["dl-umbriel-buffer.el requires magit-section only", "Not an idle timer: during a drag Emacs is already idle and an idle timer at or below current idleness is due at once (RV-018)"]
+decided_by   = ""
+decided_on   = ""
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-016"

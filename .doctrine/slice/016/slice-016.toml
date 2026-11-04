@@ -1,7 +1,7 @@
 id = 16
 slug = "umbriel-control-surface"
 title = "umbriel window and workspace control surface"
-status = "design"
+status = "plan"
 created = "2026-11-04"
 updated = "2026-11-04"
 tags = []
@@ -12,28 +12,60 @@ after = []                      # slice→work soft sequence: { to, rank }
 
 [[selector]]
 selector = "lisp/dl-umbriel.el"
-intent = "scope-relevant"
+intent = "design-target"
 note = "umbriel client, model, buffer, actions, keys, theory doc"
 
 [[selector]]
 selector = "lisp/test/dl-umbriel-test.el"
-intent = "scope-relevant"
+intent = "design-target"
 note = "umbriel client, model, buffer, actions, keys, theory doc"
 
 [[selector]]
 selector = "core/dl-keymap.el"
-intent = "scope-relevant"
+intent = "design-target"
 note = "umbriel client, model, buffer, actions, keys, theory doc"
 
 [[selector]]
 selector = "docs/emacs/umbriel.md"
-intent = "scope-relevant"
+intent = "design-target"
 note = "umbriel client, model, buffer, actions, keys, theory doc"
 
 [[selector]]
 selector = "CHANGELOG.md"
-intent = "scope-relevant"
+intent = "design-target"
 note = "umbriel client, model, buffer, actions, keys, theory doc"
+
+[[selector]]
+selector = "apps/dl-umbriel.el"
+intent = "design-target"
+
+[[selector]]
+selector = "apps/dl-umbriel-model.el"
+intent = "design-target"
+
+[[selector]]
+selector = "apps/dl-umbriel-buffer.el"
+intent = "design-target"
+
+[[selector]]
+selector = "apps/dl-umbriel-focus.el"
+intent = "design-target"
+
+[[selector]]
+selector = "init.el"
+intent = "design-target"
+
+[[selector]]
+selector = "lisp/test/dl-umbriel-model-test.el"
+intent = "design-target"
+
+[[selector]]
+selector = "lisp/test/dl-umbriel-buffer-test.el"
+intent = "design-target"
+
+[[selector]]
+selector = "lisp/test/dl-umbriel-focus-test.el"
+intent = "design-target"
 
 # STRUCTURAL relations are uniform `[[relation]]` rows, never a typed
 # `[relationships]` axis. Slices carry no typed STRUCTURAL

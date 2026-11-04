@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 12
+slug = "umbriel-socket-path-mirrors-the-cli-rule-resolved-per-connection"
+title = "umbriel socket path mirrors the CLI rule, resolved per connection"
+record_kind = "decision"
+status = "accepted"
+created = "2026-11-04"
+updated = "2026-11-04"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "The socket client must find the compositor socket. CLI rule (src/cli/ipc_client.cpp:22-32): non-empty UMBRIEL_SOCKET, else XDG_RUNTIME_DIR + '/umbriel-' + WAYLAND_DISPLAY + '.sock', both non-empty, else none. The compositor publishes UMBRIEL_SOCKET and WAYLAND_DISPLAY to the systemd user manager (src/server/server.cpp:223,1215)."
+choice = "A pure function of the environment returns the path or nil, mirroring the CLI rule exactly (empty counts as unset); called at every connect, never cached. No defcustom: UMBRIEL_SOCKET is already the override. Unresolvable is a named failure naming the missing variables."
+alternatives = ["defcustom override", "derive WAYLAND_DISPLAY from the pgtk frame's display (unverified, no compositor here)", "cache the path at load"]
+rationale = "Same rule as the CLI means the same answer as the CLI; per-connect resolution follows setenv/compositor restart; one fewer knob."
+consequences = ["Emacs started outside the session shows 'no socket path', fixable with setenv UMBRIEL_SOCKET", "pgtk-display fallback is a follow-up if that case recurs"]
+decided_by   = ""
+decided_on   = ""
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-016"

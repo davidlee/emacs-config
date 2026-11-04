@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 15
+slug = "umbriel-client-results-are-ok-value-or-failure-kind-detail"
+title = "umbriel client results are (:ok VALUE) or (:failure KIND DETAIL)"
+record_kind = "decision"
+status = "accepted"
+created = "2026-11-04"
+updated = "2026-11-04"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "Evidence (emacs --batch -Q): make-network-process :family local signals file-missing 'No such file or directory' for an absent socket and file-error 'Connection refused' for a stale one. Server (src/server/ipc.cpp): one request per non-subscriber connection, closed after the reply (:383-394); a 1 s deadline to send the request (:34,:275); subscribers evicted past 256 KiB backlog (:711)."
+choice = """Every request and the stream report one result shape: (:ok VALUE) or (:failure KIND DETAIL). KIND is one of no-path (detail names the unset variables), absent (no socket file: compositor not running at that path), refused (stale socket), closed (connection ended before a reply, or the stream ended; detail = sentinel event), rejected (the compositor's {"err":…} string), malformed (a reply line that is not a JSON object). A pure function renders a failure as one sentence naming the kind. Callers receive the result through a callback (DEC-017: no synchronous path, so no timeout kind). On the stream a malformed line or an unknown family is counted and skipped, not fatal."""
+alternatives = ["signal a dl-umbriel-error condition for sync, callbacks for async (two shapes)", "nil on failure (status quo, collapses all kinds)"]
+rationale = "One shape for sync and async keeps callers uniform and testable as data; each kind maps to a distinct user remedy (setenv, start compositor, restart, read the err)."
+consequences = ["Kinds are a closed set the buffer header renders", "Tests assert each kind from faked connection outcomes"]
+decided_by   = ""
+decided_on   = ""
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-016"

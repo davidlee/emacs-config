@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 16
+slug = "umbriel-row-actions-address-by-idselector-focus-first-where-the-action-only-takes-the-focused-window"
+title = "umbriel row actions: address by id/selector, focus first where the action only takes the focused window"
+record_kind = "decision"
+status = "accepted"
+created = "2026-11-04"
+updated = "2026-11-04"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "docs/user/actions.md: window-focus <id>, window-kill [<id>], window-toggle-floating [<id>] take a window id; window-center, column-move-left/right, layout-scroll-left/right, window-cycle-primary-extent[-back], window-move-to-workspace act on the focused window only; workspace-switch takes <workspace> [--output]; workspace-set-layout sets the ACTIVE workspace's layout. Workspace selector over the socket: number = position, string = name (ipc.md)."
+choice = "Window rows send the window id wherever the action takes one. Focused-only window actions run as focus-then-act: window-focus <row id>, and on (:ok) the action; any failure stops the sequence. Workspace selector = name string when 'named', else 'index' number, always with 'output'. window-move-to-workspace prompts for the target with completing-read over the model's workspaces. workspace-set-layout on a workspace row switches to it first (focus-then-act again), and prompts for the mode. Strip actions (column-move, layout-scroll) on a window row focus that window first; on a workspace row they act on what is focused."
+alternatives = ["act only on whatever is focused (row at point ignored: wrong as soon as the buffer lags)", "refuse focused-only actions unless the row is already focused"]
+rationale = "The row at point is what the user means; focus-then-act makes that true for every action, using only documented actions, sequenced on replies so nothing is assumed."
+consequences = ["A row action may visibly move focus or switch workspace before acting (documented in docs/emacs/umbriel.md)", "window-move-to-workspace uses the non-silent form so focus follows and -silent is not in v1", "v1 actions are declared in one table (command / action / addressing: window-id or focus-then-act or workspace / prompted fields) from which request builders and commands derive so each further action costs a table row and a key", "An action the table cannot carry cheaply is cut from v1 rather than special-cased", "workspace-set-layout acts on the cursor output's active workspace (focus.cpp:540) so a row on another output is refused rather than mis-applied (RV-018)"]
+decided_by   = ""
+decided_on   = ""
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-016"

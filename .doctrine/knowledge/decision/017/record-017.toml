@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 17
+slug = "umbriel-requests-pure-request-object-builders-async-only-transport"
+title = "umbriel requests: pure request-object builders, async-only transport"
+record_kind = "decision"
+status = "accepted"
+created = "2026-11-04"
+updated = "2026-11-04"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "ipc.md field table: action fields typed (workspace number = position, string = name; optional fields omitted, never empty). The server answers one request per connection and closes (src/server/ipc.cpp:383-394), with a 1 s deadline to send it."
+choice = 'Pure builders return alists: a query is ((cmd . NAME)); an action is ((cmd . "action") (action . NAME) FIELD...), dropping nil fields; json-serialize encodes. One transport function sends a request on a fresh local connection immediately after connect, collects newline-framed output, and calls back once with the DEC-015 result: on the first complete line, or on close (closed), or on connect error (absent/refused/no-path). No synchronous path: every caller is callback-driven.'
+alternatives = ["synchronous query via accept-process-output with timeout", "persistent request connection (server closes it anyway)"]
+rationale = "Async-only is one code path, never blocks a hook or the command loop, and needs no timeout kind for v1; the server's close-after-reply makes a connection per request the natural unit."
+consequences = ["Tests fake make-network-process; capture the sent string; drive the filter and sentinel by hand"]
+decided_by   = ""
+decided_on   = ""
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-016"
