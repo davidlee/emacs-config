@@ -93,6 +93,8 @@ mutation checks, VA-1 and doctrine state.
 - Other writers: user's uncommitted `completion/dl-corfu.el`,
   `core/dl-keybind.el`, `core/dl-keymap.el`. Commit explicit paths only.
 
+- Plan for the rest (user, 2026-11-04): PHASE-03..04 unattended via /super-orchestrator, halt after PHASE-04; PHASE-05..06 with the user present (PHASE-05 EN-2: user's dl-keymap.el; keys are theirs). Workers: 03 pi; 04 pi, Sonnet after two pi failures, pi + Claude review; 05 pi for the pure action table, Claude for keymap/keys, user checks mutating actions live; 06 Sonnet; audit/reconcile Opus (GPT optional).
+
 ## Autonomy log
 
 - PHASE-02 · phase sheet: dropped `defcustom` for the change hook → `defvar` (internal hook, less code) · decided
