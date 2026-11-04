@@ -11,6 +11,11 @@
     # every devshell shares one build.
     emacs.url = "github:davidlee/nix-config?dir=flakes/emacs";
     doctrine.url = "github:davidlee/doctrine";
+    # Pinned to the running server's version: the forms below must match it.
+    quotient = {
+      url = "github:davidlee/quotient/v0.6.1";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     zig-overlay.url = "github:mitchellh/zig-overlay";
   };
 
@@ -205,9 +210,29 @@
           exec jailed-shell "$@"
         '')
       ];
+      # This root's quotient forms (`pi_agent` delegates): the machine form
+      # lacks emacs, so delegates could not run ERT or `just check`. Linked
+      # at .quotient/forms/{read,write}; approve each rebuild with
+      # `quotient allow`.
+      quotientForms = lib.optionalAttrs isLinux (let
+        family = jailLib.quotientFormFamily {
+          inherit (inputs) quotient;
+          packages = jailLib.commonPkgs ++ [pkgs.just wrappedEmacs];
+          # Read-only: satan is on `just check`'s load path; umbriel's source
+          # is the IPC contract the umbriel client is written against.
+          options = c: [
+            (c.try-readonly "/home/david/dev/satan")
+            (c.try-readonly "/home/david/.local/src/umbriel")
+          ];
+        };
+      in {
+        quotient-read = family.read;
+        quotient-write = family.write;
+      });
     in {
       packages =
         lib.optionalAttrs isLinux jailPkgs
+        // quotientForms
         // {
           # The devshell's tool set as one closure, so the VM and the devshell
           # can't drift.
