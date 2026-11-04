@@ -160,3 +160,14 @@ accepted choice text left intact:
 - **F-9:** waived live restart step; rationale in the finding.
 
 Reconcile pass complete — handoff to /close.
+
+## Close
+
+User chose to close on 2026-11-04 ("1."). Gate evidence: `just check` on a
+detached HEAD worktree (66de2f2) — 405 tests; red `dl-policy-lint/l2-real-config`
+is pre-slice (user's c509d01, `completion/dl-corfu.el:26`), and two
+`dl-project` tests fail only because the worktree sat under /tmp. All umbriel
+tests green. `doctrine check gate` unconfigured (no `just gate` recipe).
+At the user's direction ("update the design if it's inaccurate"), DEC-022's
+title was corrected ("idle-coalesced" → "throttled") and its fold claim
+qualified; design.md was already accurate there.

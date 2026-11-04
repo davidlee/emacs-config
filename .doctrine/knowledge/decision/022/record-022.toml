@@ -3,7 +3,7 @@ version = 1
 
 id = 22
 slug = "umbriel-buffer-magit-section-tree-idle-coalesced-repaint-while-displayed-magits-point-restoration"
-title = "umbriel buffer: magit-section tree, idle-coalesced repaint while displayed, magit's point restoration"
+title = "umbriel buffer: magit-section tree, throttled repaint while displayed, magit's point restoration"
 record_kind = "decision"
 status = "accepted"
 created = "2026-11-04"
