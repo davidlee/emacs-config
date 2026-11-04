@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a1a559-39e7-7fa1-940e-4f724207302e"
+recorded_at = "2026-11-04T06:57:30.599869677Z"
+kind = "friction"
+summary = "pi red-test run burned its 15 min wall clock probing format-mode-line in batch"
+detail = "SL-016 PHASE-04: the implement profile spent 18 requests and the full wall clock probing why format-mode-line returns empty in emacs --batch; no file written. Briefs for UI tests should state batch limits (format-mode-line, window-change functions) up front and require timeout on every emacs probe."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"
