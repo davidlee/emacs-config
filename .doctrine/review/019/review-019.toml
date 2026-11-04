@@ -1,0 +1,122 @@
+id    = 19
+slug  = "plan-review-of-sl-016"
+title = "plan review of SL-016"
+# no status — a review's status is DERIVED from its findings, so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "plan"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "codex"
+responder = "claude"
+rounds_base = 0
+contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "Completed the codex adversarial plan pass over SL-016 plan.toml and plan.md against the locked design (Code impact, Verification and invariants), doctrine show SL-016, accepted DEC-012..DEC-024, and the exact RV-018 F-6/F-7/F-8/F-9/F-11/F-14 routed responses. Inspected the existing focus/client code, test runner and Justfile, init/keymap load order, policy lint and its tests, and project Elisp/Nix rules. All six routed sketches retain their rejection cases and appropriate host-phase placement; all VT rows have a file and nonempty keywords; the planned inline buffer defvar-keymap is accepted by a read-only policy-lint probe. Raised F-1 and F-2 (major) for missing action-completion and subscription-ownership behavioral checks, and F-3 (minor) for the misplaced waiter VT keyword. Findings distinguish verified plan omissions from inferred implementation risks. Did not run the full ERT suite, build/switch, change the plan or user edits, send live mutating actions, or dispose findings as responder. Only RV-019 was authored; no review-prime cache or other review artifacts were authored."
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "Completed the codex follow-up plan-review pass. Re-read all three answered fix-now findings and responses on RV-019 and checked their actual revised plan.toml criteria and VT mandates against the original complaints and the adjacent locked-design contracts. Verified F-1 (PHASE-05 EX-7/VT-5), F-2 (PHASE-02 EX-2/VT-5 and PHASE-04 EX-7/VT-6), and F-3 (PHASE-02 VT-3). Independently parsed the revised TOML and checked unique phase/criterion IDs and nonempty test_file/keywords on every VT row; reviewed the additions for regression of sequencing, callback boundaries and RV-018 F-14 isolation. No new finding introduced by these edits was verified. All three original findings are resolved as authored-plan repairs; this pass does not certify future implementation or tests. No full suite, build, switch or live action was run. Edited only the RV-019 ledger through its review acts."
+
+[target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
+ref   = "SL-016"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "major"
+title = "PHASE-05 does not verify the command's action-result and refresh contract"
+detail = """
+Expected: DEC-021 and design.md:489-511 require the command to execute its plan through send-all, echo a failure and stop, remain silent on success, and refresh both snapshot families after the final success only when the stream is not open. design.md:840-842 also forbids writing an assumed action effect into held state.
+
+Observed (verified plan gap): .doctrine/slice/016/plan.toml:148-152 mentions the send-all/refresh behavior only in the objective. PHASE-05 EX-1..EX-6 (:160-166) and VT-1..VT-4 (:168-172) check the pure addressing plan, kill confirmation, prompt deferral and keys, but none drives a generated command's completion callback. PHASE-01 VT-5 (:52) tests send-all in isolation and PHASE-02 VT-4 (:80) tests refresh in isolation; neither checks that the command wires them together. VH-1 (:173) asks for each action's visible effect or echoed failure, without requiring the stream-closed case or checking that state changes only after replies.
+
+Failure scenario (inference, not an observed implementation defect): a command that sends a correct plan but never invokes refresh after a successful action can pass every listed automated check, and the normal live-stream host check still displays the effect. With the subscription closed, subsequent successful row actions then leave the buffer's held snapshots stale. An optimistic local update or a command that ignores a failed completion is likewise outside the listed behavioral checks.
+
+Repair: add a PHASE-05 exit criterion and VT in lisp/test/dl-umbriel-buffer-test.el exercising the generated command with scripted/delayed send-all results and fake refresh/message functions. Require no refresh before completion; final success with a closed/never-opened stream triggers one refresh of both families; success with an open stream triggers none; failure echoes its rendered kind and prevents remaining steps; commands do not mutate held snapshots to predict an effect. These checks need no live desktop mutation."""
+disposition = "fix-now"
+response = "Accepted: real gap. PHASE-05 EX-7 + VT-5 (lisp/test/dl-umbriel-buffer-test.el) drive a generated command with scripted send-all and faked refresh/message: no refresh before completion; one refresh of both families on final success only when the stream is not open; none when open; failure echoed, remaining steps not sent; success silent; held state never written."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Accepted: real gap. PHASE-05 EX-7 + VT-5 (lisp/test/dl-umbriel-buffer-test.el) drive a generated command with scripted send-all and faked refresh/message: no refresh before completion; one refresh of both families on final success only when the stream is not open; none when open; failure echoed, remaining steps not sent; success silent; held state never written."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "VERIFIED at plan level. .doctrine/slice/016/plan.toml:169 (PHASE-05 EX-7) now explicitly drives a generated row command with scripted/delayed send-all completion and faked refresh/message: no early refresh; final success with a non-open stream refreshes both families once; open-stream success does not refresh; failure renders its message and stops remaining steps; success is silent; no command writes held snapshots. VT-5 at :176 mandates the command-completion check in lisp/test/dl-umbriel-buffer-test.el with relevant send-all/refresh/failure-message keywords. This supplies the missing command-to-client acceptance check and agrees with locked design.md:489-511 and :840-842. This verifies the authored plan repair, not execution of the future ERT tests."
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "major"
+title = "The buffer-owned subscription lifetime has no acceptance check"
+detail = """
+Expected: DEC-018 and design.md:280-286, :530-534 require one subscription owned by the buffer: creation opens it, killing that buffer closes it through a buffer-local hook, burying it preserves it, and reconnect is explicit. design.md:847 makes at-most-one connection and reconnect-only-on-g invariants.
+
+Observed (verified plan gap): .doctrine/slice/016/plan.toml:115-120 names my/umbriel, kill-buffer-hook and g in the PHASE-04 objective, but its complete EX/VT/VA lists (:124-139) never exercise the opening command followed by buffer burial or destruction. VT-5 deliberately tests mode/render without my/umbriel, so it cannot check ownership. PHASE-02 EX-2 (:72) states at-most-one connection, but VT-2/VA-1 (:78-81) check status transitions and a single open/close, without repeated-open connection counts or a no-reconnect assertion. PHASE-06 VH-1 (:197) covers restart plus g recovery, but not kill/bury ownership or duplicate openings. This is a gap in the criteria/checks, not a claim that the implementation already leaks.
+
+Failure scenario (inference): attaching close globally instead of buffer-locally makes killing an unrelated buffer disconnect the view; omitting the hook leaves the subscriber alive after its consumer is killed; closing on quit/bury violates the retained-stream behavior. Fixture rendering, throttling tests, one live render, and the specified restart check can all succeed despite these errors. The slice itself identifies subscription lifetime as a principal risk (doctrine show SL-016, Risks & assumptions).
+
+Repair: add fake-transport lifecycle checks at the earliest owning phases. In PHASE-02 assert repeated stream-open creates only one subscription and a close/sentinel does not reconnect on its own. In PHASE-04 add EX plus VT coverage that my/umbriel creates the consumer and opens once, repeated display/burial/quit keeps that connection, killing an unrelated buffer does nothing, killing *umbriel* closes exactly once, and g reconnects only when closed. Stub transport and timers so the test still honors RV-018 F-14 and sends no real action."""
+disposition = "fix-now"
+response = "Accepted: real gap. PHASE-02 EX-2 extended + VT-5 (repeated stream-open = one connection; no reconnect after close). PHASE-04 EX-7 + VT-6: my/umbriel opens once; re-invoke/bury/quit keep it; unrelated kill no-op; *umbriel* kill closes exactly once; g reconnects only when not open. Fake transport and timers, F-14 respected."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Accepted: real gap. PHASE-02 EX-2 extended + VT-5 (repeated stream-open = one connection; no reconnect after close). PHASE-04 EX-7 + VT-6: my/umbriel opens once; re-invoke/bury/quit keep it; unrelated kill no-op; *umbriel* kill closes exactly once; g reconnects only when not open. Fake transport and timers, F-14 respected."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "VERIFIED at plan level. .doctrine/slice/016/plan.toml:72 extends PHASE-02 EX-2 with repeated-open idempotence and no automatic reconnect; VT-5 at :81 requires fake-transport connection-count and sentinel-close checks, using authored stream-open-twice/no-auto-reconnect test names. PHASE-04 EX-7 at :132 and VT-6 at :140 cover consumer creation/open-once; re-invoke/bury/quit retaining the connection; unrelated-buffer kill doing nothing; killing *umbriel* closing exactly once through its buffer-local hook; and g reconnecting only when not open. Checks use fake transport and timers, preserving RV-018 F-14 isolation. These obligations sit on the earliest owning phases and match design.md:280-286, :530-534 and :603-607. No implementation or live lifecycle execution is claimed."
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "minor"
+title = "PHASE-02 VT-3 mandates a production error-wrapper name in the test file"
+detail = """
+Evidence: .doctrine/slice/016/plan.toml:79 assigns VT-3 test_file = lisp/test/dl-umbriel-test.el and keywords = ["dl-umbriel-await", "with-demoted-errors"]. The behavior it expects is waiter registration/closure/predicate-error isolation. design.md:271-273 places with-demoted-errors around waiter execution in the client implementation; it does not require that macro in the test harness. The plan skill (.agents/skills/plan/SKILL.md:78-86) defines keywords as raw substrings that must all occur in the ONE mandated file. `doctrine slice verify-vt --help` confirms the gate reads the authored plan and mandated source files and fails on a Fail verdict.
+
+Verified mismatch: an ordinary test can call dl-umbriel-await with a predicate or callback that signals and assert that other waiters and the hook still run, without ever writing with-demoted-errors in the test source. The wrapper belongs in apps/dl-umbriel.el. This is about the mandate's selected file and token, not the expected absence of future tests from the current tree.
+
+Consequence (inference): a correctly implemented and tested waiter can fail the VT shape gate solely because its behavior test lacks an implementation-macro string. Adding that string as a comment would satisfy the gate without strengthening isolation coverage; wrapping the test itself would risk swallowing the very error it needs to expose.
+
+Repair: keep the behavior mandate on the test file and replace the macro keyword with a stable, authored isolation-test name (including a callback-error case to match EX-3 at :73). If the macro's production presence also needs a shape check, give that check its own mandate on apps/dl-umbriel.el. Do not add a wrapper to the test merely to satisfy the substring."""
+disposition = "fix-now"
+response = "Accepted: macro name belongs to production, not the test. PHASE-02 VT-3 keywords now dl-umbriel-await plus authored test names waiter-signalling-predicate and waiter-signalling-callback (covers EX-3's callback case). No production shape mandate added; the behaviour test is the check."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Accepted: macro name belongs to production, not the test. PHASE-02 VT-3 keywords now dl-umbriel-await plus authored test names waiter-signalling-predicate and waiter-signalling-callback (covers EX-3's callback case). No production shape mandate added; the behaviour test is the check."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "VERIFIED. .doctrine/slice/016/plan.toml:79 keeps PHASE-02 VT-3 on lisp/test/dl-umbriel-test.el and replaces the production macro keyword with dl-umbriel-await plus the authored behavioral test names waiter-signalling-predicate and waiter-signalling-callback. Thus the mandate no longer forces the implementation wrapper into the test file; the callback-error case is explicitly named as well as the predicate-error case. EX-3 at :73 continues to require that a signalling predicate or callback removes only its waiter while the hook continues, consistent with design.md:265-273. The test names are future implementation obligations, not claims that those tests exist today."
+
+# Findings are append-only `[[finding]]` tables, added by `review raise`.
+# Empty here at creation — a fresh review is Active, awaiting the raiser.

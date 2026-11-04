@@ -51,15 +51,30 @@ no compositor in agent env (manual host check only).
 `umbriel` on PATH in plain shell; `ipc_commands.cpp` field names are the contract;
 `magit-section` available (magit packaged).
 
+## Review passes (design run, reviewing)
+
+RV-018 pass 1 (agent): F-1..F-3, fixed. Pass 2 (quotient `review` profile):
+F-4..F-19 — 14 integrated, 2 refuted with source evidence (see the ledger).
+DEC-016, DEC-020, DEC-022, DEC-024 amended from these passes.
+
+A further pass would probe the same seams with runtime evidence rather than
+reading: connect/close races and eviction mid-line, the throttle under a real
+drag, and multi-output layout behaviour. The manual host check covers those
+better than another document review, so none is needed. Note for any future
+delegated review: the quotient sandbox could not read `~/.local/src/umbriel`,
+`/nix/store` or run `emacs`, so its claims there were inferences and had to be
+verified here — two were wrong.
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-11-04 · design: drafting (run rev 21) · 28a16e4 (uncommitted: slice/notes/backlog/DEC records staged or untracked)
+fresh-as-of: 2026-11-04 · design locked (run rev 41), slice status plan · 28a16e4 (uncommitted: slice/notes/design/DEC/backlog records)
 
 ### Produced
-DEC-012..DEC-024 (accepted) · CHR-010 · IDE-003 · research addendum (socket) · slice-016.md amended (socket transport, apps/ split, keys)
+design.md (locked) · RV-018 (F-1..F-19 disposed; severe ones routed — control/probe criteria for /plan) · DEC-012..DEC-024 (accepted; DEC-016/020/022/023/024 amended in review) · CHR-010 · IDE-003 · research addendum (socket) · slice-016.md amended (socket transport, apps/ split, keys)
 
 ### Learned
 E1–E4 in § Design triage above · server one-request-per-connection + 1 s deadline (DEC-015/017 context) · window-kill kills the owning process (DEC-019)
 
 ### Open
-E1 red test (resolved by DEC-023 at implementation) · E4 stray `t` in core/dl-keymap.el:50 (user's working tree) · upstream k:v window metadata — user raising with umbriel devs (IDE-003)
+plan authored (PHASE-01..06); RV-019 plan review (codex): F-1..F-3 fixed + verified, done; awaiting user approval + commit · compositor IS reachable from the in-session agent (user correction 2026-11-04; `UMBRIEL_SOCKET` set, `umbriel windows --json` answers) — slice Risks and design § Verification prose stale on this, reconcile at /reconcile; jailed dispatch workers still cannot reach it ·
+RV-018 instrument-routed criteria (F-6/7/9/11/14 control, F-8 probe) → plan must carry them · E1 test edited in user's working tree (now green; replaced at implementation per DEC-023) · E4 stray `t` in core/dl-keymap.el:50 (user's working tree) · upstream k:v window metadata — user raising with umbriel devs (IDE-003)

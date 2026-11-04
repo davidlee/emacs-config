@@ -1,0 +1,205 @@
+# Implementation plan for SL-016 — the authored, durable phase plan.
+#
+# This is the single source of each phase's objective, criteria, verification,
+# and links. Runtime status lives separately under .doctrine/state/ (phase
+# tracking) — never record progress here. Hand-edit freely: the tool reads this
+# file but does not rewrite it.
+schema  = "doctrine.plan.overview"
+version = 1
+slice   = "SL-016"
+
+# Canonical spec/requirement links — cite ids, never restate what they say. The
+# plan reader does not model these yet, so nothing downstream consumes them.
+[specs]
+primary       = []
+collaborators = []
+
+[requirements]
+targets      = []
+dependencies = []
+
+# Phases in execution order. Ids immutable; edits append.
+
+[[phase]]
+id        = "PHASE-01"
+name      = "Socket client: requests and transport; focus on the client"
+objective = """
+git mv lisp/dl-umbriel.el → apps/dl-umbriel.el and rebuild it as the request half of the
+socket client (design § The socket client): socket path, request builders, parse, take-lines,
+reply-result, connect-failure, dl-umbriel-send, dl-umbriel-send-all, failure-message. Move
+frame focus to apps/dl-umbriel-focus.el rebuilt on dl-umbriel-send (design § Frame focus);
+delete dl-umbriel--host-environment and dl-umbriel--windows. init.el requires dl-umbriel-focus.
+Tests split: client tests in dl-umbriel-test.el (with the shared fake-transport helper),
+focus tests in dl-umbriel-focus-test.el."""
+entrance_criteria = [
+  { id = "EN-1", text = "Plan approved; slice status ready." },
+  { id = "EN-2", text = "The user's uncommitted one-line edit to lisp/test/dl-umbriel-test.el is settled with the user (committed, or confirmed superseded): this phase rewrites the file and deletes the argv test it edits." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "apps/dl-umbriel.el is the git-mv'd file (history kept) and contains no call-process/make-process and no env scrub; apps/dl-umbriel-focus.el and its test are git add'ed." },
+  { id = "EX-2", text = "Every request's callback runs exactly once whenever the connection ends: reply line, close before a line, failed connect, failed write." },
+  { id = "EX-3", text = "RV-018 F-9: with a fake delete-process that invokes the captured sentinel with \"deleted\\n\", one reply line yields exactly one callback call carrying the ok result. Rejects an implementation that sets the delivered flag after deleting the process (ok then closed)." },
+  { id = "EX-4", text = "RV-018 F-8: with the faked transport, a send whose write signals yields one (:failure closed …), and a close after a partial chunk yields one (:failure closed …). Need not hold against a server that accepts and never replies or closes (DEC-017)." },
+  { id = "EX-5", text = "The six failure kinds (no-path, absent, refused, closed, rejected, malformed) reach distinct results; no-path makes no connect attempt." },
+  { id = "EX-6", text = "Client and focus tests bind process-environment and pass with UMBRIEL_SOCKET / WAYLAND_DISPLAY set (this host) and unset; none opens a real connection (groundwork for RV-018 F-14, checked in PHASE-04 and PHASE-06)." },
+  { id = "EX-7", text = "bin/elisp-locate-paren-error clean on every touched .el; just check green." },
+]
+verification = [
+  { id = "VT-1", expects = "socket path: explicit wins, runtime+display composed, empty counts as unset, nil names missing vars", test_file = "lisp/test/dl-umbriel-test.el", keywords = ["dl-umbriel-socket-path", "UMBRIEL_SOCKET", "WAYLAND_DISPLAY"], waived = false },
+  { id = "VT-2", expects = "builders: query; action drops nil fields; number vs digit-only name; subscribe events serialise as a JSON array", test_file = "lisp/test/dl-umbriel-test.el", keywords = ["dl-umbriel-query", "dl-umbriel-action", "dl-umbriel-subscribe-request", "json-serialize"], waived = false },
+  { id = "VT-3", expects = "take-lines split/multi/remainder; reply-result ok/rejected/malformed", test_file = "lisp/test/dl-umbriel-test.el", keywords = ["dl-umbriel--take-lines", "dl-umbriel--reply-result"], waived = false },
+  { id = "VT-4", expects = "transport via the fake: write on connect; one delivery with sentinel re-entry (F-9); signalling write and partial-chunk close → closed (F-8); file-missing → absent; refused; no-path; :coding utf-8-unix and :noquery t", test_file = "lisp/test/dl-umbriel-test.el", keywords = ["make-network-process", "delete-process", "process-send-string", "file-missing", "utf-8-unix", ":noquery"], waived = false },
+  { id = "VT-5", expects = "send-all stops at first failure and reports last success; failure-message names each kind", test_file = "lisp/test/dl-umbriel-test.el", keywords = ["dl-umbriel-send-all", "dl-umbriel-failure-message"], waived = false },
+  { id = "VT-6", expects = "focus: window-id match; sends windows then window-focus with the id; no match sends nothing more; non-pgtk sends nothing; failure echoed", test_file = "lisp/test/dl-umbriel-focus-test.el", keywords = ["dl-umbriel-window-id", "dl-umbriel-focus-frame", "window-focus", "pgtk"], waived = false },
+  { id = "VA-1", expects = "Live read-only probe on this host: dl-umbriel-send of (dl-umbriel-query \"windows\") and \"workspaces\" returns (:ok …) with the field names the model reads; a bogus UMBRIEL_SOCKET yields absent. No action is sent." },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-02"
+name      = "Socket client: stream, held state, hook, waiter"
+objective = """
+Add the stream half of apps/dl-umbriel.el (design § Held state and the stream): the private
+state record with one setter (dl-umbriel--set-family), readers, dl-umbriel-state-changed-hook,
+dl-umbriel-await, dl-umbriel-stream-open/-close, dl-umbriel--stream-line, the skipped count,
+and dl-umbriel-refresh (async windows+workspaces queries through the setter)."""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-01 complete; the fake-transport helper exists in lisp/test/dl-umbriel-test.el." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "Only dl-umbriel--set-family writes snapshots; stream events and refresh replies both go through it; events replace wholesale." },
+  { id = "EX-2", text = "Stream status is never / open / (:failure KIND DETAIL); sentinel → closed with snapshots kept; stream-close → never; first-line {\"err\"} → rejected; stream-open resets skipped; at most one stream connection: repeated stream-open while open makes no second connection, and nothing reconnects after a close (RV-019 F-2)." },
+  { id = "EX-3", text = "Waiter fires once (including at registration), fails on stream close, fails at once when the stream is not open; a signalling predicate or callback drops only its own waiter and the hook still runs (F-16)." },
+  { id = "EX-4", text = "bin/elisp-locate-paren-error clean; just check green; client tests still open no real connection." },
+]
+verification = [
+  { id = "VT-1", expects = "stream lines: windows/workspaces replace state and run the hook; unrequested family and malformed line bump skipped; first-line err → rejected", test_file = "lisp/test/dl-umbriel-test.el", keywords = ["dl-umbriel--stream-line", "dl-umbriel-skipped", "dl-umbriel-state-changed-hook"], waived = false },
+  { id = "VT-2", expects = "stream lifecycle: open/sentinel/close status transitions; snapshots kept on close; skipped reset on open", test_file = "lisp/test/dl-umbriel-test.el", keywords = ["dl-umbriel-stream-open", "dl-umbriel-stream-close", "dl-umbriel-stream-status"], waived = false },
+  { id = "VT-3", expects = "waiter: registration-time fire, close failure, not-open failure, signalling predicate isolation", test_file = "lisp/test/dl-umbriel-test.el", keywords = ["dl-umbriel-await", "waiter-signalling-predicate", "waiter-signalling-callback"], waived = false },
+  { id = "VT-4", expects = "refresh writes both families through the setter from async replies", test_file = "lisp/test/dl-umbriel-test.el", keywords = ["dl-umbriel-refresh", "dl-umbriel--set-family"], waived = false },
+  { id = "VT-5", expects = "RV-019 F-2: with the fake transport, repeated stream-open while open makes one connection; a sentinel close does not reconnect on its own", test_file = "lisp/test/dl-umbriel-test.el", keywords = ["stream-open-twice", "no-auto-reconnect"], waived = false },
+  { id = "VA-1", expects = "Live read-only probe: stream-open on this host receives an initial windows and workspaces snapshot (ipc.cpp:625, no ok ack) and status is open; stream-close returns to never. No action is sent." },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-03"
+name      = "Pure model and display strings"
+objective = """
+apps/dl-umbriel-model.el (design § The model): group, workspace-selector, window-workspace,
+workspace-choices, workspace-label, window-label, layouts. Pure; requires only seq/subr-x;
+does not require the client. Fixtures are hand-written alists in the DEC-013 shape (never
+dumped from the live compositor: the repo is public and titles are private)."""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-01 complete (parse options fixed: alist, list, :false-object nil, :null-object nil)." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "RV-018 F-7: group over a fixture whose windows include one with an unknown workspace id and one with a nil workspace returns every input window exactly once; Unassigned last, omitted when empty; empty workspaces listed. Rejects a group that buckets only the empty-string workspace and drops the rest." },
+  { id = "EX-2", text = "Selector: named → name string even when all digits; unnamed → index; output always present." },
+  { id = "EX-3", text = "Labels: active and focused shown independently; visible labelled 'visible'; count from the join, not window_count; newlines/tabs in compositor strings become spaces; a missing field defaults instead of signalling." },
+  { id = "EX-4", text = "The model file loads with no dl-umbriel feature present; bin/elisp-locate-paren-error clean; just check green." },
+]
+verification = [
+  { id = "VT-1", expects = "group join incl. F-7 unknown-id and nil-workspace windows never dropped; ordering of workspaces and windows (column/row, -1 after, floating last, tab_index before title)", test_file = "lisp/test/dl-umbriel-model-test.el", keywords = ["dl-umbriel-model-group", "Unassigned", "tab_index"], waived = false },
+  { id = "VT-2", expects = "selector named/unnamed/digit-name; window-workspace; choices order", test_file = "lisp/test/dl-umbriel-model-test.el", keywords = ["dl-umbriel-model-workspace-selector", "dl-umbriel-model-window-workspace", "dl-umbriel-model-workspace-choices"], waived = false },
+  { id = "VT-3", expects = "labels: active/focused independent, visible, defaults, join count, newline flattening", test_file = "lisp/test/dl-umbriel-model-test.el", keywords = ["dl-umbriel-model-window-label", "dl-umbriel-model-workspace-label"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-04"
+name      = "The *umbriel* buffer: mode, render, header, repaint"
+objective = """
+apps/dl-umbriel-buffer.el, display half (design § The buffer): dl-umbriel-buffer-mode derived
+from magit-section-mode, render from held state via the model (section values are ids), the
+header-line, the 0.1 s run-at-time repaint throttle on dl-umbriel-state-changed-hook, stale
+marking when undisplayed plus buffer-local window-buffer-change-functions, keeping point and
+folds, my/umbriel (creates the buffer and opens the stream), kill-buffer-hook closing it, g
+(my/umbriel-refresh). The mode body never connects."""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-02 and PHASE-03 complete." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "A fixture renders without a compositor: section types umbriel-workspace / umbriel-window / umbriel-unassigned with id values; empty-state line when held state is empty." },
+  { id = "EX-2", text = "Header names never / open / each failure, shows the skipped count when non-zero, and doubles % in compositor text." },
+  { id = "EX-3", text = "RV-018 F-11: several state changes delivered before the timer fires produce exactly one repaint, and a change after it fires schedules exactly one more. Rejects cancel-and-rearm per change (idle or plain)." },
+  { id = "EX-4", text = "Repaint keeps point on the same window across a reorder and keeps a folded workspace folded; an undisplayed buffer is marked stale and repainted when next shown." },
+  { id = "EX-5", text = "RV-018 F-14: with UMBRIEL_SOCKET pointing at a scratch listening local socket that counts accepted connections, running the umbriel test files accepts zero connections except in tests that explicitly fake the transport; the suite also passes with the variable unset. Rejects a mode body or render path that calls stream-open." },
+  { id = "EX-6", text = "bin/elisp-locate-paren-error clean; just check green." },
+  { id = "EX-7", text = "RV-019 F-2 (DEC-018): with fake transport and timers, my/umbriel creating *umbriel* opens the stream once; re-invoking, burying or quit-window keeps that one connection; killing an unrelated buffer does nothing; killing *umbriel* closes it exactly once (buffer-local hook); g reconnects only when the stream is not open." },
+]
+verification = [
+  { id = "VT-1", expects = "render a fixture: section types and id values; Unassigned; empty state", test_file = "lisp/test/dl-umbriel-buffer-test.el", keywords = ["dl-umbriel-buffer-mode", "umbriel-workspace", "umbriel-window", "umbriel-unassigned"], waived = false },
+  { id = "VT-2", expects = "header for never/open/each failure, skipped count, % doubled", test_file = "lisp/test/dl-umbriel-buffer-test.el", keywords = ["header-line-format", "skipped", "%%"], waived = false },
+  { id = "VT-3", expects = "F-11 throttle: N changes → one repaint; a later change → one more (stubbed run-at-time / counted repaint)", test_file = "lisp/test/dl-umbriel-buffer-test.el", keywords = ["run-at-time", "repaint"], waived = false },
+  { id = "VT-4", expects = "point kept across reorder; fold kept; undisplayed → stale", test_file = "lisp/test/dl-umbriel-buffer-test.el", keywords = ["point", "magit-section-hide", "stale"], waived = false },
+  { id = "VT-5", expects = "F-14 guard: the mode body and render path never call dl-umbriel-stream-open (stream-open stubbed to fail the test)", test_file = "lisp/test/dl-umbriel-buffer-test.el", keywords = ["dl-umbriel-stream-open", "process-environment"], waived = false },
+  { id = "VT-6", expects = "RV-019 F-2 lifecycle: create opens once; bury/quit/re-invoke keep it; unrelated kill no-op; *umbriel* kill closes once; g reconnects only when closed", test_file = "lisp/test/dl-umbriel-buffer-test.el", keywords = ["my/umbriel", "kill-buffer", "bury-buffer", "my/umbriel-refresh"], waived = false },
+  { id = "VA-1", expects = "F-14 run: agent runs the umbriel test files in batch with UMBRIEL_SOCKET at a counting scratch listener (expect 0 accepts) and with the socket variables unset (expect pass); records the commands and counts in SL-016 notes." },
+  { id = "VA-2", expects = "Live read-only: agent opens *umbriel* in a batch/daemon-less Emacs against the live socket and confirms it renders this host's workspaces and windows; no action sent." },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-05"
+name      = "Actions, global commands, keys"
+objective = """
+Action half of apps/dl-umbriel-buffer.el (design § Actions, § Keys): dl-umbriel-buffer-actions
+table, the command-generating macro, the pure dl-umbriel-buffer--plan, prompts (workspace,
+layout, confirm-kill with the target captured before the prompt), send-all then refresh when
+the stream is not open; global my/umbriel-switch-workspace and my/umbriel-set-active-layout
+(prompt via run-at-time 0 from a refresh callback; message if a minibuffer is active);
+dl-umbriel-buffer-mode-map as an inline defvar-keymap; my-umbriel-map u/w/l/f via my/bind with
+descriptions, (cons \"u\" my-umbriel-map) in the leader mirror, placeholder at
+core/dl-keymap.el:433 deleted; init.el requires dl-umbriel-buffer."""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-04 complete." },
+  { id = "EN-2", text = "The user's uncommitted edits in core/dl-keymap.el (incl. the stray t at :50) are still theirs: edit only the umbriel lines and leave theirs unstaged/untouched, or ask the user to commit first." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "Plan tests cover every addressing × target cell (window/focused/workspace/active-workspace × window row/workspace row/Unassigned window), with Unassigned refusals." },
+  { id = "EX-2", text = "RV-018 F-6: a pure plan test with two outputs, focused workspace on DP-1 and the row on DP-2, returns a refusal and no requests for workspace-set-layout. Rejects a plan that emits switch then set-layout for the DP-2 row." },
+  { id = "EX-3", text = "Kill refuses (emacs-pid); confirms otherwise naming app id, title, pid; the confirmed target is the one captured before the prompt (F-19)." },
+  { id = "EX-4", text = "No minibuffer prompt runs inside a process filter or sentinel." },
+  { id = "EX-5", text = "Policy lint passes over apps/ and core/ (no define-key/keymap-set into the buffer map); meow motion state does not shadow the row keys; just check green; paren check clean." },
+  { id = "EX-7", text = "RV-019 F-1 (DEC-021): a generated row command, driven with scripted/delayed send-all results and faked refresh/message: no refresh before completion; final success with the stream not open refreshes both families once; success with the stream open refreshes nothing; a failure echoes its failure-message and sends no remaining step; success is silent; held snapshots are never written by the command." },
+  { id = "EX-6", text = "C-c u u/w/l and SPC u resolve to their commands in a full init (autoload or declare-function per dl-keymap.el convention), whatever the require order of dl-keymap and dl-umbriel-buffer." },
+]
+verification = [
+  { id = "VT-1", expects = "plan: every addressing × target cell; Unassigned refusals; F-6 two-output refusal", test_file = "lisp/test/dl-umbriel-buffer-test.el", keywords = ["dl-umbriel-buffer--plan", "active-workspace", "DP-2"], waived = false },
+  { id = "VT-2", expects = "kill: emacs-pid refusal, confirmation text, target captured before prompt", test_file = "lisp/test/dl-umbriel-buffer-test.el", keywords = ["emacs-pid", "y-or-n-p", "window-kill"], waived = false },
+  { id = "VT-3", expects = "global switch-workspace prompts via run-at-time 0 from the refresh callback, never inside the callback; messages when a minibuffer is active", test_file = "lisp/test/dl-umbriel-buffer-test.el", keywords = ["my/umbriel-switch-workspace", "run-at-time", "minibuffer"], waived = false },
+  { id = "VT-5", expects = "RV-019 F-1: generated command completion: refresh only after final success and only when the stream is not open; failure echoed and stops; no write to held state", test_file = "lisp/test/dl-umbriel-buffer-test.el", keywords = ["dl-umbriel-send-all", "dl-umbriel-refresh", "dl-umbriel-failure-message"], waived = false },
+  { id = "VT-4", expects = "keymap: C-c u u/w/l/f bound; buffer map row keys incl. M-<left>/</[ pairs", test_file = "lisp/test/dl-umbriel-buffer-test.el", keywords = ["my-umbriel-map", "dl-umbriel-buffer-mode-map"], waived = false },
+  { id = "VH-1", expects = "User, on the host: run each v1 action from a row (focus, switch, move-to-workspace, toggle-floating, center, column/scroll left/right, cycle extent/back, set-layout incl. the cross-output refusal, kill confirmation) and C-c u w/l/f; confirm effect or echoed failure. Agent does not send mutating actions to the user's desktop." },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-06"
+name      = "Docs, changelog, closing checks"
+objective = """
+docs/emacs/umbriel.md (design § Documentation), the CHANGELOG.md entry, the full-suite F-14
+re-run, and the manual host check recorded in SL-016 notes."""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-05 complete." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "docs/emacs/umbriel.md answers every bullet in design § Documentation, with the frontmatter docs/emacs/naming.md uses, and states that the agent environment can reach the compositor (correcting the slice's stale 'no compositor' premise)." },
+  { id = "EX-2", text = "CHANGELOG.md names my/umbriel, C-c u u/w/l/f, the buffer keys, the move to apps/, and the socket-based focus hook." },
+  { id = "EX-3", text = "RV-018 F-14 re-run over the full just check: zero accepted connections on the scratch socket; green with the socket variables set and unset." },
+  { id = "EX-4", text = "Manual host check (design § Verification) recorded in SL-016 notes by the user's report." },
+]
+verification = [
+  { id = "VT-1", expects = "doc exists and covers socket paths, snapshot rule, failure kinds, addressing, window-kill, activation tokens, frame identity, no layout authority", test_file = "docs/emacs/umbriel.md", keywords = ["UMBRIEL_SOCKET", "snapshot", "activation", "window-kill", "IDE-003", "rejected"], waived = false },
+  { id = "VT-2", expects = "changelog entry names the commands and keys", test_file = "CHANGELOG.md", keywords = ["my/umbriel", "C-c u"], waived = false },
+  { id = "VA-1", expects = "F-14 full-suite run with the counting scratch socket and with variables unset; results in notes." },
+  { id = "VH-1", expects = "User: open *umbriel*; change focus/workspace via umbriel binds and see it track without g; restart umbriel → header says closed, g recovers; emacsclient a file → frame comes forward." },
+]
+specs        = []
+requirements = []
