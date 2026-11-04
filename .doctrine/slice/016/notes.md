@@ -101,6 +101,7 @@ mutation checks, VA-1 and doctrine state.
 - Super-orchestrator run PHASE-03..04 (2026-11-04): form re-probed (write: emacs/just/git ok, magit-section source readable, `^dl-umbriel` ERT 60/60). Targeted ERT has no just recipe: reproduce `check`'s load path with selector `^dl-umbriel`. Background tasks on, spawn depth unset (ok), auto mode.
 - PHASE-05 start (2026-11-04, user present): user removed-by-request the stray `t` in core/dl-keymap.el:50, so the file is clean (EN-2 satisfied). PHASE-04 VA-2: user loaded dl-umbriel-buffer and reports it renders; live tracking/folds/reconnect not yet checked, folded into PHASE-05 VH-1 runsheet.
 - PHASE-05 VH-1 (user report, 2026-11-04): mostly pass. Focus restore (DEC-025) robust and preferred; flicker fine, glitchy only when the workspace changes. C-c u w works. Faults: `L` always targets workspace 2; `s` on a row of the already-active workspace jumps to the previous one; workspace prompt ordered by recency (prescient), not by number. Cause of `s` (verified): user's umbriel config `back_and_forth = true` (~/.config/umbriel/layout.toml:21; umbriel docs/user/workspaces.md:145) — user: don't work around it for `s`. `L` inferred same cause (its plan switches first). umbriel restart not testable without ending Emacs; `g` reconnect seen during code edits. Visual design → IMP-030 (out of scope).
+- PHASE-05 VH-1 re-check (user, 2026-11-04): "VH1 pass" after 23973e7/acb49c7 (L on focused workspace, prompt order, scroll keys removed). PHASE-05 completed.
 
 ## Autonomy log
 
