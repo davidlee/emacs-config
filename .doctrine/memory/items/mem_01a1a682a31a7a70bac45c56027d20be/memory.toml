@@ -1,0 +1,46 @@
+memory_uid = "mem_01a1a682a31a7a70bac45c56027d20be"
+memory_key = "mem.fact.doctrine.phase-dir-side-files-are-orphans"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "Side files in the phases dir count as orphan phases"
+summary = "Any phase-NN-<suffix>.{md,toml} in .doctrine/state/slice/NNN/phases/ is read as orphan phase tracking; slice list shows ?N and close blocks"
+created = "2026-11-04"
+updated = "2026-11-04"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["doctrine", "phases"]
+workspace = "default"
+repo = "github.com/davidlee/emacs-config"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "3a235cbca103da81f985814b7130da88443afea2"
+ref_name = "refs/heads/main"
+checkout_state_id = "ccfb528c115f0142ec43ecc373e69065b0e9de47037d9f330693da8399d5cd7a"
+base_commit = "66de2f287beabbda087d4e0872df0867818a3bde"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0
+
+[[source]]
+kind = "review"
+ref = "RV-020"
+

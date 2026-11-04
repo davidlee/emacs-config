@@ -1,0 +1,46 @@
+memory_uid = "mem_01a1a682a33c7130ac300aa178685fde"
+memory_key = "mem.fact.project.gate-is-just-check"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "doctrine check gate is unconfigured here; the gate is just check"
+summary = "This repo has no just gate recipe: doctrine check gate fails; the project gate is just check (AGENTS.md Commit Gate)"
+created = "2026-11-04"
+updated = "2026-11-04"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["doctrine", "gate"]
+workspace = "default"
+repo = "github.com/davidlee/emacs-config"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "3a235cbca103da81f985814b7130da88443afea2"
+ref_name = "refs/heads/main"
+checkout_state_id = "98ee500600ad388982c79e5c71f500ee674e478966c74f176245aa743290c271"
+base_commit = "66de2f287beabbda087d4e0872df0867818a3bde"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0
+
+[[source]]
+kind = "review"
+ref = "RV-020"
+
