@@ -106,6 +106,12 @@ mutation checks, VA-1 and doctrine state.
 - PHASE-02 · a windows/workspaces event without `data` is skipped, not taken as empty (design § Stream lines table lacks the row; JSON null and [] both parse to nil, so only a missing key is detectable) · decided — audit
 - PHASE-02 · close-on-request fails pending waiters with `(:failure closed "stream closed")` (design names no failure for it) · decided — audit
 - PHASE-02 · fake transport: one handle per connection, writes to a deleted one signal · decided (test helper)
+- PHASE-03 · `dl-umbriel-model-workspace-label WORKSPACE &optional COUNT`: design table has one argument; COUNT (from the join) is how EX-3's "count from the join, not window_count" is met; choices pass none · decided; design § Functions table — audit
+- PHASE-03 · DEC-013 (accepted) still lists `window_count` in the workspace label; plan EX-3 / design § Display strings reverse it; code follows plan+design · drift — audit/reconcile
+- PHASE-03 · flattening (C-8) is display-only: selector and join read raw `name`/`id`/`output` (pi review F2, seat's own read concurred) · decided; design § Display strings could say so — audit
+- PHASE-03 · named workspace with no name selects `""`, not a fallback to index (review F3): design says name when named; the compositor's rejection stays visible · decided
+- PHASE-03 · non-alist / nil entries in held state (review F4/F5) → ISS-012, fix at the stream parse boundary, not the model · deferred
+- PHASE-03 · sorting via Emacs 30+ `sort :key` (stable, copying, `value<`) instead of a hand-rolled comparator · decided (refactor)
 
 ### pi passes (PHASE-02)
 
@@ -117,6 +123,17 @@ mutation checks, VA-1 and doctrine state.
 | test gap fix | implement (same session) | $0.023 | notify-path isolation added in both signalling tests |
 | implementation | implement | $0.062 | 49/49 green; 5 deviations, all sound. Missed: stream-close no-op after a server close (design failed→never); a >80-col docstring; reported byte-compile rc from `tail` |
 | review | review | $0.057 | 6 findings, all accepted: 3 announce-before-detach reentrancy bugs (VERIFIED by probe), missing-`data` silently empties, docstring width, sheet wording. Good value |
+
+### pi passes (PHASE-03)
+
+| run | profile | cost | outcome |
+|---|---|---|---|
+| red tests | implement | $0.071 | 22 tests; stub run: all assertion failures, no test-code errors. Docstring with unescaped `""` (seat fixed) |
+| implementation | implement | $0.035 | 22/22 first try; over-built (hand-rolled lexicographic comparator, index tiebreaks, hash tables, 237 lines) |
+| refactor | implement (same session) | $0.009 | `sort :key`, 202 lines, green |
+| review | review | $0.084 | 13 findings, all VERIFIED or reasoned: 4 mutants surviving the tests (id-order, choices count, floating order, label part order), selector flattened raw name. Good value |
+| test gaps | implement (test session) | $0.031 | +8 tests (30); noticed the specified `\n` near-miss was not sensitive and added a tab/space pair |
+| code fixes | implement (impl session) | $0.009 | raw addressing, owner computed once |
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
