@@ -71,14 +71,13 @@ verified here — two were wrong.
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-11-04 · design locked (run rev 41), slice status plan · 28a16e4 (uncommitted: slice/notes/design/DEC/backlog records)
+fresh-as-of: 2026-11-04 · slice started; PHASE-01 completed, PHASE-02 next · deb8ab9
 
 ### Produced
-design.md (locked) · RV-018 (F-1..F-19 disposed; severe ones routed — control/probe criteria for /plan) · DEC-012..DEC-024 (accepted; DEC-016/020/022/023/024 amended in review) · CHR-010 · IDE-003 · research addendum (socket) · slice-016.md amended (socket transport, apps/ split, keys)
+design.md (locked, run rev 41) · RV-018 (design review; F-6/7/8/9/11/14 routed into plan criteria) · DEC-012..DEC-024 · CHR-010 · IDE-003 · plan.toml/plan.md (PHASE-01..06) · RV-019 (plan review, codex; done) · PHASE-01: apps/dl-umbriel.el (client), apps/dl-umbriel-focus.el, lisp/test/dl-umbriel{,-focus}-test.el · commits af416dc, 643f68a, deb8ab9
 
 ### Learned
-E1–E4 in § Design triage above · server one-request-per-connection + 1 s deadline (DEC-015/017 context) · window-kill kills the owning process (DEC-019)
+E1–E4 in § Design triage · § Progress PHASE-01 (connect-error mapping re-observed; F-9 mutation check; `dl-umbriel-echo-failure` added beyond design) · compositor reachable from the in-session agent (user, 2026-11-04; Claude auto-memory) — read-only live probes are agent checks, mutating actions are the user's
 
 ### Open
-plan authored (PHASE-01..06); RV-019 plan review (codex): F-1..F-3 fixed + verified, done; awaiting user approval + commit · compositor IS reachable from the in-session agent (user correction 2026-11-04; `UMBRIEL_SOCKET` set, `umbriel windows --json` answers) — slice Risks and design § Verification prose stale on this, reconcile at /reconcile; jailed dispatch workers still cannot reach it ·
-RV-018 instrument-routed criteria (F-6/7/9/11/14 control, F-8 probe) → plan must carry them · E1 test edited in user's working tree (now green; replaced at implementation per DEC-023) · E4 stray `t` in core/dl-keymap.el:50 (user's working tree) · upstream k:v window metadata — user raising with umbriel devs (IDE-003)
+slice Risks + design § Verification say "no compositor reachable" — stale, fix at /reconcile · design § Files "provides" list lacks `dl-umbriel-echo-failure` — reconcile · `just check` red only from the user's uncommitted core/dl-keybind.el:125 remap (policy lint L2) — theirs to resolve · E4 stray `t` core/dl-keymap.el:50 (user's) · PHASE-05 EN-2: user's dl-keymap.el edits · upstream k:v window metadata (IDE-003)
