@@ -20,7 +20,7 @@
 (require 'dl-help)
 
 (require 'dl-sleipnir-doctor)
-(require 'dl-umbriel)
+(require 'dl-umbriel-focus)
 
 ;; DEV
 (require 'dl-eglot)

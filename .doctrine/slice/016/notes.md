@@ -65,6 +65,10 @@ delegated review: the quotient sandbox could not read `~/.local/src/umbriel`,
 `/nix/store` or run `emacs`, so its claims there were inferences and had to be
 verified here — two were wrong.
 
+## Progress
+
+- PHASE-01 (2026-11-04): client requests + transport in apps/dl-umbriel.el (git mv), focus in apps/dl-umbriel-focus.el on the client; 29 umbriel tests green; F-9 test mutation-checked; VA-1 live read-only probe passed. Added public `dl-umbriel-echo-failure` (one failure echo for focus and row actions). Baseline red from the user's uncommitted dl-keybind.el remap (policy lint L2), not ours.
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
 fresh-as-of: 2026-11-04 · design locked (run rev 41), slice status plan · 28a16e4 (uncommitted: slice/notes/design/DEC/backlog records)
