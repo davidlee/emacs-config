@@ -141,6 +141,7 @@ mutation checks, VA-1 and doctrine state.
 - PHASE-05 · DEC-025 (user, during VH-1): `focused` window rows restore the previous focus; previous = `focused_window` of the one focused held workspace, unknown when it is absent/nil/"" or zero/two workspaces are focused (same reading as `--off-pointer-p`, now sharing `--focused-workspace`); row move is `window-move-to-workspace-silent` · decided; drift: design.md § Addressing table and DEC-016's consequence ("-silent not in v1", focus stays on the row) superseded by DEC-025 — audit
 - PHASE-05 · VH-1 fault `L`: `active-workspace` plan omits `workspace-switch` when the target is the held focused workspace (id match with `--focused-workspace`; off-pointer refusal already pins the output). Cause verified in umbriel source: `actionWorkspace` → `WorkspaceGroup::select` returns to `m_previous` when the target is already active and `back_and_forth` (actions.cpp:1597, workspace.cpp:3568); `workspace-set-layout` acts on the active workspace (actions.cpp:1658). `s` unchanged (user ruling) · decided; drift: DEC-016 "switches to it first" and design.md § Addressing — audit
 - PHASE-05 · VH-1 fault prompt order: workspace and layout prompts use `--ordered-table` (metadata `display-sort-function`/`cycle-sort-function` = `identity`); vertico prefers metadata over `vertico-sort-function` where prescient sits (vertico.el:221-225; `vertico-prescient-override-sorting` nil, unset in config). No completion config touched · decided
+- PHASE-05 · DEC-026 (user): scroll row actions and C-<left>/[/C-<right>/] removed from table and buffer map; negative test `scroll-keys-are-gone`; CHANGELOG entry updated · decided; drift: design.md § Keys table, DEC-024 key list, VH-1 runsheet step 10 — audit
 
 ### pi passes (PHASE-02)
 
@@ -193,6 +194,7 @@ pi misses: the timer stubs failed on any `cancel-timer`, so the full suite (auto
 | DEC-025 green | implement (fresh) | $0.015 | 164/164 first try; shared `--focused-workspace` with `--off-pointer-p`. Mutations 8/8 killed (omitted, prev==row, after failed action, workspace row, non-silent, "" known, two focused, window addressing) |
 | VH-1 fix red tests | implement | $0.028 | 3 tests + 2 updated; 4 red for the right reason |
 | VH-1 fix green | implement (fresh) | $0.032 | 167/167 first try; retargeted legacy `completion-stops-at-the-first-failure` to the DP-1:2 row (assertions unchanged). Mutations 6/6 killed (focused still switches, other omits switch, no metadata, no cycle sort, no display sort, `s` skips switch); sanity mutant red |
+| DEC-026 red+green | implement | $0.012 | 168/168; also pruned scroll keys from the motion-shadow test's list. Mutant (rebind `[`) killed |
 
 pi misses: implementation trusted `completing-read`'s REQUIRE-MATCH to exclude empty input. Test writer fed a workspace label to the layout prompt in one loop test (masked until the empty-input guard). Seat's own miss: first mutation runner put the mutant dir last on `-L` (the first `-L` wins), so every mutant "survived" — a sanity mutant caught it.
 

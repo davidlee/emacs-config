@@ -269,8 +269,6 @@ already delivered."
                                     focused)
       (my/umbriel-column-left "column-move-left" focused)
       (my/umbriel-column-right "column-move-right" focused)
-      (my/umbriel-scroll-left "layout-scroll-left" focused)
-      (my/umbriel-scroll-right "layout-scroll-right" focused)
       (my/umbriel-move-to-workspace "window-move-to-workspace-silent"
                                     focused workspace)
       (my/umbriel-switch "workspace-switch" workspace)
@@ -574,10 +572,6 @@ The layout is prompted for at once: the choices need no held state
   "<" #'my/umbriel-column-left
   "M-<right>" #'my/umbriel-column-right
   ">" #'my/umbriel-column-right
-  "C-<left>" #'my/umbriel-scroll-left
-  "[" #'my/umbriel-scroll-left
-  "C-<right>" #'my/umbriel-scroll-right
-  "]" #'my/umbriel-scroll-right
   "e" #'my/umbriel-cycle-extent
   "E" #'my/umbriel-cycle-extent-back
   "g" #'my/umbriel-refresh

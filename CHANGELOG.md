@@ -22,15 +22,17 @@ Keys on a row act on that window or workspace: `RET` focus, `s` switch to
 its workspace, `m` move the window to a workspace (prompts), `t` toggle
 floating, `c` center, `k` kill (asks first; it kills the window's whole
 process, and refuses this Emacs), `L` set the layout (prompts; refused unless
-the row's workspace is on the output under the pointer), `M-<left>`/`<` and
-`M-<right>`/`>` move the column, `C-<left>`/`[` and `C-<right>`/`]` scroll
-the layout, `e`/`E` cycle the primary extent forward/back, `q` quit. Actions
-that only act on the focused window (`c`, `e`/`E`, column moves, layout
-scrolls, `m`) focus the row's window first, act, then focus the window that
-had focus before (normally this Emacs), so focus flickers but comes back;
-`m` moves the window silently, without following it. A workspace action
-switches to that workspace first, so focus may visibly move.
-Failures are echoed; success is silent.
+the row's workspace is on the output under the pointer; on the focused
+workspace it acts without switching, since switching to it would toggle back
+under umbriel's `back_and_forth`), `M-<left>`/`<` and `M-<right>`/`>` move
+the column, `e`/`E` cycle the primary extent forward/back, `q` quit. Strip
+scrolling is left to umbriel's own bindings. Actions that only act on the
+focused window (`c`, `e`/`E`, column moves, `m`) focus the row's window
+first, act, then focus the window that had focus before (normally this
+Emacs), so focus flickers but comes back; `m` moves the window silently,
+without following it. A workspace action switches to that workspace first,
+so focus may visibly move. The workspace and layout prompts list in display
+order, not by recency. Failures are echoed; success is silent.
 
 Global keys under `C-c u` (and `SPC u`): `u` the buffer, `w` switch
 workspace (`my/umbriel-switch-workspace`), `l` set the layout of the active

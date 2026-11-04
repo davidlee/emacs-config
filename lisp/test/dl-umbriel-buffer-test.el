@@ -937,8 +937,6 @@ unknown."
     (my/umbriel-cycle-extent-back "window-cycle-primary-extent-back" focused)
     (my/umbriel-column-left "column-move-left" focused)
     (my/umbriel-column-right "column-move-right" focused)
-    (my/umbriel-scroll-left "layout-scroll-left" focused)
-    (my/umbriel-scroll-right "layout-scroll-right" focused)
     (my/umbriel-move-to-workspace "window-move-to-workspace-silent" focused
                                   workspace)
     (my/umbriel-switch "workspace-switch" workspace)
@@ -2194,16 +2192,20 @@ Each one leaves only after the previous replied successfully."
                      ("<" . my/umbriel-column-left)
                      ("M-<right>" . my/umbriel-column-right)
                      (">" . my/umbriel-column-right)
-                     ("C-<left>" . my/umbriel-scroll-left)
-                     ("[" . my/umbriel-scroll-left)
-                     ("C-<right>" . my/umbriel-scroll-right)
-                     ("]" . my/umbriel-scroll-right)
                      ("e" . my/umbriel-cycle-extent)
                      ("E" . my/umbriel-cycle-extent-back)
                      ("g" . my/umbriel-refresh)
                      ("q" . quit-window)))
     (should (eq (keymap-lookup dl-umbriel-buffer-mode-map (car binding))
                 (cdr binding)))))
+
+(ert-deftest dl-umbriel-buffer/scroll-keys-are-gone ()
+  "DEC-026: the buffer keeps column moves and leaves scrolling to umbriel.
+No `C-<left>'/`[' or `C-<right>'/`]' row key, and no scroll commands."
+  (dolist (key '("C-<left>" "[" "C-<right>" "]"))
+    (should-not (keymap-lookup dl-umbriel-buffer-mode-map key)))
+  (should-not (fboundp 'my/umbriel-scroll-left))
+  (should-not (fboundp 'my/umbriel-scroll-right)))
 
 (ert-deftest dl-umbriel-buffer/action-rows-are-commands ()
   "VT-4/§Macro: every table row is an interactive command with a docstring."
@@ -2453,7 +2455,7 @@ The leader map is empty of `u' first, so the binding seen is meow-setup's."
 (ert-deftest dl-umbriel-buffer/row-keys-are-not-shadowed-by-motion-state ()
   "EX-5: no row key is bound in the config's meow motion-state map."
   (dolist (key '("RET" "s" "m" "t" "c" "k" "L" "M-<left>" "<" "M-<right>"
-                 ">" "C-<left>" "[" "C-<right>" "]" "e" "E" "g" "q"))
+                 ">" "e" "E" "g" "q"))
     (should-not (keymap-lookup meow-motion-state-keymap key)))
   ;; Each of those keys is in fact a row key.
   (should (keymap-lookup dl-umbriel-buffer-mode-map "RET")))
