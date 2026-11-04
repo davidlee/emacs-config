@@ -4,7 +4,8 @@ Notable changes to this Emacs config. Loosely dated; not versioned.
 
 ## 2026-11-04 — `*umbriel*`: a live view of workspaces and windows
 
-New `apps/dl-umbriel-buffer.el` (SL-016). `M-x my/umbriel` opens the
+New `apps/dl-umbriel-buffer.el` (SL-016). `C-c u u` (`SPC u u` on the meow
+leader, `my/umbriel`) opens the
 `*umbriel*` buffer: one magit-style section per workspace (output, index,
 name, layout, window count, `active`/`focused`), its windows nested beneath
 (app id, title, placement, flags), then `Unassigned` for windows on no held
@@ -17,9 +18,21 @@ opened, or why it closed, plus a count of skipped stream lines. `g`
 (`my/umbriel-refresh`) reconnects a closed stream; killing the buffer closes
 the stream, burying it does not.
 
-Not yet loaded at startup or bound to keys: until the next SL-016 phase, run
-`M-x load-library RET dl-umbriel-buffer` first. Row actions (focus, move,
-layout, kill) come with that phase.
+Keys on a row act on that window or workspace: `RET` focus, `s` switch to
+its workspace, `m` move the window to a workspace (prompts), `t` toggle
+floating, `c` center, `k` kill (asks first; it kills the window's whole
+process, and refuses this Emacs), `L` set the layout (prompts; refused unless
+the row's workspace is on the output under the pointer), `M-<left>`/`<` and
+`M-<right>`/`>` move the column, `C-<left>`/`[` and `C-<right>`/`]` scroll
+the layout, `e`/`E` cycle the primary extent forward/back, `q` quit. Actions
+that only act on the focused window focus the row's window first, and a
+workspace action switches to that workspace first, so focus may visibly move.
+Failures are echoed; success is silent.
+
+Global keys under `C-c u` (and `SPC u`): `u` the buffer, `w` switch
+workspace (`my/umbriel-switch-workspace`), `l` set the layout of the active
+workspace (`my/umbriel-set-active-layout`), `f` focus this frame's window
+(`dl-umbriel-focus-frame`). Loaded at startup from `init.el`.
 
 ## 2026-11-04 — sixth Nix trap: the dev-shell `LD_LIBRARY_PATH`
 

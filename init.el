@@ -21,6 +21,7 @@
 
 (require 'dl-sleipnir-doctor)
 (require 'dl-umbriel-focus)
+(require 'dl-umbriel-buffer)
 
 ;; DEV
 (require 'dl-eglot)

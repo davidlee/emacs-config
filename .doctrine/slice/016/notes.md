@@ -67,6 +67,7 @@ verified here — two were wrong.
 
 ## Progress
 
+- PHASE-05 (2026-11-04, in progress — VH-1 outstanding): action half of apps/dl-umbriel-buffer.el (table, macro, pure `--plan`, prompts, completion, global switch/layout, row keys); core/dl-keymap.el umbriel lines (C-c u u/w/l/f, SPC u); init.el requires dl-umbriel-buffer. 41 new tests (156 umbriel). Mutation checks: 17 mutants over EX-1/2/3/4/7, D-3 and review fixes R-1..R-7, all killed except one equivalent (nil focused output never matches). VA-1: 156/156 with UMBRIEL_SOCKET at a counting listener → 0 accepts (positive control 1); with socket vars unset → 156/156. Host `just check`: 393 tests, only baseline red `dl-policy-lint/l2-real-config` (core/dl-keybind.el:125). verify-vt PHASE-05 VT-1..5 PASS.
 - PHASE-04 (2026-11-04): apps/dl-umbriel-buffer.el (mode, render, header, throttle, stale, point/start/folds, my/umbriel, g, kill) + 25 tests (115 umbriel total). Mutation checks: 14/15 killed; `set-buffer-modified-p nil` removal survives because `magit-section-update-highlight` also clears the flag (kept, as magit does). VA-1: umbriel test files with UMBRIEL_SOCKET at a counting scratch listener → 115/115 pass, 0 accepts (positive control: one `dl-umbriel-stream-open` → 1 accept); with UMBRIEL_SOCKET/WAYLAND_DISPLAY/XDG_RUNTIME_DIR unset → 115/115 pass. VA-2 (live render) left for the user. Host `just check`: 352 tests, only baseline red `dl-policy-lint/l2-real-config`.
 
 - PHASE-02 (2026-11-04): stream half of apps/dl-umbriel.el — held state (one record, three writers), change hook, waiter, stream open/close, stream lines, refresh. 31 new tests (54 umbriel total); mutation-checked; VA-1 live passed (17 windows, 6 workspaces, 0 skipped). pi-orchestrated: tests and code by separate pi runs, review by pi; seat fixed 6 issues.
@@ -125,6 +126,16 @@ mutation checks, VA-1 and doctrine state.
 - PHASE-04 · a window moved to another workspace gets a new ident, so point falls to a sibling (design accepts; Opus review: DEC-022 rationale "ids keep point on the same window" oversells it for drags between workspaces) · drift — audit
 - PHASE-04 · init.el require and keys left to PHASE-05 as planned; CHANGELOG tells the user to `load-library` until then · decided
 - PHASE-04 · VA-2 (live render against the compositor) left for the user per charter · deferred
+- PHASE-05 · `dl-umbriel-buffer--plan` takes a 4th arg WORKSPACES (design names three) so it stays pure while finding the window's workspace and the focused output · decided; design § Planning is pure — audit
+- PHASE-05 · `active-workspace` refuses unless exactly one held workspace is `focused` (none → cannot check; two → ambiguous). umbriel marks at most one (ipc_commands.cpp:831), so this is defence in depth (pi review R-1) · decided
+- PHASE-05 · the plan's refusal is checked before any prompt, and again after (a refused row never prompts; a refusal never reaches send-all) · decided
+- PHASE-05 · global `C-c u w` prompts from held state only while the stream is open and workspaces are held; otherwise refresh → `run-at-time 0` → prompt, or a message if still none (design keyed this on "no buffer") · decided; design § Prompts never run inside a process callback — audit
+- PHASE-05 · `C-c u l` prompts at once (static layout list, no held state) · decided
+- PHASE-05 · empty `completing-read` input (allowed even under REQUIRE-MATCH) is a user-error; unknown prompt kind / addressing signal (fail closed) · decided
+- PHASE-05 · kill prompt built from `dl-umbriel-model-window-label` (one line; a title with a newline cannot forge prompt text), says "Kill the process of …"; emacs-pid compared numerically (pi review R-3/R-4) · decided
+- PHASE-05 · keys resolved by `declare-function` + symbol binding (dl-keymap.el has no autoload convention); EX-6 subprocess test shows both load orders resolve · decided
+- PHASE-05 · no Claude review of the trust boundary: pi review covered kill/F-19/F-6/EX-4 with probes, all its findings accepted and mutation-tested; seat read every boundary function · decided
+- PHASE-05 · VH-1 (user runs the mutating actions live) outstanding; phase left in_progress · deferred
 
 ### pi passes (PHASE-02)
 
@@ -162,6 +173,19 @@ mutation checks, VA-1 and doctrine state.
 | review code | implement (impl session) | $0.021 | R-1..R-7, 115/115 green incl. under global-auto-revert-mode |
 
 pi misses: the timer stubs failed on any `cancel-timer`, so the full suite (auto-revert on `after-change-major-mode-hook`) went red though targeted ERT was green — only `just check` showed it. The fold test asserted the `hidden` slot, not invisibility. Neither reviewer nor the seat's mutations caught the fold defect before the probes; design text had asserted "no extra code".
+
+### pi passes (PHASE-05)
+
+| run | profile | cost | outcome |
+|---|---|---|---|
+| red tests | implement | $0.128 | 27 tests; all red for missing functions, validated against a /tmp stub. Good EX-2/F-19 negative controls |
+| implementation | implement (fresh) | $0.053 | 142/142 first try, zero warnings. Missed: empty completing-read input sends a bogus selector/layout; "Switch to workspace" prompt reused for move; kill prompt didn't say "process" (seat fixed + 1 test) |
+| Sonnet capsule-worker | — | ~60k tokens | dl-keymap.el (2 hunks, umbriel-only), init.el require, 5 key tests incl. EX-6 two-order subprocess. Clean |
+| review | review | $0.080 | 7 findings, all accepted: two-focused F-6 fail-open, unknown prompt kind sends unconfirmed kill, newline in title forges kill prompt (VERIFIED), float pid, unguarded second plan, no addressing fallback, empty workspaces prompt |
+| review tests | implement (test session) | $0.035 | +8 tests; 6 red for the right reason, 2 pin current behaviour |
+| review code | implement (impl session) | ~$0.03 | R-1..R-7, 156/156 |
+
+pi misses: implementation trusted `completing-read`'s REQUIRE-MATCH to exclude empty input. Test writer fed a workspace label to the layout prompt in one loop test (masked until the empty-input guard). Seat's own miss: first mutation runner put the mutant dir last on `-L` (the first `-L` wins), so every mutant "survived" — a sanity mutant caught it.
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->

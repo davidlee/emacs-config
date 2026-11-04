@@ -2,10 +2,18 @@
 
 ;; The display half of the umbriel client.  `dl-umbriel' holds the last
 ;; snapshots the stream was sent; this file draws them as a tree of magit
-;; sections -- workspaces, and the windows joined to each -- and does
-;; nothing else.  It never connects and never sends: `my/umbriel' is the
-;; one entry point that opens the stream, beside the buffer's creation,
-;; never from the mode body.
+;; sections -- workspaces, and the windows joined to each -- and turns a
+;; key on a row into the requests that act on it.  It never connects:
+;; `my/umbriel' is the one entry point that opens the stream, beside the
+;; buffer's creation, never from the mode body.
+;;
+;; Actions are one table and one plan.  The row at point is captured
+;; first, its plan is then refused or built, and only then is anything
+;; prompted and sent -- so a refused row never prompts, and a prompt
+;; never redirects the action it was opened for.  Nothing is refreshed
+;; before a reply lands, and no effect is ever written locally: the
+;; buffer shows only what the compositor reports.  No prompt runs inside
+;; a process callback; the global switch reaches its prompt in a timer.
 ;;
 ;; Repainting is decoupled from drawing.  A write to the held state only
 ;; schedules one repaint, `dl-umbriel-buffer-repaint-delay' out, so a
@@ -241,17 +249,292 @@ already delivered."
       (dl-umbriel-buffer--repaint)
     (dl-umbriel-stream-open)))
 
+;;;; Actions
+
+;; A row key names an action, and most actions act on what the
+;; compositor has focused, not on the row.  Acting on a row is therefore
+;; three steps: capture the held entry the row shows, plan the requests
+;; that make that entry the right one (or refuse the row), then -- only
+;; if the plan stands -- prompt and send.  One table holds all three per
+;; row, and one plan builds them.
+
+(eval-and-compile
+  (defconst dl-umbriel-buffer-actions
+    '((my/umbriel-focus "window-focus" window)
+      (my/umbriel-toggle-floating "window-toggle-floating" window)
+      (my/umbriel-kill "window-kill" window confirm-kill)
+      (my/umbriel-center "window-center" focused)
+      (my/umbriel-cycle-extent "window-cycle-primary-extent" focused)
+      (my/umbriel-cycle-extent-back "window-cycle-primary-extent-back"
+                                    focused)
+      (my/umbriel-column-left "column-move-left" focused)
+      (my/umbriel-column-right "column-move-right" focused)
+      (my/umbriel-scroll-left "layout-scroll-left" focused)
+      (my/umbriel-scroll-right "layout-scroll-right" focused)
+      (my/umbriel-move-to-workspace "window-move-to-workspace" focused
+                                    workspace)
+      (my/umbriel-switch "workspace-switch" workspace)
+      (my/umbriel-set-layout "workspace-set-layout" active-workspace
+                             layout))
+    "Row actions: COMMAND, umbriel ACTION, ADDRESSING and a PROMPT.
+ADDRESSING is `window' (the action takes the row's window id),
+`focused' (focus the row's window first, then act), `workspace'
+(switch to the row's workspace) or `active-workspace' (switch there,
+then act).  PROMPT, when given, is `workspace', `layout' or
+`confirm-kill'; a prompting row prompts in its command, never in a
+reply."))
+
+(defun dl-umbriel-buffer--target ()
+  "The held entry the row at point addresses, as a one-pair plist.
+A `umbriel-window' section gives `(:window ENTRY)', an
+`umbriel-workspace' one `(:workspace ENTRY)'; a heading, an empty
+buffer or an entry no longer held is a `user-error'.  Capturing the
+entry here is what keeps a later prompt from redirecting the action."
+  (let* ((section (magit-section-at))
+         (type (and section (oref section type)))
+         (value (and section (oref section value))))
+    (pcase type
+      ('umbriel-window
+       (if-let* ((window (dl-umbriel-window value)))
+           (list :window window)
+         (user-error "No umbriel row at point")))
+      ('umbriel-workspace
+       (if-let* ((workspace (seq-find (lambda (held)
+                                        (equal value (alist-get 'id held)))
+                                      (dl-umbriel-workspaces))))
+           (list :workspace workspace)
+         (user-error "No umbriel row at point")))
+      (_ (user-error "No umbriel row at point")))))
+
+(defun dl-umbriel-buffer--off-pointer-p (workspace workspaces)
+  "Non-nil unless WORKSPACE is on the output under the pointer.
+That is the output of the `focused' workspace in WORKSPACES, which
+umbriel marks for at most one workspace.  With none focused, or with
+more than one, there is no answer, and refusing is the conservative
+reading of F-6 (D-2, R-1)."
+  (let ((focused (seq-filter (lambda (held) (alist-get 'focused held))
+                             workspaces)))
+    (not (and (= 1 (length focused))
+              (equal (alist-get 'output workspace)
+                     (alist-get 'output (car focused)))))))
+
+(defun dl-umbriel-buffer--plan (spec target fields workspaces)
+  "The requests SPEC plans for TARGET, or a refusal message string.
+SPEC is a row of `dl-umbriel-buffer-actions', TARGET the plist
+`dl-umbriel-buffer--target' returned, FIELDS the prompted action
+fields or nil, and WORKSPACES the held workspaces.  Pure: it reads no
+other state (D-1).  A refusal is a string with no requests in it and
+depends on nothing but SPEC, TARGET and WORKSPACES, which is what lets
+a command refuse a row before it prompts (D-3)."
+  (let* ((action (nth 1 spec))
+         (addressing (nth 2 spec))
+         (window (plist-get target :window))
+         (its (and window
+                   (dl-umbriel-model-window-workspace workspaces window)))
+         (workspace (or (plist-get target :workspace) its))
+         (switch (and workspace
+                      (dl-umbriel-action
+                       "workspace-switch"
+                       (dl-umbriel-model-workspace-selector workspace))))
+         (act (dl-umbriel-action action fields)))
+    (pcase addressing
+      ('window
+       (if window
+           (list (dl-umbriel-action
+                  action (cons (cons 'window (alist-get 'id window)) fields)))
+         "Not a window"))
+      ('focused
+       (if window
+           (list (dl-umbriel-action
+                  "window-focus"
+                  (list (cons 'window (alist-get 'id window))))
+                 act)
+         (list act)))
+      ('workspace
+       (if switch (list switch) "Window has no workspace"))
+      ('active-workspace
+       (cond ((not switch) "Window has no workspace")
+             ((dl-umbriel-buffer--off-pointer-p workspace workspaces)
+              "The layout acts on the output under the pointer, not here")
+             (t (list switch act))))
+      (_ (error "Unknown addressing: %S" addressing)))))
+
+(defun dl-umbriel-buffer--workspace-fields ()
+  "The selector fields of the held workspace the user picks.
+Empty input, which `completing-read' allows even when it requires a
+match, is a `user-error': nothing is sent."
+  (let* ((choices (dl-umbriel-model-workspace-choices (dl-umbriel-workspaces)))
+         (workspace (alist-get (completing-read "Workspace: " choices nil t)
+                               choices nil nil #'equal)))
+    (unless workspace
+      (user-error "No workspace chosen"))
+    (dl-umbriel-model-workspace-selector workspace)))
+
+(defun dl-umbriel-buffer--layout-fields ()
+  "The layout field the user picks, for the output under the pointer.
+Empty input is a `user-error', as for a workspace."
+  (let ((layout (completing-read
+                 "Set the layout of the output under the pointer: "
+                 dl-umbriel-model-layouts nil t)))
+    (unless (member layout dl-umbriel-model-layouts)
+      (user-error "No layout chosen"))
+    (list (cons 'layout layout))))
+
+(defun dl-umbriel-buffer--confirm-kill (window)
+  "nil when the user confirms killing WINDOW, `declined' when not.
+Emacs's own pid refuses at once, before any prompt: killing it would
+take the editor with it (DEC-019, F-19).  The prompt reuses the row's
+label, so compositor text arrives sanitised to one line; WINDOW was
+captured before the prompt, so a repaint cannot redirect the kill."
+  (let ((pid (alist-get 'pid window)))
+    (when (and (numberp pid) (= pid (emacs-pid)))
+      (user-error "That window is this Emacs; use delete-frame instead"))
+    (unless (y-or-n-p (format "Kill the process of %s (pid %s)? "
+                              (dl-umbriel-model-window-label window)
+                              pid))
+      'declined)))
+
+(defun dl-umbriel-buffer--fields (kind target)
+  "The action fields KIND yields for TARGET, or `declined'.
+KIND is a row's PROMPT: `workspace' and `layout' prompt with
+`completing-read', `confirm-kill' confirms TARGET's window, and nil
+prompts nothing.  Any other kind signals an `error': a mistyped
+prompt must never send unconfirmed."
+  (cond ((null kind) nil)
+        ((eq kind 'workspace) (dl-umbriel-buffer--workspace-fields))
+        ((eq kind 'layout) (dl-umbriel-buffer--layout-fields))
+        ((eq kind 'confirm-kill)
+         (dl-umbriel-buffer--confirm-kill (plist-get target :window)))
+        (t (error "Unknown prompt kind: %S" kind))))
+
+(defun dl-umbriel-buffer--completion (result)
+  "Act on the reply RESULT, then re-query unless the stream is open.
+A failure is echoed and never refreshed; a success is silent.  The
+stream status is read when the reply lands, not when the request left:
+with the stream open the effect arrives on its own (DEC-021)."
+  (if (eq (car result) :failure)
+      (dl-umbriel-echo-failure result)
+    (unless (eq (dl-umbriel-stream-status) 'open)
+      (dl-umbriel-refresh))))
+
+(defun dl-umbriel-buffer--run (spec)
+  "Send what SPEC plans for the row at point, refusing and prompting.
+The target is captured and the plan refused before any prompt (D-3),
+and the plan is refused again once the prompted fields are in, so a
+refusal never reaches `dl-umbriel-send-all'.  The prompts read the
+held state; the reply is left to `dl-umbriel-buffer--completion'.  A
+declined prompt sends nothing."
+  (let* ((target (dl-umbriel-buffer--target))
+         (workspaces (dl-umbriel-workspaces))
+         (refusal (dl-umbriel-buffer--plan spec target nil workspaces)))
+    (when (stringp refusal)
+      (user-error "%s" refusal))
+    (let ((fields (dl-umbriel-buffer--fields (nth 3 spec) target)))
+      (unless (eq fields 'declined)
+        (let ((plan (dl-umbriel-buffer--plan spec target fields workspaces)))
+          (when (stringp plan)
+            (user-error "%s" plan))
+          (dl-umbriel-send-all plan #'dl-umbriel-buffer--completion))))))
+
+(defmacro dl-umbriel-buffer--define-actions ()
+  "Define one interactive command per row of `dl-umbriel-buffer-actions'.
+Each command has a docstring naming its action and addressing, and
+delegates to `dl-umbriel-buffer--run' with its own row."
+  `(progn
+     ,@(mapcar (lambda (row)
+                 (let ((command (nth 0 row))
+                       (action (nth 1 row))
+                       (addressing (nth 2 row)))
+                   `(defun ,command ()
+                      ,(format "Send the action %s for the row at point.
+Addressing: %s." action addressing)
+                      (interactive)
+                      (dl-umbriel-buffer--run ',row))))
+               dl-umbriel-buffer-actions)))
+
+(dl-umbriel-buffer--define-actions)
+
+;;;; Global commands
+
+(defun dl-umbriel-buffer--send-one (action fields)
+  "Send the single request ACTION with FIELDS, then complete it.
+The global commands act where the pointer is, not on a row."
+  (dl-umbriel-send-all (list (dl-umbriel-action action fields))
+                       #'dl-umbriel-buffer--completion))
+
+(defun dl-umbriel-buffer--switch ()
+  "Send `workspace-switch' to the held workspace the user picks."
+  (dl-umbriel-buffer--send-one "workspace-switch"
+                               (dl-umbriel-buffer--workspace-fields)))
+
+(defun dl-umbriel-buffer--switch-later ()
+  "Switch workspaces from a timer, or say why there is nothing to switch to.
+A refresh's reply may not prompt, so it schedules this instead (D-5);
+an active minibuffer asks for a retry, and so does the reply holding
+no workspace at all."
+  (cond ((active-minibuffer-window)
+         (message "Minibuffer in use; retry with C-c u w"))
+        ((null (dl-umbriel-workspaces))
+         (message "No umbriel workspace known; retry with C-c u w"))
+        (t (dl-umbriel-buffer--switch))))
+
+;;;###autoload
+(defun my/umbriel-switch-workspace ()
+  "Switch to a workspace chosen from the held state.
+The prompt runs now only while the stream is open and workspaces are
+held; otherwise the state is refreshed first and the prompt follows
+the reply in a timer, so no prompt ever runs inside a process
+callback.  A reply that still holds no workspace is not prompted
+from -- it says so instead (D-5, R-7)."
+  (interactive)
+  (if (and (eq (dl-umbriel-stream-status) 'open)
+           (dl-umbriel-workspaces))
+      (dl-umbriel-buffer--switch)
+    (dl-umbriel-refresh
+     (lambda (result)
+       (if (eq (car result) :failure)
+           (dl-umbriel-echo-failure result)
+         (run-at-time 0 nil #'dl-umbriel-buffer--switch-later))))))
+
+;;;###autoload
+(defun my/umbriel-set-active-layout ()
+  "Set the layout of the workspace on the output under the pointer.
+The layout is prompted for at once: the choices need no held state
+(D-7)."
+  (interactive)
+  (dl-umbriel-buffer--send-one "workspace-set-layout"
+                               (dl-umbriel-buffer--layout-fields)))
+
 ;;;; Mode
 
 (defvar-keymap dl-umbriel-buffer-mode-map
   :doc "Keymap for `dl-umbriel-buffer-mode'."
-  "g" #'my/umbriel-refresh)
+  "RET" #'my/umbriel-focus
+  "s" #'my/umbriel-switch
+  "m" #'my/umbriel-move-to-workspace
+  "t" #'my/umbriel-toggle-floating
+  "c" #'my/umbriel-center
+  "k" #'my/umbriel-kill
+  "L" #'my/umbriel-set-layout
+  "M-<left>" #'my/umbriel-column-left
+  "<" #'my/umbriel-column-left
+  "M-<right>" #'my/umbriel-column-right
+  ">" #'my/umbriel-column-right
+  "C-<left>" #'my/umbriel-scroll-left
+  "[" #'my/umbriel-scroll-left
+  "C-<right>" #'my/umbriel-scroll-right
+  "]" #'my/umbriel-scroll-right
+  "e" #'my/umbriel-cycle-extent
+  "E" #'my/umbriel-cycle-extent-back
+  "g" #'my/umbriel-refresh
+  "q" #'quit-window)
 
 (define-derived-mode dl-umbriel-buffer-mode magit-section-mode "Umbriel"
   "Major mode for the *umbriel* buffer.
 
-Displays the held state as a section tree.  It never opens the stream
-and never sends a request: `my/umbriel' owns the connection."
+Displays the held state as a section tree and sends the requests the
+row keys name.  It never opens the stream: `my/umbriel' owns the
+connection."
   (setq-local header-line-format
               '(:eval (dl-umbriel-buffer--header-text
                        (dl-umbriel-stream-status)

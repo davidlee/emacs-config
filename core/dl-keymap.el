@@ -429,11 +429,15 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-org-map     "b" #'org-switchb                 "switch org buffer")
 (my/bind my-org-map     "L" #'org-insert-link-global      "insert link (global)")
 
-;; Umbriel map - do window manager stuff
-;; (my/bind my-umbriel-map "u" #'something "hello" )
-;;
-;; XXXXXXX
-;;
+;; Umbriel map — the compositor (apps/dl-umbriel-buffer.el, dl-umbriel-focus.el).
+(declare-function my/umbriel                    "dl-umbriel-buffer")
+(declare-function my/umbriel-switch-workspace   "dl-umbriel-buffer")
+(declare-function my/umbriel-set-active-layout  "dl-umbriel-buffer")
+(declare-function dl-umbriel-focus-frame        "dl-umbriel-focus")
+(my/bind my-umbriel-map "u" #'my/umbriel                   "buffer")
+(my/bind my-umbriel-map "w" #'my/umbriel-switch-workspace  "switch workspace")
+(my/bind my-umbriel-map "l" #'my/umbriel-set-active-layout "set layout (active)")
+(my/bind my-umbriel-map "f" #'dl-umbriel-focus-frame       "focus frame")
 
 ;; Notes (C-c n …) — see plan §4b in ~/.claude/plans/yes-use-dl-for-staged-quiche.md.
 ;; Sub-prefixes for new-by-class / manage / review live below.
@@ -872,7 +876,8 @@ with point inside."
     (cons "M" my-term-map)
     (cons "z" my-fold-map)
     (cons "d" my-diagnostics-map)
-    (cons "L" my-llm-map))
+    (cons "L" my-llm-map)
+    (cons "u" my-umbriel-map))
 
   (meow-normal-define-key
     ;; Numeric expansion.

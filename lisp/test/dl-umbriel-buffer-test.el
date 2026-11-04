@@ -2,8 +2,9 @@
 
 ;; Run: `just check' (dl-test scans lisp/test), or M-x ert RET dl-umbriel-buffer/ RET.
 ;;
-;; Contract: .doctrine/slice/016/design.md § The buffer, and the phase sheet
-;; .doctrine/state/slice/016/phases/phase-04.md (C-1..C-12, EX-1..EX-7).
+;; Contract: .doctrine/slice/016/design.md § The buffer and § Actions, and the
+;; phase sheets phase-04.md (C-1..C-12, EX-1..EX-7) and phase-05.md
+;; (VT-1..VT-5, EX-1..EX-7, D-1..D-8).
 ;;
 ;; Nothing here reaches a compositor.  Every test runs inside
 ;; `dl-umbriel-buffer-test--with-state', which binds `process-environment' to a
@@ -884,5 +885,1306 @@ would see the hook arm a fresh timer; cancelling afterwards leaves none."
       (dl-umbriel-buffer-test--with-timers calls
         (dl-umbriel-buffer--schedule-repaint)
         (should-not calls)))))
+
+;;;; actions (PHASE-05)
+;;
+;; Contract: .doctrine/state/slice/016/phases/phase-05.md (Contract, Gates,
+;; D-1..D-8) and design.md sections Actions and Keys.
+;;
+;; Nothing here reaches a socket either.  Where a test only wants the plan a
+;; command built, `dl-umbriel-send-all' is faked; where a test wants the real
+;; sequencer, `dl-umbriel-send' is faked in its place.  `--with-state' already
+;; points UMBRIEL_SOCKET at a path nothing listens on.
+
+;;;; actions: fixtures
+
+(defun dl-umbriel-buffer-test--action-workspaces ()
+  "Three workspaces on two outputs, the DP-1 one the focused one."
+  (list (dl-umbriel-buffer-test--workspace :id "DP-1:1" :index 1 :name "web"
+                                           :output "DP-1" :focused t)
+        (dl-umbriel-buffer-test--workspace :id "DP-1:2" :index 2 :name nil
+                                           :named nil :output "DP-1")
+        (dl-umbriel-buffer-test--workspace :id "DP-2:1" :index 1 :name "docs"
+                                           :output "DP-2")))
+
+(defun dl-umbriel-buffer-test--action-windows ()
+  "One window per output, and one whose workspace joins nothing."
+  (list (dl-umbriel-buffer-test--window :id "w-dp1" :workspace "DP-1:1"
+                                        :app_id "foot" :title "shell")
+        (dl-umbriel-buffer-test--window :id "w-dp2" :workspace "DP-2:1"
+                                        :app_id "emacs" :title "notes")
+        (dl-umbriel-buffer-test--window :id "w-loose" :workspace "DP-9:9"
+                                        :app_id "firefox" :title "Docs")))
+
+(defconst dl-umbriel-buffer-test--action-table
+  '((my/umbriel-focus "window-focus" window)
+    (my/umbriel-toggle-floating "window-toggle-floating" window)
+    (my/umbriel-kill "window-kill" window confirm-kill)
+    (my/umbriel-center "window-center" focused)
+    (my/umbriel-cycle-extent "window-cycle-primary-extent" focused)
+    (my/umbriel-cycle-extent-back "window-cycle-primary-extent-back" focused)
+    (my/umbriel-column-left "column-move-left" focused)
+    (my/umbriel-column-right "column-move-right" focused)
+    (my/umbriel-scroll-left "layout-scroll-left" focused)
+    (my/umbriel-scroll-right "layout-scroll-right" focused)
+    (my/umbriel-move-to-workspace "window-move-to-workspace" focused workspace)
+    (my/umbriel-switch "workspace-switch" workspace)
+    (my/umbriel-set-layout "workspace-set-layout" active-workspace layout))
+  "The design's action table, as this file expects it to be held.")
+
+;;;; actions: helpers
+
+(defun dl-umbriel-buffer-test--hold (windows workspaces &optional status skipped)
+  "Replace the held state with WINDOWS, WORKSPACES, STATUS and SKIPPED."
+  (setq dl-umbriel--state
+        (dl-umbriel-buffer-test--held windows workspaces status skipped)))
+
+(defun dl-umbriel-buffer-test--spec (addressing action &optional prompt)
+  "A table row for ACTION with ADDRESSING, prompting with PROMPT if given."
+  (append (list 'test-command action addressing)
+          (when prompt (list prompt))))
+
+(defun dl-umbriel-buffer-test--mentions-p (text needle)
+  "Non-nil when TEXT mentions NEEDLE, ignoring case."
+  (and (stringp text)
+       (let ((case-fold-search t))
+         (string-match-p (regexp-quote needle) text))))
+
+(defun dl-umbriel-buffer-test--refused (spec target fields workspaces)
+  "The refusal `dl-umbriel-buffer--plan' gives SPEC for TARGET.
+Fails unless the answer is a string and the same string whether FIELDS
+is given or nil: a refusal may not depend on FIELDS (D-3)."
+  (let ((with (dl-umbriel-buffer--plan spec target fields workspaces))
+        (without (dl-umbriel-buffer--plan spec target nil workspaces)))
+    (should (stringp with))
+    (should (equal with without))
+    with))
+
+(defun dl-umbriel-buffer-test--offered (collection)
+  "The strings COLLECTION offers, whether it holds strings or pairs."
+  (all-completions "" collection))
+
+(defun dl-umbriel-buffer-test--same-set-p (one other)
+  "Non-nil when lists ONE and OTHER hold the same elements, in any order."
+  (and (null (seq-difference one other))
+       (null (seq-difference other one))))
+
+(defun dl-umbriel-buffer-test--switches-p (result)
+  "Non-nil when RESULT is a request list holding a `workspace-switch'."
+  (and (listp result)
+       (seq-some (lambda (request)
+                   (equal (alist-get 'action request) "workspace-switch"))
+                 result)))
+
+(defun dl-umbriel-buffer-test--call-on-row (command type value)
+  "Call COMMAND with point on the TYPE section whose value is VALUE."
+  (let ((section (dl-umbriel-buffer-test--find type value)))
+    (unless section
+      (ert-fail (format "no %s section whose value is %S" type value)))
+    (goto-char (oref section start))
+    (call-interactively command)))
+
+;;;; actions: isolation
+
+(defvar dl-umbriel-buffer-test--send-all-calls nil
+  "Calls to the faked `dl-umbriel-send-all', newest first: (PLAN . CALLBACK).")
+
+(defvar dl-umbriel-buffer-test--refreshes nil
+  "Calls to the faked `dl-umbriel-refresh', newest first: CALLBACK.")
+
+(defvar dl-umbriel-buffer-test--prompts nil
+  "Prompt calls, newest first: (KIND PROMPT COLLECTION REQUIRE-MATCH).")
+
+(defvar dl-umbriel-buffer-test--prompt-choice nil
+  "What the faked `completing-read' answers.")
+
+(defvar dl-umbriel-buffer-test--prompt-confirm t
+  "What the faked `y-or-n-p' answers.")
+
+(defvar dl-umbriel-buffer-test--prompt-hook nil
+  "Function the faked prompts call before answering, or nil.")
+
+(defvar dl-umbriel-buffer-test--prompt-allowed t
+  "When nil, a faked prompt fails the test instead of answering.")
+
+(defvar dl-umbriel-buffer-test--messages nil
+  "Messages the faked `message' recorded, newest first.")
+
+(defvar dl-umbriel-buffer-test--fake-timers nil
+  "The timers `--with-scheduled' faked for the code under test.")
+
+(defun dl-umbriel-buffer-test--prompting (kind prompt &optional c match)
+  "Record a prompt of KIND for PROMPT, C and MATCH; fail when none may run."
+  (unless dl-umbriel-buffer-test--prompt-allowed
+    (ert-fail (format "%s ran where no prompt may run: %s" kind prompt)))
+  (when dl-umbriel-buffer-test--prompt-hook
+    (funcall dl-umbriel-buffer-test--prompt-hook))
+  (push (list kind prompt c match) dl-umbriel-buffer-test--prompts))
+
+(defmacro dl-umbriel-buffer-test--with-send-all (&rest body)
+  "Run BODY with `dl-umbriel-send-all' capturing instead of sending.
+The calls land in `--send-all-calls'.  `dl-umbriel-send' and
+`make-network-process' fail the test, so no request can leave."
+  (declare (indent 0))
+  `(let ((dl-umbriel-buffer-test--send-all-calls nil))
+     (cl-letf (((symbol-function 'dl-umbriel-send-all)
+                (lambda (plan callback)
+                  (push (cons plan callback)
+                        dl-umbriel-buffer-test--send-all-calls)))
+               ((symbol-function 'dl-umbriel-send)
+                (lambda (&rest _)
+                  (ert-fail "a request bypassed `dl-umbriel-send-all'")))
+               ((symbol-function 'make-network-process)
+                (lambda (&rest _)
+                  (ert-fail "a test opened a socket"))))
+       ,@body)))
+
+(defmacro dl-umbriel-buffer-test--with-refresh (&rest body)
+  "Run BODY with `dl-umbriel-refresh' recording its callbacks in `--refreshes'."
+  (declare (indent 0))
+  `(let ((dl-umbriel-buffer-test--refreshes nil))
+     (cl-letf (((symbol-function 'dl-umbriel-refresh)
+                (lambda (&optional callback)
+                  (push callback dl-umbriel-buffer-test--refreshes)
+                  nil)))
+       ,@body)))
+
+(defmacro dl-umbriel-buffer-test--with-fake-status (variable &rest body)
+  "Run BODY with `dl-umbriel-stream-status' answering VARIABLE's value."
+  (declare (indent 1))
+  `(cl-letf (((symbol-function 'dl-umbriel-stream-status)
+              (lambda () ,variable)))
+     ,@body))
+
+(defmacro dl-umbriel-buffer-test--with-messages (&rest body)
+  "Run BODY with `message' recorded in `--messages' instead of shown."
+  (declare (indent 0))
+  `(let ((dl-umbriel-buffer-test--messages nil))
+     (cl-letf (((symbol-function 'message)
+                (lambda (format-string &rest args)
+                  (push (condition-case nil
+                            (apply #'format format-string args)
+                          (error format-string))
+                        dl-umbriel-buffer-test--messages)
+                  nil)))
+       ,@body)))
+
+(defmacro dl-umbriel-buffer-test--with-prompts (&rest body)
+  "Run BODY with the prompting functions faked.
+`completing-read' answers `--prompt-choice', `y-or-n-p' answers
+`--prompt-confirm', and the `read-' family answers "".  Each records
+its arguments in `--prompts' and calls `--prompt-hook' first.  With
+`--prompt-allowed' nil a prompt fails the test instead: that is how a
+callback or a timer is checked for never prompting."
+  (declare (indent 0))
+  `(let ((dl-umbriel-buffer-test--prompts nil)
+         (dl-umbriel-buffer-test--prompt-choice nil)
+         (dl-umbriel-buffer-test--prompt-confirm t)
+         (dl-umbriel-buffer-test--prompt-hook nil)
+         (dl-umbriel-buffer-test--prompt-allowed t))
+     (cl-letf (((symbol-function 'completing-read)
+                (lambda (prompt collection &optional _predicate require-match
+                                 &rest _)
+                  (dl-umbriel-buffer-test--prompting 'completing-read prompt
+                                                     collection require-match)
+                  dl-umbriel-buffer-test--prompt-choice))
+               ((symbol-function 'y-or-n-p)
+                (lambda (prompt)
+                  (dl-umbriel-buffer-test--prompting 'y-or-n-p prompt)
+                  dl-umbriel-buffer-test--prompt-confirm))
+               ((symbol-function 'read-string)
+                (lambda (prompt &rest _)
+                  (dl-umbriel-buffer-test--prompting 'read-string prompt)
+                  ""))
+               ((symbol-function 'read-from-minibuffer)
+                (lambda (prompt &rest _)
+                  (dl-umbriel-buffer-test--prompting 'read-from-minibuffer prompt)
+                  ""))
+               ((symbol-function 'read-number)
+                (lambda (prompt &rest _)
+                  (dl-umbriel-buffer-test--prompting 'read-number prompt)
+                  0)))
+       ,@body)))
+
+(defmacro dl-umbriel-buffer-test--with-scheduled (calls &rest body)
+  "Run BODY with CALLS collecting the timers the code under test schedules.
+A `run-at-time' with a delay of 0 and no repeat -- how a reply leaves a
+process callback -- is recorded in CALLS as `(TIME REPEAT FUNCTION
+ARGS)' and answered with a faked timer.  Every other call, the repaint
+throttle included, goes to the original function; `cancel-timer' forgets
+our timers and passes foreign ones through."
+  (declare (indent 1))
+  `(let ((,calls nil)
+         (dl-umbriel-buffer-test--fake-timers nil)
+         (orig-at-time (symbol-function 'run-at-time))
+         (orig-cancel (symbol-function 'cancel-timer)))
+     (cl-letf (((symbol-function 'run-at-time)
+                (lambda (time repeat function &rest args)
+                  (if (and (null repeat) (equal time 0))
+                      (let ((timer (list 'fake-timer time repeat)))
+                        (push (list time repeat function args) ,calls)
+                        (push timer dl-umbriel-buffer-test--fake-timers)
+                        timer)
+                    (apply orig-at-time time repeat function args))))
+               ((symbol-function 'cancel-timer)
+                (lambda (timer)
+                  (if (memq timer dl-umbriel-buffer-test--fake-timers)
+                      nil
+                    (funcall orig-cancel timer)))))
+       ,@body)))
+
+;;;; actions: the plan (VT-1, EX-1, D-1..D-3)
+
+(ert-deftest dl-umbriel-buffer/plan-window-addressing ()
+  "VT-1/EX-1: `window' acts on the row's id and refuses a workspace row."
+  (let* ((workspaces (dl-umbriel-buffer-test--action-workspaces))
+         (windows (dl-umbriel-buffer-test--action-windows))
+         (window (nth 0 windows))
+         (loose (nth 2 windows))
+         (id (alist-get 'id window))
+         (spec (dl-umbriel-buffer-test--spec 'window "window-toggle-floating"))
+         (fields '((quiet . t)))
+         (expected (lambda (window-id extra)
+                     (list (dl-umbriel-action
+                            "window-toggle-floating"
+                            (append (list (cons 'window window-id)) extra))))))
+    (should (equal (funcall expected id fields)
+                   (dl-umbriel-buffer--plan spec (list :window window) fields
+                                            workspaces)))
+    (should (equal (funcall expected id nil)
+                   (dl-umbriel-buffer--plan spec (list :window window) nil
+                                            workspaces)))
+    ;; An Unassigned window is still a window: the id addresses it.
+    (should (equal (funcall expected (alist-get 'id loose) nil)
+                   (dl-umbriel-buffer--plan spec (list :window loose) nil
+                                            workspaces)))
+    ;; `my/umbriel-focus' on a window row is exactly one request.
+    (should (equal (list (dl-umbriel-action "window-focus"
+                                            (list (cons 'window id))))
+                   (dl-umbriel-buffer--plan
+                    (dl-umbriel-buffer-test--spec 'window "window-focus")
+                    (list :window window) nil workspaces)))
+    ;; A workspace row is not a window.
+    (let ((refusal (dl-umbriel-buffer-test--refused
+                    spec (list :workspace (nth 0 workspaces)) fields workspaces)))
+      (should (dl-umbriel-buffer-test--mentions-p refusal "not a window")))))
+
+(ert-deftest dl-umbriel-buffer/plan-focused-addressing ()
+  "VT-1/EX-1: `focused' focuses the row's window first; a workspace row acts."
+  (let* ((workspaces (dl-umbriel-buffer-test--action-workspaces))
+         (windows (dl-umbriel-buffer-test--action-windows))
+         (window (nth 0 windows))
+         (loose (nth 2 windows))
+         (spec (dl-umbriel-buffer-test--spec 'focused "window-center"))
+         (fields '((step . 1))))
+    (should (equal (list (dl-umbriel-action "window-focus"
+                                            (list (cons 'window (alist-get 'id window))))
+                         (dl-umbriel-action "window-center" fields))
+                   (dl-umbriel-buffer--plan spec (list :window window) fields
+                                            workspaces)))
+    (should (equal (list (dl-umbriel-action
+                          "window-focus"
+                          (list (cons 'window (alist-get 'id loose))))
+                         (dl-umbriel-action "window-center" nil))
+                   (dl-umbriel-buffer--plan spec (list :window loose) nil
+                                            workspaces)))
+    (should (equal (list (dl-umbriel-action "window-center" fields))
+                   (dl-umbriel-buffer--plan spec
+                                            (list :workspace (nth 0 workspaces))
+                                            fields workspaces)))
+    (should (equal (list (dl-umbriel-action "window-center" nil))
+                   (dl-umbriel-buffer--plan spec
+                                            (list :workspace (nth 0 workspaces))
+                                            nil workspaces)))))
+
+(ert-deftest dl-umbriel-buffer/plan-workspace-addressing ()
+  "VT-1/EX-1: `workspace' switches by selector; an Unassigned window refuses."
+  (let* ((workspaces (dl-umbriel-buffer-test--action-workspaces))
+         (windows (dl-umbriel-buffer-test--action-windows))
+         (window (nth 0 windows))
+         (loose (nth 2 windows))
+         (spec (dl-umbriel-buffer-test--spec 'workspace "workspace-switch"))
+         (its (dl-umbriel-model-window-workspace workspaces window)))
+    (should its)
+    (should (equal (list (dl-umbriel-action
+                          "workspace-switch"
+                          (dl-umbriel-model-workspace-selector its)))
+                   (dl-umbriel-buffer--plan spec (list :window window) nil
+                                            workspaces)))
+    (should (equal (list (dl-umbriel-action
+                          "workspace-switch"
+                          (dl-umbriel-model-workspace-selector (nth 1 workspaces))))
+                   (dl-umbriel-buffer--plan spec
+                                            (list :workspace (nth 1 workspaces))
+                                            nil workspaces)))
+    ;; The switch request carries the selector and nothing else.
+    (should (equal (list (dl-umbriel-action
+                          "workspace-switch"
+                          (dl-umbriel-model-workspace-selector its)))
+                   (dl-umbriel-buffer--plan spec (list :window window)
+                                            '((layout . "master")) workspaces)))
+    (let ((refusal (dl-umbriel-buffer-test--refused
+                    spec (list :window loose) nil workspaces)))
+      (should (dl-umbriel-buffer-test--mentions-p refusal "no workspace")))))
+
+(ert-deftest dl-umbriel-buffer/plan-active-workspace-addressing ()
+  "VT-1/EX-1: `active-workspace' switches, then acts, on one output."
+  (let* ((workspaces (dl-umbriel-buffer-test--action-workspaces))
+         (windows (dl-umbriel-buffer-test--action-windows))
+         (window (nth 0 windows))
+         (its (dl-umbriel-model-window-workspace workspaces window))
+         (spec (dl-umbriel-buffer-test--spec 'active-workspace
+                                             "workspace-set-layout" 'layout))
+         (fields '((layout . "master"))))
+    (should its)
+    (should (equal (list (dl-umbriel-action
+                          "workspace-switch"
+                          (dl-umbriel-model-workspace-selector its))
+                         (dl-umbriel-action "workspace-set-layout" fields))
+                   (dl-umbriel-buffer--plan spec (list :window window) fields
+                                            workspaces)))
+    (should (equal (list (dl-umbriel-action
+                          "workspace-switch"
+                          (dl-umbriel-model-workspace-selector (nth 1 workspaces)))
+                         (dl-umbriel-action "workspace-set-layout" fields))
+                   (dl-umbriel-buffer--plan spec
+                                            (list :workspace (nth 1 workspaces))
+                                            fields workspaces)))
+    (let ((refusal (dl-umbriel-buffer-test--refused
+                    spec (list :window (nth 2 windows)) fields workspaces)))
+      (should (dl-umbriel-buffer-test--mentions-p refusal "no workspace")))))
+
+(ert-deftest dl-umbriel-buffer/plan-layout-refuses-a-foreign-output ()
+  "VT-2/EX-2/RV-018 F-6: a layout off the pointer's output is refused.
+The refusal is a string with no requests in it -- never a partial plan."
+  (let* ((workspaces (dl-umbriel-buffer-test--action-workspaces))
+         (windows (dl-umbriel-buffer-test--action-windows))
+         (dp2 (nth 2 workspaces))
+         (spec (dl-umbriel-buffer-test--spec 'active-workspace
+                                             "workspace-set-layout" 'layout))
+         (fields '((layout . "master"))))
+    (dolist (target (list (list :workspace dp2)
+                          (list :window (nth 1 windows))))
+      (let ((result (dl-umbriel-buffer-test--refused
+                     spec target fields workspaces)))
+        (should (dl-umbriel-buffer-test--mentions-p
+                 result "layout acts on the output under the pointer"))
+        (should-not (dl-umbriel-buffer-test--switches-p result))))
+    ;; The same output is fine: switch first, then set the layout.
+    (should (equal (list (dl-umbriel-action
+                          "workspace-switch"
+                          (dl-umbriel-model-workspace-selector (nth 1 workspaces)))
+                         (dl-umbriel-action "workspace-set-layout" fields))
+                   (dl-umbriel-buffer--plan spec
+                                            (list :workspace (nth 1 workspaces))
+                                            fields workspaces)))
+    ;; D-2: nothing is marked focused, so the output cannot be checked.
+    (let* ((unfocused
+            (list (dl-umbriel-buffer-test--workspace :id "DP-1:1" :index 1
+                                                     :output "DP-1")
+                  (dl-umbriel-buffer-test--workspace :id "DP-1:2" :index 2
+                                                     :output "DP-1")))
+           (result (dl-umbriel-buffer-test--refused
+                    spec (list :workspace (nth 0 unfocused))
+                    fields unfocused)))
+      (should (dl-umbriel-buffer-test--mentions-p
+               result "layout acts on the output under the pointer"))
+      (should-not (dl-umbriel-buffer-test--switches-p result)))))
+
+;;;; actions: kill (VT-2, EX-3, F-19, D-4)
+
+(ert-deftest dl-umbriel-buffer/kill-refuses-emacs-own-process ()
+  "VT-2/EX-3/F-19: killing Emacs's own pid refuses; nothing asked or sent."
+  (let ((windows (list (dl-umbriel-buffer-test--window
+                        :id "w-self" :workspace "DP-1:1"
+                        :app_id "emacs" :title "notes.org"
+                        :pid (emacs-pid)))))
+    (dl-umbriel-buffer-test--with-state
+        (dl-umbriel-buffer-test--held
+         windows (dl-umbriel-buffer-test--action-workspaces))
+      (let ((buffer (dl-umbriel-buffer-test--mode-buffer)))
+        (with-current-buffer buffer
+          (dl-umbriel-buffer--repaint)
+          (dl-umbriel-buffer-test--with-send-all
+            (dl-umbriel-buffer-test--with-refresh
+              (dl-umbriel-buffer-test--with-prompts
+                (let ((signalled
+                       (should-error
+                        (dl-umbriel-buffer-test--call-on-row
+                         'my/umbriel-kill 'umbriel-window "w-self")
+                        :type 'user-error)))
+                  (should (dl-umbriel-buffer-test--mentions-p
+                           (error-message-string signalled) "use delete-frame")))
+                (should-not dl-umbriel-buffer-test--prompts)
+                (should-not dl-umbriel-buffer-test--send-all-calls)
+                (should-not dl-umbriel-buffer-test--refreshes)))))))))
+
+(ert-deftest dl-umbriel-buffer/kill-prompt-names-the-window ()
+  "VT-2/EX-3: the confirmation names app id, title and pid; -1 as well."
+  (dolist (pid (list 4242 -1))
+    (let* ((id (format "w-pid-%d" pid))
+           (windows (list (dl-umbriel-buffer-test--window
+                           :id id :workspace "DP-1:1" :app_id "foot"
+                           :title "shell" :pid pid))))
+      (dl-umbriel-buffer-test--with-state
+          (dl-umbriel-buffer-test--held
+           windows (dl-umbriel-buffer-test--action-workspaces))
+        (let ((buffer (dl-umbriel-buffer-test--mode-buffer)))
+          (with-current-buffer buffer
+            (dl-umbriel-buffer--repaint)
+            (dl-umbriel-buffer-test--with-send-all
+              (dl-umbriel-buffer-test--with-prompts
+                (setq dl-umbriel-buffer-test--prompt-confirm t)
+                (dl-umbriel-buffer-test--call-on-row 'my/umbriel-kill
+                                                     'umbriel-window id)
+                (let ((call (car dl-umbriel-buffer-test--prompts)))
+                  (should call)
+                  (should (eq 'y-or-n-p (car call)))
+                  (dolist (needle (list "foot" "shell" (number-to-string pid)))
+                    (should (dl-umbriel-buffer-test--mentions-p
+                             (nth 1 call) needle))))
+                (should (equal (list (dl-umbriel-action "window-kill"
+                                                        (list (cons 'window id))))
+                               (car (car dl-umbriel-buffer-test--send-all-calls))))))))))))
+
+(ert-deftest dl-umbriel-buffer/kill-confirms-the-captured-window ()
+  "VT-2/EX-3: point and held state moving under the prompt redirect nothing."
+  (let ((workspaces (dl-umbriel-buffer-test--action-workspaces))
+        (windows (dl-umbriel-buffer-test--action-windows)))
+    (dl-umbriel-buffer-test--with-state
+        (dl-umbriel-buffer-test--held windows workspaces)
+      (let ((buffer (dl-umbriel-buffer-test--mode-buffer)))
+        (with-current-buffer buffer
+          (dl-umbriel-buffer--repaint)
+          (dl-umbriel-buffer-test--with-send-all
+            (dl-umbriel-buffer-test--with-prompts
+              (setq dl-umbriel-buffer-test--prompt-confirm t)
+              (setq dl-umbriel-buffer-test--prompt-hook
+                    (lambda ()
+                      ;; The row at point and the held state both move on.
+                      (goto-char (oref (dl-umbriel-buffer-test--find
+                                        'umbriel-window "w-dp2")
+                                       start))
+                      (dl-umbriel-buffer-test--hold
+                       (seq-remove (lambda (window)
+                                     (equal "w-dp1" (alist-get 'id window)))
+                                   (dl-umbriel-buffer-test--action-windows))
+                       workspaces)
+                      (dl-umbriel-buffer--repaint)))
+              (dl-umbriel-buffer-test--call-on-row 'my/umbriel-kill
+                                                   'umbriel-window "w-dp1")
+              ;; The prompt really did move both out from under it.
+              (should (equal "w-dp2" (oref (magit-current-section) value)))
+              (should-not (dl-umbriel-window "w-dp1"))
+              (should (equal (list (dl-umbriel-action "window-kill"
+                                                      '((window . "w-dp1"))))
+                             (car (car dl-umbriel-buffer-test--send-all-calls)))))))))))
+
+(ert-deftest dl-umbriel-buffer/kill-declined-sends-nothing ()
+  "VT-2/D-4: answering no sends nothing, refreshes nothing, says nothing."
+  (let ((workspaces (dl-umbriel-buffer-test--action-workspaces))
+        (windows (dl-umbriel-buffer-test--action-windows)))
+    (dl-umbriel-buffer-test--with-state
+        (dl-umbriel-buffer-test--held windows workspaces)
+      (let ((buffer (dl-umbriel-buffer-test--mode-buffer)))
+        (with-current-buffer buffer
+          (dl-umbriel-buffer--repaint)
+          (dl-umbriel-buffer-test--with-send-all
+            (dl-umbriel-buffer-test--with-refresh
+              (dl-umbriel-buffer-test--with-messages
+                (dl-umbriel-buffer-test--with-prompts
+                  (setq dl-umbriel-buffer-test--prompt-confirm nil)
+                  (dl-umbriel-buffer-test--call-on-row 'my/umbriel-kill
+                                                       'umbriel-window "w-dp1")
+                  (should (= 1 (length dl-umbriel-buffer-test--prompts)))
+                  (should-not dl-umbriel-buffer-test--send-all-calls)
+                  (should-not dl-umbriel-buffer-test--refreshes)
+                  (should-not dl-umbriel-buffer-test--messages))))))))))
+
+;;;; actions: prompts (D-3)
+
+(ert-deftest dl-umbriel-buffer/workspace-prompt-offers-the-held-workspaces ()
+  "Prompts: `m' completes over the model choices and sends the selector."
+  (let ((workspaces (dl-umbriel-buffer-test--action-workspaces))
+        (windows (dl-umbriel-buffer-test--action-windows)))
+    (dl-umbriel-buffer-test--with-state
+        (dl-umbriel-buffer-test--held windows workspaces)
+      (let ((buffer (dl-umbriel-buffer-test--mode-buffer)))
+        (with-current-buffer buffer
+          (dl-umbriel-buffer--repaint)
+          (dl-umbriel-buffer-test--with-send-all
+            (dl-umbriel-buffer-test--with-prompts
+              (let* ((choices (dl-umbriel-model-workspace-choices
+                               (dl-umbriel-workspaces)))
+                     (label (car (nth 1 choices)))
+                     (chosen (cdr (nth 1 choices))))
+                (setq dl-umbriel-buffer-test--prompt-choice label)
+                (dl-umbriel-buffer-test--call-on-row
+                 'my/umbriel-move-to-workspace 'umbriel-window "w-dp1")
+                (let ((call (car dl-umbriel-buffer-test--prompts)))
+                  (should (eq 'completing-read (car call)))
+                  (should (nth 3 call))
+                  (should (dl-umbriel-buffer-test--same-set-p
+                           (dl-umbriel-buffer-test--offered (nth 2 call))
+                           (mapcar #'car choices))))
+                (should (equal (list (dl-umbriel-action "window-focus"
+                                                        '((window . "w-dp1")))
+                                     (dl-umbriel-action
+                                      "window-move-to-workspace"
+                                      (dl-umbriel-model-workspace-selector chosen)))
+                               (car (car dl-umbriel-buffer-test--send-all-calls))))))))))))
+
+(ert-deftest dl-umbriel-buffer/layout-prompt-offers-the-model-layouts ()
+  "Prompts: `L' completes over the layouts and sends `(layout . CHOICE)'.
+`toggle' goes without a `cycle' field: the request holds the layout only."
+  (let* ((workspaces (dl-umbriel-buffer-test--action-workspaces))
+         (windows (dl-umbriel-buffer-test--action-windows))
+         (its (dl-umbriel-model-window-workspace workspaces (nth 0 windows))))
+    (dl-umbriel-buffer-test--with-state
+        (dl-umbriel-buffer-test--held windows workspaces)
+      (let ((buffer (dl-umbriel-buffer-test--mode-buffer)))
+        (with-current-buffer buffer
+          (dl-umbriel-buffer--repaint)
+          (dl-umbriel-buffer-test--with-send-all
+            (dl-umbriel-buffer-test--with-prompts
+              (dolist (choice dl-umbriel-model-layouts)
+                (setq dl-umbriel-buffer-test--prompts nil)
+                (setq dl-umbriel-buffer-test--send-all-calls nil)
+                (setq dl-umbriel-buffer-test--prompt-choice choice)
+                (dl-umbriel-buffer-test--call-on-row 'my/umbriel-set-layout
+                                                     'umbriel-window "w-dp1")
+                (let ((call (car dl-umbriel-buffer-test--prompts)))
+                  (should (eq 'completing-read (car call)))
+                  (should (nth 3 call))
+                  (should (dl-umbriel-buffer-test--same-set-p
+                           (dl-umbriel-buffer-test--offered (nth 2 call))
+                           dl-umbriel-model-layouts)))
+                (should (equal (list (dl-umbriel-action
+                                      "workspace-switch"
+                                      (dl-umbriel-model-workspace-selector its))
+                                     (dl-umbriel-action
+                                      "workspace-set-layout"
+                                      (list (cons 'layout choice))))
+                               (car (car dl-umbriel-buffer-test--send-all-calls))))))))))))
+
+(ert-deftest dl-umbriel-buffer/refused-row-never-prompts ()
+  "D-3: a refused row errors before prompting and before sending anything."
+  (let ((workspaces (dl-umbriel-buffer-test--action-workspaces))
+        (windows (dl-umbriel-buffer-test--action-windows)))
+    (dl-umbriel-buffer-test--with-state
+        (dl-umbriel-buffer-test--held windows workspaces)
+      (let ((buffer (dl-umbriel-buffer-test--mode-buffer)))
+        (with-current-buffer buffer
+          (dl-umbriel-buffer--repaint)
+          (dl-umbriel-buffer-test--with-send-all
+            (dl-umbriel-buffer-test--with-refresh
+              (dl-umbriel-buffer-test--with-prompts
+                ;; `L' on an Unassigned window has no workspace to switch to.
+                (let ((signalled
+                       (should-error
+                        (dl-umbriel-buffer-test--call-on-row
+                         'my/umbriel-set-layout 'umbriel-window "w-loose")
+                        :type 'user-error)))
+                  (should (dl-umbriel-buffer-test--mentions-p
+                           (error-message-string signalled) "workspace")))
+                (should-not dl-umbriel-buffer-test--prompts)
+                (should-not dl-umbriel-buffer-test--send-all-calls)
+                (should-not dl-umbriel-buffer-test--refreshes)))))))))
+
+(ert-deftest dl-umbriel-buffer/empty-prompt-input-sends-nothing ()
+  "`completing-read' allows empty input under REQUIRE-MATCH: nothing is sent."
+  (let ((workspaces (dl-umbriel-buffer-test--action-workspaces))
+        (windows (dl-umbriel-buffer-test--action-windows)))
+    (dl-umbriel-buffer-test--with-state
+        (dl-umbriel-buffer-test--held windows workspaces)
+      (let ((buffer (dl-umbriel-buffer-test--mode-buffer)))
+        (with-current-buffer buffer
+          (dl-umbriel-buffer--repaint)
+          (dl-umbriel-buffer-test--with-send-all
+            (dl-umbriel-buffer-test--with-prompts
+              (setq dl-umbriel-buffer-test--prompt-choice "")
+              (dolist (command '(my/umbriel-move-to-workspace
+                                 my/umbriel-set-layout))
+                (should-error (dl-umbriel-buffer-test--call-on-row
+                               command 'umbriel-window "w-dp1")
+                              :type 'user-error))
+              (should-error (my/umbriel-set-active-layout) :type 'user-error)
+              (should-not dl-umbriel-buffer-test--send-all-calls))))))))
+
+(ert-deftest dl-umbriel-buffer/no-row-at-point-is-a-user-error ()
+  "Target: a heading, or an empty buffer, is not an umbriel row."
+  (let ((workspaces (dl-umbriel-buffer-test--action-workspaces))
+        (windows (dl-umbriel-buffer-test--action-windows)))
+    (dl-umbriel-buffer-test--with-state
+        (dl-umbriel-buffer-test--held windows workspaces)
+      (dl-umbriel-buffer-test--with-send-all
+        (let ((buffer (dl-umbriel-buffer-test--mode-buffer)))
+          (with-current-buffer buffer
+            ;; Empty: there is not even a root section.
+            (let ((signalled (should-error (call-interactively 'my/umbriel-focus)
+                                           :type 'user-error)))
+              (should (dl-umbriel-buffer-test--mentions-p
+                       (error-message-string signalled)
+                       "No umbriel row at point")))
+            (dl-umbriel-buffer--repaint)
+            ;; The Unassigned heading is a heading, not a row.
+            (let ((signalled
+                   (should-error
+                    (dl-umbriel-buffer-test--call-on-row
+                     'my/umbriel-focus 'umbriel-unassigned nil)
+                    :type 'user-error)))
+              (should (dl-umbriel-buffer-test--mentions-p
+                       (error-message-string signalled)
+                       "No umbriel row at point"))))
+        (should-not dl-umbriel-buffer-test--send-all-calls))))))
+
+;;;; actions: completion (VT-5, EX-7, DEC-021, D-6)
+
+(ert-deftest dl-umbriel-buffer/completion-refreshes-only-when-shut ()
+  "VT-5/EX-7: one refresh, after the reply, and only with the stream shut."
+  (let ((workspaces (dl-umbriel-buffer-test--action-workspaces))
+        (windows (dl-umbriel-buffer-test--action-windows))
+        (status 'open))
+    (dl-umbriel-buffer-test--with-state
+        (dl-umbriel-buffer-test--held windows workspaces)
+      (let ((buffer (dl-umbriel-buffer-test--mode-buffer)))
+        (with-current-buffer buffer
+          (dl-umbriel-buffer--repaint)
+          (dl-umbriel-buffer-test--with-fake-status status
+            (dl-umbriel-buffer-test--with-send-all
+              (dl-umbriel-buffer-test--with-refresh
+                (dl-umbriel-buffer-test--with-messages
+                  ;; Open: the reply is silent and refreshes nothing.
+                  (dl-umbriel-buffer-test--call-on-row
+                   'my/umbriel-toggle-floating 'umbriel-window "w-dp1")
+                  (should (= 1 (length dl-umbriel-buffer-test--send-all-calls)))
+                  (should-not dl-umbriel-buffer-test--refreshes)
+                  (funcall (cdr (car dl-umbriel-buffer-test--send-all-calls))
+                           '(:ok nil))
+                  (should-not dl-umbriel-buffer-test--refreshes)
+                  (should-not dl-umbriel-buffer-test--messages)
+                  ;; Shut: exactly one refresh, once the reply has landed.
+                  (dolist (shut (list 'never (list :failure 'closed "gone")))
+                    (setq dl-umbriel-buffer-test--send-all-calls nil)
+                    (setq dl-umbriel-buffer-test--refreshes nil)
+                    (setq status shut)
+                    (dl-umbriel-buffer-test--call-on-row
+                     'my/umbriel-toggle-floating 'umbriel-window "w-dp1")
+                    (should-not dl-umbriel-buffer-test--refreshes)
+                    (funcall (cdr (car dl-umbriel-buffer-test--send-all-calls))
+                             '(:ok nil))
+                    (should (= 1 (length dl-umbriel-buffer-test--refreshes)))
+                    ;; No argument: the refresh fetches both families.
+                    (should-not (car dl-umbriel-buffer-test--refreshes))
+                    (should-not dl-umbriel-buffer-test--messages)))))))))))
+
+(ert-deftest dl-umbriel-buffer/completion-reads-the-stream-status-late ()
+  "VT-5/DEC-021: the status is read as the reply lands, not when it is sent."
+  (let ((workspaces (dl-umbriel-buffer-test--action-workspaces))
+        (windows (dl-umbriel-buffer-test--action-windows))
+        (status 'open))
+    (dl-umbriel-buffer-test--with-state
+        (dl-umbriel-buffer-test--held windows workspaces)
+      (let ((buffer (dl-umbriel-buffer-test--mode-buffer)))
+        (with-current-buffer buffer
+          (dl-umbriel-buffer--repaint)
+          (dl-umbriel-buffer-test--with-fake-status status
+            (dl-umbriel-buffer-test--with-send-all
+              (dl-umbriel-buffer-test--with-refresh
+                (dl-umbriel-buffer-test--call-on-row
+                 'my/umbriel-toggle-floating 'umbriel-window "w-dp1")
+                (setq status 'never)
+                (funcall (cdr (car dl-umbriel-buffer-test--send-all-calls))
+                         '(:ok nil))
+                (should (= 1 (length dl-umbriel-buffer-test--refreshes)))
+                ;; And the other way round: open by then, no refresh.
+                (setq dl-umbriel-buffer-test--send-all-calls nil)
+                (setq dl-umbriel-buffer-test--refreshes nil)
+                (dl-umbriel-buffer-test--call-on-row
+                 'my/umbriel-toggle-floating 'umbriel-window "w-dp1")
+                (setq status 'open)
+                (funcall (cdr (car dl-umbriel-buffer-test--send-all-calls))
+                         '(:ok nil))
+                (should-not dl-umbriel-buffer-test--refreshes)))))))))
+
+(ert-deftest dl-umbriel-buffer/completion-echoes-a-failure ()
+  "VT-5/EX-7: a failure reaches the echo as its message; no refresh."
+  (let ((workspaces (dl-umbriel-buffer-test--action-workspaces))
+        (windows (dl-umbriel-buffer-test--action-windows))
+        (failure '(:failure rejected "no such window")))
+    (dl-umbriel-buffer-test--with-state
+        (dl-umbriel-buffer-test--held windows workspaces)
+      (let ((buffer (dl-umbriel-buffer-test--mode-buffer)))
+        (with-current-buffer buffer
+          (dl-umbriel-buffer--repaint)
+          (dl-umbriel-buffer-test--with-send-all
+            (dl-umbriel-buffer-test--with-refresh
+              (dl-umbriel-buffer-test--call-on-row
+               'my/umbriel-toggle-floating 'umbriel-window "w-dp1")
+              (dl-umbriel-buffer-test--with-messages
+                (funcall (cdr (car dl-umbriel-buffer-test--send-all-calls))
+                         failure)
+                (should (equal (list (dl-umbriel-failure-message failure))
+                               dl-umbriel-buffer-test--messages)))
+              (should-not dl-umbriel-buffer-test--refreshes))))))))
+
+(ert-deftest dl-umbriel-buffer/completion-stops-at-the-first-failure ()
+  "VT-5/EX-7: the real sequencer stops; step two is never sent."
+  (let ((workspaces (dl-umbriel-buffer-test--action-workspaces))
+        (windows (dl-umbriel-buffer-test--action-windows))
+        (sent nil))
+    (dl-umbriel-buffer-test--with-state
+        (dl-umbriel-buffer-test--held windows workspaces)
+      (let ((buffer (dl-umbriel-buffer-test--mode-buffer)))
+        (with-current-buffer buffer
+          (dl-umbriel-buffer--repaint)
+          (dl-umbriel-buffer-test--with-prompts
+            (setq dl-umbriel-buffer-test--prompt-choice "master")
+            (cl-letf (((symbol-function 'dl-umbriel-send)
+                       (lambda (request callback)
+                         (push request sent)
+                         (funcall callback '(:failure rejected "no such window")))))
+              (dl-umbriel-buffer-test--with-refresh
+                (dl-umbriel-buffer-test--with-messages
+                  ;; `L' on a window row plans two steps.
+                  (dl-umbriel-buffer-test--call-on-row
+                   'my/umbriel-set-layout 'umbriel-window "w-dp1")
+                  (should (= 1 (length sent)))
+                  (should (equal "workspace-switch"
+                                 (alist-get 'action (car sent))))
+                  (should (equal (list (dl-umbriel-failure-message
+                                        '(:failure rejected "no such window")))
+                                 dl-umbriel-buffer-test--messages))
+                  (should-not dl-umbriel-buffer-test--refreshes))))))))))
+
+(ert-deftest dl-umbriel-buffer/row-action-writes-no-held-state ()
+  "VT-5/DEC-021: neither the command nor its callback writes held state."
+  (let ((workspaces (dl-umbriel-buffer-test--action-workspaces))
+        (windows (dl-umbriel-buffer-test--action-windows)))
+    (dl-umbriel-buffer-test--with-state
+        (dl-umbriel-buffer-test--held windows workspaces)
+      (let ((buffer (dl-umbriel-buffer-test--mode-buffer)))
+        (with-current-buffer buffer
+          (dl-umbriel-buffer--repaint)
+          (let ((before (dl-umbriel-state)))
+            (cl-letf (((symbol-function 'dl-umbriel--set-family)
+                       (lambda (&rest _)
+                         (ert-fail "the command wrote the held snapshots")))
+                      ((symbol-function 'dl-umbriel--set-status)
+                       (lambda (&rest _)
+                         (ert-fail "the command wrote the stream status"))))
+              (dl-umbriel-buffer-test--with-send-all
+                (dl-umbriel-buffer-test--with-refresh
+                  (dl-umbriel-buffer-test--with-prompts
+                    (setq dl-umbriel-buffer-test--prompt-choice
+                          (car (nth 0 (dl-umbriel-model-workspace-choices
+                                       workspaces))))
+                    (dl-umbriel-buffer-test--call-on-row
+                     'my/umbriel-move-to-workspace 'umbriel-window "w-dp1")
+                    (should (= 1 (length dl-umbriel-buffer-test--send-all-calls)))
+                    (funcall (cdr (car dl-umbriel-buffer-test--send-all-calls))
+                             '(:ok nil)))))
+            (should (equal before (dl-umbriel-state))))))))))
+
+;;;; actions: the global commands (VT-3, EX-4, D-5, D-7)
+
+(ert-deftest dl-umbriel-buffer/global-switch-refreshes-then-schedules ()
+  "VT-3/EX-4/D-5: a shut stream refreshes; the prompt waits for a timer."
+  (let ((status 'never)
+        (workspaces (dl-umbriel-buffer-test--action-workspaces))
+        (choices nil))
+    (setq choices (dl-umbriel-model-workspace-choices workspaces))
+    (dl-umbriel-buffer-test--with-state
+        (dl-umbriel-buffer-test--held nil workspaces)
+      (dl-umbriel-buffer-test--with-fake-status status
+        (dl-umbriel-buffer-test--with-send-all
+          (dl-umbriel-buffer-test--with-refresh
+            (dl-umbriel-buffer-test--with-prompts
+              (setq dl-umbriel-buffer-test--prompt-allowed nil)
+              (dl-umbriel-buffer-test--with-scheduled calls
+                ;; The command only refreshes; it prompts nowhere yet.
+                (my/umbriel-switch-workspace)
+                (should (= 1 (length dl-umbriel-buffer-test--refreshes)))
+                (should (car dl-umbriel-buffer-test--refreshes))
+                (should-not dl-umbriel-buffer-test--prompts)
+                (should-not calls)
+                (should-not dl-umbriel-buffer-test--send-all-calls)
+                ;; Nor may the reply prompt: it schedules.
+                (funcall (car dl-umbriel-buffer-test--refreshes) '(:ok nil))
+                (should-not dl-umbriel-buffer-test--prompts)
+                (should (= 1 (length calls)))
+                (should (equal 0 (nth 0 (car calls))))
+                (should-not (nth 1 (car calls)))
+                (should (functionp (nth 2 (car calls))))
+                (should-not dl-umbriel-buffer-test--send-all-calls)
+                ;; The timer's function is where the prompt belongs.
+                (setq dl-umbriel-buffer-test--prompt-allowed t)
+                (setq dl-umbriel-buffer-test--prompt-choice
+                      (car (nth 1 choices)))
+                (funcall (nth 2 (car calls)))
+                (should (= 1 (length dl-umbriel-buffer-test--prompts)))
+                (should (equal (list (dl-umbriel-action
+                                      "workspace-switch"
+                                      (dl-umbriel-model-workspace-selector
+                                       (cdr (nth 1 choices)))))
+                               (car (car dl-umbriel-buffer-test--send-all-calls))))))))))))
+
+(ert-deftest dl-umbriel-buffer/global-switch-messages-inside-a-minibuffer ()
+  "VT-3/EX-4: a minibuffer already active when the timer runs is respected."
+  (let ((status 'never)
+        (workspaces (dl-umbriel-buffer-test--action-workspaces)))
+    (dl-umbriel-buffer-test--with-state
+        (dl-umbriel-buffer-test--held nil workspaces)
+      (dl-umbriel-buffer-test--with-fake-status status
+        (dl-umbriel-buffer-test--with-send-all
+          (dl-umbriel-buffer-test--with-refresh
+            (dl-umbriel-buffer-test--with-messages
+              (dl-umbriel-buffer-test--with-prompts
+                (setq dl-umbriel-buffer-test--prompt-allowed nil)
+                (dl-umbriel-buffer-test--with-scheduled calls
+                  (my/umbriel-switch-workspace)
+                  (funcall (car dl-umbriel-buffer-test--refreshes) '(:ok nil))
+                  (should (= 1 (length calls)))
+                  (cl-letf (((symbol-function 'active-minibuffer-window)
+                             (lambda () (selected-window))))
+                    (funcall (nth 2 (car calls))))
+                  (should-not dl-umbriel-buffer-test--prompts)
+                  (should-not dl-umbriel-buffer-test--send-all-calls)
+                  (should (= 1 (length dl-umbriel-buffer-test--messages)))
+                  (should (dl-umbriel-buffer-test--mentions-p
+                           (car dl-umbriel-buffer-test--messages) "retry"))
+                  (should (dl-umbriel-buffer-test--mentions-p
+                           (car dl-umbriel-buffer-test--messages)
+                           "C-c u w")))))))))))
+
+(ert-deftest dl-umbriel-buffer/global-switch-echoes-a-refresh-failure ()
+  "VT-3/EX-4: a failed refresh is echoed and schedules nothing."
+  (let ((status 'never)
+        (workspaces (dl-umbriel-buffer-test--action-workspaces))
+        (failure '(:failure closed "stream closed")))
+    (dl-umbriel-buffer-test--with-state
+        (dl-umbriel-buffer-test--held nil workspaces)
+      (dl-umbriel-buffer-test--with-fake-status status
+        (dl-umbriel-buffer-test--with-send-all
+          (dl-umbriel-buffer-test--with-refresh
+            (dl-umbriel-buffer-test--with-prompts
+              (setq dl-umbriel-buffer-test--prompt-allowed nil)
+              (dl-umbriel-buffer-test--with-scheduled calls
+                (my/umbriel-switch-workspace)
+                (dl-umbriel-buffer-test--with-messages
+                  (funcall (car dl-umbriel-buffer-test--refreshes) failure)
+                  (should (equal (list (dl-umbriel-failure-message failure))
+                                 dl-umbriel-buffer-test--messages)))
+                (should-not calls)
+                (should-not dl-umbriel-buffer-test--prompts)
+                (should-not dl-umbriel-buffer-test--send-all-calls)))))))))
+
+(ert-deftest dl-umbriel-buffer/global-switch-prompts-at-once-when-open ()
+  "D-5/VT-3: an open stream prompts in the command, refreshing nothing first."
+  (let ((status 'open)
+        (workspaces (dl-umbriel-buffer-test--action-workspaces)))
+    (dl-umbriel-buffer-test--with-state
+        (dl-umbriel-buffer-test--held nil workspaces)
+      (dl-umbriel-buffer-test--with-fake-status status
+        (dl-umbriel-buffer-test--with-send-all
+          (dl-umbriel-buffer-test--with-refresh
+            (dl-umbriel-buffer-test--with-prompts
+              (let* ((choices (dl-umbriel-model-workspace-choices
+                               (dl-umbriel-workspaces)))
+                     (chosen (cdr (nth 0 choices))))
+                (setq dl-umbriel-buffer-test--prompt-choice
+                      (car (nth 0 choices)))
+                (my/umbriel-switch-workspace)
+                (should-not dl-umbriel-buffer-test--refreshes)
+                (should (= 1 (length dl-umbriel-buffer-test--prompts)))
+                (should (equal (list (dl-umbriel-action
+                                      "workspace-switch"
+                                      (dl-umbriel-model-workspace-selector chosen)))
+                               (car (car dl-umbriel-buffer-test--send-all-calls))))))))))))
+
+(ert-deftest dl-umbriel-buffer/no-row-callback-prompts ()
+  "VT-5/EX-7: no row command's send-all callback opens any prompt."
+  (let ((workspaces (dl-umbriel-buffer-test--action-workspaces))
+        (windows (dl-umbriel-buffer-test--action-windows)))
+    (dl-umbriel-buffer-test--with-state
+        (dl-umbriel-buffer-test--held windows workspaces)
+      (let ((buffer (dl-umbriel-buffer-test--mode-buffer)))
+        (with-current-buffer buffer
+          (dl-umbriel-buffer--repaint)
+          (dl-umbriel-buffer-test--with-send-all
+            (dl-umbriel-buffer-test--with-prompts
+              (dolist (spec dl-umbriel-buffer-test--action-table)
+                (setq dl-umbriel-buffer-test--send-all-calls nil)
+                (setq dl-umbriel-buffer-test--prompts nil)
+                (setq dl-umbriel-buffer-test--prompt-choice
+                      (if (eq (nth 3 spec) 'layout)
+                          "master"
+                        (car (nth 0 (dl-umbriel-model-workspace-choices
+                                     workspaces)))))
+                (setq dl-umbriel-buffer-test--prompt-confirm t)
+                (dl-umbriel-buffer-test--call-on-row (nth 0 spec)
+                                                     'umbriel-window "w-dp1")
+                (let ((plan (caar dl-umbriel-buffer-test--send-all-calls))
+                      (callback (cdar dl-umbriel-buffer-test--send-all-calls))
+                      (asked (length dl-umbriel-buffer-test--prompts)))
+                  (should plan)
+                  (should callback)
+                  (setq dl-umbriel-buffer-test--prompt-allowed nil)
+                  (funcall callback '(:ok nil))
+                  (should (= asked (length dl-umbriel-buffer-test--prompts)))
+                  (should (= 1 (length dl-umbriel-buffer-test--send-all-calls)))
+                  (setq dl-umbriel-buffer-test--prompt-allowed t))))))))))
+
+(ert-deftest dl-umbriel-buffer/set-active-layout-prompts-the-pointer ()
+  "D-7: the global layout command names the pointer and sends the layout."
+  (let ((status 'open))
+    (dl-umbriel-buffer-test--with-state nil
+      (dl-umbriel-buffer-test--with-fake-status status
+        (dl-umbriel-buffer-test--with-send-all
+          (dl-umbriel-buffer-test--with-refresh
+            (dl-umbriel-buffer-test--with-prompts
+              (dolist (choice (list "master" "toggle"))
+                (setq dl-umbriel-buffer-test--send-all-calls nil)
+                (setq dl-umbriel-buffer-test--prompts nil)
+                (setq dl-umbriel-buffer-test--prompt-choice choice)
+                (my/umbriel-set-active-layout)
+                (let ((call (car dl-umbriel-buffer-test--prompts)))
+                  (should (eq 'completing-read (car call)))
+                  (should (nth 3 call))
+                  (should (dl-umbriel-buffer-test--mentions-p (nth 1 call) "pointer"))
+                  (should (dl-umbriel-buffer-test--mentions-p (nth 1 call) "output"))
+                  (should (dl-umbriel-buffer-test--same-set-p
+                           (dl-umbriel-buffer-test--offered (nth 2 call))
+                           dl-umbriel-model-layouts)))
+                (should (equal (list (dl-umbriel-action
+                                      "workspace-set-layout"
+                                      (list (cons 'layout choice))))
+                               (car (car dl-umbriel-buffer-test--send-all-calls)))))
+              ;; Completion as a row command's: one refresh when shut.
+              (setq status 'never)
+              (setq dl-umbriel-buffer-test--send-all-calls nil)
+              (setq dl-umbriel-buffer-test--refreshes nil)
+              (setq dl-umbriel-buffer-test--prompt-choice "master")
+              (my/umbriel-set-active-layout)
+              (should-not dl-umbriel-buffer-test--refreshes)
+              (funcall (cdr (car dl-umbriel-buffer-test--send-all-calls))
+                       '(:ok nil))
+              (should (= 1 (length dl-umbriel-buffer-test--refreshes))))))))))
+
+;;;; actions: keys and commands (VT-4, § Macro)
+
+(ert-deftest dl-umbriel-buffer/row-keys-bind-the-actions ()
+  "VT-4: every row key in the sheet's table, and its twin, is bound."
+  (dolist (binding '(("RET" . my/umbriel-focus)
+                     ("s" . my/umbriel-switch)
+                     ("m" . my/umbriel-move-to-workspace)
+                     ("t" . my/umbriel-toggle-floating)
+                     ("c" . my/umbriel-center)
+                     ("k" . my/umbriel-kill)
+                     ("L" . my/umbriel-set-layout)
+                     ("M-<left>" . my/umbriel-column-left)
+                     ("<" . my/umbriel-column-left)
+                     ("M-<right>" . my/umbriel-column-right)
+                     (">" . my/umbriel-column-right)
+                     ("C-<left>" . my/umbriel-scroll-left)
+                     ("[" . my/umbriel-scroll-left)
+                     ("C-<right>" . my/umbriel-scroll-right)
+                     ("]" . my/umbriel-scroll-right)
+                     ("e" . my/umbriel-cycle-extent)
+                     ("E" . my/umbriel-cycle-extent-back)
+                     ("g" . my/umbriel-refresh)
+                     ("q" . quit-window)))
+    (should (eq (keymap-lookup dl-umbriel-buffer-mode-map (car binding))
+                (cdr binding)))))
+
+(ert-deftest dl-umbriel-buffer/action-rows-are-commands ()
+  "VT-4/§Macro: every table row is an interactive command with a docstring."
+  (dolist (row dl-umbriel-buffer-test--action-table)
+    (let ((command (nth 0 row)))
+      (should (fboundp command))
+      (should (commandp command))
+      (let ((doc (documentation command)))
+        (should (stringp doc))
+        (should-not (string-empty-p doc))
+        (dolist (line (split-string doc "\n"))
+          (should (<= (length line) 80)))))))
+
+(ert-deftest dl-umbriel-buffer/action-table-is-the-designs ()
+  "§Macro: the table holds the design's rows, verbatim, in order."
+  (should (equal dl-umbriel-buffer-test--action-table
+                 dl-umbriel-buffer-actions)))
+
+;;;; actions: review fixes
+;;
+;; Contract: .doctrine/state/slice/016/phases/phase-05-review.md, R-1..R-7.
+;; T-1..T-6 pin behaviour the review asked for and the implementation did not
+;; have yet; T-7 and T-8 pin behaviour it already had.
+
+(ert-deftest dl-umbriel-buffer/layout-refuses-two-focused-workspaces ()
+  "T-1/R-1/F-6: two `focused' workspaces is no answer, so refuse."
+  (let* ((workspaces
+          (list (dl-umbriel-buffer-test--workspace :id "DP-1:1" :index 1
+                                                   :output "DP-1" :focused t)
+                (dl-umbriel-buffer-test--workspace :id "DP-2:1" :index 1
+                                                   :output "DP-2" :focused t)))
+         (windows (list (dl-umbriel-buffer-test--window :id "w-dp1"
+                                                        :workspace "DP-1:1")
+                        (dl-umbriel-buffer-test--window :id "w-dp2"
+                                                        :workspace "DP-2:1")))
+         (spec (dl-umbriel-buffer-test--spec 'active-workspace
+                                             "workspace-set-layout" 'layout))
+         (fields '((layout . "master"))))
+    (dolist (target (list (list :workspace (nth 0 workspaces))
+                          (list :workspace (nth 1 workspaces))
+                          (list :window (nth 0 windows))
+                          (list :window (nth 1 windows))))
+      (let ((result (dl-umbriel-buffer-test--refused
+                     spec target fields workspaces)))
+        (should-not (dl-umbriel-buffer-test--switches-p result))))))
+
+(ert-deftest dl-umbriel-buffer/unknown-prompt-kind-refuses-to-send ()
+  "T-2/R-2: an unknown PROMPT kind fails closed: it signals, sends nothing."
+  (let ((workspaces (dl-umbriel-buffer-test--action-workspaces))
+        (windows (dl-umbriel-buffer-test--action-windows)))
+    (dl-umbriel-buffer-test--with-state
+        (dl-umbriel-buffer-test--held windows workspaces)
+      (let ((buffer (dl-umbriel-buffer-test--mode-buffer)))
+        (with-current-buffer buffer
+          (dl-umbriel-buffer--repaint)
+          (dl-umbriel-buffer-test--with-send-all
+            (dl-umbriel-buffer-test--with-prompts
+              ;; A typo'd `confirm-kill' must never confirm, and never send.
+              (goto-char (oref (dl-umbriel-buffer-test--find
+                                'umbriel-window "w-dp1")
+                               start))
+              (should-error
+               (dl-umbriel-buffer--run
+                (dl-umbriel-buffer-test--spec 'window "window-kill"
+                                              'confirm-killl))
+               :type 'error)
+              (should-not dl-umbriel-buffer-test--prompts)
+              (should-not dl-umbriel-buffer-test--send-all-calls))))))))
+
+(ert-deftest dl-umbriel-buffer/kill-prompt-keeps-a-newline-out ()
+  "T-3/R-3: the confirmation stays one line and still names id, title, pid."
+  (let ((windows (list (dl-umbriel-buffer-test--window
+                        :id "w-multiline" :workspace "DP-1:1"
+                        :app_id "foot" :title "notes\nsecret" :pid 4242))))
+    (dl-umbriel-buffer-test--with-state
+        (dl-umbriel-buffer-test--held
+         windows (dl-umbriel-buffer-test--action-workspaces))
+      (let ((buffer (dl-umbriel-buffer-test--mode-buffer)))
+        (with-current-buffer buffer
+          (dl-umbriel-buffer--repaint)
+          (dl-umbriel-buffer-test--with-send-all
+            (dl-umbriel-buffer-test--with-prompts
+              (setq dl-umbriel-buffer-test--prompt-confirm nil)
+              (dl-umbriel-buffer-test--call-on-row
+               'my/umbriel-kill 'umbriel-window "w-multiline")
+              (let ((call (car dl-umbriel-buffer-test--prompts)))
+                (should (eq 'y-or-n-p (car call)))
+                (should-not (string-match-p "\n" (nth 1 call)))
+                (dolist (needle (list "foot" "notes" "secret" "4242"))
+                  (should (dl-umbriel-buffer-test--mentions-p
+                           (nth 1 call) needle))))
+              (should-not dl-umbriel-buffer-test--send-all-calls))))))))
+
+(ert-deftest dl-umbriel-buffer/kill-compares-the-pid-numerically ()
+  "T-4/R-4: a float pid names the same process; a string pid prompts."
+  (let ((windows (list (dl-umbriel-buffer-test--window
+                        :id "w-float" :workspace "DP-1:1"
+                        :app_id "emacs" :title "notes"
+                        :pid (float (emacs-pid)))
+                       (dl-umbriel-buffer-test--window
+                        :id "w-string" :workspace "DP-1:1"
+                        :app_id "foot" :title "shell" :pid "4242"))))
+    (dl-umbriel-buffer-test--with-state
+        (dl-umbriel-buffer-test--held
+         windows (dl-umbriel-buffer-test--action-workspaces))
+      (let ((buffer (dl-umbriel-buffer-test--mode-buffer)))
+        (with-current-buffer buffer
+          (dl-umbriel-buffer--repaint)
+          (dl-umbriel-buffer-test--with-send-all
+            (dl-umbriel-buffer-test--with-prompts
+              (setq dl-umbriel-buffer-test--prompt-confirm t)
+              ;; The compositor's 4242.0 is this Emacs just as 4242 is.
+              (let ((signalled
+                     (should-error
+                      (dl-umbriel-buffer-test--call-on-row
+                       'my/umbriel-kill 'umbriel-window "w-float")
+                      :type 'user-error)))
+                (should (dl-umbriel-buffer-test--mentions-p
+                         (error-message-string signalled) "use delete-frame")))
+              (should-not dl-umbriel-buffer-test--prompts)
+              (should-not dl-umbriel-buffer-test--send-all-calls)
+              ;; A pid that arrived as a string takes the normal path.
+              (setq dl-umbriel-buffer-test--prompt-confirm nil)
+              (dl-umbriel-buffer-test--call-on-row
+               'my/umbriel-kill 'umbriel-window "w-string")
+              (let ((call (car dl-umbriel-buffer-test--prompts)))
+                (should (eq 'y-or-n-p (car call)))
+                (should (dl-umbriel-buffer-test--mentions-p
+                         (nth 1 call) "4242")))
+              (should-not dl-umbriel-buffer-test--send-all-calls))))))))
+
+(ert-deftest dl-umbriel-buffer/unknown-addressing-signals ()
+  "T-5/R-6: a plan for an addressing the table does not know signals."
+  (let ((workspaces (dl-umbriel-buffer-test--action-workspaces))
+        (windows (dl-umbriel-buffer-test--action-windows))
+        (spec (dl-umbriel-buffer-test--spec 'sideways "window-focus")))
+    (dolist (target (list (list :window (nth 0 windows))
+                          (list :workspace (nth 0 workspaces))))
+      (should-error (dl-umbriel-buffer--plan spec target nil workspaces)
+                    :type 'error))))
+
+(ert-deftest dl-umbriel-buffer/global-switch-with-no-workspaces-held ()
+  "T-6/R-7: nothing held still refreshes, then the timer messages."
+  (dl-umbriel-buffer-test--with-state (dl-umbriel-buffer-test--held nil nil 'open 0)
+    (dl-umbriel-buffer-test--with-send-all
+      (dl-umbriel-buffer-test--with-refresh
+        (dl-umbriel-buffer-test--with-messages
+          (dl-umbriel-buffer-test--with-prompts
+            (setq dl-umbriel-buffer-test--prompt-allowed nil)
+            (dl-umbriel-buffer-test--with-scheduled calls
+              ;; Open, but nothing held: refresh rather than prompt.
+              (my/umbriel-switch-workspace)
+              (should (= 1 (length dl-umbriel-buffer-test--refreshes)))
+              (should-not dl-umbriel-buffer-test--prompts)
+              (should-not calls)
+              ;; The reply may not prompt either: it schedules.
+              (funcall (car dl-umbriel-buffer-test--refreshes) '(:ok nil))
+              (should-not dl-umbriel-buffer-test--prompts)
+              (should (= 1 (length calls)))
+              (should (equal 0 (nth 0 (car calls))))
+              ;; The timer runs with the workspaces still empty.
+              (funcall (nth 2 (car calls)))
+              (should-not dl-umbriel-buffer-test--prompts)
+              (should-not dl-umbriel-buffer-test--send-all-calls)
+              (should (= 1 (length dl-umbriel-buffer-test--messages)))
+              (should (dl-umbriel-buffer-test--mentions-p
+                       (car dl-umbriel-buffer-test--messages)
+                       "workspace")))))))))
+
+(ert-deftest dl-umbriel-buffer/the-prompt-does-not-re-read-the-held-workspaces ()
+  "T-7: the workspaces captured before the prompt are planned with."
+  (let* ((workspaces (dl-umbriel-buffer-test--action-workspaces))
+         (windows (dl-umbriel-buffer-test--action-windows))
+         (target (nth 1 workspaces))
+         (moved (list (dl-umbriel-buffer-test--workspace :id "DP-2:1" :index 1
+                                                         :name "docs"
+                                                         :output "DP-2"
+                                                         :focused t)
+                      (dl-umbriel-buffer-test--workspace :id "DP-1:2" :index 2
+                                                         :name nil :named nil
+                                                         :output "DP-1"))))
+    (dl-umbriel-buffer-test--with-state
+        (dl-umbriel-buffer-test--held windows workspaces)
+      (let ((buffer (dl-umbriel-buffer-test--mode-buffer)))
+        (with-current-buffer buffer
+          (dl-umbriel-buffer--repaint)
+          (dl-umbriel-buffer-test--with-send-all
+            (dl-umbriel-buffer-test--with-prompts
+              (setq dl-umbriel-buffer-test--prompt-choice "master")
+              (setq dl-umbriel-buffer-test--prompt-hook
+                    (lambda ()
+                      ;; Focus moves to the other output under the prompt.
+                      (dl-umbriel-buffer-test--hold windows moved)))
+              (dl-umbriel-buffer-test--call-on-row
+               'my/umbriel-set-layout 'umbriel-workspace "DP-1:2")
+              ;; The held state really did move off the target's output.
+              (should (equal "DP-2"
+                             (alist-get 'output
+                                        (seq-find (lambda (held)
+                                                    (alist-get 'focused held))
+                                                  (dl-umbriel-workspaces)))))
+              (should (equal (list (dl-umbriel-action
+                                    "workspace-switch"
+                                    (dl-umbriel-model-workspace-selector target))
+                                   (dl-umbriel-action "workspace-set-layout"
+                                                      '((layout . "master"))))
+                             (car (car dl-umbriel-buffer-test--send-all-calls)))))))))))
+
+(ert-deftest dl-umbriel-buffer/docstrings-name-their-action ()
+  "T-8/§Macro: each generated docstring names its umbriel action string."
+  (dolist (row dl-umbriel-buffer-test--action-table)
+    (let ((doc (documentation (nth 0 row))))
+      (should (stringp doc))
+      (should (dl-umbriel-buffer-test--mentions-p doc (nth 1 row))))))
+
+;;;; keys (VT-4, EX-5, EX-6)
+
+(require 'meow)
+(require 'dl-keymap)
+(meow-setup)
+
+(defconst dl-umbriel-buffer-test--global-keys
+  '(("u" . my/umbriel)
+    ("w" . my/umbriel-switch-workspace)
+    ("l" . my/umbriel-set-active-layout)
+    ("f" . dl-umbriel-focus-frame))
+  "The `my-umbriel-map' bindings of design § Keys (DEC-024).")
+
+(ert-deftest dl-umbriel-buffer/global-map-binds-the-four-commands ()
+  "VT-4: `my-umbriel-map' carries u/w/l/f, and sits on C-c u."
+  (pcase-dolist (`(,key . ,command) dl-umbriel-buffer-test--global-keys)
+    (should (eq (keymap-lookup my-umbriel-map key) command)))
+  (should (eq (keymap-lookup global-map "C-c u") my-umbriel-map)))
+
+(ert-deftest dl-umbriel-buffer/leader-mirrors-the-global-map ()
+  "VT-4: `meow-setup' puts `my-umbriel-map' on the leader, SPC u.
+The leader map is empty of `u' first, so the binding seen is meow-setup's."
+  (let ((meow-keymap-alist (copy-alist meow-keymap-alist)))
+    (setf (alist-get 'leader meow-keymap-alist)
+          (copy-keymap (alist-get 'leader meow-keymap-alist)))
+    (keymap-unset (alist-get 'leader meow-keymap-alist) "u" t)
+    (should-not (keymap-lookup (alist-get 'leader meow-keymap-alist) "u"))
+    (meow-setup)
+    (should (eq (keymap-lookup (alist-get 'leader meow-keymap-alist) "u")
+                my-umbriel-map))))
+
+(ert-deftest dl-umbriel-buffer/row-keys-are-not-shadowed-by-motion-state ()
+  "EX-5: no row key is bound in the config's meow motion-state map."
+  (dolist (key '("RET" "s" "m" "t" "c" "k" "L" "M-<left>" "<" "M-<right>"
+                 ">" "C-<left>" "[" "C-<right>" "]" "e" "E" "g" "q"))
+    (should-not (keymap-lookup meow-motion-state-keymap key)))
+  ;; Each of those keys is in fact a row key.
+  (should (keymap-lookup dl-umbriel-buffer-mode-map "RET")))
+
+(ert-deftest dl-umbriel-buffer/buffer-mode-starts-in-motion-state ()
+  "EX-5: meow guesses motion state for `dl-umbriel-buffer-mode'."
+  (should (eq (alist-get 'dl-umbriel-buffer-mode meow-mode-state-list
+                         (with-temp-buffer
+                           (dl-umbriel-buffer-mode)
+                           (meow--mode-guess-state)))
+              'motion)))
+
+(defun dl-umbriel-buffer-test--keys-resolve-in-fresh-emacs (features)
+  "Load FEATURES in order in a fresh batch Emacs; return its stdout.
+The output lists each C-c u key with its command and `commandp'."
+  (let ((expr `(progn
+                 (setq load-prefer-newer t load-path ',load-path)
+                 (dolist (feature ',features) (require feature))
+                 (dolist (key '("u" "w" "l" "f"))
+                   (let ((cmd (keymap-lookup global-map (concat "C-c u " key))))
+                     (princ (format "%s %S %S\n" key cmd (commandp cmd))))))))
+    (with-temp-buffer
+      (call-process "timeout" nil t nil "60" (expand-file-name invocation-name
+                                                               invocation-directory)
+                    "--batch" "-Q" "--eval" (prin1-to-string expr))
+      (buffer-string))))
+
+(ert-deftest dl-umbriel-buffer/keys-resolve-in-either-load-order ()
+  "EX-6: C-c u u/w/l/f resolve and are commands whichever loads first."
+  (skip-unless (file-executable-p (expand-file-name invocation-name
+                                                    invocation-directory)))
+  (skip-unless (executable-find "timeout"))
+  (let ((expected (concat "u my/umbriel t\n"
+                          "w my/umbriel-switch-workspace t\n"
+                          "l my/umbriel-set-active-layout t\n"
+                          "f dl-umbriel-focus-frame t\n")))
+    (dolist (order '((dl-keymap dl-umbriel-buffer dl-umbriel-focus)
+                     (dl-umbriel-buffer dl-umbriel-focus dl-keymap)))
+      (should (equal (dl-umbriel-buffer-test--keys-resolve-in-fresh-emacs order)
+                     expected)))))
 
 ;;; dl-umbriel-buffer-test.el ends here
