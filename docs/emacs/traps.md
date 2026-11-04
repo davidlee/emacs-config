@@ -102,8 +102,14 @@ only checks the status reads this as "tool not installed" or "nothing running".
 The symbol error is on stderr, and stderr is usually thrown away.
 
 Fix: scrub the variable from the environment you hand the child, never from
-`process-environment` globally. `dl-umbriel--host-environment`
-(`lisp/dl-umbriel.el:12`) is the pattern: `seq-remove` the `LD_LIBRARY_PATH=`
-entry and bind the result around `call-process` / `make-process`. Every new
-launch path — a new query, a new action, a long-lived stream — must do the same;
-this is a per-call obligation, not a startup one.
+`process-environment` globally:
+
+```elisp
+(let ((process-environment
+       (seq-remove (lambda (v) (string-prefix-p "LD_LIBRARY_PATH=" v))
+                   process-environment)))
+  (call-process …))
+```
+
+Every new launch path must do the same; this is a per-call obligation, not a
+startup one.

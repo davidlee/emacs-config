@@ -176,10 +176,10 @@ other external-program integrations; every new file is
 
 ## Risks & assumptions
 
-- **No compositor is reachable from the agent environment** (`WAYLAND_DISPLAY`
-  empty, no socket in `/run/user/1000`). Fixtures and `cl-letf` fakes carry the
-  testable layers; the live check is manual, on the host, and the slice's exit
-  criteria must say so rather than pretend otherwise.
+- **The test suite and confined workers cannot reach the compositor; the
+  session shell can** (read-only probes only). Fixtures and `cl-letf` fakes
+  carry the testable layers; the user runs the mutating actions live on the
+  host, and the slice's exit criteria say so rather than pretend otherwise.
 - The subscribe connection is long-lived (opened by the buffer, closed when it
   is killed, DEC-018). Its lifetime, and reconnection after a compositor
   restart, are the parts most likely to rot silently — a closed connection

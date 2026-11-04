@@ -106,3 +106,57 @@ mid-execution.
   (`seq-remove` + `string-prefix-p`) around each `call-process`/`make-process`
   — and drop traps.md's umbriel-specific "new query / long-lived stream"
   sentence. No live example remains in the config or satan.
+
+## Reconciliation Outcome
+
+The user agreed to the proposal on 2026-11-04 ("agreed"); F-8 wording by the
+user's ruling ("1": describe the scrub inline, cite no function).
+
+### Direct edits applied
+Written through the design run (`design apply` revision 42, `materialise`
+revision 43):
+- **sec-actions** (F-1, F-4, F-7): DEC-025/026 named; `focused` row plan with
+  the restore step and when it is skipped; `active-workspace` skips a
+  redundant switch (back_and_forth), `s` unchanged; scroll rows removed; move is
+  `window-move-to-workspace-silent`; display-order prompts and empty-answer
+  `user-error`; `--plan … WORKSPACES`; `C-c u w` refresh trigger; `C-c u l`
+  prompts at once.
+- **sec-keys** (F-1): DEC-026 named; scroll keys removed from the buffer table.
+- **sec-files**, **sec-model** (F-4): `dl-umbriel-echo-failure`;
+  `workspace-label … &optional COUNT`; flattening is display-only.
+- **sec-state** (F-5): `condition-case` waiters; close on request fails
+  waiters with `stream closed`; detach/subscribe before announcing; no-`data`
+  stream-lines row.
+- **sec-buffer** (F-6): window-point/window-start restore; fold overlays via
+  `magit-section-show` on the root, highlight and modified-flag reset; kill-hook
+  order.
+- **sec-verification** (F-3): compositor reachable from the session shell, not
+  from tests or confined workers.
+- **slice-016.md** Risks (F-3): same correction, direct edit.
+- **AGENTS.md** trap 6 and **docs/emacs/traps.md** § 6 (F-8): scrub described
+  inline (traps.md carries the `let`/`seq-remove` snippet); citation of the
+  deleted `dl-umbriel--host-environment` and the umbriel-specific sentence
+  removed.
+
+The edit invalidated the run's `design-accepted` act and the attestations on
+the seven edited sections; the run stays `locked` (same state SL-015 was left
+in after its reconcile). RV-020 is the review of the reconciled text.
+
+### Governance
+No REV: no ADR, spec, requirement, policy or standard touched. Decision
+records amended by appended body notes (`knowledge edit --body-mode append`),
+accepted choice text left intact:
+- **DEC-013** (F-2): label count from the join; `window_count` never read.
+- **DEC-016** (F-1): `L` skip-switch, recorded as agent-proposed and passed by
+  the user in VH-1 (not as a user decision).
+- **DEC-022** (F-6): point keeps the window only while it stays in its
+  workspace.
+
+### Brief items not applied (inspected, not applicable)
+- **F-5, "refresh not via send-all":** design never said refresh used
+  send-all (only plan T-5 did); plan criteria are not a reconcile surface.
+
+### Tolerated
+- **F-9:** waived live restart step; rationale in the finding.
+
+Reconcile pass complete — handoff to /close.

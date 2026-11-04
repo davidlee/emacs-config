@@ -60,7 +60,7 @@ one concern.
 
 | file | concern | requires | provides to others |
 |---|---|---|---|
-| `apps/dl-umbriel.el` | talking to the compositor: socket path, request objects, transport, the stream connection, held state, failure kinds | `seq`, `subr-x` | request builders, `dl-umbriel-send`, `dl-umbriel-send-all`, stream open/close, state readers, the change hook, the waiter, `dl-umbriel-failure-message` |
+| `apps/dl-umbriel.el` | talking to the compositor: socket path, request objects, transport, the stream connection, held state, failure kinds | `seq`, `subr-x` | request builders, `dl-umbriel-send`, `dl-umbriel-send-all`, stream open/close, state readers, the change hook, the waiter, `dl-umbriel-failure-message`, `dl-umbriel-echo-failure` (the one failure echo for focus and row actions) |
 | `apps/dl-umbriel-model.el` | pure functions over parsed snapshots: the workspace join, ordering, selectors, display strings | `seq`, `subr-x` | `dl-umbriel-model-*` |
 | `apps/dl-umbriel-buffer.el` | the `*umbriel*` buffer, its repaint, the row commands and the action table, the global workspace commands | `magit-section`, `dl-umbriel`, `dl-umbriel-model` | `my/umbriel` and the `my/umbriel-*` commands, `dl-umbriel-buffer-mode-map` |
 | `apps/dl-umbriel-focus.el` | focusing the frame `emacsclient` reuses | `dl-umbriel` | `dl-umbriel-window-id`, `dl-umbriel-focus-frame` |
@@ -269,8 +269,9 @@ Two ways to observe the state; the client knows no consumer:
   Registering while the stream is not open calls back at once with the current
   failure, or `(:failure closed "stream not open")` when it was never opened.
   No waiter outlives the stream. Waiters run after the hook, each under
-  `with-demoted-errors`; a predicate or callback that signals drops its own
-  waiter and cannot stop the hook or other waiters. v1 has
+  `condition-case` (not `with-demoted-errors`, whose message-string return
+  would read as "predicate held"); a predicate or callback that signals drops
+  its own waiter and cannot stop the hook or other waiters. v1 has
   no consumer of the waiter beyond tests; it exists because the frame-identity
   handshake (IDE-003) needs to await "the snapshot in which my new frame
   appears" without polling.
@@ -298,7 +299,12 @@ stateDiagram-v2
 ```
 
 `failed` in the diagram is the status `(:failure KIND DETAIL)`. Closing on
-request returns to `never` rather than `failed`, because nothing went wrong.
+request returns to `never` rather than `failed`, because nothing went wrong;
+pending waiters still fail, with `(:failure closed "stream closed")`.
+
+Every status change detaches the old process (or subscribes the new one)
+*before* announcing, so a hook or waiter that reacts by reconnecting keeps the
+connection it opened.
 The held snapshots are kept on close: the buffer shows them under a header that
 says the stream is closed and why, so a stale buffer always says it is stale.
 
@@ -309,6 +315,7 @@ Each complete line goes through `dl-umbriel--stream-line LINE`:
 ```text
 {"event":"windows","data":[…]}     → set windows
 {"event":"workspaces","data":[…]}  → set workspaces
+{"event":"windows"} (no data key)  → skipped += 1   (same for workspaces)
 {"event":"theme",…}                → skipped += 1   (family not requested)
 not a JSON object                  → skipped += 1
 {"err":"…"}                        → status (:failure rejected msg); close
@@ -354,7 +361,7 @@ label instead of signalling.
 | `dl-umbriel-model-workspace-selector WORKSPACE` | the action fields addressing it: `((workspace . NAME-OR-INDEX) (output . OUTPUT))` |
 | `dl-umbriel-model-window-workspace WORKSPACES WINDOW` | the workspace entry a window belongs to, or nil |
 | `dl-umbriel-model-workspace-choices WORKSPACES` | `(LABEL . WORKSPACE)` pairs for `completing-read`, in display order |
-| `dl-umbriel-model-workspace-label WORKSPACE` | one-line display string |
+| `dl-umbriel-model-workspace-label WORKSPACE &optional COUNT` | one-line display string; COUNT is the join's window count (omitted in prompt choices) |
 | `dl-umbriel-model-window-label WINDOW` | one-line display string |
 | `dl-umbriel-model-layouts` | constant: `("scrolling" "dwindle" "master" "stacking" "toggle")` |
 
@@ -392,7 +399,8 @@ Unassigned
   separate `active` and `focused` marks, then `visible`, `minimized`,
   `fullscreen`, `urgent`, `xwayland` flags.
 - Every compositor-supplied string (app id, title, name) has newlines and tabs
-  replaced by spaces, so a row is always one line.
+  replaced by spaces, so a row is always one line. Flattening is display-only:
+  selectors and the join read the raw `name`, `id` and `output`.
 
 `active` (seat-global) and `focused` (the workspace's remembered focus) are
 always shown separately — a scratchpad or layer surface holding the keyboard
@@ -404,7 +412,9 @@ window may be scrolled out of view.
 ## Actions
 
 Implements DEC-016 (addressing, focus-then-act, the action table), DEC-019
-(kill), DEC-021 (one connection per request, failures, re-query).
+(kill), DEC-021 (one connection per request, failures, re-query), as amended
+by DEC-025 (restore the previous focus; silent move) and DEC-026 (no
+layout-scroll row actions).
 
 ### Addressing
 
@@ -416,9 +426,23 @@ Workspace actions address the workspace by selector (see *The model*).
 | addressing | window row | workspace row |
 |---|---|---|
 | `window` — action takes a window id | `[ACTION window=ID]` | refused: "not a window" |
-| `focused` — action takes only the focused window | `[window-focus window=ID, ACTION]` | `[ACTION]` (acts on what is focused) |
+| `focused` — action takes only the focused window | `[window-focus window=ID, ACTION, window-focus window=PREVIOUS]` | `[ACTION]` (acts on what is focused) |
 | `workspace` — workspace-switch | `[switch SELECTOR-of-its-workspace]` | `[switch SELECTOR]` |
 | `active-workspace` — workspace-set-layout | `[switch SELECTOR-of-its-workspace, ACTION]` | `[switch SELECTOR, ACTION]` |
+
+**Restoring focus (DEC-025).** PREVIOUS is the `focused_window` of the one
+held workspace marked `focused`. The restore step is sent only when PREVIOUS
+is known and differs from the row's id; it is unknown when that field is
+absent, nil or `""`, or when zero or two held workspaces are `focused`. A
+failed action stops the sequence, so no restore follows it.
+
+**Skipping a redundant switch.** `active-workspace` omits the switch when the
+target is already the held `focused` workspace (same `id`). umbriel's
+`back_and_forth` setting turns a switch to the active workspace into a switch
+back to the previous one (`actions.cpp:1597`, `workspace.cpp:3568`), so the
+layout would land on the wrong workspace. `workspace` (`s`) still always
+switches; with `back_and_forth` on, `s` on the active workspace's row toggles
+(user ruling).
 
 A window in the Unassigned group has no workspace selector; `workspace` and
 `active-workspace` actions refuse on it with a message.
@@ -449,9 +473,7 @@ special-cased.
     (my/umbriel-cycle-extent-back    "window-cycle-primary-extent-back" focused)
     (my/umbriel-column-left          "column-move-left"              focused)
     (my/umbriel-column-right         "column-move-right"             focused)
-    (my/umbriel-scroll-left          "layout-scroll-left"            focused)
-    (my/umbriel-scroll-right         "layout-scroll-right"           focused)
-    (my/umbriel-move-to-workspace    "window-move-to-workspace"      focused          workspace)
+    (my/umbriel-move-to-workspace    "window-move-to-workspace-silent" focused       workspace)
     (my/umbriel-switch               "workspace-switch"              workspace)
     (my/umbriel-set-layout           "workspace-set-layout"          active-workspace layout))
   "Row actions: command, umbriel action, how the row is addressed, what is prompted.")
@@ -465,8 +487,12 @@ The prompts:
 
 - `workspace` — `completing-read` over `dl-umbriel-model-workspace-choices` of
   the held workspaces; the choice's selector fields join the request
-  (`window-move-to-workspace`; the non-silent form, so focus follows the
-  window; `-silent` is not in v1).
+  (`window-move-to-workspace-silent`, so the view does not follow the window
+  before focus is restored; DEC-025).
+- Both prompts keep display order: the collection's completion metadata sets
+  `display-sort-function` and `cycle-sort-function` to `identity`
+  (`dl-umbriel-buffer--ordered-table`), so a recency sorter such as
+  vertico-prescient does not reorder them. An empty answer is a `user-error`.
 - `layout` — `completing-read` over `dl-umbriel-model-layouts`; sent as
   `layout`. `toggle` is sent without `cycle` (the compositor's configured
   cycle).
@@ -479,9 +505,11 @@ The prompts:
 
 ### Planning is pure
 
-`dl-umbriel-buffer--plan SPEC TARGET FIELDS` returns the list of request
-objects for one table row, a target (`(:window ENTRY)` or `(:workspace ENTRY)`
-from the section at point) and the prompted fields — or a `user-error`
+`dl-umbriel-buffer--plan SPEC TARGET FIELDS WORKSPACES` returns the list of
+request objects for one table row, a target (`(:window ENTRY)` or
+`(:workspace ENTRY)` from the section at point), the prompted fields and the
+held workspaces (which it reads for the window's workspace, the focused output
+and the previous focus, staying pure) — or a `user-error`
 message string when the addressing refuses the target. The command then hands
 the list to `dl-umbriel-send-all`. Tests cover every addressing × target cell
 without a socket.
@@ -516,11 +544,14 @@ reports. A row action may visibly move focus or switch workspace before it acts
 
 All buffer prompts run in the command, before any request, from the held state,
 after the target has been captured from point.
-The global `C-c u w` (switch workspace) may run with no buffer and therefore no
-held workspaces; it then calls `dl-umbriel-refresh` and prompts from the
+The global `C-c u w` (switch workspace) prompts from held state only while the
+stream is open and workspaces are held. Otherwise (no buffer, a closed stream,
+or nothing held yet) it calls `dl-umbriel-refresh` and prompts from the
 reply's callback through `run-at-time 0`, so the minibuffer never opens inside
 a process filter; if a minibuffer is already active when the reply arrives it
-messages instead of prompting. (Agent choice within DEC-017's async-only rule.)
+messages instead of prompting; if the refresh still yields no workspaces it
+says so. (Agent choice within DEC-017's async-only rule.) `C-c u l` prompts at
+once: the layout list is static.
 
 <!-- doctrine:section sec-buffer -->
 ## The buffer
@@ -592,13 +623,24 @@ calls `magit-section-goto-successor` — the pair `magit-mode` uses for the same
 job (verified present in the installed `magit-section`). Identity is the
 section's ident: type plus value along the parent chain. A window that moved to
 another workspace has a new ident, so point falls back to a sibling — the
-related-section fallback `goto-successor` already provides.
+related-section fallback `goto-successor` already provides. `erase-buffer`
+resets every window's point and start, so repaint also records and restores
+`window-point` and `window-start` for each window showing the buffer, as
+`magit-mode`'s refresh does.
 
-**Keeping folds.** Folding survives a repaint without extra code: showing or
-hiding a section records its visibility in `magit-section-visibility-cache`
-keyed by ident (`magit-section-cache-visibility` defaults to t), and
-`magit-insert-section` consults that cache when it recreates the section
-(`magit-section-set-visibility-hook`, `magit-section.el:131,167,2010`).
+**Keeping folds.** Showing or hiding a section records its visibility in
+`magit-section-visibility-cache` keyed by ident
+(`magit-section-cache-visibility` defaults to t), and `magit-insert-section`
+consults that cache when it recreates the section
+(`magit-section-set-visibility-hook`, `magit-section.el:131,167,2010`). The
+cache only sets each section's `hidden` slot; the overlays that hide text are
+made by `magit-section-show` on the root, which repaint calls after inserting.
+Like `magit-refresh-buffer`, repaint also resets magit's highlight state and
+clears the modified flag.
+
+**Killing the buffer.** The kill hook closes the stream first, then cancels
+the repaint timer: closing announces a status change, which would re-arm a
+timer already cancelled.
 
 ### Keys in the buffer
 
@@ -650,7 +692,7 @@ and the first match wins. Frame identity is IDE-003.
 <!-- doctrine:section sec-keys -->
 ## Keys
 
-Implements DEC-024. No new `C-c` family key is claimed, so the `C-c <letter>`
+Implements DEC-024, as amended by DEC-026 (no strip-scroll keys). No new `C-c` family key is claimed, so the `C-c <letter>`
 allow-list and IMP-019 are untouched; `C-c L` stays `my-llm-map`.
 
 **Global, `my-umbriel-map` at `C-c u`** (`core/dl-keymap.el`; the commented
@@ -677,11 +719,14 @@ commands live in `dl-umbriel-buffer.el`; `dl-keymap.el` refers to them with
 |---|---|---|---|---|
 | `RET` | focus | | `M-<left>`, `<` | column move left |
 | `s` | switch to row's workspace | | `M-<right>`, `>` | column move right |
-| `m` | move window to workspace… | | `C-<left>`, `[` | layout scroll left |
-| `t` | toggle floating | | `C-<right>`, `]` | layout scroll right |
-| `c` | center | | `e` / `E` | cycle primary extent / back |
-| `k` | kill (confirms) | | `g` | refresh / reconnect |
-| `L` | set layout… | | `q` | `quit-window` |
+| `m` | move window to workspace… | | `e` / `E` | cycle primary extent / back |
+| `t` | toggle floating | | `g` | refresh / reconnect |
+| `c` | center | | `q` | `quit-window` |
+| `k` | kill (confirms) | | | |
+| `L` | set layout… | | | |
+
+The buffer has no strip-scroll keys (DEC-026): scrolling a strip acts on the
+viewport, not on the row at point; umbriel's own bindings scroll.
 
 The buffer map is a `defvar-keymap` with its bindings inline. The config's
 policy lint (`core/dl-policy-lint.el`, enforced by `just check` over `apps/`)
@@ -753,8 +798,10 @@ No change to `~/flakes/emacs/emacs.nix`: `magit-section` is a dependency of
 <!-- doctrine:section sec-verification -->
 ## Verification
 
-No compositor is reachable from the agent environment, so the automated layer
-uses fixtures and fakes, and the live check is manual on the host.
+The automated layer uses fixtures and fakes and never reaches a compositor.
+The session shell can reach the compositor, so read-only live probes run
+there; confined workers (quotient, dispatch) cannot. Mutating actions are
+checked live by the user on the host.
 
 **Fakes.** One helper in the client test file fakes `make-network-process`: it
 records the keyword arguments (so a test holds the `:filter` and `:sentinel`
