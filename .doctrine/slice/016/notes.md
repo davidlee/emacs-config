@@ -117,13 +117,13 @@ mutation checks, VA-1 and doctrine state.
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-11-04 · slice started; PHASE-01 completed, PHASE-02 next · deb8ab9
+fresh-as-of: 2026-11-04 · PHASE-02 completed, PHASE-03 next · fbcaf5d
 
 ### Produced
-design.md (locked, run rev 41) · RV-018 (design review; F-6/7/8/9/11/14 routed into plan criteria) · DEC-012..DEC-024 · CHR-010 · IDE-003 · plan.toml/plan.md (PHASE-01..06) · RV-019 (plan review, codex; done) · PHASE-01: apps/dl-umbriel.el (client), apps/dl-umbriel-focus.el, lisp/test/dl-umbriel{,-focus}-test.el · commits af416dc, 643f68a, deb8ab9
+design.md (locked, run rev 41) · RV-018 (design review; F-6/7/8/9/11/14 routed into plan criteria) · DEC-012..DEC-024 · CHR-010 · IDE-003 · plan.toml/plan.md (PHASE-01..06) · RV-019 (plan review, codex; done) · PHASE-01: apps/dl-umbriel.el (client), apps/dl-umbriel-focus.el, lisp/test/dl-umbriel{,-focus}-test.el · PHASE-02: stream/state/hook/waiter/refresh in apps/dl-umbriel.el, 31 tests · project quotient forms (df0b4b5) · commits af416dc, 643f68a, deb8ab9, fbcaf5d
 
 ### Learned
 E1–E4 in § Design triage · § Progress PHASE-01 (connect-error mapping re-observed; F-9 mutation check; `dl-umbriel-echo-failure` added beyond design) · compositor reachable from the in-session agent (user, 2026-11-04; Claude auto-memory) — read-only live probes are agent checks, mutating actions are the user's
 
 ### Open
-slice Risks + design § Verification say "no compositor reachable" — stale, fix at /reconcile · design § Files "provides" list lacks `dl-umbriel-echo-failure` — reconcile · `just check` red only from the user's uncommitted core/dl-keybind.el:125 remap (policy lint L2) — theirs to resolve · E4 stray `t` core/dl-keymap.el:50 (user's) · PHASE-05 EN-2: user's dl-keymap.el edits · upstream k:v window metadata (IDE-003)
+slice Risks + design § Verification say "no compositor reachable" — stale, fix at /reconcile · design § Files "provides" list lacks `dl-umbriel-echo-failure` — reconcile · `just check` red only from the user's uncommitted core/dl-keybind.el:125 remap (policy lint L2) — theirs to resolve · E4 stray `t` core/dl-keymap.el:50 (user's) · PHASE-05 EN-2: user's dl-keymap.el edits · upstream k:v window metadata (IDE-003) · PHASE-02 design drift for audit: see § Autonomy log (send-all, condition-case, detach-before-announce, data-less events, close-on-request failure) · CHANGELOG entry deferred to the first user-facing phase
