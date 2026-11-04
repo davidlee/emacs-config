@@ -979,6 +979,16 @@ is given or nil: a refusal may not depend on FIELDS (D-3)."
   "The strings COLLECTION offers, whether it holds strings or pairs."
   (all-completions "" collection))
 
+(defun dl-umbriel-buffer-test--metadata (collection key)
+  "What COLLECTION's completion metadata says under KEY.
+COLLECTION must be a completion-table function: vertico reads its
+`metadata' action and prefers it over `vertico-sort-function', which an
+alist or a plain list of strings cannot answer at all."
+  (unless (functionp collection)
+    (ert-fail (format "the prompt's collection is not a completion table: %S"
+                      collection)))
+  (alist-get key (funcall collection "" nil 'metadata)))
+
 (defun dl-umbriel-buffer-test--same-set-p (one other)
   "Non-nil when lists ONE and OTHER hold the same elements, in any order."
   (and (null (seq-difference one other))
@@ -1243,31 +1253,67 @@ our timers and passes foreign ones through."
       (should (dl-umbriel-buffer-test--mentions-p refusal "no workspace")))))
 
 (ert-deftest dl-umbriel-buffer/plan-active-workspace-addressing ()
-  "VT-1/EX-1: `active-workspace' switches, then acts, on one output."
+  "VH-1 Fix 1: `active-workspace' switches there, unless that is the
+focused workspace, in which case it only acts.  Switching to a workspace
+umbriel already holds active on its output toggles back to the previous
+one when the user sets `back_and_forth', so the layout would land on the
+wrong workspace."
   (let* ((workspaces (dl-umbriel-buffer-test--action-workspaces))
          (windows (dl-umbriel-buffer-test--action-windows))
+         (focused (nth 0 workspaces))
+         (other (nth 1 workspaces))
          (window (nth 0 windows))
          (its (dl-umbriel-model-window-workspace workspaces window))
          (spec (dl-umbriel-buffer-test--spec 'active-workspace
                                              "workspace-set-layout" 'layout))
          (fields '((layout . "master"))))
     (should its)
-    (should (equal (list (dl-umbriel-action
-                          "workspace-switch"
-                          (dl-umbriel-model-workspace-selector its))
-                         (dl-umbriel-action "workspace-set-layout" fields))
+    ;; Window 0 sits on the focused DP-1:1: act, do not switch.
+    (should (equal (alist-get 'id focused) (alist-get 'id its)))
+    (should (equal (list (dl-umbriel-action "workspace-set-layout" fields))
                    (dl-umbriel-buffer--plan spec (list :window window) fields
                                             workspaces)))
+    ;; A workspace row on another workspace of the same output switches.
     (should (equal (list (dl-umbriel-action
                           "workspace-switch"
-                          (dl-umbriel-model-workspace-selector (nth 1 workspaces)))
+                          (dl-umbriel-model-workspace-selector other))
                          (dl-umbriel-action "workspace-set-layout" fields))
-                   (dl-umbriel-buffer--plan spec
-                                            (list :workspace (nth 1 workspaces))
+                   (dl-umbriel-buffer--plan spec (list :workspace other)
                                             fields workspaces)))
     (let ((refusal (dl-umbriel-buffer-test--refused
                     spec (list :window (nth 2 windows)) fields workspaces)))
       (should (dl-umbriel-buffer-test--mentions-p refusal "no workspace")))))
+
+(ert-deftest dl-umbriel-buffer/plan-active-workspace-on-the-focused-row ()
+  "VH-1 Fix 1: a `:workspace' row of the focused workspace plans [ACT] alone."
+  (let* ((workspaces (dl-umbriel-buffer-test--action-workspaces))
+         (focused (dl-umbriel-buffer--focused-workspace workspaces))
+         (spec (dl-umbriel-buffer-test--spec 'active-workspace
+                                             "workspace-set-layout" 'layout))
+         (fields '((layout . "master"))))
+    (should focused)
+    (dolist (given (list fields nil))
+      (let ((plan (dl-umbriel-buffer--plan spec (list :workspace focused) given
+                                           workspaces)))
+        (should (equal (list (dl-umbriel-action "workspace-set-layout" given))
+                       plan))
+        (should-not (dl-umbriel-buffer-test--switches-p plan))))))
+
+(ert-deftest dl-umbriel-buffer/plan-workspace-addressing-switches-the-focused-row ()
+  "VH-1 Fix 1: `workspace' addressing is unchanged; it always switches,
+the focused workspace included (user ruling)."
+  (let* ((workspaces (dl-umbriel-buffer-test--action-workspaces))
+         (windows (dl-umbriel-buffer-test--action-windows))
+         (focused (nth 0 workspaces))
+         (spec (dl-umbriel-buffer-test--spec 'workspace "workspace-switch")))
+    (dolist (target (list (list :workspace focused)
+                          (list :window (nth 0 windows))))
+      (let ((plan (dl-umbriel-buffer--plan spec target nil workspaces)))
+        (should (equal (list (dl-umbriel-action
+                              "workspace-switch"
+                              (dl-umbriel-model-workspace-selector focused)))
+                       plan))
+        (should (dl-umbriel-buffer-test--switches-p plan))))))
 
 (ert-deftest dl-umbriel-buffer/plan-layout-refuses-a-foreign-output ()
   "VT-2/EX-2/RV-018 F-6: a layout off the pointer's output is refused.
@@ -1575,8 +1621,7 @@ A known PREVIOUS adds no `window-focus' step to any of them."
   "Prompts: `L' completes over the layouts and sends `(layout . CHOICE)'.
 `toggle' goes without a `cycle' field: the request holds the layout only."
   (let* ((workspaces (dl-umbriel-buffer-test--action-workspaces))
-         (windows (dl-umbriel-buffer-test--action-windows))
-         (its (dl-umbriel-model-window-workspace workspaces (nth 0 windows))))
+         (windows (dl-umbriel-buffer-test--action-windows)))
     (dl-umbriel-buffer-test--with-state
         (dl-umbriel-buffer-test--held windows workspaces)
       (let ((buffer (dl-umbriel-buffer-test--mode-buffer)))
@@ -1596,13 +1641,50 @@ A known PREVIOUS adds no `window-focus' step to any of them."
                   (should (dl-umbriel-buffer-test--same-set-p
                            (dl-umbriel-buffer-test--offered (nth 2 call))
                            dl-umbriel-model-layouts)))
+                ;; The window's workspace is the focused one: act, no switch.
                 (should (equal (list (dl-umbriel-action
-                                      "workspace-switch"
-                                      (dl-umbriel-model-workspace-selector its))
-                                     (dl-umbriel-action
                                       "workspace-set-layout"
                                       (list (cons 'layout choice))))
                                (car (car dl-umbriel-buffer-test--send-all-calls))))))))))))
+
+(ert-deftest dl-umbriel-buffer/prompts-keep-the-model-order ()
+  "VH-1 Fix 2: both prompt tables pin identity sorts and offer model order.
+vertico prefers a table's `display-sort-function' metadata over
+`vertico-sort-function', so prescient's recency sort would reorder a
+prompt unless the table declares identity for display and cycle."
+  (let ((workspaces (dl-umbriel-buffer-test--action-workspaces))
+        (windows (dl-umbriel-buffer-test--action-windows)))
+    (dl-umbriel-buffer-test--with-state
+        (dl-umbriel-buffer-test--held windows workspaces)
+      (let ((buffer (dl-umbriel-buffer-test--mode-buffer))
+            (cases (list (list 'my/umbriel-move-to-workspace
+                               (mapcar #'car
+                                       (dl-umbriel-model-workspace-choices
+                                        workspaces)))
+                         (list 'my/umbriel-set-layout
+                               dl-umbriel-model-layouts))))
+        (with-current-buffer buffer
+          (dl-umbriel-buffer--repaint)
+          (dl-umbriel-buffer-test--with-send-all
+            (dl-umbriel-buffer-test--with-prompts
+              (dolist (case cases)
+                (let ((command (nth 0 case))
+                      (expected (nth 1 case)))
+                  (setq dl-umbriel-buffer-test--prompts nil)
+                  (setq dl-umbriel-buffer-test--send-all-calls nil)
+                  (setq dl-umbriel-buffer-test--prompt-choice (car expected))
+                  (dl-umbriel-buffer-test--call-on-row command 'umbriel-window
+                                                       "w-dp1")
+                  (let ((call (car dl-umbriel-buffer-test--prompts)))
+                    (should (eq 'completing-read (car call)))
+                    (should (nth 3 call))
+                    (dolist (key '(display-sort-function cycle-sort-function))
+                      (should (eq 'identity
+                                  (dl-umbriel-buffer-test--metadata
+                                   (nth 2 call) key))))
+                    (should (equal expected
+                                   (dl-umbriel-buffer-test--offered
+                                    (nth 2 call))))))))))))))
 
 (ert-deftest dl-umbriel-buffer/refused-row-never-prompts ()
   "D-3: a refused row errors before prompting and before sending anything."
@@ -1783,9 +1865,10 @@ A known PREVIOUS adds no `window-focus' step to any of them."
                          (funcall callback '(:failure rejected "no such window")))))
               (dl-umbriel-buffer-test--with-refresh
                 (dl-umbriel-buffer-test--with-messages
-                  ;; `L' on a window row plans two steps.
+                  ;; `L' on a workspace row of another workspace plans two
+                  ;; steps: switch there, then act.
                   (dl-umbriel-buffer-test--call-on-row
-                   'my/umbriel-set-layout 'umbriel-window "w-dp1")
+                   'my/umbriel-set-layout 'umbriel-workspace "DP-1:2")
                   (should (= 1 (length sent)))
                   (should (equal "workspace-switch"
                                  (alist-get 'action (car sent))))

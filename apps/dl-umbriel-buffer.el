@@ -279,8 +279,11 @@ already delivered."
     "Row actions: COMMAND, umbriel ACTION, ADDRESSING and a PROMPT.
 ADDRESSING is `window' (the action takes the row's window id),
 `focused' (focus the row's window first, then act, then restore the
-focus the compositor held), `workspace' (switch to the row's
-workspace) or `active-workspace' (switch there, then act).  PROMPT,
+focus the compositor held), `workspace' (always switch to the row's
+workspace) or `active-workspace' (switch there, unless that is already
+the focused workspace, then act: switching to a workspace umbriel holds
+active on its output toggles back to the previous one under
+`back_and_forth').  PROMPT,
 when given, is `workspace', `layout' or `confirm-kill'; a prompting
 row prompts in its command, never in a reply.  Moving a window goes
 silently, so the plan's own focus steps are the only ones seen
@@ -346,13 +349,20 @@ other state (D-1).  A refusal is a string with no requests in it and
 depends on nothing but SPEC, TARGET and WORKSPACES, which is what lets
 a command refuse a row before it prompts (D-3).  A `focused' window
 row whose known previous focus is a different window plans one more
-`window-focus' at the end, putting that focus back (DEC-025)."
+`window-focus' at the end, putting that focus back (DEC-025).  An
+`active-workspace' row switches to its workspace unless that is the
+focused one, in which case it only acts: switching to a workspace
+umbriel already holds active toggles back under `back_and_forth'."
   (let* ((action (nth 1 spec))
          (addressing (nth 2 spec))
          (window (plist-get target :window))
          (its (and window
                    (dl-umbriel-model-window-workspace workspaces window)))
          (workspace (or (plist-get target :workspace) its))
+         (focused (dl-umbriel-buffer--focused-workspace workspaces))
+         (already (and workspace focused
+                       (equal (alist-get 'id workspace)
+                              (alist-get 'id focused))))
          (switch (and workspace
                       (dl-umbriel-action
                        "workspace-switch"
@@ -382,15 +392,31 @@ row whose known previous focus is a different window plans one more
        (cond ((not switch) "Window has no workspace")
              ((dl-umbriel-buffer--off-pointer-p workspace workspaces)
               "The layout acts on the output under the pointer, not here")
+             (already (list act))
              (t (list switch act))))
       (_ (error "Unknown addressing: %S" addressing)))))
 
+(defun dl-umbriel-buffer--ordered-table (candidates)
+  "A completion table over CANDIDATES that keeps their own order.
+vertico prefers a table's `display-sort-function' metadata over
+`vertico-sort-function', so declaring identity there keeps a recency
+sort (prescient) from reordering the prompt."
+  (lambda (string pred action)
+    (if (eq action 'metadata)
+        '(metadata (display-sort-function . identity)
+                   (cycle-sort-function . identity))
+      (complete-with-action action candidates string pred))))
+
 (defun dl-umbriel-buffer--workspace-fields ()
   "The selector fields of the held workspace the user picks.
-Empty input, which `completing-read' allows even when it requires a
-match, is a `user-error': nothing is sent."
+The prompt offers the choices in model order.  Empty input, which
+`completing-read' allows even when it requires a match, is a
+`user-error': nothing is sent."
   (let* ((choices (dl-umbriel-model-workspace-choices (dl-umbriel-workspaces)))
-         (workspace (alist-get (completing-read "Workspace: " choices nil t)
+         (workspace (alist-get (completing-read
+                                "Workspace: "
+                                (dl-umbriel-buffer--ordered-table choices)
+                                nil t)
                                choices nil nil #'equal)))
     (unless workspace
       (user-error "No workspace chosen"))
@@ -398,10 +424,12 @@ match, is a `user-error': nothing is sent."
 
 (defun dl-umbriel-buffer--layout-fields ()
   "The layout field the user picks, for the output under the pointer.
-Empty input is a `user-error', as for a workspace."
+The prompt offers the layouts in model order.  Empty input is a
+`user-error', as for a workspace."
   (let ((layout (completing-read
                  "Set the layout of the output under the pointer: "
-                 dl-umbriel-model-layouts nil t)))
+                 (dl-umbriel-buffer--ordered-table dl-umbriel-model-layouts)
+                 nil t)))
     (unless (member layout dl-umbriel-model-layouts)
       (user-error "No layout chosen"))
     (list (cons 'layout layout))))
