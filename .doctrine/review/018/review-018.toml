@@ -84,7 +84,7 @@ response = "sec-actions cites src/server/ipc.cpp:595: the reply follows the acti
 
 [[finding]]
 id = "F-4"
-status = "answered"
+status = "verified"
 severity = "blocker"
 title = "[quotient] Buffer row keys shadowed by meow"
 detail = "Reviewer: meow normal state binds 12 of 14 buffer keys and outranks the mode map; my-umbriel-map missing from the leader mirror. (quotient review profile, deepseek-flash; run 5d7180ea)"
@@ -110,9 +110,16 @@ disposition = "fix-now"
 route = "review"
 response = "Settled in prose by source evidence. Letter shadowing refuted: a special-mode descendant binds no letter to self-insert, so meow starts it in motion state (meow-helpers.el:238), and this config's motion state binds only arrows, shifted arrows, bang, slash, o and the leader (core/dl-keymap.el:823-835). Valid part integrated: sec-keys mirrors my-umbriel-map onto SPC u; DEC-024 consequence added."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = """
+Verified post-implementation (RV-020 audit, 2026-11-04): lisp/test/dl-umbriel-buffer-test.el dl-umbriel-buffer/buffer-mode-starts-in-motion-state and row-keys-are-not-shadowed-by-motion-state pass in host just check (405 tests); SPC u mirrors my-umbriel-map (PHASE-05 EX-6 subprocess key test).
+"""
+
 [[finding]]
 id = "F-5"
-status = "answered"
+status = "verified"
 severity = "blocker"
 title = "[quotient] Policy lint rejects the buffer-keymap write"
 detail = "Reviewer: my-policy-lint L2 forbids define-key/keymap-set outside family prefixes and my/bind into non my-*-map maps (core/dl-policy-lint.el:272-318). (quotient review profile, deepseek-flash; run 5d7180ea)"
@@ -137,6 +144,13 @@ note = "Route the severe finding for lock (reviewing gate)."
 disposition = "fix-now"
 route = "review"
 response = "Settled in prose. Verified against core/dl-policy-lint.el:272-318: sec-keys makes the buffer map a defvar-keymap with inline bindings, so no forbidden writer touches it. The existing policy-lint L2/L3 real-config tests in just check already reject a regression; DEC-024 consequence added."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = """
+Verified post-implementation (RV-020 audit, 2026-11-04): apps/dl-umbriel-buffer.el has no define-key/keymap-set/my/bind; the map is an inline defvar-keymap. Host just check: dl-policy-lint/l2-real-config's only violation is core/dl-keybind.el:125 (user's uncommitted <remap> <dabbrev-expand>), none from umbriel.
+"""
 
 [[finding]]
 id = "F-6"

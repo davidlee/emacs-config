@@ -1,0 +1,320 @@
+id    = 20
+slug  = "reconciliation-review-of-sl-016"
+title = "reconciliation review of SL-016"
+# no status — a review's status is DERIVED from its findings, so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "reconciliation"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+rounds_base = 0
+contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = """
+Conformance audit of SL-016 on main at 3843400: every notes.md § Autonomy log drift line checked against design.md, DEC-013/016/022/024/025/026 and apps/dl-umbriel*.el; slice conformance (0 undelivered, undeclared = doctrine records only); verify-vt all PASS; host just check 405 tests, only red the user's uncommitted dl-keybind.el lint; doctrine check gate unavailable (no just gate recipe); VH evidence incl. the waived PHASE-06 restart step; trap 6 collateral docs. 9 findings: 8 design-wrong to reconcile, 1 tolerated.
+"""
+
+[target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
+ref   = "SL-016"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "major"
+title = "Expected design § Actions/§ Keys to match the shipped row actions; observed text predating DEC-025, DEC-026 and the L skip-switch"
+detail = """
+Expected: design.md § Addressing, § One table, prompts and § Keys describe the row actions as built.
+Observed (design.md vs apps/dl-umbriel-buffer.el):
+- § Addressing table: `focused` window row = [window-focus ID, ACTION]. Code (DEC-025): [window-focus ROW, ACTION, window-focus PREVIOUS] when the held focused workspace's focused_window is known and differs.
+- § One table :452-453 still lists my/umbriel-scroll-left/right (DEC-026 removed them); :468-469 "non-silent form … -silent is not in v1" — code sends window-move-to-workspace-silent (buffer.el:272).
+- § Addressing `active-workspace` = [switch SELECTOR, ACTION] always. Code omits the switch when the target is the held focused workspace (commit 23973e7; cause: umbriel back_and_forth toggles a switch to the active workspace, actions.cpp:1597, workspace.cpp:3568).
+- § Keys buffer table :680-681 lists C-<left>/[ and C-<right>/] (removed by DEC-026; negative test scroll-keys-are-gone).
+Governance side: DEC-016 ("switches to it first"; consequence "-silent not in v1") and DEC-024 (key list) are amended by DEC-025/DEC-026 in their own text, but the L skip-switch has no decision record — it amends DEC-016's active-workspace rule.
+Evidence: doctrine show DEC-025, DEC-026; notes.md § Autonomy log PHASE-05 lines; VH-1 re-check passed by user.
+"""
+disposition = "design-wrong"
+response = """
+Code is right (user-decided DEC-025/026; L skip-switch fixes a VH-1 fault, user re-check passed). Reconcile: design.md § Addressing, § One table, prompts, § Keys direct edit; the L skip-switch amendment to DEC-016's active-workspace rule needs a governance record. See RV-020 Reconciliation Brief (F-1).
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+Code is right (user-decided DEC-025/026; L skip-switch fixes a VH-1 fault, user re-check passed). Reconcile: design.md § Addressing, § One table, prompts, § Keys direct edit; the L skip-switch amendment to DEC-016's active-workspace rule needs a governance record. See RV-020 Reconciliation Brief (F-1).
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "minor"
+title = "Expected DEC-013 label fields to match plan/design/code; observed DEC-013 still names window_count"
+detail = """
+Expected: accepted DEC-013 states the workspace label contents as built.
+Observed: DEC-013 choice: "workspace = name-or-index, layout, window_count, …". design.md § Display strings (:387-390), plan PHASE-03 EX-3 and apps/dl-umbriel-model.el:29,157-162 use the join's count and never read window_count (so the label agrees with the rows beneath it).
+Code follows design+plan, which deliberately reversed this. The decision record is the stale artefact.
+"""
+disposition = "design-wrong"
+response = """
+Plan and design reversed DEC-013's window_count deliberately; the record is stale. Reconcile via governance surface: amend DEC-013's choice to "window count from the join". Brief (F-2).
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+Plan and design reversed DEC-013's window_count deliberately; the record is stale. Reconcile via governance surface: amend DEC-013's choice to "window count from the join". Brief (F-2).
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "minor"
+title = "Expected design/scope to state compositor reachability correctly; observed 'No compositor is reachable from the agent environment'"
+detail = """
+Expected: Verification and Risks describe the environment as found.
+Observed: design.md § Verification :756 and slice-016.md Risks :179 say no compositor is reachable from the agent environment. In practice the session shell reached it: PHASE-01 VA-1 live read-only probe, PHASE-02 VA-1 live (17 windows, 6 workspaces). Only jailed/quotient workers lack the socket (notes § Implementation run).
+The design's isolation obligations (tests must pass with the socket set and unset) remain right and were verified (PHASE-06 EX-3 counting listener: zero accepts); only the premise is wrong.
+"""
+disposition = "design-wrong"
+response = """
+Premise wrong; obligations sound and met. Reconcile: design.md § Verification, slice-016.md Risks direct edit. Brief (F-3).
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+Premise wrong; obligations sound and met. Reconcile: design.md § Verification, slice-016.md Risks direct edit. Brief (F-3).
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "minor"
+title = "Expected design § Files/§ Functions/§ Planning signatures to match the code; observed three API differences"
+detail = """
+Expected: the provided-API tables match apps/.
+Observed:
+- § Files table (:63) omits public `dl-umbriel-echo-failure` (apps/dl-umbriel.el:438), added in PHASE-01 as the one failure echo shared by focus and row actions.
+- § Functions: `dl-umbriel-model-workspace-label WORKSPACE`; code `(workspace &optional count)` — COUNT is how the join's count reaches the label (model.el:157).
+- § Planning is pure: `dl-umbriel-buffer--plan SPEC TARGET FIELDS`; code takes a 4th arg WORKSPACES (buffer.el:341) so it can find the window's workspace, the focused output and (DEC-025) the previous focus while staying pure.
+All three are sound implementation choices recorded in § Autonomy log; the design text is stale.
+"""
+disposition = "design-wrong"
+response = """
+Signatures in code are deliberate. Reconcile: design.md § Files, § Functions, § Planning is pure direct edit. Brief (F-4).
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+Signatures in code are deliberate. Reconcile: design.md § Files, § Functions, § Planning is pure direct edit. Brief (F-4).
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-5"
+status = "verified"
+severity = "minor"
+title = "Expected design § Held state/§ Stream to match the client; observed five unstated or contradicted behaviours"
+detail = """
+Expected: design § Announcing change, § The stream connection, § Stream lines describe apps/dl-umbriel.el.
+Observed:
+- Waiters isolated with `condition-case`, not `with-demoted-errors` (design :272); with-demoted-errors returns the message string on a signal, which reads as "predicate held".
+- Refresh writes per family via `dl-umbriel--refresh-families` (dl-umbriel.el:399), not `dl-umbriel-send-all` (which surfaces only the last reply).
+- Rule not in design: detach (or subscribe) before announcing a status, so a hook/waiter that reconnects keeps its connection (PHASE-02 review, reentrancy bugs verified by probe).
+- § Stream lines table lacks the row: windows/workspaces event without `data` is skipped (counted), not taken as empty.
+- Close on request fails pending waiters with (:failure closed "stream closed"); design names no failure for that edge.
+"""
+disposition = "design-wrong"
+response = """
+Each behaviour is a reviewed fix with tests. Reconcile: design.md § Announcing change, § The stream connection, § Stream lines, § Held state (refresh) direct edit. Brief (F-5).
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+Each behaviour is a reviewed fix with tests. Reconcile: design.md § Announcing change, § The stream connection, § Stream lines, § Held state (refresh) direct edit. Brief (F-5).
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-6"
+status = "verified"
+severity = "minor"
+title = "Expected design § Repaint to describe what keeps point and folds; observed 'without extra code' claim is wrong"
+detail = """
+Expected: § Repaint accurately states what a repaint must restore.
+Observed:
+- "Keeping folds … without extra code" is false: the visibility cache sets `hidden`, but only `magit-section-show` on the root creates the overlays; repaint must also reset magit's highlight state and the modified flag, as magit-refresh-buffer does (PHASE-04, both reviews VERIFIED by probe).
+- Keeping point names goto-successor only; erase-buffer resets every window-point and window-start, so code restores both per window (magit-mode's pattern).
+- DEC-022's rationale "ids keep point on the same window" oversells it for drags between workspaces: the ident changes and point falls to a sibling (design :593-595 does say this; DEC-022 does not).
+- Unstated order: kill hook closes the stream before cancelling the repaint timer (close announces; the reverse order re-arms the timer).
+"""
+disposition = "design-wrong"
+response = """
+Design's fold claim was disproved by probe; code follows magit-refresh-buffer. Reconcile: design.md § Repaint direct edit; DEC-022 rationale qualified on the governance surface. Brief (F-6).
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+Design's fold claim was disproved by probe; code follows magit-refresh-buffer. Reconcile: design.md § Repaint direct edit; DEC-022 rationale qualified on the governance surface. Brief (F-6).
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-7"
+status = "verified"
+severity = "minor"
+title = "Expected design § Prompts to match prompt behaviour; observed trigger condition and display order differ"
+detail = """
+Expected: § Prompts never run inside a process callback describes the global C-c u w path and prompt ordering.
+Observed:
+- Design keys the refresh-then-prompt path on "no buffer"; code keys it on "stream open and workspaces held" — otherwise refresh → run-at-time 0 → prompt, or a message if still none.
+- Workspace and layout prompts use `dl-umbriel-buffer--ordered-table` (display-sort-function/cycle-sort-function = identity) so vertico-prescient's recency sort does not reorder them (VH-1 fault). Not in design.
+"""
+disposition = "design-wrong"
+response = """
+Both behaviours are tested and VH-1-passed. Reconcile: design.md § Prompts never run inside a process callback direct edit. Brief (F-7).
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+Both behaviours are tested and VH-1-passed. Reconcile: design.md § Prompts never run inside a process callback direct edit. Brief (F-7).
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-8"
+status = "verified"
+severity = "major"
+title = "Expected trap 6 docs to cite a live example; observed AGENTS.md:106 and docs/emacs/traps.md:105 cite deleted dl-umbriel--host-environment"
+detail = """
+Expected: project authority (AGENTS.md trap 6) and docs/emacs/traps.md § 6 point to code that exists.
+Observed: both cite `dl-umbriel--host-environment` (`lisp/dl-umbriel.el:12`) as the scrub pattern; SL-016 deleted it (design :643, the client now uses make-network-process, no subprocess). rg finds no remaining LD_LIBRARY_PATH scrub in the config or ~/dev/satan (only a test assertion in dl-umbriel-model-test.el:552). traps.md also says "a new query, a new action, a long-lived stream — must do the same", which no longer applies to umbriel.
+The trap itself still holds for any call-process/make-process. AGENTS.md is project authority (tier 2): the wording is the user's decision.
+"""
+disposition = "design-wrong"
+response = """
+SL-016's design (:643) removed the cited example but did not carry the change to the trap docs. Reconcile on the project-authority surface: AGENTS.md trap 6 and docs/emacs/traps.md § 6. Wording is the user's ruling (AGENTS.md is tier 2); recommended: describe the scrub inline without citing a function, drop the umbriel-specific "new query / long-lived stream" sentence. Brief (F-8).
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+SL-016's design (:643) removed the cited example but did not carry the change to the trap docs. Reconcile on the project-authority surface: AGENTS.md trap 6 and docs/emacs/traps.md § 6. Wording is the user's ruling (AGENTS.md is tier 2); recommended: describe the scrub inline without citing a function, drop the umbriel-specific "new query / long-lived stream" sentence. Brief (F-8).
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-9"
+status = "verified"
+severity = "minor"
+title = "Expected PHASE-06 VH-1 fully verified live; observed umbriel-restart step waived by the user"
+detail = """
+Expected: PHASE-06 VH-1 — emacsclient focus, and umbriel restart → header shows closed, g recovers.
+Observed: focus step passed. Restart step WAIVED by the user (restarting umbriel ends the Emacs session). Evidence for reconnect is indirect: g reconnect seen during code edits (buffer reload), and unit tests over the fake transport (sentinel → failed status, g reopens). The real sentinel path on a compositor exit, incl. eviction past 256 KiB, is unverified live.
+"""
+disposition = "tolerated"
+response = """
+User waived the restart step: restarting umbriel ends the Emacs session, so it cannot be run without losing the session under test. Residual coverage: fake-transport tests for sentinel → failed status → g reopens; g reconnect observed live after buffer reloads. Accepted risk: the real compositor-exit sentinel and 256 KiB eviction path are unverified live; recorded as a standing risk in the synthesis and docs/emacs/umbriel.md documents g as the only reconnect.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "tolerated"
+response = """
+User waived the restart step: restarting umbriel ends the Emacs session, so it cannot be run without losing the session under test. Residual coverage: fake-transport tests for sentinel → failed status → g reopens; g reconnect observed live after buffer reloads. Accepted risk: the real compositor-exit sentinel and 256 KiB eviction path are unverified live; recorded as a standing risk in the synthesis and docs/emacs/umbriel.md documents g as the only reconnect.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+# Findings are append-only `[[finding]]` tables, added by `review raise`.
+# Empty here at creation — a fresh review is Active, awaiting the raiser.
