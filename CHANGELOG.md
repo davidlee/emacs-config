@@ -39,6 +39,14 @@ workspace (`my/umbriel-switch-workspace`), `l` set the layout of the active
 workspace (`my/umbriel-set-active-layout`), `f` focus this frame's window
 (`dl-umbriel-focus-frame`). Loaded at startup from `init.el`.
 
+`dl-umbriel` moved from `lisp/` to `apps/` and is now a client of umbriel's
+IPC socket: it runs no `umbriel` subprocess, so the dev-shell
+`LD_LIBRARY_PATH` trap no longer applies and `dl-umbriel--host-environment` is
+gone. The `server-switch-hook` frame focus (now `apps/dl-umbriel-focus.el`)
+uses the same socket: one `windows` query, then `window-focus` on the match.
+`UMBRIEL_SOCKET` overrides the socket path. Design notes, failure kinds and
+addressing rules: `docs/emacs/umbriel.md`.
+
 ## 2026-11-04 — sixth Nix trap: the dev-shell `LD_LIBRARY_PATH`
 
 `docs/emacs/traps.md` gains § 6. direnv's `LD_LIBRARY_PATH` reaches child

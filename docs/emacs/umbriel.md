@@ -1,0 +1,266 @@
+---
+name: emacs-umbriel
+description: The umbriel compositor client — socket, stream, failure kinds, addressing, keys, and what Emacs does not own
+metadata:
+  type: reference
+  topic: emacs
+  status: canon
+  updated_at: e16b19c4
+  verified_at: e16b19c4
+---
+
+# umbriel client
+
+umbriel is the Wayland compositor this config runs under. Emacs talks to it
+over its IPC (inter-process communication) socket, from four files in
+`apps/`:
+
+| File | Owns |
+| --- | --- |
+| `dl-umbriel.el` | the socket client: requests, the event stream, held state, failure kinds |
+| `dl-umbriel-model.el` | pure functions: grouping, labels, workspace selectors |
+| `dl-umbriel-buffer.el` | the `*umbriel*` buffer, row actions, global commands |
+| `dl-umbriel-focus.el` | focusing the frame `emacsclient` reuses |
+
+Only `dl-umbriel.el` touches the socket. The buffer and the focus hook are its
+two consumers.
+
+Records cited below (`DEC-n` for a decision, `IDE-n` for a backlog idea) open
+with `doctrine show <id>`.
+
+## The socket
+
+Every message is one JSON object on one line. The server answers
+`{"ok": …}` or `{"err": "…"}`. There are three kinds of connection, all to the
+same socket:
+
+```
+                       umbriel socket
+ query      ──▶ {"cmd":"windows"}                 ──▶ {"ok":[…]}   closes
+ action     ──▶ {"cmd":"action","action":"…",…}   ──▶ {"ok":…}     closes
+ subscribe  ──▶ {"cmd":"subscribe","events":      ──▶ one snapshot per family,
+                 ["windows","workspaces"]}             then one per change; stays open
+```
+
+The path is resolved from the environment, as the `umbriel` CLI does:
+
+1. `UMBRIEL_SOCKET`, when set and non-empty (the override);
+2. otherwise `$XDG_RUNTIME_DIR/umbriel-$WAYLAND_DISPLAY.sock`.
+
+When neither resolves, the failure names the unset variables.
+
+### Reachability from the agent environment
+
+The agent environment can reach this socket from the session shell. Read-only
+probes (queries) are fine. Mutating actions (focus, kill, switch, layout) are
+the user's to take. Sandboxed (jailed) workers lack the socket. An earlier
+SL-016 premise, that no compositor was reachable from the agent environment,
+was wrong.
+
+### Why the socket, not the CLI
+
+- Nothing is executed. There is no missing `umbriel` binary, and a dev-shell
+  `LD_LIBRARY_PATH` cannot break a subprocess (see `docs/emacs/traps.md`).
+- Action fields are typed JSON, not command-line words.
+- Errors arrive parsed, as `{"err": …}`, not as an exit status.
+
+All requests are asynchronous: callers pass a callback and nothing blocks.
+
+## The snapshot rule
+
+Both families (`windows`, `workspaces`) arrive as full snapshots. Emacs
+replaces the held copy wholesale and never merges, so there is no drift to
+reconcile.
+
+```
+ compositor ──snapshot──▶ held state ──hook──▶ repaint timer (0.1 s) ──▶ *umbriel*
+                          (dl-umbriel.el)      coalesces bursts          redraws only while
+                                                                         a window shows it
+```
+
+- A repaint is scheduled 0.1 s after a change, so a burst becomes one redraw.
+  A buffer nobody displays is marked stale and redrawn when next shown. Point
+  and folds survive the redraw.
+- The stream ends when the compositor restarts, or when Emacs stops draining
+  it and the backlog passes 256 KiB (the compositor drops the connection).
+- Nothing reconnects by itself. A closed stream stays closed, so a stale view
+  is visible, not silent. The header line says which: `umbriel: stream open`,
+  `umbriel: stream never opened`, or the failure message. A count of skipped
+  lines (unparseable, an unrequested family, or an event with no data) is
+  appended when non-zero.
+- `g` in `*umbriel*` reconnects. With the stream open it only repaints.
+- Killing `*umbriel*` closes the stream.
+
+Actions do not edit the held state. After a successful action, Emacs waits for
+the stream to deliver the effect. With the stream closed it re-queries instead.
+
+## Failure kinds
+
+Every request ends as `(:ok VALUE)` or `(:failure KIND DETAIL)`. Echoed
+failures read `umbriel: KIND — DETAIL (remedy)`.
+
+| Kind | Meaning | Remedy |
+| --- | --- | --- |
+| `no-path` | the socket path cannot be resolved | set `UMBRIEL_SOCKET` |
+| `absent` | no socket at that path | is umbriel running in this session? |
+| `refused` | a socket, but nothing accepting (stale) | restart umbriel |
+| `closed` | the connection ended before a reply | retry; `g` in `*umbriel*` reconnects |
+| `rejected` | the compositor answered `{"err": …}` | the compositor refused the request; the detail has its text |
+| `malformed` | the reply was not a JSON object | unexpected reply; report upstream |
+
+A multi-step action stops at its first failure.
+
+## The `*umbriel*` buffer
+
+`M-x my/umbriel` (or `C-c u u`) opens it, creating the buffer and the stream
+on first use. It is a `magit-section` tree: one section per workspace, its
+windows beneath, and a final `Unassigned` section for windows that join no
+workspace. Sections fold as usual.
+
+Workspaces are ordered by output, then index. Tiled windows sort by column,
+row, tab index, then title, before floating ones. Every compositor-supplied
+string (app id, title, name) has newlines and tabs replaced by spaces, so a
+row is always one line. Example, with invented names:
+
+```
+HDMI-1 1 main scrolling 2 windows active focused
+  foot ~/src tile 0,1 active focused visible
+  firefox Docs float visible
+HDMI-1 2 scrolling 0 windows
+```
+
+- Window rows show app id, title, placement (`tile COLUMN,ROW`, bare `tile`
+  while the column is unplaced, `float`, `tab INDEX`), then each flag that is set: `active`, `focused`, `visible`,
+  `minimized`, `fullscreen`, `urgent`, `xwayland`.
+- Workspace rows show output, index, name (named workspaces only), layout, the
+  window count, then `active`, `focused`, `urgent`.
+- The window count is the number of windows joined under the workspace, not the
+  wire's `window_count`, so the label always matches the rows beneath it.
+- `active` and `focused` differ. `active` is seat-global (the window holding
+  the keyboard); `focused` is the workspace's remembered focus. A layer
+  surface or scratchpad holding the keyboard makes them disagree.
+- `visible` means: on the active workspace, not a hidden tab, not minimized.
+  It does not mean "on screen"; such a window may be scrolled out of view.
+
+### Keys
+
+In `*umbriel*`, on the row at point:
+
+| Key | Command | Action sent | Needs |
+| --- | --- | --- | --- |
+| `RET` | `my/umbriel-focus` | `window-focus` | window row |
+| `s` | `my/umbriel-switch` | `workspace-switch` | workspace or window row |
+| `m` | `my/umbriel-move-to-workspace` | `window-move-to-workspace-silent` | window row (\*); prompts for the workspace |
+| `t` | `my/umbriel-toggle-floating` | `window-toggle-floating` | window row |
+| `c` | `my/umbriel-center` | `window-center` | window row (\*) |
+| `e` / `E` | `my/umbriel-cycle-extent` / `-back` | `window-cycle-primary-extent[-back]` | window row (\*) |
+| `M-<left>` or `<` | `my/umbriel-column-left` | `column-move-left` | window row (\*) |
+| `M-<right>` or `>` | `my/umbriel-column-right` | `column-move-right` | window row (\*) |
+| `k` | `my/umbriel-kill` | `window-kill` | window row; asks to confirm |
+| `L` | `my/umbriel-set-layout` | `workspace-set-layout` | workspace or window row; prompts for the layout |
+| `g` | `my/umbriel-refresh` | none | reconnects or repaints |
+| `q` | `quit-window` | none | |
+
+(\*) On a workspace row these act on whatever window the compositor has
+focused, with no focus step. `RET`, `t` and `k` refuse a workspace row
+(`Not a window`).
+
+There are no scroll keys: strip scrolling is a viewport action, not an action
+on the row at point (DEC-026). Use umbriel's own bindings.
+
+Global keys, available everywhere under `C-c u` (also `SPC u` on the meow
+leader):
+
+| Key | Command | Does |
+| --- | --- | --- |
+| `C-c u u` | `my/umbriel` | open `*umbriel*` |
+| `C-c u w` | `my/umbriel-switch-workspace` | switch workspace, chosen with `completing-read` |
+| `C-c u l` | `my/umbriel-set-active-layout` | set the layout of the active workspace on the output under the pointer |
+| `C-c u f` | `dl-umbriel-focus-frame` | focus this frame (see below) |
+
+`C-c u w` prompts at once when the stream is open and workspaces are held.
+Otherwise it refreshes first and prompts when the reply lands. The workspace
+and layout prompts list in display order (workspaces by output, then index;
+layouts in a fixed order); recency sorting is switched off for them.
+
+## Addressing
+
+Two kinds of identifier, not interchangeable:
+
+- A **window** is addressed by its opaque `id`.
+- A **workspace** is addressed by a selector: its `name` when it is named
+  (even if the name is all digits), else its `index`, always with its
+  `output`. A window joins its workspace through the workspace's opaque `id`,
+  never through the selector.
+
+Some actions take a window id. Others act only on whatever the compositor has
+focused. The buffer makes "the row at point" mean what it says by planning the
+steps first. The row is captured before any prompt, and a refusal comes before
+the prompt, so a refused row never asks anything.
+
+| Addressing | Rows | Requests sent |
+| --- | --- | --- |
+| window id | `RET`, `t`, `k` | the action, with the row's window id |
+| focused | `c`, `e`, `E`, `M-<left>`, `M-<right>`, `m` | `window-focus` row, the action, then `window-focus` back |
+| workspace | `s` | `workspace-switch` to the row's workspace |
+| active workspace | `L` | `workspace-switch` first, unless already focused, then `workspace-set-layout` |
+
+- **Focus, act, restore.** For a focused-only action on a window that is not
+  the focused one, Emacs focuses it, acts, then refocuses the window the
+  focused workspace held before (normally this Emacs frame), when that is known
+  (DEC-025). Expect a brief flicker. The previous focus comes from held state
+  and can be stale if the buffer lags; a vanished window makes the restore
+  fail and the failure is echoed. A failed action stops the sequence, so no
+  restore is sent. Moving a window to a workspace uses the `-silent` action,
+  so focus does not follow it.
+- **Layout acts on the output under the pointer.** `workspace-set-layout`
+  changes the active workspace of that output. `L` refuses a row on any other
+  output. It switches to the row's workspace first only when that workspace is
+  not already the focused one: switching to the active workspace would toggle
+  back to the previous one under umbriel's `back_and_forth` setting.
+- **Refusals.** A heading, an empty buffer or an entry no longer held gives
+  `No umbriel row at point`. A window with no workspace cannot be switched to.
+
+### `window-kill` kills the owning process
+
+`k` sends `window-kill`, which terminates the process that owns the window, not
+just the window. It asks first, naming the row and the pid. It refuses at once,
+before any prompt, if the window is this Emacs; use `delete-frame` there.
+
+## Frame focus
+
+Wayland raises a window only for a client holding an activation token (a
+one-time permission the compositor hands out). `emacsclient` brings none, so
+when it reuses a frame the server's `select-frame-set-input-focus` can leave
+that frame behind the terminal. Only the compositor can focus it.
+
+`dl-umbriel-focus-frame` runs on `server-switch-hook` and on `C-c u f`, for
+`pgtk` frames only:
+
+```
+ server-switch-hook ──▶ query "windows" ──▶ pick window by (this pid, frame title)
+                                        ──▶ action "window-focus" <id>
+```
+
+It makes two one-off requests and does not use the held stream, so it works with
+no `*umbriel*` buffer. A frame with no match is silent; a failure is echoed.
+
+### Frame identity limits
+
+The match is on pid and title. Two frames showing the same buffer share a
+title, so the first match wins and the other frame may not be the one focused.
+A reliable fix, giving each frame a unique token title through a creation
+handshake, is recorded as IDE-003 (a backlog idea; `doctrine show IDE-003`).
+
+## Emacs holds no layout authority
+
+Emacs shows what the compositor reports and sends requests. It keeps no layout
+state of its own and applies no effect locally. Whether a request had an effect
+is known only when the next snapshot says so.
+
+## Records
+
+- DEC-016: row actions address by id or selector; focus first where an action
+  takes only the focused window.
+- DEC-024: key choices. DEC-025: restore previous focus. DEC-026: scroll
+  actions dropped.
