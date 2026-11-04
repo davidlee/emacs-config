@@ -916,6 +916,18 @@ would see the hook arm a fresh timer; cancelling afterwards leaves none."
         (dl-umbriel-buffer-test--window :id "w-loose" :workspace "DP-9:9"
                                         :app_id "firefox" :title "Docs")))
 
+(defun dl-umbriel-buffer-test--action-workspaces-focusing (id)
+  "The action workspaces, the focused one's `focused_window' set to ID.
+ID is stored as given: a window id, \"\" or nil.  The plain action
+workspaces carry no `focused_window' at all, which DEC-025 reads as
+unknown."
+  (mapcar (lambda (workspace)
+            (if (alist-get 'focused workspace)
+                (cons (cons 'focused_window id)
+                      (assq-delete-all 'focused_window workspace))
+              workspace))
+          (dl-umbriel-buffer-test--action-workspaces)))
+
 (defconst dl-umbriel-buffer-test--action-table
   '((my/umbriel-focus "window-focus" window)
     (my/umbriel-toggle-floating "window-toggle-floating" window)
@@ -927,10 +939,13 @@ would see the hook arm a fresh timer; cancelling afterwards leaves none."
     (my/umbriel-column-right "column-move-right" focused)
     (my/umbriel-scroll-left "layout-scroll-left" focused)
     (my/umbriel-scroll-right "layout-scroll-right" focused)
-    (my/umbriel-move-to-workspace "window-move-to-workspace" focused workspace)
+    (my/umbriel-move-to-workspace "window-move-to-workspace-silent" focused
+                                  workspace)
     (my/umbriel-switch "workspace-switch" workspace)
     (my/umbriel-set-layout "workspace-set-layout" active-workspace layout))
-  "The design's action table, as this file expects it to be held.")
+  "The design's action table, as this file expects it to be held.
+DEC-025: moving a window to a workspace goes silently, so the plan's
+own focus steps are the only ones the user sees.")
 
 ;;;; actions: helpers
 
@@ -1291,6 +1306,128 @@ The refusal is a string with no requests in it -- never a partial plan."
                result "layout acts on the output under the pointer"))
       (should-not (dl-umbriel-buffer-test--switches-p result)))))
 
+(ert-deftest dl-umbriel-buffer/plan-restores-focus-after-acting ()
+  "DEC-025: a `focused' plan on a window row ends by restoring PREVIOUS.
+PREVIOUS is the focused workspace's `focused_window'; FIELDS belong to
+the action, never to the restore, and the loose window restores too."
+  (let* ((workspaces (dl-umbriel-buffer-test--action-workspaces-focusing
+                      "w-dp2"))
+         (windows (dl-umbriel-buffer-test--action-windows))
+         (spec (dl-umbriel-buffer-test--spec 'focused "window-center"))
+         (fields '((step . 1)))
+         (focus (lambda (id)
+                  (dl-umbriel-action "window-focus"
+                                     (list (cons 'window id))))))
+    (dolist (given (list fields nil))
+      (should (equal (list (funcall focus "w-dp1")
+                           (dl-umbriel-action "window-center" given)
+                           (funcall focus "w-dp2"))
+                     (dl-umbriel-buffer--plan spec (list :window (nth 0 windows))
+                                              given workspaces))))
+    (dolist (given (list fields nil))
+      (should (equal (list (funcall focus "w-loose")
+                           (dl-umbriel-action "window-center" given)
+                           (funcall focus "w-dp2"))
+                     (dl-umbriel-buffer--plan spec (list :window (nth 2 windows))
+                                              given workspaces))))))
+
+(ert-deftest dl-umbriel-buffer/plan-no-restore-when-already-focused ()
+  "DEC-025: PREVIOUS equal to the row's window id plans no restore step."
+  (let* ((workspaces (dl-umbriel-buffer-test--action-workspaces-focusing
+                      "w-dp1"))
+         (windows (dl-umbriel-buffer-test--action-windows))
+         (spec (dl-umbriel-buffer-test--spec 'focused "window-center"))
+         (fields '((step . 1))))
+    (should (equal (list (dl-umbriel-action "window-focus"
+                                            '((window . "w-dp1")))
+                         (dl-umbriel-action "window-center" fields))
+                   (dl-umbriel-buffer--plan spec (list :window (nth 0 windows))
+                                            fields workspaces)))
+    (should (equal (list (dl-umbriel-action "window-focus" '((window . "w-dp1")))
+                         (dl-umbriel-action "window-center" nil))
+                   (dl-umbriel-buffer--plan spec (list :window (nth 0 windows))
+                                            nil workspaces)))))
+
+(ert-deftest dl-umbriel-buffer/plan-no-restore-when-previous-unknown ()
+  "DEC-025: an unknown PREVIOUS plans focus-then-act and no restore.
+Unknown is: `focused_window' \"\", nil or absent, no focused workspace,
+and more than one focused workspace."
+  (let* ((windows (dl-umbriel-buffer-test--action-windows))
+         (spec (dl-umbriel-buffer-test--spec 'focused "window-center"))
+         (fields '((step . 1)))
+         (unfocused
+          (mapcar (lambda (workspace)
+                    (setf (alist-get 'focused workspace) nil)
+                    workspace)
+                  (dl-umbriel-buffer-test--action-workspaces-focusing "w-dp2")))
+         (two-focused
+          (let ((both (dl-umbriel-buffer-test--action-workspaces-focusing
+                       "w-dp2")))
+            (setf (alist-get 'focused (nth 1 both)) t)
+            both))
+         (cases (list (dl-umbriel-buffer-test--action-workspaces-focusing "")
+                      (dl-umbriel-buffer-test--action-workspaces-focusing nil)
+                      (dl-umbriel-buffer-test--action-workspaces)
+                      unfocused
+                      two-focused)))
+    (should (= 2 (seq-count (lambda (held) (alist-get 'focused held))
+                            two-focused)))
+    (should-not (seq-some (lambda (held) (alist-get 'focused held)) unfocused))
+    (dolist (workspaces cases)
+      (dolist (target (list (list :window (nth 0 windows))
+                            (list :window (nth 2 windows))))
+        (let* ((id (alist-get 'id (plist-get target :window)))
+               (restore (dl-umbriel-action "window-focus"
+                                           (list (cons 'window "w-dp2")))))
+          (let ((plan (dl-umbriel-buffer--plan spec target fields workspaces)))
+            (should (equal (list (dl-umbriel-action "window-focus"
+                                                    (list (cons 'window id)))
+                                 (dl-umbriel-action "window-center" fields))
+                           plan))
+            (should-not (member restore plan))))))))
+
+(ert-deftest dl-umbriel-buffer/plan-no-restore-for-a-workspace-row ()
+  "DEC-025: `focused' on a workspace row is [ACTION], restore or not."
+  (let* ((workspaces (dl-umbriel-buffer-test--action-workspaces-focusing
+                      "w-dp2"))
+         (spec (dl-umbriel-buffer-test--spec 'focused "window-center"))
+         (fields '((step . 1))))
+    (dolist (workspace workspaces)
+      (dolist (given (list nil fields))
+        (should (equal (list (dl-umbriel-action "window-center" given))
+                       (dl-umbriel-buffer--plan spec (list :workspace workspace)
+                                                given workspaces)))))))
+
+(ert-deftest dl-umbriel-buffer/plan-other-addressing-never-restores ()
+  "DEC-025: `window', `workspace' and `active-workspace' plan as before.
+A known PREVIOUS adds no `window-focus' step to any of them."
+  (let* ((plain (dl-umbriel-buffer-test--action-workspaces))
+         (restoring (dl-umbriel-buffer-test--action-workspaces-focusing
+                     "w-dp2"))
+         (windows (dl-umbriel-buffer-test--action-windows))
+         (targets (list (list :window (nth 0 windows))
+                        (list :workspace (nth 0 plain))
+                        (list :workspace (nth 1 plain))))
+         (fields '((step . 1)))
+         (restores-p (lambda (plan)
+                       (seq-some (lambda (request)
+                                   (and (equal "window-focus"
+                                               (alist-get 'action request))
+                                        (equal "w-dp2"
+                                               (alist-get 'window request))))
+                                 plan))))
+    (dolist (addressing '(window workspace active-workspace))
+      (let ((spec (dl-umbriel-buffer-test--spec addressing
+                                                "window-center")))
+        (dolist (target targets)
+          (dolist (given (list nil fields))
+            (let ((with (dl-umbriel-buffer--plan spec target given restoring))
+                  (without (dl-umbriel-buffer--plan spec target given plain)))
+              (should (equal without with))
+              ;; A refusal is a string, and no step of it restores anything.
+              (when (listp with)
+                (should-not (funcall restores-p with))))))))))
+
 ;;;; actions: kill (VT-2, EX-3, F-19, D-4)
 
 (ert-deftest dl-umbriel-buffer/kill-refuses-emacs-own-process ()
@@ -1430,7 +1567,7 @@ The refusal is a string with no requests in it -- never a partial plan."
                 (should (equal (list (dl-umbriel-action "window-focus"
                                                         '((window . "w-dp1")))
                                      (dl-umbriel-action
-                                      "window-move-to-workspace"
+                                      "window-move-to-workspace-silent"
                                       (dl-umbriel-model-workspace-selector chosen)))
                                (car (car dl-umbriel-buffer-test--send-all-calls))))))))))))
 
@@ -1656,6 +1793,94 @@ The refusal is a string with no requests in it -- never a partial plan."
                                         '(:failure rejected "no such window")))
                                  dl-umbriel-buffer-test--messages))
                   (should-not dl-umbriel-buffer-test--refreshes))))))))))
+
+(ert-deftest dl-umbriel-buffer/completion-sends-the-restore-last ()
+  "DEC-025/EX-7: focus, act, restore -- three requests, in that order.
+Each one leaves only after the previous replied successfully."
+  (let ((workspaces (dl-umbriel-buffer-test--action-workspaces-focusing "w-dp2"))
+        (windows (dl-umbriel-buffer-test--action-windows))
+        (sent nil))
+    (dl-umbriel-buffer-test--with-state
+        (dl-umbriel-buffer-test--held windows workspaces)
+      (let ((buffer (dl-umbriel-buffer-test--mode-buffer)))
+        (with-current-buffer buffer
+          (dl-umbriel-buffer--repaint)
+          (cl-letf (((symbol-function 'dl-umbriel-send)
+                     (lambda (request callback)
+                       (push request sent)
+                       (funcall callback '(:ok nil)))))
+            (dl-umbriel-buffer-test--with-refresh
+              (dl-umbriel-buffer-test--with-messages
+                (dl-umbriel-buffer-test--call-on-row 'my/umbriel-center
+                                                     'umbriel-window "w-dp1")
+                (should (equal (list (dl-umbriel-action
+                                      "window-focus" '((window . "w-dp1")))
+                                     (dl-umbriel-action "window-center" nil)
+                                     (dl-umbriel-action
+                                      "window-focus" '((window . "w-dp2"))))
+                               (reverse sent)))
+                (should-not dl-umbriel-buffer-test--messages)
+                (should-not dl-umbriel-buffer-test--refreshes)))))))))
+
+(ert-deftest dl-umbriel-buffer/completion-a-failed-action-skips-the-restore ()
+  "DEC-025/EX-7: a failed action stops the plan; the restore is never sent."
+  (let ((workspaces (dl-umbriel-buffer-test--action-workspaces-focusing "w-dp2"))
+        (windows (dl-umbriel-buffer-test--action-windows))
+        (failure '(:failure rejected "no such window"))
+        (sent nil))
+    (dl-umbriel-buffer-test--with-state
+        (dl-umbriel-buffer-test--held windows workspaces)
+      (let ((buffer (dl-umbriel-buffer-test--mode-buffer)))
+        (with-current-buffer buffer
+          (dl-umbriel-buffer--repaint)
+          (cl-letf (((symbol-function 'dl-umbriel-send)
+                     (lambda (request callback)
+                       (push request sent)
+                       (funcall callback (if (= 2 (length sent))
+                                             failure
+                                           '(:ok nil))))))
+            (dl-umbriel-buffer-test--with-refresh
+              (dl-umbriel-buffer-test--with-messages
+                (dl-umbriel-buffer-test--call-on-row 'my/umbriel-center
+                                                     'umbriel-window "w-dp1")
+                (should (equal (list (dl-umbriel-action
+                                      "window-focus" '((window . "w-dp1")))
+                                     (dl-umbriel-action "window-center" nil))
+                               (reverse sent)))
+                (should (equal (list (dl-umbriel-failure-message failure))
+                               dl-umbriel-buffer-test--messages))
+                (should-not dl-umbriel-buffer-test--refreshes)))))))))
+
+(ert-deftest dl-umbriel-buffer/completion-echoes-a-failed-restore ()
+  "DEC-025/EX-7: the restore is sent last; its failure echoes like any other."
+  (let ((workspaces (dl-umbriel-buffer-test--action-workspaces-focusing "w-dp2"))
+        (windows (dl-umbriel-buffer-test--action-windows))
+        (failure '(:failure closed "umbriel went away"))
+        (sent nil))
+    (dl-umbriel-buffer-test--with-state
+        (dl-umbriel-buffer-test--held windows workspaces)
+      (let ((buffer (dl-umbriel-buffer-test--mode-buffer)))
+        (with-current-buffer buffer
+          (dl-umbriel-buffer--repaint)
+          (cl-letf (((symbol-function 'dl-umbriel-send)
+                     (lambda (request callback)
+                       (push request sent)
+                       (funcall callback (if (= 3 (length sent))
+                                             failure
+                                           '(:ok nil))))))
+            (dl-umbriel-buffer-test--with-refresh
+              (dl-umbriel-buffer-test--with-messages
+                (dl-umbriel-buffer-test--call-on-row 'my/umbriel-center
+                                                     'umbriel-window "w-dp1")
+                (should (equal (list (dl-umbriel-action
+                                      "window-focus" '((window . "w-dp1")))
+                                     (dl-umbriel-action "window-center" nil)
+                                     (dl-umbriel-action
+                                      "window-focus" '((window . "w-dp2"))))
+                               (reverse sent)))
+                (should (equal (list (dl-umbriel-failure-message failure))
+                               dl-umbriel-buffer-test--messages))
+                (should-not dl-umbriel-buffer-test--refreshes)))))))))
 
 (ert-deftest dl-umbriel-buffer/row-action-writes-no-held-state ()
   "VT-5/DEC-021: neither the command nor its callback writes held state."

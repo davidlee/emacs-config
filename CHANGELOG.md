@@ -25,8 +25,11 @@ process, and refuses this Emacs), `L` set the layout (prompts; refused unless
 the row's workspace is on the output under the pointer), `M-<left>`/`<` and
 `M-<right>`/`>` move the column, `C-<left>`/`[` and `C-<right>`/`]` scroll
 the layout, `e`/`E` cycle the primary extent forward/back, `q` quit. Actions
-that only act on the focused window focus the row's window first, and a
-workspace action switches to that workspace first, so focus may visibly move.
+that only act on the focused window (`c`, `e`/`E`, column moves, layout
+scrolls, `m`) focus the row's window first, act, then focus the window that
+had focus before (normally this Emacs), so focus flickers but comes back;
+`m` moves the window silently, without following it. A workspace action
+switches to that workspace first, so focus may visibly move.
 Failures are echoed; success is silent.
 
 Global keys under `C-c u` (and `SPC u`): `u` the buffer, `w` switch

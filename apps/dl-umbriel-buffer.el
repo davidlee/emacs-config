@@ -271,18 +271,20 @@ already delivered."
       (my/umbriel-column-right "column-move-right" focused)
       (my/umbriel-scroll-left "layout-scroll-left" focused)
       (my/umbriel-scroll-right "layout-scroll-right" focused)
-      (my/umbriel-move-to-workspace "window-move-to-workspace" focused
-                                    workspace)
+      (my/umbriel-move-to-workspace "window-move-to-workspace-silent"
+                                    focused workspace)
       (my/umbriel-switch "workspace-switch" workspace)
       (my/umbriel-set-layout "workspace-set-layout" active-workspace
                              layout))
     "Row actions: COMMAND, umbriel ACTION, ADDRESSING and a PROMPT.
 ADDRESSING is `window' (the action takes the row's window id),
-`focused' (focus the row's window first, then act), `workspace'
-(switch to the row's workspace) or `active-workspace' (switch there,
-then act).  PROMPT, when given, is `workspace', `layout' or
-`confirm-kill'; a prompting row prompts in its command, never in a
-reply."))
+`focused' (focus the row's window first, then act, then restore the
+focus the compositor held), `workspace' (switch to the row's
+workspace) or `active-workspace' (switch there, then act).  PROMPT,
+when given, is `workspace', `layout' or `confirm-kill'; a prompting
+row prompts in its command, never in a reply.  Moving a window goes
+silently, so the plan's own focus steps are the only ones seen
+(DEC-025)."))
 
 (defun dl-umbriel-buffer--target ()
   "The held entry the row at point addresses, as a one-pair plist.
@@ -306,17 +308,34 @@ entry here is what keeps a later prompt from redirecting the action."
          (user-error "No umbriel row at point")))
       (_ (user-error "No umbriel row at point")))))
 
-(defun dl-umbriel-buffer--off-pointer-p (workspace workspaces)
-  "Non-nil unless WORKSPACE is on the output under the pointer.
-That is the output of the `focused' workspace in WORKSPACES, which
-umbriel marks for at most one workspace.  With none focused, or with
-more than one, there is no answer, and refusing is the conservative
-reading of F-6 (D-2, R-1)."
+(defun dl-umbriel-buffer--focused-workspace (workspaces)
+  "The one workspace in WORKSPACES umbriel marks focused, or nil.
+umbriel marks at most one; with none focused, or with more than one,
+there is no answer, and nil is how callers read that (D-2, R-1)."
   (let ((focused (seq-filter (lambda (held) (alist-get 'focused held))
                              workspaces)))
-    (not (and (= 1 (length focused))
-              (equal (alist-get 'output workspace)
-                     (alist-get 'output (car focused)))))))
+    (when (= 1 (length focused))
+      (car focused))))
+
+(defun dl-umbriel-buffer--off-pointer-p (workspace workspaces)
+  "Non-nil unless WORKSPACE is on the output under the pointer.
+That is the output of the `focused' workspace in WORKSPACES.  With
+none focused, or with more than one, there is no answer, and refusing
+is the conservative reading of F-6 (D-2, R-1)."
+  (if-let* ((focused (dl-umbriel-buffer--focused-workspace workspaces)))
+      (not (equal (alist-get 'output workspace)
+                  (alist-get 'output focused)))
+    t))
+
+(defun dl-umbriel-buffer--previous-focus (workspaces)
+  "The window id a `focused' plan restores afterwards, or nil.
+That is the `focused_window' of the focused workspace in WORKSPACES,
+which umbriel sends as \"\" when no window is focused (DEC-025).  A
+workspace that is not known, or a `focused_window' that is absent, nil
+or empty, leaves the focus unknown."
+  (when-let* ((focused (dl-umbriel-buffer--focused-workspace workspaces))
+              (id (alist-get 'focused_window focused)))
+    (and (stringp id) (not (string-empty-p id)) id)))
 
 (defun dl-umbriel-buffer--plan (spec target fields workspaces)
   "The requests SPEC plans for TARGET, or a refusal message string.
@@ -325,7 +344,9 @@ SPEC is a row of `dl-umbriel-buffer-actions', TARGET the plist
 fields or nil, and WORKSPACES the held workspaces.  Pure: it reads no
 other state (D-1).  A refusal is a string with no requests in it and
 depends on nothing but SPEC, TARGET and WORKSPACES, which is what lets
-a command refuse a row before it prompts (D-3)."
+a command refuse a row before it prompts (D-3).  A `focused' window
+row whose known previous focus is a different window plans one more
+`window-focus' at the end, putting that focus back (DEC-025)."
   (let* ((action (nth 1 spec))
          (addressing (nth 2 spec))
          (window (plist-get target :window))
@@ -345,10 +366,15 @@ a command refuse a row before it prompts (D-3)."
          "Not a window"))
       ('focused
        (if window
-           (list (dl-umbriel-action
-                  "window-focus"
-                  (list (cons 'window (alist-get 'id window))))
-                 act)
+           (let* ((id (alist-get 'id window))
+                  (previous (dl-umbriel-buffer--previous-focus workspaces))
+                  (focus (dl-umbriel-action "window-focus"
+                                            (list (cons 'window id)))))
+             (if (and previous (not (equal previous id)))
+                 (list focus act
+                       (dl-umbriel-action
+                        "window-focus" (list (cons 'window previous))))
+               (list focus act)))
          (list act)))
       ('workspace
        (if switch (list switch) "Window has no workspace"))
