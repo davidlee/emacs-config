@@ -102,6 +102,7 @@ mutation checks, VA-1 and doctrine state.
 - PHASE-05 start (2026-11-04, user present): user removed-by-request the stray `t` in core/dl-keymap.el:50, so the file is clean (EN-2 satisfied). PHASE-04 VA-2: user loaded dl-umbriel-buffer and reports it renders; live tracking/folds/reconnect not yet checked, folded into PHASE-05 VH-1 runsheet.
 - PHASE-05 VH-1 (user report, 2026-11-04): mostly pass. Focus restore (DEC-025) robust and preferred; flicker fine, glitchy only when the workspace changes. C-c u w works. Faults: `L` always targets workspace 2; `s` on a row of the already-active workspace jumps to the previous one; workspace prompt ordered by recency (prescient), not by number. Cause of `s` (verified): user's umbriel config `back_and_forth = true` (~/.config/umbriel/layout.toml:21; umbriel docs/user/workspaces.md:145) — user: don't work around it for `s`. `L` inferred same cause (its plan switches first). umbriel restart not testable without ending Emacs; `g` reconnect seen during code edits. Visual design → IMP-030 (out of scope).
 - PHASE-05 VH-1 re-check (user, 2026-11-04): "VH1 pass" after 23973e7/acb49c7 (L on focused workspace, prompt order, scroll keys removed). PHASE-05 completed.
+- PHASE-06 VA-1 / EX-3 (RV-018 F-14, host, 2026-11-04 20:50): scratch listener `count.py` (Python AF_UNIX, counts accepts to a file) on a scratchpad socket. Positive controls: a raw Python connect → 1; `UMBRIEL_SOCKET=<sock> emacs -Q --batch -L apps -l dl-umbriel` + `dl-umbriel-send (dl-umbriel-query "windows")` → 2 (client reached it; `(:failure closed …)`). Run 1: `UMBRIEL_SOCKET=<sock> just check` (WAYLAND_DISPLAY/XDG_RUNTIME_DIR also set) → 405 tests, 1 unexpected, 2 skipped; count still 2 (zero accepts). Run 2: `env -u UMBRIEL_SOCKET -u WAYLAND_DISPLAY -u XDG_RUNTIME_DIR just check` → 405 tests, 1 unexpected, 2 skipped. Sole red both runs: `dl-policy-lint/l2-real-config` = `core/dl-keybind.el:125` `<remap> <dabbrev-expand>` (user's uncommitted edit; accepted baseline). Pass.
 
 ## Autonomy log
 
@@ -143,6 +144,9 @@ mutation checks, VA-1 and doctrine state.
 - PHASE-05 · VH-1 fault `L`: `active-workspace` plan omits `workspace-switch` when the target is the held focused workspace (id match with `--focused-workspace`; off-pointer refusal already pins the output). Cause verified in umbriel source: `actionWorkspace` → `WorkspaceGroup::select` returns to `m_previous` when the target is already active and `back_and_forth` (actions.cpp:1597, workspace.cpp:3568); `workspace-set-layout` acts on the active workspace (actions.cpp:1658). `s` unchanged (user ruling) · decided; drift: DEC-016 "switches to it first" and design.md § Addressing — audit
 - PHASE-05 · VH-1 fault prompt order: workspace and layout prompts use `--ordered-table` (metadata `display-sort-function`/`cycle-sort-function` = `identity`); vertico prefers metadata over `vertico-sort-function` where prescient sits (vertico.el:221-225; `vertico-prescient-override-sorting` nil, unset in config). No completion config touched · decided
 - PHASE-05 · DEC-026 (user): scroll row actions and C-<left>/[/C-<right>/] removed from table and buffer map; negative test `scroll-keys-are-gone`; CHANGELOG entry updated · decided; drift: design.md § Keys table, DEC-024 key list, VH-1 runsheet step 10 — audit
+- PHASE-06 · doc frontmatter `updated_at`/`verified_at` = `e16b19c4`, the HEAD the doc was checked against (convention from efe4054: short SHA of the asserting commit) · decided
+- PHASE-06 · doc describes the code where design differs (DEC-025 restore, silent move, `L` skip-switch, no scroll keys, display-order prompts); compositor-side claims (256 KiB drop, `active`/`focused`/`visible` semantics, `window-kill` kills the process) kept from design § research, not code-verifiable · decided
+- PHASE-06 · AGENTS.md trap 6 and docs/emacs/traps.md:105 still cite the deleted `dl-umbriel--host-environment` (`lisp/dl-umbriel.el:12`) as the scrub pattern; left for /reconcile (AGENTS.md is project authority) · deferred — audit
 
 ### pi passes (PHASE-02)
 
@@ -198,6 +202,13 @@ pi misses: the timer stubs failed on any `cancel-timer`, so the full suite (auto
 | DEC-026 red+green | implement | $0.012 | 168/168; also pruned scroll keys from the motion-shadow test's list. Mutant (rebind `[`) killed |
 
 pi misses: implementation trusted `completing-read`'s REQUIRE-MATCH to exclude empty input. Test writer fed a workspace label to the layout prompt in one loop test (masked until the empty-input guard). Seat's own miss: first mutation runner put the mutant dir last on `-L` (the first `-L` wins), so every mutant "survived" — a sanity mutant caught it.
+
+### pi passes (PHASE-06)
+
+| run | profile | cost | outcome |
+|---|---|---|---|
+| Sonnet capsule-worker | — | ~64k tokens | docs/emacs/umbriel.md, 259 lines; listed 8 uncertain claims honestly |
+| doc fact-check | review | $0.017 | 62 confirmed, 4 wrong (header literal, skipped set, bare `tile`, prompt order "compositor's"), 3 unsupported (compositor-side). Seat confirmed all four and found one more: focused-addressed keys on a workspace row act on the focused window (doc said "window row") |
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
