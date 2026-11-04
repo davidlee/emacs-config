@@ -2,6 +2,25 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-11-04 — `*umbriel*`: a live view of workspaces and windows
+
+New `apps/dl-umbriel-buffer.el` (SL-016). `M-x my/umbriel` opens the
+`*umbriel*` buffer: one magit-style section per workspace (output, index,
+name, layout, window count, `active`/`focused`), its windows nested beneath
+(app id, title, placement, flags), then `Unassigned` for windows on no held
+workspace (scratchpad, minimized). It subscribes to umbriel's event stream
+when the buffer is created and follows changes on its own, repainting at most
+every 0.1 s and only while the buffer is shown (an undisplayed buffer catches
+up when next displayed). Point stays on the same window row, and `TAB` folds
+survive repaints. The header line says whether the stream is open, never
+opened, or why it closed, plus a count of skipped stream lines. `g`
+(`my/umbriel-refresh`) reconnects a closed stream; killing the buffer closes
+the stream, burying it does not.
+
+Not yet loaded at startup or bound to keys: until the next SL-016 phase, run
+`M-x load-library RET dl-umbriel-buffer` first. Row actions (focus, move,
+layout, kill) come with that phase.
+
 ## 2026-11-04 — sixth Nix trap: the dev-shell `LD_LIBRARY_PATH`
 
 `docs/emacs/traps.md` gains § 6. direnv's `LD_LIBRARY_PATH` reaches child
