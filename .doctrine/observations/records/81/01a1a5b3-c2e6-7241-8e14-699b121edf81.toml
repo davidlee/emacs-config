@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a1a5b3-c2e6-7241-8e14-699b121edf81"
+recorded_at = "2026-11-04T08:36:23.910644805Z"
+kind = "friction"
+summary = "Seat mutation testing is hand-rolled per phase"
+detail = "SL-016 PHASE-05: the seat wrote a python mutant runner over a load-path override; first version put the mutant dir last on -L (first -L wins in emacs), so every mutant 'survived' until a sanity check. A reusable mutation helper (mutant dir first on load-path, a must-kill sanity mutant) would remove this class of false result."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"
