@@ -87,13 +87,78 @@
                  "/srv/my dir/"))
   (should (null (dl-zmx--session-dir '((name . "a"))))))
 
-(ert-deftest dl-zmx/annotation-shows-project-clients-dir ()
+(ert-deftest dl-zmx/annotation-shows-state-project-clients-dir ()
   (should (equal (dl-zmx--annotation
                   '((name . "a") (clients . "1") (cwd . "file://h/srv/x")
-                    (project . "foo")))
-                 "  foo  1 attached  /srv/x/"))
+                    (project . "foo") (state . "working")))
+                 "  ◐  foo  1 attached  /srv/x/"))
   (should (equal (dl-zmx--annotation '((name . "a") (clients . "0")))
-                 "  0 attached")))
+                 "  ·  0 attached")))
+
+(ert-deftest dl-zmx/annotation-adds-labels-as-pairs ()
+  "`id' is in the name and `role' in the candidate; zmx's own fields aren't labels."
+  (should (equal (dl-zmx--annotation
+                  '((name . "p.1") (pid . "1") (clients . "0") (created . "2")
+                    (cwd . "file://h/x") (ended . "3") (exit_code . "0")
+                    (cmd . "sh") (id . "1") (note . "wip") (owner . "me")
+                    (project . "p") (role . "tests")))
+                 "  ·  p  0 attached  /x/  note:wip  owner:me")))
+
+(ert-deftest dl-zmx/annotation-shows-the-exit-code-beside-a-state ()
+  "`state' is a claim and `exit_code' a fact: a reader believes neither alone."
+  (should (equal (dl-zmx--annotation
+                  '((name . "a") (clients . "0") (ended . "3") (exit_code . "1")
+                    (state . "done")))
+                 "  ●  0 attached  exit_code:1")))
+
+(ert-deftest dl-zmx/annotation-keeps-its-face-beside-a-coloured-icon ()
+  "A completion UI leaves an annotation with any face of its own as it is."
+  (let ((annotation (dl-zmx--annotation '((name . "a") (clients . "0")))))
+    (should (eq (get-text-property (1- (length annotation)) 'face annotation)
+                'completions-annotations))))
+
+(ert-deftest dl-zmx/state-icon-tells-the-states-apart ()
+  (should (equal (mapcar #'dl-zmx--state-icon
+                         '("done" "working" "blocked" "failed" nil "other"))
+                 '("●" "◐" "◌" "⊘" "·" "*"))))
+
+(ert-deftest dl-zmx/state-icon-is-coloured ()
+  (should (eq (get-text-property 0 'face (dl-zmx--state-icon "failed")) 'error)))
+
+(ert-deftest dl-zmx/candidates-put-a-role-after-the-aligned-name ()
+  "In the candidate, not the annotation, so that a role can be searched."
+  (let ((one '((name . "docs.1")))
+        (two '((name . "docs.22") (role . "tests"))))
+    (should (equal (dl-zmx--candidates (list one two))
+                   `(("docs.1" . ,one) ("docs.22  tests" . ,two))))))
+
+(ert-deftest dl-zmx/read-session-maps-a-role-candidate-to-its-session ()
+  (cl-letf (((symbol-function 'completing-read)
+             (lambda (_prompt collection &rest _)
+               (caar (last collection)))))
+    (dl-zmx-test--with-zmx
+     (should (equal (alist-get 'name (dl-zmx--read-session "zmx: ")) "p.2"))
+     "printf '  name=p.1\\tclients=0\\n  name=p.2\\tclients=0\\trole=tests\\n'")))
+
+(ert-deftest dl-zmx/read-session-aligns-annotations ()
+  "Every row's annotation starts in one column, so the state icons line up."
+  (let (columns)
+    (cl-letf (((symbol-function 'completing-read)
+               (lambda (_prompt collection &rest _)
+                 (let ((annotate (plist-get completion-extra-properties
+                                            :annotation-function)))
+                   (setq columns
+                         (mapcar (lambda (row)
+                                   (string-search
+                                    "·" (concat (car row)
+                                                (funcall annotate (car row)))))
+                                 collection)))
+                 (caar collection))))
+      (dl-zmx-test--with-zmx
+       (dl-zmx--read-session "zmx: ")
+       "printf '  name=p.1\\tclients=0\\n  name=p.22\\tclients=0\\trole=tests\\n'"))
+    (should (numberp (car columns)))
+    (should (equal (length (delete-dups columns)) 1))))
 
 (ert-deftest dl-zmx/project-identifiers-from-sessions ()
   "Only this project's sessions, by identifier."

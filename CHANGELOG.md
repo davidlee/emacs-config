@@ -2,6 +2,14 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-11-06 — zmx: the session picker shows purpose and state
+
+`my/zmx-switch` (`C-c m Z`) and `my/zmx-kill` (`C-c m k`) now list a session's `role`
+label after its name, aligned and searchable, and its `state` label as a coloured icon
+in its own column: `●` done, `◐` working, `◌` blocked, `⊘` failed, `·` none, `*` any
+other value. Other labels follow the directory as `key:value`, with `exit_code`
+beside a `state`.
+
 ## 2026-11-06 — zmx: a name the wrapper would refuse is refused at the prompt
 
 `my/zmx-project` now gives a `user-error` for a new identifier holding a dot, such as

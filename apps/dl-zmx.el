@@ -136,15 +136,68 @@ Grouped by the `project' label, which is the truth a name only suggests."
     (file-name-as-directory
      (url-unhex-string (replace-regexp-in-string "\\`file://[^/]*" "" cwd)))))
 
+(defconst dl-zmx--state-icons
+  '((nil "·" shadow)
+    ("done" "●" success)
+    ("working" "◐" font-lock-keyword-face)
+    ("blocked" "◌" warning)
+    ("failed" "⊘" error))
+  "Icon and face for each value of the `state' label; nil is an absent one.")
+
+(defun dl-zmx--state-icon (state)
+  "Return the coloured icon for STATE, a `state' label's value or nil."
+  (pcase-let ((`(,icon ,face) (or (cdr (assoc state dl-zmx--state-icons))
+                                  '("*" shadow))))
+    (propertize icon 'face face)))
+
+(defconst dl-zmx--unpaired-fields
+  '(name pid clients created cwd ended exit_code cmd project id role state)
+  "`zmx list' fields kept out of the annotation's pairs.
+zmx's own, which it doesn't mark apart from labels, and labels shown elsewhere.")
+
+(defun dl-zmx--field-pairs (session)
+  "Return SESSION's labels as `key:value' strings.
+`exit_code' joins them beside a `state', as neither is believed alone."
+  (let ((unpaired (if (alist-get 'state session)
+                      (remq 'exit_code dl-zmx--unpaired-fields)
+                    dl-zmx--unpaired-fields)))
+    (mapcar (lambda (field) (format "%s:%s" (car field) (cdr field)))
+            (seq-remove (lambda (field) (memq (car field) unpaired)) session))))
+
 (defun dl-zmx--annotation (session)
-  "Return a completion annotation for SESSION: project, clients, directory."
+  "Return a completion annotation for SESSION.
+Its state icon, then project, clients, directory and labels.  The text carries
+its own face, as the icon's stops a completion UI applying one."
   (concat "  "
-          (string-join
-           (delq nil (list (alist-get 'project session)
-                           (concat (alist-get 'clients session) " attached")
-                           (when-let* ((dir (dl-zmx--session-dir session)))
-                             (abbreviate-file-name dir))))
-           "  ")))
+          (dl-zmx--state-icon (alist-get 'state session))
+          (propertize
+           (concat
+            "  "
+            (string-join
+             (append (delq nil (list (alist-get 'project session)
+                                     (concat (alist-get 'clients session) " attached")
+                                     (when-let* ((dir (dl-zmx--session-dir session)))
+                                       (abbreviate-file-name dir))))
+                     (dl-zmx--field-pairs session))
+             "  "))
+           'face 'completions-annotations)))
+
+(defun dl-zmx--widest (strings)
+  "Return the width of the widest of STRINGS."
+  (apply #'max (mapcar #'string-width strings)))
+
+(defun dl-zmx--candidates (sessions)
+  "Return an alist of completion candidate to record for SESSIONS.
+A `role' follows the name, aligned, in the candidate so that it can be searched."
+  (let ((width (dl-zmx--widest (mapcar (lambda (session) (alist-get 'name session))
+                                       sessions))))
+    (mapcar (lambda (session)
+              (let ((name (alist-get 'name session)))
+                (cons (if-let* ((role (alist-get 'role session)))
+                          (concat (string-pad name width) "  " role)
+                        name)
+                      session)))
+            sessions)))
 
 (defun dl-zmx-project-identifiers (project names)
   "Return identifiers of PROJECT's sessions among session NAMES."
@@ -154,14 +207,18 @@ Grouped by the `project' label, which is the truth a name only suggests."
 
 (defun dl-zmx--read-session (prompt)
   "Read a running session with PROMPT, annotated; return its record."
-  (let* ((by-name (mapcar (lambda (session) (cons (alist-get 'name session) session))
-                          (or (dl-zmx-sessions)
-                              (user-error "No running zmx sessions"))))
+  (let* ((by-candidate (dl-zmx--candidates
+                        (or (dl-zmx-sessions)
+                            (user-error "No running zmx sessions"))))
+         (width (dl-zmx--widest (mapcar #'car by-candidate)))
          (completion-extra-properties
           (list :annotation-function
-                (lambda (name)
-                  (dl-zmx--annotation (alist-get name by-name nil nil #'equal))))))
-    (alist-get (completing-read prompt by-name nil t) by-name nil nil #'equal)))
+                (lambda (candidate)
+                  (concat (make-string (- width (string-width candidate)) ?\s)
+                          (dl-zmx--annotation
+                           (alist-get candidate by-candidate nil nil #'equal)))))))
+    (alist-get (completing-read prompt by-candidate nil t)
+               by-candidate nil nil #'equal)))
 
 ;;; Commands
 
