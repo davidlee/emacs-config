@@ -2,6 +2,14 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-11-06 — zmx: `my/zmx-project` names sessions `PROJECT.ID`
+
+`apps/dl-zmx.el` (CHR-009) moves onto the zmux wrapper, which writes the `project`
+and `id` labels and starts each session in its own systemd scope. `my/zmx-project`
+now composes `PROJECT.ID`, with dots in the project folded to `_`, and attaches.
+`dl-zmx-launcher` and `dl-zmx-labels` are gone. Older `PROJECT-ID` sessions no longer
+complete under their project, and stay reachable through `my/zmx-switch`.
+
 ## 2026-11-05 — org: wrapped list items align; no current-line underline
 
 `my/org-setup-line-display` (`org/dl-org.el`, on `org-mode-hook`) turns off two

@@ -1,13 +1,19 @@
 ;;; dl-zmx.el --- project terminals in zmx sessions -*- lexical-binding: t; -*-
 
-;; `my/zmx-project': a ghostel buffer `term-PROJECT-ID' attached to zmx
-;; session `PROJECT-ID' running `dl-zmx-shell'.  `my/zmx-switch': pick any
+;; `my/zmx-project': a ghostel buffer `term-PROJECT.ID' attached to zmx
+;; session `PROJECT.ID' running `dl-zmx-shell'.  `my/zmx-switch': pick any
 ;; running session; jump to its buffer, or reattach.  Sessions survive Emacs.
 ;;
-;;   ghostel term-P-ID  (cwd: project root)
-;;     `-- systemd-run --scope   (own cgroup: survives emacs.service restarts)
-;;           `-- zmx attach [--labels "project=P id=ID"] P-ID nu
-;;                 (nu's pre_prompt hook loads direnv)
+;;   ghostel term-P.ID  (cwd: project root)
+;;     `-- zmx attach P.ID nu
+;;           (nu's pre_prompt hook loads direnv)
+;;
+;; `zmx' is the zmux wrapper, installed by overlay.  From the name it writes the
+;; `project' and `id' labels and starts the session in its own systemd scope,
+;; which is what survives an `emacs.service' restart.  So this file composes
+;; `PROJECT.ID' and attaches.  The wrapper refuses a name with a second dot, so a
+;; dotted project folds to `_' here, as zp's does.  An identifier keeps its dots:
+;; a new one is refused in the buffer, and an existing session stays reachable.
 
 (require 'seq)
 (require 'subr-x)
@@ -20,19 +26,13 @@
   :group 'terminals)
 
 (defcustom dl-zmx-command "zmx"
-  "Command used to invoke zmx."
+  "Command used to invoke zmx.
+Use the zmux wrapper: it supplies labels and a scope."
   :type 'string)
 
 (defcustom dl-zmx-shell "nu"
   "Shell zmx runs in a new session."
   :type 'string)
-
-(defcustom dl-zmx-launcher '("systemd-run" "--user" "--scope" "--collect" "--quiet")
-  "Command prefix that starts zmx outside Emacs's cgroup.
-zmx's daemon detaches from its parent but stays in its cgroup, so under
-`emacs.service' (KillMode=control-group) an Emacs restart kills every
-session.  A transient scope per session keeps it alive.  nil: run bare."
-  :type '(repeat string))
 
 ;;; Names
 
@@ -41,29 +41,21 @@ session.  A transient scope per session keeps it alive.  nil: run bare."
   (replace-regexp-in-string "[^a-zA-Z0-9._-]" "-" string))
 
 (defun dl-zmx--project-key (project)
-  "Return PROJECT's name as used in session names and labels."
-  (dl-zmx--label-safe (string-trim-left project "\\.+")))
+  "Return PROJECT's name as used in session names."
+  (string-replace "." "_"
+                  (dl-zmx--label-safe (string-trim-left project "\\.+"))))
 
 (defun dl-zmx-session-name (project identifier)
   "Return the zmx session name for PROJECT and IDENTIFIER."
-  (format "%s-%s" (dl-zmx--project-key project) (dl-zmx--label-safe identifier)))
-
-(defun dl-zmx-labels (project identifier)
-  "Return zmx labels for PROJECT's session IDENTIFIER."
-  (format "project=%s id=%s"
-          (dl-zmx--project-key project) (dl-zmx--label-safe identifier)))
+  (format "%s.%s" (dl-zmx--project-key project) (dl-zmx--label-safe identifier)))
 
 (defun dl-zmx-buffer-name (session)
   "Return the ghostel buffer name for zmx SESSION."
   (concat "term-" session))
 
-(defun dl-zmx-attach-argv (session &optional labels)
-  "Return argv attaching to SESSION, creating it if absent.
-LABELS (see `dl-zmx-labels') only take effect on creation."
-  (append dl-zmx-launcher
-          (list dl-zmx-command "attach")
-          (and labels (list "--labels" labels))
-          (list session dl-zmx-shell)))
+(defun dl-zmx-attach-argv (session)
+  "Return argv attaching to SESSION, creating it if absent."
+  (list dl-zmx-command "attach" session dl-zmx-shell))
 
 ;;; Sessions: `zmx list' records, alists of field strings
 
@@ -130,7 +122,7 @@ stderr is discarded: with no sessions, zmx reports that there."
       (ghostel-exec buf (car argv) (cdr argv)))))
 
 (defun my/zmx-project (identifier)
-  "Open zmx session PROJECT-IDENTIFIER in a terminal at the project root.
+  "Open zmx session PROJECT.IDENTIFIER in a terminal at the project root.
 Completes the identifiers of the project's running sessions."
   (interactive
    (list (completing-read "zmx session: "
@@ -141,11 +133,9 @@ Completes the identifiers of the project's running sessions."
   (when (string-empty-p identifier)
     (user-error "Empty zmx session identifier"))
   (let* ((project (project-current t))
-         (name (project-name project))
-         (session (dl-zmx-session-name name identifier))
+         (session (dl-zmx-session-name (project-name project) identifier))
          (default-directory (project-root project)))
-    (dl-zmx--open session
-                  (dl-zmx-attach-argv session (dl-zmx-labels name identifier)))))
+    (dl-zmx--open session (dl-zmx-attach-argv session))))
 
 (defun my/zmx-switch (session)
   "Show running zmx SESSION: its buffer, or a new one reattached to it."

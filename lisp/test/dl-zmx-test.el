@@ -6,39 +6,28 @@
 (require 'dl-zmx)
 
 (ert-deftest dl-zmx/session-name-joins-project-and-identifier ()
-  (should (equal (dl-zmx-session-name "hris" "claude") "hris-claude")))
+  (should (equal (dl-zmx-session-name "hris" "claude") "hris.claude")))
+
+(ert-deftest dl-zmx/session-name-folds-dots-in-the-project ()
+  "The wrapper refuses a second dot, so a dotted project folds to `_', as zp's."
+  (should (equal (dl-zmx-session-name "my.repo" "1") "my_repo.1")))
 
 (ert-deftest dl-zmx/session-name-drops-leading-dots ()
   "Hidden project dirs (`.hidden.d') give readable session names."
-  (should (equal (dl-zmx-session-name ".hidden.d" "pi") "hidden.d-pi")))
+  (should (equal (dl-zmx-session-name ".hidden.d" "pi") "hidden_d.pi")))
 
 (ert-deftest dl-zmx/session-name-replaces-label-unsafe-chars ()
-  "zmx labels allow only [a-zA-Z0-9._-]; names and labels must agree."
-  (should (equal (dl-zmx-session-name "my proj" "a/b") "my-proj-a-b")))
+  (should (equal (dl-zmx-session-name "my proj" "a/b") "my-proj.a-b")))
 
-(defmacro dl-zmx-test--with-commands (&rest body)
-  "Run BODY with a fixed launcher, zmx command and shell."
-  `(let ((dl-zmx-launcher '("systemd-run" "--user" "--scope"))
-         (dl-zmx-command "zmx")
-         (dl-zmx-shell "nu"))
-     ,@body))
-
-(ert-deftest dl-zmx/attach-argv-labels-new-sessions ()
-  "New sessions get their own systemd scope, outside Emacs's cgroup."
-  (dl-zmx-test--with-commands
-   (should (equal (dl-zmx-attach-argv "hidden.d-re-view"
-                                      (dl-zmx-labels ".hidden.d" "re view"))
-                  '("systemd-run" "--user" "--scope"
-                    "zmx" "attach" "--labels" "project=hidden.d id=re-view"
-                    "hidden.d-re-view" "nu")))))
-
-(ert-deftest dl-zmx/attach-argv-reattach-without-labels ()
-  (dl-zmx-test--with-commands
-   (should (equal (dl-zmx-attach-argv "dev")
-                  '("systemd-run" "--user" "--scope" "zmx" "attach" "dev" "nu")))))
+(ert-deftest dl-zmx/attach-argv-asks-for-nothing-but-the-name ()
+  "Labels and the scope are the wrapper's, so the argv is bare attach."
+  (let ((dl-zmx-command "zmx")
+        (dl-zmx-shell "nu"))
+    (should (equal (dl-zmx-attach-argv "hris.claude")
+                   '("zmx" "attach" "hris.claude" "nu")))))
 
 (ert-deftest dl-zmx/buffer-name-is-term-prefixed ()
-  (should (equal (dl-zmx-buffer-name "hris-claude") "term-hris-claude")))
+  (should (equal (dl-zmx-buffer-name "hris.claude") "term-hris.claude")))
 
 (ert-deftest dl-zmx/parse-sessions-skips-ended ()
   "`zmx list' keeps exited sessions around, marked with `ended='."
@@ -49,8 +38,8 @@
              (concat
               "  name=ls\tpid=1\tclients=0\tcreated=1\tcwd=file://h/x\n"
               "  name=sh\tpid=2\tclients=0\tcwd=file://h/x\tended=1\texit_code=0\n"
-              "  name=hris-claude\tpid=3\tclients=1\tcwd=file://h/y\n")))
-    '("ls" "hris-claude"))))
+              "  name=hris.claude\tpid=3\tclients=1\tcwd=file://h/y\n")))
+    '("ls" "hris.claude"))))
 
 (ert-deftest dl-zmx/parse-sessions-keeps-labels ()
   "Labels are listed as ordinary fields after the built-in ones."
@@ -89,8 +78,12 @@
 (ert-deftest dl-zmx/project-identifiers-from-sessions ()
   "Only this project's sessions, by identifier."
   (should (equal (dl-zmx-project-identifiers
-                  ".hidden.d" '("hidden.d-claude" "hris-pi" "hidden.d-build" "ls"))
+                  ".hidden.d" '("hidden_d.claude" "hris.pi" "hidden_d.build" "ls"))
                  '("claude" "build"))))
+
+(ert-deftest dl-zmx/project-identifiers-leave-out-old-hyphen-names ()
+  "An old `P-ID' session is reached through `my/zmx-switch', not by project."
+  (should (null (dl-zmx-project-identifiers "hris" '("hris-claude")))))
 
 (ert-deftest dl-zmx/ghostel-exec-callable-before-ghostel-loads ()
   "ghostel is lazy-loaded and doesn't autoload `ghostel-exec' itself."
