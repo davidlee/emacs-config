@@ -72,24 +72,24 @@
   :hook (org-mode .(lambda  () org-bullets-mode 1))
   :after org-modern)
 
-(defun my/org-hl-line-strip-bg ()
-  "Strip :background from hl-line overlays, keeping :underline."
-  (dolist (ov (overlays-at (point)))
-    (when (eq (overlay-get ov 'face) 'hl-line)
-      (overlay-put ov 'face '(:underline t)))))
-
 (defun my/org-setup-margins ()
-  "Buffer-local margin + hl-line tweaks for org buffers."
+  "Buffer-local margins for org buffers."
   (setq left-margin-width 2
         right-margin-width 2)
-  ;; hl-line overlay clobbers org-modern pill backgrounds (text properties
-  ;; lose to overlays). Intercept overlay after each highlight to strip bg.
-  (add-hook 'post-command-hook #'my/org-hl-line-strip-bg 90 t)
-  ;; Option B: disable hl-line entirely in org if remap isn't enough
-  ;; (hl-line-mode -1)
   (my/refresh-window-margins))
 
+(defun my/org-setup-line-display ()
+  "Undo the prose defaults that fight org's own line display.
+`org-indent-mode' aligns wrapped list items under their text, and
+`visual-wrap-prefix-mode' would overwrite that with a prefix which ignores
+heading depth.  `global-hl-line-mode' already highlights the line, so the
+local `hl-line-mode' is redundant."
+  (hl-line-mode -1)
+  (when (bound-and-true-p org-indent-mode)
+    (visual-wrap-prefix-mode -1)))
+
 (add-hook 'org-mode-hook #'my/org-setup-margins)
+(add-hook 'org-mode-hook #'my/org-setup-line-display)
 
 ;;(add-hook 'org-mode-hook (lambda () (org-bullets-mode 1)))
 ;;(add-hook 'org-mode-hook (lambda () (org-pretty-table-mode)))

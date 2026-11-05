@@ -2,6 +2,16 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-11-05 — org: wrapped list items align; no current-line underline
+
+`my/org-setup-line-display` (`org/dl-org.el`, on `org-mode-hook`) turns off two
+prose defaults in org buffers. `visual-wrap-prefix-mode` goes when
+`org-indent-mode` is on: it overwrote org-indent's `wrap-prefix` with one that
+ignored heading depth, so wrapped list text sat left of the item text.
+`hl-line-mode` goes too, as `global-hl-line-mode` already highlights the line,
+and `my/org-hl-line-strip-bg`, which turned the overlay into an underline, is
+deleted.
+
 ## 2026-11-04 — `*umbriel*`: a live view of workspaces and windows
 
 New `apps/dl-umbriel-buffer.el` (SL-016). `C-c u u` (`SPC u u` on the meow

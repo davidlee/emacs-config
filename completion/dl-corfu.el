@@ -22,9 +22,6 @@
   :config
   (add-to-list 'corfu-margin-formatters #'kind-icon-margin-formatter))
 
-;; Use HIPPIE-EXPAND instead of dabbrev-expand
-(global-set-key [remap dabbrev-expand] 'hippie-expand)
-
 ;; Use Dabbrev with Corfu
 ;; (use-package dabbrev
 ;;   ;; Swap M-/ and C-M-/

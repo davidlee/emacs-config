@@ -24,50 +24,50 @@
 ;; ghostel lets them through via `ghostel-keymap-exceptions'
 ;; (apps/dl-ghostel.el).
 (bind-keys
-  ("C-<prior>"   . tab-bar-switch-to-prev-tab)
-  ("C-<next>"    . tab-bar-switch-to-next-tab)
-  ("M-<prior>"   . tab-bar-switch-to-prev-tab)
-  ("M-<next>"    . tab-bar-switch-to-next-tab)
-  ("C-M-<prior>" . tab-line-switch-to-prev-tab)
-  ("C-M-<next>"  . tab-line-switch-to-next-tab)
-  ("s-{"         . tab-bar-switch-to-prev-tab)
-  ("s-}"         . tab-bar-switch-to-next-tab))
+ ("C-<prior>"   . tab-bar-switch-to-prev-tab)
+ ("C-<next>"    . tab-bar-switch-to-next-tab)
+ ("M-<prior>"   . tab-bar-switch-to-prev-tab)
+ ("M-<next>"    . tab-bar-switch-to-next-tab)
+ ("C-M-<prior>" . tab-line-switch-to-prev-tab)
+ ("C-M-<next>"  . tab-line-switch-to-next-tab)
+ ("s-{"         . tab-bar-switch-to-prev-tab)
+ ("s-}"         . tab-bar-switch-to-next-tab))
 
 (bind-keys
-  ("M-/"     . hippie-expand)
-  ("C-;"     . iedit-mode)
-  ("M-z"     . zap-up-to-char)
-  ("M-Q"     . my/unfill-paragraph)     ; `dl-prose.el'
-  ("C-x K"   . kill-current-buffer)
-  ("C-x C-b" . ibuffer)
-  ("C-x C-z" . zoom-window-zoom)
-  ("C-x 2"   . split-and-follow-horizontally)
-  ("C-x 3"   . split-and-follow-vertically)
-  ;; Universal Emacs muscle memory for dired-jump; C-x C-n repurposed
-  ;; from the dropped dired-sidebar binding to dirvish-side.
-  ("C-x C-j" . dired-jump)
-  ("C-x C-n" . dirvish-side)
-  ("C-z"     . undo-fu-only-undo)
-  ("C-S-z"   . undo-fu-only-redo)
-  ("C-S-g"   . exit-minibuffer)
-  ("C-s-<return>" . eshell-other-window)) ; `dl-term.el'
+ ("M-/"     . hippie-expand)
+ ("C-;"     . iedit-mode)
+ ("M-z"     . zap-up-to-char)
+ ("M-Q"     . my/unfill-paragraph)     ; `dl-prose.el'
+ ("C-x K"   . kill-current-buffer)
+ ("C-x C-b" . ibuffer)
+ ("C-x C-z" . zoom-window-zoom)
+ ("C-x 2"   . split-and-follow-horizontally)
+ ("C-x 3"   . split-and-follow-vertically)
+ ;; Universal Emacs muscle memory for dired-jump; C-x C-n repurposed
+ ;; from the dropped dired-sidebar binding to dirvish-side.
+ ("C-x C-j" . dired-jump)
+ ("C-x C-n" . dirvish-side)
+ ("C-z"     . undo-fu-only-undo)
+ ("C-S-z"   . undo-fu-only-redo)
+ ("C-S-g"   . exit-minibuffer)
+ ("C-s-<return>" . eshell-other-window)) ; `dl-term.el'
 
 ;; Org entry points: the reserved `C-c <letter>' singletons (KEYS.md).
 (bind-keys
-  ("C-c a" . org-agenda)
-  ("C-c c" . org-capture)
-  ("C-c l" . org-store-link))
+ ("C-c a" . org-agenda)
+ ("C-c c" . org-capture)
+ ("C-c l" . org-store-link))
 
 (bind-keys :map comint-mode-map
-  ("C-p" . comint-previous-input)
-  ("C-n" . comint-next-input)
-  ("C-w" . backward-kill-word))
+           ("C-p" . comint-previous-input)
+           ("C-n" . comint-next-input)
+           ("C-w" . backward-kill-word))
 
 ;; Half-page scroll on the View bindings (emacs muscle-memory override).
 (require 'view)
 (bind-keys
-  ("C-v" . View-scroll-half-page-forward)
-  ("M-v" . View-scroll-half-page-backward))
+ ("C-v" . View-scroll-half-page-forward)
+ ("M-v" . View-scroll-half-page-backward))
 
 ;; Buffer-local text scaling, equivalent in spirit to C-scrollwheel.
 ;; `C-=' / `C--' belong to expreg (`dl-multi-edit.el'); zoom pairs the
@@ -75,13 +75,13 @@
 ;; Global scaling: `global-text-scale-adjust' reads its direction from
 ;; the invoking key's last event (`-' out, `0' reset, else in).
 (bind-keys
-  ("C-+"   . text-scale-increase)
-  ("C-_"   . text-scale-decrease)
-  ("C-0"   . text-scale-adjust)
-  ("C-M-=" . global-text-scale-adjust)
-  ("C-M-+" . global-text-scale-adjust)
-  ("C-M--" . global-text-scale-adjust)
-  ("C-S-0" . global-text-scale-adjust))
+ ("C-+"   . text-scale-increase)
+ ("C-_"   . text-scale-decrease)
+ ("C-0"   . text-scale-adjust)
+ ("C-M-=" . global-text-scale-adjust)
+ ("C-M-+" . global-text-scale-adjust)
+ ("C-M--" . global-text-scale-adjust)
+ ("C-S-0" . global-text-scale-adjust))
 
 ;; Hydras for repeatable, sticky subinterfaces.  Eagerly loaded so
 ;; `defhydra' is in scope when downstream files (`dl-keymap.el')
@@ -112,15 +112,17 @@ Window resize: _<left>_/_<right>_ width  _<up>_/_<down>_ height  _=_ balance  _q
   "Return a list of bindings in KEYMAP."
   (let (bindings)
     (map-keymap
-      (lambda (event binding)
-        (push
-          (cons
-            (key-description (vector event))
-            binding)
-          bindings))
-      keymap)
+     (lambda (event binding)
+       (push
+        (cons
+         (key-description (vector event))
+         binding)
+        bindings))
+     keymap)
     (nreverse bindings)))
 
+;; Use HIPPIE-EXPAND instead of dabbrev-expand
+(global-set-key [remap dabbrev-expand] 'hippie-expand)
 
 ;; Discovery cheatsheet:
 ;;   C-h k        describe-key
@@ -141,10 +143,10 @@ Window resize: _<left>_/_<right>_ width  _<up>_/_<down>_ height  _=_ balance  _q
 ;;   f2 - view menu (needs work)    f3 - start macro
 ;;   f4 - end or call macro         f10 - collides w/ WM
 (bind-keys
-  ("<f1>"   . my/journal-quick-capture)
-  ("C-<f2>" . my/ghostel-here)          ; `dl-term.el'
-  ("<f5>"   . deadgrep)
-  ("<f9>"   . toggle-maximize-buffer))
+ ("<f1>"   . my/journal-quick-capture)
+ ("C-<f2>" . my/ghostel-here)          ; `dl-term.el'
+ ("<f5>"   . deadgrep)
+ ("<f9>"   . toggle-maximize-buffer))
 
 (provide 'dl-keybind)
 ;;; dl-keybind.el ends here
