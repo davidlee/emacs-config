@@ -1,19 +1,11 @@
-# .emacs.d
+# .config/emacs
 
-![SATAN](./satan.png)
+My editor, made out of emacs, runs on NixOS & macos. Maybe guix one day.
 
-Blessed be the GNU
+identifying features:
 
-This is my .emacs.d, swollen with experiments in personal motivated reasoning agents.
+- Meow mode, tuned for [gallium](https://github.com/davidlee/zmk-config)
+- Ghostel
+- occasional home to [SATAN](https://github.com/davidlee/satan) 
+- generally in a state of roiling experimentation
 
-```text
-Curiosity      [####      ]
-Hunger         [######### ]
-Suspicion      [#####     ]
-Doubt          [#         ]
-Cruelty        [#######   ]
-Shame          [###       ]
-Brooding       [######    ]
-Metamorphosis  [######### ]
-
-```
