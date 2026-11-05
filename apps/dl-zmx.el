@@ -23,7 +23,8 @@
 ;; which is what survives an `emacs.service' restart.  So this file composes
 ;; `PROJECT.ID' and attaches.  The wrapper refuses a name with a second dot, so a
 ;; dotted project folds to `_' here, as zp's does.  An identifier keeps its dots:
-;; a new one is refused in the buffer, and an existing session stays reachable.
+;; a new one is refused at the prompt, as the wrapper's own refusal would close
+;; the buffer before it could be read, and an existing session stays reachable.
 
 (require 'seq)
 (require 'subr-x)
@@ -59,6 +60,11 @@ Use the zmux wrapper: it supplies labels and a scope."
 (defun dl-zmx-session-name (project identifier)
   "Return the zmx session name for PROJECT and IDENTIFIER."
   (format "%s.%s" (dl-zmx--project-key project) (dl-zmx--label-safe identifier)))
+
+(defun dl-zmx-creatable-name-p (name)
+  "Return non-nil if NAME has the wrapper's form for a new session.
+That is one dot, with a part on each side."
+  (string-match-p "\\`[^.]+\\.[^.]+\\'" name))
 
 (defun dl-zmx-next-name (project names)
   "Return the session name one above PROJECT's highest number among NAMES."
@@ -106,6 +112,13 @@ stderr is discarded: with no sessions, zmx reports that there."
 (defun dl-zmx--session-names ()
   "Return the names of running zmx sessions."
   (mapcar (lambda (session) (alist-get 'name session)) (dl-zmx-sessions)))
+
+(defun dl-zmx--check-reachable (name)
+  "Signal a `user-error' unless NAME can be created or is already running."
+  (unless (or (dl-zmx-creatable-name-p name)
+              (member name (dl-zmx--session-names)))
+    (user-error "Cannot create zmx session %s: a name holds one dot, between \
+a project and an identifier" name)))
 
 (defun dl-zmx-latest-session (project sessions)
   "Return PROJECT's newest session among SESSIONS, or nil.
@@ -172,6 +185,7 @@ Completes the identifiers of the project's running sessions."
   (let* ((project (project-current t))
          (session (dl-zmx-session-name (project-name project) identifier))
          (default-directory (project-root project)))
+    (dl-zmx--check-reachable session)
     (dl-zmx--open session (dl-zmx-attach-argv session))))
 
 (defun dl-zmx--reattach (session)
@@ -192,6 +206,7 @@ Completes the identifiers of the project's running sessions."
       (ghostel '(4))
     (let ((session (dl-zmx-next-name (dl-zmx--scope-name)
                                      (dl-zmx--session-names))))
+      (dl-zmx--check-reachable session)
       (dl-zmx--open session (dl-zmx-attach-argv session)))))
 
 (defun my/zmx-new-at-root ()

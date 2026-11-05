@@ -2,6 +2,14 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-11-06 — zmx: a name the wrapper would refuse is refused at the prompt
+
+`my/zmx-project` now gives a `user-error` for a new identifier holding a dot, such as
+`v0.1`, instead of opening a buffer that closed before the wrapper's refusal could be
+read. A running dotted session stays reachable. `my/zmx-new` and `my/zmx-resume`, with
+their keys `C-c m T`, `C-<f2>` and `C-c m t`, do the same at `/`, where the name would
+be `.1`.
+
 ## 2026-11-06 — Terminals live in zmx sessions
 
 `C-c m t`, `C-c m T`, `C-c m o` and `C-<f2>` now open zmx sessions, so they survive

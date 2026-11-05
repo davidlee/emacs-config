@@ -20,6 +20,13 @@
 (ert-deftest dl-zmx/session-name-replaces-label-unsafe-chars ()
   (should (equal (dl-zmx-session-name "my proj" "a/b") "my-proj.a-b")))
 
+(ert-deftest dl-zmx/creatable-name-has-one-dot-and-both-parts ()
+  "The names the wrapper will create a session under."
+  (should (dl-zmx-creatable-name-p "hris.claude"))
+  (should-not (dl-zmx-creatable-name-p "doctrine.v0.1"))
+  (should-not (dl-zmx-creatable-name-p ".1"))
+  (should-not (dl-zmx-creatable-name-p "p.")))
+
 (ert-deftest dl-zmx/attach-argv-asks-for-nothing-but-the-name ()
   "Labels and the scope are the wrapper's, so the argv is bare attach."
   (let ((dl-zmx-command "zmx")
@@ -133,13 +140,21 @@
     (let ((default-directory "/tmp/Downloads/"))
       (should (equal (dl-zmx--scope-name) "Downloads")))))
 
+(ert-deftest dl-zmx/scope-name-is-empty-at-the-filesystem-root ()
+  (cl-letf (((symbol-function 'project-current) (lambda (&rest _) nil)))
+    (let ((default-directory "/"))
+      (should (equal (dl-zmx--scope-name) "")))))
+
 (defmacro dl-zmx-test--capturing-open (&rest body)
   "Run BODY in project p, with `dl-zmx--open' recording its session in `opened'."
   (declare (indent 0))
   `(let (opened)
      (cl-letf (((symbol-function 'dl-zmx--open)
                 (lambda (session _argv) (setq opened session)))
-               ((symbol-function 'dl-zmx--scope-name) (lambda () "p")))
+               ((symbol-function 'dl-zmx--scope-name) (lambda () "p"))
+               ((symbol-function 'project-current) (lambda (&rest _) 'a-project))
+               ((symbol-function 'project-name) (lambda (_) "p"))
+               ((symbol-function 'project-root) (lambda (_) "/tmp/")))
        ,@body)))
 
 (ert-deftest dl-zmx/new-counts-a-session-whose-task-ended ()
@@ -149,6 +164,16 @@
      (progn (my/zmx-new)
             (should (equal opened "p.2")))
      "printf '  name=p.1\\tclients=0\\tended=1\\texit_code=0\\n'")))
+
+(ert-deftest dl-zmx/new-refuses-a-name-with-no-project ()
+  "At `/' the name would be `.1': the wrapper's refusal would close the buffer."
+  (dl-zmx-test--capturing-open
+    (cl-letf (((symbol-function 'dl-zmx--scope-name) (lambda () "")))
+      (dl-zmx-test--with-zmx
+       (should (string-search ".1" (cadr (should-error (my/zmx-new)
+                                                       :type 'user-error))))
+       "exit 0\n"))
+    (should (null opened))))
 
 (ert-deftest dl-zmx/new-stays-plain-ghostel-on-a-remote-directory ()
   "zmx is local; a TRAMP terminal is a remote shell."
@@ -183,6 +208,29 @@
      (progn (my/zmx-resume)
             (should (equal opened "p.1")))
      "exit 0\n")))
+
+(ert-deftest dl-zmx/project-opens-a-new-plain-identifier ()
+  (dl-zmx-test--capturing-open
+    (dl-zmx-test--with-zmx
+     (progn (my/zmx-project "tests")
+            (should (equal opened "p.tests")))
+     "exit 0\n")))
+
+(ert-deftest dl-zmx/project-refuses-a-new-dotted-identifier ()
+  "Told at the prompt: the wrapper's refusal would close the buffer unread."
+  (dl-zmx-test--capturing-open
+    (dl-zmx-test--with-zmx
+     (should (string-search "p.v0.1" (cadr (should-error (my/zmx-project "v0.1")
+                                                         :type 'user-error))))
+     "printf '  name=p.1\\tclients=0\\n'")
+    (should (null opened))))
+
+(ert-deftest dl-zmx/project-reaches-a-running-dotted-session ()
+  (dl-zmx-test--capturing-open
+    (dl-zmx-test--with-zmx
+     (progn (my/zmx-project "v0.1")
+            (should (equal opened "p.v0.1")))
+     "printf '  name=p.v0.1\\tclients=0\\n'")))
 
 (ert-deftest dl-zmx/kill-asks-zmx-to-kill-the-chosen-session ()
   (let (argv)
