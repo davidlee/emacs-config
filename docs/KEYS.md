@@ -489,12 +489,16 @@ persistent sessions (`apps/dl-zmx.el`). `SPC m` is eaten by
 
 | Key | Command | |
 |---|---|---|
-| `C-c m t` | `ghostel`                  | switch / create ghostel |
-| `C-c m T` | `my/ghostel-here`          | new ghostel in `default-directory` |
-| `C-c m o` | `ghostel-project`          | new ghostel at project root |
+| `C-c m t` | `my/zmx-resume`            | this project's latest zmx session, or a new one |
+| `C-c m T` | `my/zmx-new`               | new zmx session in `default-directory`; also `C-<f2>` |
+| `C-c m o` | `my/zmx-new-at-root`       | new zmx session at project root |
 | `C-c m n` | `ghostel-other`            | next ghostel buffer |
 | `C-c m z` | `my/zmx-project`           | project zmx session (new / reattach); also `z` in `C-c p p` |
 | `C-c m Z` | `my/zmx-switch`            | any running zmx session: its buffer, or reattach |
+| `C-c m k` | `my/zmx-kill`              | end a running zmx session |
+
+Killing a terminal buffer only detaches from its session. `exit` in the shell
+ends it, as does `C-c m k`. A TRAMP directory gets a plain ghostel.
 
 ## Toggle (`C-c t`)
 

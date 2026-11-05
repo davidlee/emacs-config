@@ -1,8 +1,18 @@
 ;;; dl-zmx.el --- project terminals in zmx sessions -*- lexical-binding: t; -*-
 
-;; `my/zmx-project': a ghostel buffer `term-PROJECT.ID' attached to zmx
-;; session `PROJECT.ID' running `dl-zmx-shell'.  `my/zmx-switch': pick any
-;; running session; jump to its buffer, or reattach.  Sessions survive Emacs.
+;; A ghostel buffer `term-PROJECT.ID' attached to zmx session `PROJECT.ID'
+;; running `dl-zmx-shell'.  Sessions survive Emacs, and killing a buffer only
+;; detaches: `exit' in the shell or `my/zmx-kill' ends a session.
+;;
+;;   `my/zmx-new'          next numbered session, at `default-directory'
+;;   `my/zmx-new-at-root'  the same, at the project root
+;;   `my/zmx-resume'       this project's latest session, or a new one
+;;   `my/zmx-project'      a session with an identifier you type
+;;   `my/zmx-switch'       any running session: its buffer, or reattach
+;;   `my/zmx-kill'         end a running session
+;;
+;; Outside a project, the directory's name stands in for PROJECT.  A TRAMP
+;; directory gets a plain ghostel, as zmx is local.
 ;;
 ;;   ghostel term-P.ID  (cwd: project root)
 ;;     `-- zmx attach P.ID nu
@@ -20,6 +30,7 @@
 (require 'project)
 (require 'url-util)
 (autoload 'ghostel-exec "ghostel")   ; ghostel only autoloads its commands
+(declare-function ghostel "ghostel")
 
 (defgroup dl-zmx nil
   "Persistent project terminals via zmx."
@@ -49,6 +60,20 @@ Use the zmux wrapper: it supplies labels and a scope."
   "Return the zmx session name for PROJECT and IDENTIFIER."
   (format "%s.%s" (dl-zmx--project-key project) (dl-zmx--label-safe identifier)))
 
+(defun dl-zmx-next-name (project names)
+  "Return the session name one above PROJECT's highest number among NAMES."
+  (let ((numbers (seq-filter (lambda (id) (string-match-p "\\`[0-9]+\\'" id))
+                             (dl-zmx-project-identifiers project names))))
+    (dl-zmx-session-name
+     project
+     (number-to-string (1+ (apply #'max 0 (mapcar #'string-to-number numbers)))))))
+
+(defun dl-zmx--scope-name ()
+  "Return the current project's name, or else the directory's."
+  (if-let* ((project (project-current)))
+      (project-name project)
+    (file-name-nondirectory (directory-file-name default-directory))))
+
 (defun dl-zmx-buffer-name (session)
   "Return the ghostel buffer name for zmx SESSION."
   (concat "term-" session))
@@ -59,25 +84,46 @@ Use the zmux wrapper: it supplies labels and a scope."
 
 ;;; Sessions: `zmx list' records, alists of field strings
 
+(defun dl-zmx--parse-records (output)
+  "Return every session in `zmx list' OUTPUT, as alists of fields."
+  (mapcar (lambda (line)
+            (mapcar (lambda (field)
+                      (let ((i (string-search "=" field)))
+                        (cons (intern (substring field 0 i))
+                              (substring field (1+ i)))))
+                    (split-string line "\t" t " +")))
+          (split-string output "\n" t)))
+
 (defun dl-zmx--parse-sessions (output)
   "Return running sessions in `zmx list' OUTPUT, as alists of fields.
 Exited sessions stay listed with an `ended' field; they are skipped."
-  (seq-remove
-   (lambda (session) (assq 'ended session))
-   (mapcar (lambda (line)
-             (mapcar (lambda (field)
-                       (let ((i (string-search "=" field)))
-                         (cons (intern (substring field 0 i))
-                               (substring field (1+ i)))))
-                     (split-string line "[\t ]+" t)))
-           (split-string output "\n" t))))
+  (seq-remove (lambda (session) (assq 'ended session))
+              (dl-zmx--parse-records output)))
+
+(defun dl-zmx--list ()
+  "Return `zmx list' output.
+stderr is discarded: with no sessions, zmx reports that there."
+  (with-output-to-string
+    (call-process dl-zmx-command nil (list standard-output nil) nil "list")))
 
 (defun dl-zmx-sessions ()
-  "Return running zmx sessions, as alists of fields.
-stderr is discarded: with no sessions, zmx reports that there."
-  (dl-zmx--parse-sessions
-   (with-output-to-string
-     (call-process dl-zmx-command nil (list standard-output nil) nil "list"))))
+  "Return running zmx sessions, as alists of fields."
+  (dl-zmx--parse-sessions (dl-zmx--list)))
+
+(defun dl-zmx--names-in-use ()
+  "Return every listed session name, including exited sessions'."
+  (mapcar (lambda (session) (alist-get 'name session))
+          (dl-zmx--parse-records (dl-zmx--list))))
+
+(defun dl-zmx-latest-session (project sessions)
+  "Return PROJECT's newest session among SESSIONS, or nil.
+Grouped by the `project' label, which is the truth a name only suggests."
+  (let ((key (dl-zmx--project-key project)))
+    (car (seq-sort-by
+          (lambda (session) (string-to-number (alist-get 'created session "0")))
+          #'>
+          (seq-filter (lambda (session) (equal (alist-get 'project session) key))
+                      sessions)))))
 
 (defun dl-zmx--session-dir (session)
   "Return SESSION's working directory, or nil if not reported."
@@ -137,12 +183,47 @@ Completes the identifiers of the project's running sessions."
          (default-directory (project-root project)))
     (dl-zmx--open session (dl-zmx-attach-argv session))))
 
-(defun my/zmx-switch (session)
-  "Show running zmx SESSION: its buffer, or a new one reattached to it."
-  (interactive (list (dl-zmx--read-session "zmx: ")))
+(defun dl-zmx--reattach (session)
+  "Show SESSION, a record: its buffer, or a new one reattached to it."
   (let ((name (alist-get 'name session))
         (default-directory (or (dl-zmx--session-dir session) default-directory)))
     (dl-zmx--open name (dl-zmx-attach-argv name))))
+
+(defun my/zmx-switch (session)
+  "Show running zmx SESSION: its buffer, or a new one reattached to it."
+  (interactive (list (dl-zmx--read-session "zmx: ")))
+  (dl-zmx--reattach session))
+
+(defun my/zmx-new ()
+  "Open a new numbered zmx session at `default-directory'."
+  (interactive)
+  (if (file-remote-p default-directory)
+      (ghostel '(4))
+    (let ((session (dl-zmx-next-name (dl-zmx--scope-name)
+                                     (dl-zmx--names-in-use))))
+      (dl-zmx--open session (dl-zmx-attach-argv session)))))
+
+(defun my/zmx-new-at-root ()
+  "Open a new numbered zmx session at the project root."
+  (interactive)
+  (let ((default-directory (project-root (project-current t))))
+    (my/zmx-new)))
+
+(defun my/zmx-resume ()
+  "Show this project's latest zmx session, or open a new one."
+  (interactive)
+  (if-let* (((not (file-remote-p default-directory)))
+            (session (dl-zmx-latest-session (dl-zmx--scope-name)
+                                            (dl-zmx-sessions))))
+      (dl-zmx--reattach session)
+    (my/zmx-new)))
+
+(defun my/zmx-kill (session)
+  "End running zmx SESSION.  Its buffer closes with its shell."
+  (interactive (list (dl-zmx--read-session "Kill zmx session: ")))
+  (let ((name (alist-get 'name session)))
+    (when (y-or-n-p (format "Kill zmx session %s? " name))
+      (call-process dl-zmx-command nil nil nil "kill" name))))
 
 ;; `C-c p p' menu: switch project, then `z'.
 (add-to-list 'project-switch-commands '(my/zmx-project "zmx" "z") t)

@@ -144,7 +144,7 @@ Window resize: _<left>_/_<right>_ width  _<up>_/_<down>_ height  _=_ balance  _q
 ;;   f4 - end or call macro         f10 - collides w/ WM
 (bind-keys
  ("<f1>"   . my/journal-quick-capture)
- ("C-<f2>" . my/ghostel-here)          ; `dl-term.el'
+ ("C-<f2>" . my/zmx-new)               ; `dl-zmx.el'
  ("<f5>"   . deadgrep)
  ("<f9>"   . toggle-maximize-buffer))
 

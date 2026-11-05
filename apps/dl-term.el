@@ -37,11 +37,6 @@
   (let ((ghostel-buffer-name (format "*ghostel:%s*" name)))
     (ghostel)))
 
-(defun my/ghostel-here ()
-  "Open a fresh ghostel terminal at the current `default-directory'."
-  (interactive)
-  (ghostel '(4)))
-
 (add-to-list 'display-buffer-alist
   '((major-mode . ghostel-mode)
      (display-buffer-reuse-mode-window display-buffer-at-bottom)

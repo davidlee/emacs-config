@@ -3,6 +3,7 @@
 ;; Run: `just check' (dl-test scans lisp/test), or M-x ert RET dl-zmx RET.
 
 (require 'ert)
+(require 'cl-lib)
 (require 'dl-zmx)
 
 (ert-deftest dl-zmx/session-name-joins-project-and-identifier ()
@@ -48,19 +49,31 @@
                  '(((name . "a") (clients . "1") (cwd . "file://h/srv/x")
                     (id . "b") (project . "foo"))))))
 
+(ert-deftest dl-zmx/parse-sessions-keeps-a-command-with-spaces ()
+  "Fields are tab-separated, and `cmd' holds the session's whole command."
+  (should (equal (dl-zmx--parse-sessions "  name=a\tcmd=sh -c 'sleep 5'\tid=b\n")
+                 '(((name . "a") (cmd . "sh -c 'sleep 5'") (id . "b"))))))
+
 (ert-deftest dl-zmx/parse-sessions-empty-output ()
   (should (null (dl-zmx--parse-sessions ""))))
 
+(defmacro dl-zmx-test--with-zmx (body &rest script)
+  "Run BODY with `dl-zmx-command' bound to a stub running SCRIPT."
+  (declare (indent 1))
+  `(let ((dl-zmx-command (make-temp-file "zmx-stub")))
+     (unwind-protect
+         (progn
+           (with-temp-file dl-zmx-command
+             (insert "#!/bin/sh\n" ,@script))
+           (set-file-modes dl-zmx-command #o700)
+           ,body)
+       (delete-file dl-zmx-command))))
+
 (ert-deftest dl-zmx/sessions-ignore-stderr ()
   "With no sessions, `zmx list' explains itself on stderr."
-  (let ((dl-zmx-command (make-temp-file "zmx-stub")))
-    (unwind-protect
-        (progn
-          (with-temp-file dl-zmx-command
-            (insert "#!/bin/sh\necho 'no sessions found in /run/zmx' >&2\n"))
-          (set-file-modes dl-zmx-command #o700)
-          (should (null (dl-zmx-sessions))))
-      (delete-file dl-zmx-command))))
+  (dl-zmx-test--with-zmx
+   (should (null (dl-zmx-sessions)))
+   "echo 'no sessions found in /run/zmx' >&2\n"))
 
 (ert-deftest dl-zmx/session-dir-from-cwd-url ()
   (should (equal (dl-zmx--session-dir '((cwd . "file://h/srv/my%20dir")))
@@ -84,6 +97,115 @@
 (ert-deftest dl-zmx/project-identifiers-leave-out-old-hyphen-names ()
   "An old `P-ID' session is reached through `my/zmx-switch', not by project."
   (should (null (dl-zmx-project-identifiers "hris" '("hris-claude")))))
+
+(ert-deftest dl-zmx/next-name-goes-one-above-the-highest-number ()
+  "As zp's: word identifiers and other projects don't count."
+  (should (equal (dl-zmx-next-name
+                  "zmux" '("zmux.1" "zmux.3" "zmux.tests" "other.9"))
+                 "zmux.4")))
+
+(ert-deftest dl-zmx/next-name-starts-at-one ()
+  (should (equal (dl-zmx-next-name "zmux" '("other.9")) "zmux.1")))
+
+(ert-deftest dl-zmx/next-name-folds-the-project ()
+  (should (equal (dl-zmx-next-name "my.repo" '("my_repo.2")) "my_repo.3")))
+
+(ert-deftest dl-zmx/latest-session-is-the-newest-with-the-project-label ()
+  "Grouped by label, so an older `P-ID' session with one is found too."
+  (should (equal (alist-get 'name
+                            (dl-zmx-latest-session
+                             "p" '(((name . "p.1") (created . "10") (project . "p"))
+                                   ((name . "p-old") (created . "30") (project . "p"))
+                                   ((name . "q.1") (created . "40") (project . "q"))
+                                   ((name . "bare") (created . "50")))))
+                 "p-old")))
+
+(ert-deftest dl-zmx/latest-session-is-nil-without-one ()
+  (should (null (dl-zmx-latest-session "p" '(((name . "bare") (created . "1")))))))
+
+(ert-deftest dl-zmx/scope-name-is-the-project-name-in-a-project ()
+  (cl-letf (((symbol-function 'project-current) (lambda (&rest _) 'a-project))
+            ((symbol-function 'project-name) (lambda (_) "zmux")))
+    (should (equal (dl-zmx--scope-name) "zmux"))))
+
+(ert-deftest dl-zmx/scope-name-is-the-directory-outside-a-project ()
+  (cl-letf (((symbol-function 'project-current) (lambda (&rest _) nil)))
+    (let ((default-directory "/tmp/Downloads/"))
+      (should (equal (dl-zmx--scope-name) "Downloads")))))
+
+(defmacro dl-zmx-test--capturing-open (&rest body)
+  "Run BODY in project p, with `dl-zmx--open' recording its session in `opened'."
+  (declare (indent 0))
+  `(let (opened)
+     (cl-letf (((symbol-function 'dl-zmx--open)
+                (lambda (session _argv) (setq opened session)))
+               ((symbol-function 'dl-zmx--scope-name) (lambda () "p")))
+       ,@body)))
+
+(ert-deftest dl-zmx/new-counts-ended-sessions ()
+  "zmx lists an ended session until it is cleared, so its name stays taken."
+  (dl-zmx-test--capturing-open
+    (dl-zmx-test--with-zmx
+     (progn (my/zmx-new)
+            (should (equal opened "p.2")))
+     "printf '  name=p.1\\tclients=0\\tended=1\\texit_code=0\\n'")))
+
+(ert-deftest dl-zmx/new-stays-plain-ghostel-on-a-remote-directory ()
+  "zmx is local; a TRAMP terminal is a remote shell."
+  (let ((default-directory "/ssh:host:/srv/")
+        ghostel-arg)
+    (dl-zmx-test--capturing-open
+      (cl-letf (((symbol-function 'ghostel)
+                 (lambda (&optional arg) (setq ghostel-arg arg))))
+        (my/zmx-new))
+      (should (equal ghostel-arg '(4)))
+      (should (null opened)))))
+
+(ert-deftest dl-zmx/resume-reattaches-the-latest-session ()
+  (dl-zmx-test--capturing-open
+    (dl-zmx-test--with-zmx
+     (progn (my/zmx-resume)
+            (should (equal opened "p.2")))
+     "printf '  name=p.1\\tclients=0\\tcreated=1\\tproject=p\\n"
+     "  name=p.2\\tclients=0\\tcreated=2\\tproject=p\\n'")))
+
+(ert-deftest dl-zmx/resume-skips-an-ended-session ()
+  (dl-zmx-test--capturing-open
+    (dl-zmx-test--with-zmx
+     (progn (my/zmx-resume)
+            (should (equal opened "p.1")))
+     "printf '  name=p.1\\tclients=0\\tcreated=1\\tproject=p\\n"
+     "  name=p.2\\tclients=0\\tcreated=2\\tended=3\\tproject=p\\n"
+     "  name=p.2x\\tclients=0\\tcreated=2\\tended=3\\tproject=q\\n'")
+    ))
+
+(ert-deftest dl-zmx/resume-creates-when-there-is-no-session ()
+  (dl-zmx-test--capturing-open
+    (dl-zmx-test--with-zmx
+     (progn (my/zmx-resume)
+            (should (equal opened "p.1")))
+     "exit 0\n")))
+
+(ert-deftest dl-zmx/kill-asks-zmx-to-kill-the-chosen-session ()
+  (let (argv)
+    (cl-letf (((symbol-function 'dl-zmx--read-session)
+               (lambda (_prompt) '((name . "p.1"))))
+              ((symbol-function 'y-or-n-p) (lambda (_prompt) t))
+              ((symbol-function 'call-process)
+               (lambda (&rest args) (setq argv args) 0)))
+      (let ((dl-zmx-command "zmx"))
+        (call-interactively #'my/zmx-kill)))
+    (should (equal argv '("zmx" nil nil nil "kill" "p.1")))))
+
+(ert-deftest dl-zmx/kill-does-nothing-when-declined ()
+  (let (called)
+    (cl-letf (((symbol-function 'dl-zmx--read-session)
+               (lambda (_prompt) '((name . "p.1"))))
+              ((symbol-function 'y-or-n-p) (lambda (_prompt) nil))
+              ((symbol-function 'call-process)
+               (lambda (&rest _) (setq called t) 0)))
+      (call-interactively #'my/zmx-kill))
+    (should-not called)))
 
 (ert-deftest dl-zmx/ghostel-exec-callable-before-ghostel-loads ()
   "ghostel is lazy-loaded and doesn't autoload `ghostel-exec' itself."

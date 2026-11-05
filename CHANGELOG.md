@@ -2,6 +2,22 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-11-06 — Terminals live in zmx sessions
+
+`C-c m t`, `C-c m T`, `C-c m o` and `C-<f2>` now open zmx sessions, so they survive
+Emacs. `my/zmx-new` (`C-c m T`, `C-<f2>`) starts `PROJECT.N` at `default-directory`,
+one above the highest number in use, and `my/zmx-new-at-root` (`C-c m o`) does so at
+the project root. `my/zmx-resume` (`C-c m t`) shows the project's latest session, or
+starts one. Outside a project, the directory's name stands in for `PROJECT`.
+
+Killing a terminal buffer now only detaches. `exit` in the shell ends a session, as
+does the new `my/zmx-kill` (`C-c m k`). A TRAMP directory still gets a plain ghostel.
+`my/ghostel-here` is gone. `C-<f1>` popterm and the yazi and broot terminals are
+unchanged.
+
+`my/zmx-switch` no longer fails when a running session's command holds a space: `zmx
+list` fields are split on tabs alone.
+
 ## 2026-11-06 — zmx: `my/zmx-project` names sessions `PROJECT.ID`
 
 `apps/dl-zmx.el` (CHR-009) moves onto the zmux wrapper, which writes the `project`
