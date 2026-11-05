@@ -84,8 +84,10 @@ Use the zmux wrapper: it supplies labels and a scope."
 
 ;;; Sessions: `zmx list' records, alists of field strings
 
-(defun dl-zmx--parse-records (output)
-  "Return every session in `zmx list' OUTPUT, as alists of fields."
+(defun dl-zmx--parse-sessions (output)
+  "Return the sessions in `zmx list' OUTPUT, as alists of fields.
+An `ended' field reports the last `zmx run' task, not the session: its shell
+lives on, and attaching reaches it."
   (mapcar (lambda (line)
             (mapcar (lambda (field)
                       (let ((i (string-search "=" field)))
@@ -94,26 +96,16 @@ Use the zmux wrapper: it supplies labels and a scope."
                     (split-string line "\t" t " +")))
           (split-string output "\n" t)))
 
-(defun dl-zmx--parse-sessions (output)
-  "Return running sessions in `zmx list' OUTPUT, as alists of fields.
-Exited sessions stay listed with an `ended' field; they are skipped."
-  (seq-remove (lambda (session) (assq 'ended session))
-              (dl-zmx--parse-records output)))
-
-(defun dl-zmx--list ()
-  "Return `zmx list' output.
-stderr is discarded: with no sessions, zmx reports that there."
-  (with-output-to-string
-    (call-process dl-zmx-command nil (list standard-output nil) nil "list")))
-
 (defun dl-zmx-sessions ()
-  "Return running zmx sessions, as alists of fields."
-  (dl-zmx--parse-sessions (dl-zmx--list)))
+  "Return running zmx sessions, as alists of fields.
+stderr is discarded: with no sessions, zmx reports that there."
+  (dl-zmx--parse-sessions
+   (with-output-to-string
+     (call-process dl-zmx-command nil (list standard-output nil) nil "list"))))
 
-(defun dl-zmx--names-in-use ()
-  "Return every listed session name, including exited sessions'."
-  (mapcar (lambda (session) (alist-get 'name session))
-          (dl-zmx--parse-records (dl-zmx--list))))
+(defun dl-zmx--session-names ()
+  "Return the names of running zmx sessions."
+  (mapcar (lambda (session) (alist-get 'name session)) (dl-zmx-sessions)))
 
 (defun dl-zmx-latest-session (project sessions)
   "Return PROJECT's newest session among SESSIONS, or nil.
@@ -174,8 +166,7 @@ Completes the identifiers of the project's running sessions."
    (list (completing-read "zmx session: "
                           (dl-zmx-project-identifiers
                            (project-name (project-current t))
-                           (mapcar (lambda (session) (alist-get 'name session))
-                                   (dl-zmx-sessions))))))
+                           (dl-zmx--session-names)))))
   (when (string-empty-p identifier)
     (user-error "Empty zmx session identifier"))
   (let* ((project (project-current t))
@@ -200,7 +191,7 @@ Completes the identifiers of the project's running sessions."
   (if (file-remote-p default-directory)
       (ghostel '(4))
     (let ((session (dl-zmx-next-name (dl-zmx--scope-name)
-                                     (dl-zmx--names-in-use))))
+                                     (dl-zmx--session-names))))
       (dl-zmx--open session (dl-zmx-attach-argv session)))))
 
 (defun my/zmx-new-at-root ()

@@ -30,8 +30,8 @@
 (ert-deftest dl-zmx/buffer-name-is-term-prefixed ()
   (should (equal (dl-zmx-buffer-name "hris.claude") "term-hris.claude")))
 
-(ert-deftest dl-zmx/parse-sessions-skips-ended ()
-  "`zmx list' keeps exited sessions around, marked with `ended='."
+(ert-deftest dl-zmx/parse-sessions-keeps-a-session-whose-task-ended ()
+  "`ended=' reports the last `zmx run' task; the session and its shell live on."
   (should
    (equal
     (mapcar (lambda (session) (alist-get 'name session))
@@ -40,7 +40,7 @@
               "  name=ls\tpid=1\tclients=0\tcreated=1\tcwd=file://h/x\n"
               "  name=sh\tpid=2\tclients=0\tcwd=file://h/x\tended=1\texit_code=0\n"
               "  name=hris.claude\tpid=3\tclients=1\tcwd=file://h/y\n")))
-    '("ls" "hris.claude"))))
+    '("ls" "sh" "hris.claude"))))
 
 (ert-deftest dl-zmx/parse-sessions-keeps-labels ()
   "Labels are listed as ordinary fields after the built-in ones."
@@ -142,8 +142,8 @@
                ((symbol-function 'dl-zmx--scope-name) (lambda () "p")))
        ,@body)))
 
-(ert-deftest dl-zmx/new-counts-ended-sessions ()
-  "zmx lists an ended session until it is cleared, so its name stays taken."
+(ert-deftest dl-zmx/new-counts-a-session-whose-task-ended ()
+  "A finished task leaves the session, so its name stays taken."
   (dl-zmx-test--capturing-open
     (dl-zmx-test--with-zmx
      (progn (my/zmx-new)
@@ -169,15 +169,13 @@
      "printf '  name=p.1\\tclients=0\\tcreated=1\\tproject=p\\n"
      "  name=p.2\\tclients=0\\tcreated=2\\tproject=p\\n'")))
 
-(ert-deftest dl-zmx/resume-skips-an-ended-session ()
+(ert-deftest dl-zmx/resume-reaches-a-session-whose-task-ended ()
   (dl-zmx-test--capturing-open
     (dl-zmx-test--with-zmx
      (progn (my/zmx-resume)
-            (should (equal opened "p.1")))
+            (should (equal opened "p.2")))
      "printf '  name=p.1\\tclients=0\\tcreated=1\\tproject=p\\n"
-     "  name=p.2\\tclients=0\\tcreated=2\\tended=3\\tproject=p\\n"
-     "  name=p.2x\\tclients=0\\tcreated=2\\tended=3\\tproject=q\\n'")
-    ))
+     "  name=p.2\\tclients=0\\tcreated=2\\tended=3\\tproject=p\\n'")))
 
 (ert-deftest dl-zmx/resume-creates-when-there-is-no-session ()
   (dl-zmx-test--capturing-open

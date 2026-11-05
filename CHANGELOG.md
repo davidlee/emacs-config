@@ -18,6 +18,10 @@ unchanged.
 `my/zmx-switch` no longer fails when a running session's command holds a space: `zmx
 list` fields are split on tabs alone.
 
+`my/zmx-switch` and `my/zmx-resume` now reach a session whose last `zmx run` task has
+finished. `ended` in `zmx list` reports the task, not the session, so these were
+hidden while their shells were still running.
+
 ## 2026-11-06 — zmx: `my/zmx-project` names sessions `PROJECT.ID`
 
 `apps/dl-zmx.el` (CHR-009) moves onto the zmux wrapper, which writes the `project`
