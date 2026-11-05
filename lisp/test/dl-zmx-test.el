@@ -87,6 +87,12 @@
                  "/srv/my dir/"))
   (should (null (dl-zmx--session-dir '((name . "a"))))))
 
+(ert-deftest dl-zmx/session-dir-from-verbatim-kitty-url ()
+  "Ghostel's bash and zsh integrations report the path unencoded."
+  (should (equal (dl-zmx--session-dir
+                  '((cwd . "kitty-shell-cwd://Sleipnir/srv/100%20dir")))
+                 "/srv/100%20dir/")))
+
 (ert-deftest dl-zmx/annotation-shows-state-project-clients-dir ()
   (should (equal (dl-zmx--annotation
                   '((name . "a") (clients . "1") (cwd . "file://h/srv/x")

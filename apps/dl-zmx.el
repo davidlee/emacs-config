@@ -42,7 +42,7 @@
 Use the zmux wrapper: it supplies labels and a scope."
   :type 'string)
 
-(defcustom dl-zmx-shell "nu"
+(defcustom dl-zmx-shell "zsh" ;; TODO get from $SHELL
   "Shell zmx runs in a new session."
   :type 'string)
 
@@ -131,10 +131,14 @@ Grouped by the `project' label, which is the truth a name only suggests."
                       sessions)))))
 
 (defun dl-zmx--session-dir (session)
-  "Return SESSION's working directory, or nil if not reported."
+  "Return SESSION's working directory, or nil if not reported.
+The shell reports it by OSC 7: `file://' percent-encodes the path, and
+`kitty-shell-cwd://', from ghostel's bash and zsh integrations, does not."
   (when-let* ((cwd (alist-get 'cwd session)))
     (file-name-as-directory
-     (url-unhex-string (replace-regexp-in-string "\\`file://[^/]*" "" cwd)))))
+     (if (string-match "\\`kitty-shell-cwd://[^/]*" cwd)
+         (substring cwd (match-end 0))
+       (url-unhex-string (replace-regexp-in-string "\\`file://[^/]*" "" cwd))))))
 
 (defconst dl-zmx--state-icons
   '((nil "·" shadow)
