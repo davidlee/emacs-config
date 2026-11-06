@@ -50,25 +50,23 @@
         else {};
       doctrine-pkg = doctrine.packages.${system}.default;
       wrappedEmacs = inputs.emacs.packages.${system}.default;
-      # The tool set minus the agents. Exported as `packages.dev-tools` for the
-      # oubliette room's `toolsPackage`, where the agents come from the room
-      # (IMP-025).
-      devToolPkgs = with pkgs;
-        [
-          zigPackage # ghostel compile
-          nodejs_latest # acp
-          just
-          postgresql_18
-          supabase-cli
-          wrappedEmacs
-          emacsclient-commands
-          sqlite
-          socat
-          bun
-          helix
-          gdb # debugging emacs
-        ]
-        ++ [doctrine-pkg];
+      # The tool set minus the agents, exported as `packages.dev-tools`. The
+      # oubliette room's `toolsPackage` is `packages.capsule-tools`, the same set
+      # plus doctrine, where the agents come from the room (IMP-025).
+      devToolPkgs = with pkgs; [
+        zigPackage # ghostel compile
+        nodejs_latest # acp
+        just
+        postgresql_18
+        supabase-cli
+        wrappedEmacs
+        emacsclient-commands
+        sqlite
+        socat
+        bun
+        helix
+        gdb # debugging emacs
+      ];
       projectPkgs =
         devToolPkgs
         ++ [
@@ -243,7 +241,7 @@
           };
           capsule-tools = pkgs.buildEnv {
             name = "emacs-config-capsule-tools";
-            paths = devToolPkgs;
+            paths = devToolPkgs ++ [doctrine-pkg];
             ignoreCollisions = true;
           };
         };
