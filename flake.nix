@@ -36,14 +36,13 @@
         nodejs_latest # acp
         just
         postgresql_18
-        supabase-cli
         wrappedEmacs
         emacsclient-commands
         sqlite
         socat
         bun
-        helix
         gdb # debugging emacs
+        alejandra # dl-nix formatter; matches treefmt
       ];
     in {
       packages = {

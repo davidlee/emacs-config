@@ -83,7 +83,7 @@ Returns nil if there's only one line (i.e. daily notes)."
         ;; Field 1: prev-day link
         (should (string-match
                  (format "\\[\\[file:%s.*2026-05-20.*\\]\\[← 2026-05-20 .*\\]\\]"
-                         (regexp-quote (expand-file-name "~/notes/journal/")))
+                         (regexp-quote dl-notes-journal-dir))
                  (nth 0 parts)))
         ;; Field 2: week link (WkNN)
         (should (string-match "\\[\\[file:.*\\]\\[Wk21\\]\\]" (nth 1 parts)))
@@ -95,7 +95,7 @@ Returns nil if there's only one line (i.e. daily notes)."
         ;; Field 5: next-day link
         (should (string-match
                  (format "\\[\\[file:%s.*2026-05-22.*\\]\\[2026-05-22 .* →\\]\\]"
-                         (regexp-quote (expand-file-name "~/notes/journal/")))
+                         (regexp-quote dl-notes-journal-dir))
                  (nth 4 parts)))))))
 
 ;;; Work daily

@@ -2,6 +2,14 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-11-06 — `just check` passes in the jail
+
+The hippie-expand remap in `core/dl-keybind.el` is now a `bind-keys` form, which the
+policy lint requires. `just check` passes on the host (2 skipped) and in the jail
+(8 skipped, for tools the jail lacks). `flake.nix` adds `alejandra` to the dev tools,
+`just check` also searches `/workspace/org-incremental-writing`, and the journal and
+agent-review tests no longer assume `~/notes` or `python3`.
+
 ## 2026-11-06 — zmx: the session picker shows purpose and state
 
 `my/zmx-switch` (`C-c m Z`) and `my/zmx-kill` (`C-c m k`) now list a session's `role`

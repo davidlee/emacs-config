@@ -21,7 +21,7 @@ used:
 check:
   @emacs --batch -Q --init-directory="{{justfile_directory()}}" \
     --eval '(setq load-prefer-newer t)' \
-    -L core -L lisp -L org -L editing -L completion -L apps -L lang -L dev -L lisp/test -L ~/dev/satan/satan \
+    -L core -L lisp -L org -L editing -L completion -L apps -L lang -L dev -L lisp/test -L ~/dev/satan/satan -L /workspace/org-incremental-writing \
     -l dev/dl-test.el \
     --eval '(princ (dl-test-run-suite))' 2>&1 | tee /dev/stderr | grep -q PASS
 

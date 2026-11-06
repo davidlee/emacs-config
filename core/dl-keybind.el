@@ -122,7 +122,7 @@ Window resize: _<left>_/_<right>_ width  _<up>_/_<down>_ height  _=_ balance  _q
     (nreverse bindings)))
 
 ;; Use HIPPIE-EXPAND instead of dabbrev-expand
-(global-set-key [remap dabbrev-expand] 'hippie-expand)
+(bind-keys ([remap dabbrev-expand] . hippie-expand))
 
 ;; Discovery cheatsheet:
 ;;   C-h k        describe-key

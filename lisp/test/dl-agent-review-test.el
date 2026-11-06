@@ -68,9 +68,8 @@
       ;; this test does not depend on idle timers in noninteractive Emacs.
       (puthash status (time-subtract (current-time) (seconds-to-time 5))
                magit-filenotify--last-event-times)
-      (should (zerop (call-process "python3" nil nil nil "-c"
-                                   "import pathlib,sys; pathlib.Path(sys.argv[1]).write_text('gamma\\n')"
-                                   file)))
+      (should (zerop (call-process "sh" nil nil nil "-c"
+                                   "printf 'gamma\\n' > \"$1\"" "sh" file)))
       (let ((deadline (+ (float-time) 5)))
         (while (and (< (float-time) deadline)
                     (not (with-current-buffer diff
