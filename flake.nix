@@ -241,6 +241,11 @@
             paths = devToolPkgs;
             ignoreCollisions = true;
           };
+          capsule-tools = pkgs.buildEnv {
+            name = "emacs-config-capsule-tools";
+            paths = devToolPkgs;
+            ignoreCollisions = true;
+          };
         };
 
       devShell = pkgs.mkShell {
