@@ -78,6 +78,20 @@
         right-margin-width 2)
   (my/refresh-window-margins))
 
+(defvar hl-line-range-function)
+
+(defun dl-org--hl-line-range ()
+  "Return the current line's bounds, starting after any TODO keyword.
+`org-modern' paints the keyword with a text property, and the `hl-line'
+overlay would repaint its background whatever the overlay's priority."
+  (let ((case-fold-search nil))
+    (save-excursion
+      (beginning-of-line)
+      (cons (if (and (looking-at org-todo-line-regexp) (match-end 2))
+                (match-end 2)
+              (point))
+            (line-beginning-position 2)))))
+
 (defun my/org-setup-line-display ()
   "Undo the prose defaults that fight org's own line display.
 `org-indent-mode' aligns wrapped list items under their text, and
@@ -85,6 +99,7 @@
 heading depth.  `global-hl-line-mode' already highlights the line, so the
 local `hl-line-mode' is redundant."
   (hl-line-mode -1)
+  (setq-local hl-line-range-function #'dl-org--hl-line-range)
   (when (bound-and-true-p org-indent-mode)
     (visual-wrap-prefix-mode -1)))
 

@@ -2,6 +2,12 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-11-07 — org: the line highlight spares TODO labels
+
+In org buffers the `hl-line` highlight now starts after a heading's TODO keyword, so
+the `org-modern` label keeps its background on the current line
+(`dl-org--hl-line-range`). Tags on that line still lose theirs.
+
 ## 2026-11-07 — fonts: roles own their faces
 
 Each font role now sets its own faces, so `my/set-font-role` works on each one
