@@ -53,7 +53,10 @@ switches session instead of attaching.
 2. Done 2026-11-07: `dl-zmx-consult-source`, hidden, on narrow key `z`, offers
    every session without a live terminal buffer, not only `clients=0`, so a
    session attached from another terminal is reachable. `consult-ghostel` sees
-   live buffers only.
+   live buffers only. Tried by hand: it lists and reattaches. It previews plain
+   `zmx history`, which is about 4 ms for 3000 lines. `--vt` keeps colour but also
+   carries `ESC (`, OSC 7 and mode sequences that `ansi-color` leaves or strips
+   only in part, so colour needs more filtering.
 3. Replaced 2026-11-07: a Claude Code harness in zmux, beside
    `harness/pi/zmx-state.ts`, writing `zmx set . state=...` from inside the
    session. That work belongs to the zmux repo. Nothing here changes:
@@ -86,18 +89,20 @@ switches session instead of attaching.
 - **`ghostel-comint-mode` for `malebolge-attach`.** The filter would run, but
   the daemon emits no escape sequences. Revisit if it emits OSC 8 links.
 
+Live-terminal preview needs no work: with two terminals open, `C-c m b` left no
+stray bottom windows in the real minibuffer. An earlier run driving the preview
+function directly, with a stand-in `ghostel-mode`, had suggested it would.
+
 Bookmarks need no work: the record keeps the `zmx attach` command and jumping
 respawns it. Expect 80x24 until the buffer is displayed.
 
 ## Open
 
-- Preview: with `switch-to-buffer-obey-display-actions` on, `consult--buffer-preview`
-  sends a terminal through the `apps/dl-term.el` display rule. Driving the preview
-  function directly, with a stand-in `ghostel-mode`, opened one dedicated bottom
-  window per terminal and did not remove them. Unconfirmed in the real minibuffer.
 - `dl-zmx--open` displays the buffer before `ghostel-mode` is set, so the
-  `apps/dl-term.el` docking rule probably misses a first attach (read, not run).
-  Reattaching from `C-x b z` takes this path.
+  `apps/dl-term.el` docking rule misses a first attach: reattaching from `C-x b z`
+  landed in another window (run). `my/zmx-new` shares the path. Setting the mode
+  first is safe for ghostel, as `ghostel--init-buffer` skips a buffer already in
+  it, but it would dock every new terminal. Undecided.
 - Shell integration varies by session: `zmx list` reports `kitty-shell-cwd://`
   for some sessions and `file://` for others, which suggests only sessions born
   under ghostel source it. Sessions predating a ghostel upgrade keep the old

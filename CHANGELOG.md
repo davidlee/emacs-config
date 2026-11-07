@@ -2,6 +2,12 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-11-07 — zmx: `consult-buffer` previews a session's scrollback
+
+In `C-x b z SPC`, moving over a session shows the end of its `zmx history`, without
+attaching. The text is plain: no colour. `dl-zmx-consult-source` gains a `:state`, so a
+running Emacs needs a restart to see it, as reloading the file keeps the old `defvar`.
+
 ## 2026-11-07 — zmx: a blocked session shows a bell
 
 The picker's icon for `state=blocked` is now `🔔`, not `◌`: it is the state that most needs

@@ -11,7 +11,8 @@
 ;;   `my/zmx-switch'       any running session: its buffer, or reattach
 ;;   `my/zmx-kill'         end a running session
 ;;
-;; `consult-buffer' offers sessions without a terminal on the narrow key `z'.
+;; `consult-buffer' offers sessions without a terminal on the narrow key `z',
+;; previewing their scrollback.
 ;;
 ;; Outside a project, the directory's name stands in for PROJECT.  A TRAMP
 ;; directory gets a plain ghostel, as zmx is local.
@@ -34,6 +35,7 @@
 (require 'url-util)
 (autoload 'ghostel-exec "ghostel")   ; ghostel only autoloads its commands
 (declare-function ghostel "ghostel")
+(declare-function consult--buffer-preview "consult")
 
 (defgroup dl-zmx nil
   "Persistent project terminals via zmx."
@@ -104,14 +106,17 @@ lives on, and attaching reaches it.  An arrow marks the caller's own session."
                     (split-string line "\t" t "[ →]+")))
           (split-string output "\n" t)))
 
-(defun dl-zmx-sessions ()
-  "Return running zmx sessions, as alists of fields.
+(defun dl-zmx--output (&rest args)
+  "Return what zmx prints for ARGS.
 stderr is discarded: with no sessions, zmx reports that there.  The caller's
 directory may no longer exist, and `call-process' would refuse it."
   (let ((default-directory temporary-file-directory))
-    (dl-zmx--parse-sessions
-     (with-output-to-string
-       (call-process dl-zmx-command nil (list standard-output nil) nil "list")))))
+    (with-output-to-string
+      (apply #'call-process dl-zmx-command nil (list standard-output nil) nil args))))
+
+(defun dl-zmx-sessions ()
+  "Return running zmx sessions, as alists of fields."
+  (dl-zmx--parse-sessions (dl-zmx--output "list")))
 
 (defun dl-zmx--session-names ()
   "Return the names of running zmx sessions."
@@ -320,6 +325,36 @@ Each carries its record and annotation as text properties."
                           'dl-zmx-annotation (funcall annotate candidate)))
             by-candidate)))
 
+(defconst dl-zmx--preview-buffer-name " *zmx preview*"
+  "Buffer holding the scrollback `consult-buffer' previews.")
+
+(defun dl-zmx--scrollback-buffer (session)
+  "Return the preview buffer, holding the scrollback of SESSION, a name."
+  (with-current-buffer (get-buffer-create dl-zmx--preview-buffer-name)
+    (erase-buffer)
+    (insert (dl-zmx--output "history" session))
+    (current-buffer)))
+
+(defun dl-zmx--show-end (buffer)
+  "Move the window showing BUFFER to its end, where a terminal would be."
+  (when-let* ((window (get-buffer-window buffer)))
+    (set-window-point window (with-current-buffer buffer (point-max)))))
+
+(defun dl-zmx--consult-state ()
+  "Return a `consult' state function previewing a session's scrollback.
+Attaching would disturb the session, and leave a terminal behind."
+  (let ((preview (consult--buffer-preview)))
+    (lambda (action candidate)
+      (let ((buffer (when (and candidate (eq action 'preview))
+                      (dl-zmx--scrollback-buffer
+                       (alist-get 'name (get-text-property
+                                         0 'dl-zmx-session candidate))))))
+        (funcall preview action buffer)
+        (when buffer (dl-zmx--show-end buffer)))
+      (when-let* (((eq action 'exit))
+                  (buffer (get-buffer dl-zmx--preview-buffer-name)))
+        (kill-buffer buffer)))))
+
 (defvar dl-zmx-consult-source
   `( :name     "zmx"
      :narrow   (?z . "zmx")
@@ -327,6 +362,7 @@ Each carries its record and annotation as text properties."
      :category zmx-session
      :enabled  ,(lambda () (executable-find dl-zmx-command))
      :items    ,#'dl-zmx--consult-items
+     :state    ,#'dl-zmx--consult-state
      :annotate ,(lambda (candidate)
                   (get-text-property 0 'dl-zmx-annotation candidate))
      :action   ,(lambda (candidate)

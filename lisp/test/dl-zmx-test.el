@@ -389,6 +389,60 @@ Of the sessions, only `dl-zmx-test--open-session' has a live terminal."
       (funcall (plist-get dl-zmx-consult-source :action) (car items))
       (should (eq reattached dl-zmx-test--unopened-session)))))
 
+;; The stub stands in for consult's window handling, and shows what it's handed.
+(defmacro dl-zmx-test--with-preview-state (&rest body)
+  "Run BODY with `state', the source's state function, and a stub zmx echoing argv.
+`shown' collects, latest first, the text of each buffer given to the preview."
+  (declare (indent 0))
+  `(let (shown)
+     (cl-letf (((symbol-function 'consult--buffer-preview)
+                (lambda ()
+                  (lambda (_action buffer)
+                    (when buffer (set-window-buffer (selected-window) buffer))
+                    (push (and buffer (with-current-buffer buffer (buffer-string)))
+                          shown)))))
+       (save-window-excursion
+         (dl-zmx-test--with-zmx
+          (let ((state (funcall (plist-get dl-zmx-consult-source :state))))
+            (unwind-protect (progn ,@body)
+              (funcall state 'exit nil)))
+          "echo \"$@\"\n")))))
+
+(ert-deftest dl-zmx/consult-previews-the-session-scrollback ()
+  (dl-zmx-test--with-consult-items (list dl-zmx-test--unopened-session)
+    (dl-zmx-test--with-preview-state
+      (funcall state 'preview (car items))
+      (should (equal (car shown) "history hris.2\n")))))
+
+(ert-deftest dl-zmx/consult-preview-replaces-the-last-one ()
+  (dl-zmx-test--with-consult-items (list dl-zmx-test--unopened-session)
+    (dl-zmx-test--with-preview-state
+      (funcall state 'preview (car items))
+      (funcall state 'preview (car items))
+      (should (equal (car shown) "history hris.2\n")))))
+
+(ert-deftest dl-zmx/consult-preview-shows-the-latest-output ()
+  "The end of the scrollback is what a terminal would be showing."
+  (dl-zmx-test--with-consult-items (list dl-zmx-test--unopened-session)
+    (dl-zmx-test--with-preview-state
+      (funcall state 'preview (car items))
+      (funcall state 'preview (car items))
+      (should (= (window-point) (with-current-buffer (window-buffer) (point-max)))))))
+
+(ert-deftest dl-zmx/consult-preview-of-nothing-restores ()
+  "Without a candidate, consult's preview puts the original buffer back."
+  (dl-zmx-test--with-preview-state
+    (funcall state 'preview nil)
+    (should (equal shown '(nil)))))
+
+(ert-deftest dl-zmx/consult-preview-leaves-no-buffer ()
+  (dl-zmx-test--with-consult-items (list dl-zmx-test--unopened-session)
+    (dl-zmx-test--with-preview-state
+      (funcall state 'preview (car items))
+      (funcall state 'preview nil)
+      (funcall state 'exit nil)
+      (should-not (get-buffer dl-zmx--preview-buffer-name)))))
+
 (ert-deftest dl-zmx/consult-source-needs-zmx ()
   "Without zmx, `consult-buffer' goes on without the source."
   (let ((enabled (plist-get dl-zmx-consult-source :enabled))
