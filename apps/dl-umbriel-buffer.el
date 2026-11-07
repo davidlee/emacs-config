@@ -2,8 +2,8 @@
 
 ;; The display half of the umbriel client.  `dl-umbriel' holds the last
 ;; snapshots the stream was sent; this file draws them as a tree of magit
-;; sections -- workspaces, and the windows joined to each -- and turns a
-;; key on a row into the requests that act on it.  It never connects:
+;; sections -- workspaces and scratchpads, and the windows joined to each --
+;; and turns a key on a row into the requests that act on it.  It never connects:
 ;; `my/umbriel' is the one entry point that opens the stream, beside the
 ;; buffer's creation, never from the mode body.
 ;;
@@ -390,8 +390,8 @@ Nil when there are no rows to line up with."
   (when-let* ((placement (alist-get 'placement row-starts)))
     (- placement dl-umbriel-columns-gap)))
 
-(defun dl-umbriel-buffer--workspace-heading (group grid)
-  "The heading of GROUP placed by GRID, shaded when its workspace is active.
+(defun dl-umbriel-buffer--group-heading (group grid)
+  "The heading of GROUP placed by GRID, shaded when its owner is active.
 Its window count ends with the title column, if that leaves the count
 clear of the cells before it.  A styled cell stops `magit-insert-heading'
 applying its face, so the heading sets its own, under the cells.  The
@@ -467,7 +467,7 @@ A text property, so magit's point highlight still shows over the shade."
 (defun dl-umbriel-buffer--insert-heading (group grid)
   "Insert the heading of GROUP placed by GRID, its pills raised."
   (let ((start (point)))
-    (magit-insert-heading (dl-umbriel-buffer--workspace-heading group grid))
+    (magit-insert-heading (dl-umbriel-buffer--group-heading group grid))
     (dl-umbriel-buffer--raise-pills start (point))))
 
 (defun dl-umbriel-buffer--insert-group (group grid)
