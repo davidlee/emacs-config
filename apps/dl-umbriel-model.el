@@ -92,29 +92,50 @@ with a nil owner for the windows that join nothing."
                                   pairs))
         :key #'dl-umbriel-model--window-key))
 
+(defun dl-umbriel-model--pads (windows)
+  "One `((scratchpad . NAME))' entry per pad among WINDOWS, ordered by name."
+  (mapcar (lambda (name) (list (cons 'scratchpad name)))
+          (sort (seq-uniq (delq nil (mapcar #'dl-umbriel-model-window-scratchpad
+                                            windows))))))
+
+(defun dl-umbriel-model--owner (window pads workspaces)
+  "The group that takes WINDOW: its entry in PADS, else in WORKSPACES, else nil.
+A pad comes first because a shown pad's windows also report a workspace."
+  (let ((pad (dl-umbriel-model-window-scratchpad window)))
+    (if pad
+        (seq-find (lambda (entry) (equal pad (alist-get 'scratchpad entry)))
+                  pads)
+      (dl-umbriel-model-window-workspace workspaces window))))
+
 (defun dl-umbriel-model-group (workspaces windows)
-  "Pair each of WORKSPACES with the WINDOWS that join it, in display order.
-The result is a list of `(WORKSPACE . WINDOWS)' groups, ordered by output
-and index; a workspace with no windows is kept, with nil windows.  A
-window joins the workspace whose `id' equals its `workspace'; one that
-joins none -- an empty, nil or unknown id -- goes to a final
-`(nil . WINDOWS)' group, omitted when empty.  Every window appears exactly
-once, entries are returned as given, and neither input is mutated."
+  "Pair each of WORKSPACES and each pad with the WINDOWS that join it.
+The result is a list of `(OWNER . WINDOWS)' groups in display order:
+workspaces by output and index, kept even with nil windows, then a
+`((scratchpad . NAME))' owner per pad by name, then a final
+`(nil . WINDOWS)' group for what joins neither, omitted when empty.  A
+window joins its pad when it has one (DEC-028), else the workspace whose
+`id' equals its `workspace'.  Every window appears exactly once, entries
+are returned as given, and neither input is mutated."
   (let* ((ordered (sort workspaces :key #'dl-umbriel-model--workspace-key))
+         (pads (dl-umbriel-model--pads windows))
          (pairs (mapcar (lambda (window)
-                          (cons (dl-umbriel-model-window-workspace
-                                 ordered window)
+                          (cons (dl-umbriel-model--owner window pads ordered)
                                 window))
                         windows))
-         (groups (mapcar (lambda (workspace)
-                           (cons workspace
-                                 (dl-umbriel-model--windows-of
-                                  workspace pairs)))
-                         ordered))
+         (groups (mapcar (lambda (owner)
+                           (cons owner
+                                 (dl-umbriel-model--windows-of owner pairs)))
+                         (append ordered pads)))
          (unassigned (dl-umbriel-model--windows-of nil pairs)))
     (if unassigned
         (append groups (list (cons nil unassigned)))
       groups)))
+
+(defun dl-umbriel-model-window-scratchpad (window)
+  "The name of the pad WINDOW belongs to, or nil.
+Only a non-empty `scratchpad' string names a pad."
+  (let ((name (alist-get 'scratchpad window)))
+    (and (stringp name) (not (string-empty-p name)) name)))
 
 (defun dl-umbriel-model-window-workspace (workspaces window)
   "The entry in WORKSPACES that WINDOW joins, or nil.
@@ -158,6 +179,12 @@ LABEL is `dl-umbriel-model-workspace-label' without a window count."
   "CELLS, an alist of column to text, as one display line."
   (dl-umbriel-model--line (mapcar #'cdr cells)))
 
+(defun dl-umbriel-model--count-text (count)
+  "COUNT windows as display text, empty when COUNT is nil."
+  (cond ((null count) "")
+        ((equal count 1) "1 window")
+        (t (format "%s windows" count))))
+
 (defun dl-umbriel-model-workspace-cells (workspace &optional count)
   "WORKSPACE's display parts as an alist, in column order.
 `id' is the output and index, `name' the name of a named workspace,
@@ -174,12 +201,21 @@ marks.  A part WORKSPACE lacks is the empty string.  The wire's
                         (dl-umbriel-model--text workspace 'name)
                       ""))
         (cons 'layout (dl-umbriel-model--text workspace 'layout))
-        (cons 'windows (cond ((null count) "")
-                             ((equal count 1) "1 window")
-                             (t (format "%s windows" count))))
+        (cons 'windows (dl-umbriel-model--count-text count))
         (cons 'marks (dl-umbriel-model--line
                       (dl-umbriel-model--marks
                        workspace '(active focused urgent))))))
+
+(defun dl-umbriel-model-group-cells (owner count)
+  "The heading cells of OWNER, a workspace or a pad, over COUNT windows.
+A pad gives the columns a workspace does, its `layout' and `marks' empty."
+  (if-let* ((pad (alist-get 'scratchpad owner)))
+      (list (cons 'id "scratchpad")
+            (cons 'name pad)
+            (cons 'layout "")
+            (cons 'windows (dl-umbriel-model--count-text count))
+            (cons 'marks ""))
+    (dl-umbriel-model-workspace-cells owner count)))
 
 (defun dl-umbriel-model-workspace-label (workspace &optional count)
   "One display line for WORKSPACE, its cells for COUNT windows joined.

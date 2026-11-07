@@ -319,6 +319,34 @@ pair, so a lone `%' would be read as a construct."
 
 ;;;; render (VT-1, EX-1)
 
+(ert-deftest dl-umbriel-buffer/draws-a-section-per-pad ()
+  "DEC-028: pads sit between workspaces and Unassigned, with their windows."
+  (dl-umbriel-buffer-test--with-state
+      (dl-umbriel-buffer-test--held
+       (append (dl-umbriel-buffer-test--fixture-windows)
+               (list (dl-umbriel-buffer-test--window
+                      :id "w-signal" :workspace "" :scratchpad "signal"
+                      :app_id "signal" :title "Signal" :floating t)
+                     (dl-umbriel-buffer-test--window
+                      :id "w-shown" :workspace "DP-1:3" :scratchpad "discord"
+                      :app_id "discord" :title "Chat" :floating t)))
+       (dl-umbriel-buffer-test--fixture-workspaces))
+    (with-current-buffer (dl-umbriel-buffer-test--mode-buffer)
+      (dl-umbriel-buffer--repaint)
+      (let ((top (dl-umbriel-buffer-test--children)))
+        (should (equal '(umbriel-workspace umbriel-workspace
+                         umbriel-scratchpad umbriel-scratchpad
+                         umbriel-unassigned)
+                       (dl-umbriel-buffer-test--types top)))
+        (should (equal '("DP-1:3" "HDMI-A-1:3" "discord" "signal" nil)
+                       (dl-umbriel-buffer-test--values top)))
+        (should (equal '("w-shown")
+                       (dl-umbriel-buffer-test--values
+                        (dl-umbriel-buffer-test--children (nth 2 top)))))
+        (should (string-match-p
+                 "scratchpad +signal +1 window"
+                 (dl-umbriel-buffer-test--heading (nth 3 top))))))))
+
 (ert-deftest dl-umbriel-buffer/renders-the-held-state ()
   "VT-1/EX-1: section types and id values, windows nested, Unassigned last."
   (dl-umbriel-buffer-test--with-state

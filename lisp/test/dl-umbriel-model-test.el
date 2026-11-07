@@ -83,6 +83,53 @@ A non-string fails the test as an assertion instead of erroring below."
 
 ;;;; group (C-1, C-2, VT-1)
 
+(ert-deftest dl-umbriel-model-window-scratchpad/names-only-a-real-pad ()
+  "DEC-028: a non-empty string is a pad; anything else is none."
+  (should (equal "signal" (dl-umbriel-model-window-scratchpad
+                           (dl-umbriel-model-test--window :scratchpad "signal"))))
+  (dolist (value (list "" nil 3 dl-umbriel-model-test--unset))
+    (should-not (dl-umbriel-model-window-scratchpad
+                 (dl-umbriel-model-test--window :scratchpad value)))))
+
+(ert-deftest dl-umbriel-model-group/pads-sit-between-workspaces-and-unassigned ()
+  "DEC-028: pads by name after the workspaces; a shown pad window stays in its pad."
+  (let* ((held (dl-umbriel-model-test--workspace))
+         (joined (dl-umbriel-model-test--window :id "w-1"))
+         (shown (dl-umbriel-model-test--window :id "w-2" :scratchpad "signal"))
+         (hidden (dl-umbriel-model-test--window :id "w-3" :workspace ""
+                                                :scratchpad "discord"))
+         (mate (dl-umbriel-model-test--window :id "w-4" :workspace ""
+                                              :scratchpad "signal"))
+         (orphan (dl-umbriel-model-test--window :id "w-5" :workspace ""))
+         (windows (list orphan mate shown hidden joined))
+         (groups (dl-umbriel-model-group (list held) windows)))
+    (should (equal '(nil "discord" "signal" nil)
+                   (mapcar (lambda (group)
+                             (alist-get 'scratchpad (car group)))
+                           groups)))
+    (should (eq held (car (nth 0 groups))))
+    (should (equal '("w-1") (dl-umbriel-model-test--ids (cdr (nth 0 groups)))))
+    (should (equal '("w-3") (dl-umbriel-model-test--ids (cdr (nth 1 groups)))))
+    (should (seq-set-equal-p '("w-2" "w-4")
+                             (dl-umbriel-model-test--ids (cdr (nth 2 groups)))))
+    (should (equal '("w-5") (dl-umbriel-model-test--ids (cdr (nth 3 groups)))))
+    (should (= 5 (length (dl-umbriel-model-test--windows groups))))))
+
+(ert-deftest dl-umbriel-model-group-cells/gives-a-pad-heading-cells ()
+  "DEC-028: a pad's cells have the workspace's columns, layout and marks empty."
+  (let ((cells (dl-umbriel-model-group-cells '((scratchpad . "signal")) 2)))
+    (should (equal "scratchpad" (alist-get 'id cells)))
+    (should (equal "signal" (alist-get 'name cells)))
+    (should (equal "2 windows" (alist-get 'windows cells)))
+    (should (equal "" (alist-get 'layout cells)))
+    (should (equal "" (alist-get 'marks cells)))))
+
+(ert-deftest dl-umbriel-model-group-cells/gives-a-workspace-its-own-cells ()
+  "A workspace owner's cells are `dl-umbriel-model-workspace-cells'."
+  (let ((workspace (dl-umbriel-model-test--workspace)))
+    (should (equal (dl-umbriel-model-workspace-cells workspace 2)
+                   (dl-umbriel-model-group-cells workspace 2)))))
+
 (ert-deftest dl-umbriel-model-group/keeps-every-window ()
   "RV-018 F-7: no window is dropped, whatever its `workspace' field says.
 Scratchpad (\"\"), nil, absent and unknown ids all land in the final

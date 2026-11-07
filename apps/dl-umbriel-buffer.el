@@ -302,12 +302,11 @@ ENTRY is a window or a workspace, so headings and rows share the columns."
      face)))
 
 (defun dl-umbriel-buffer--group-cells (group)
-  "The heading cells of GROUP, a `(WORKSPACE . WINDOWS)' pair.
+  "The heading cells of GROUP, a `(OWNER . WINDOWS)' pair.
 The count comes before the layout, so the layout can sit over the rows'
 placement, the name and layout are pills, and the flags are the rows'."
   (let* ((workspace (car group))
-         (cells (dl-umbriel-model-workspace-cells workspace
-                                                  (length (cdr group)))))
+         (cells (dl-umbriel-model-group-cells workspace (length (cdr group)))))
     (append
      (list (assq 'id cells)
            (cons 'name (dl-umbriel-buffer--pill
@@ -465,21 +464,31 @@ A text property, so magit's point highlight still shows over the shade."
        start (point) 'font-lock-face
        'dl-umbriel-buffer-active-workspace-window))))
 
+(defun dl-umbriel-buffer--insert-heading (group grid)
+  "Insert the heading of GROUP placed by GRID, its pills raised."
+  (let ((start (point)))
+    (magit-insert-heading (dl-umbriel-buffer--workspace-heading group grid))
+    (dl-umbriel-buffer--raise-pills start (point))))
+
 (defun dl-umbriel-buffer--insert-group (group grid)
-  "Insert GROUP, a `(WORKSPACE . WINDOWS)' pair from the model, placed by GRID.
-A nil WORKSPACE is the model's Unassigned group, which has no id."
-  (let ((workspace (car group))
-        (windows (cdr group)))
-    (if (not workspace)
-        (magit-insert-section (umbriel-unassigned)
-          (magit-insert-heading "Unassigned")
-          (dl-umbriel-buffer--insert-windows windows grid))
-      (magit-insert-section (umbriel-workspace (alist-get 'id workspace))
-        (let ((start (point)))
-          (magit-insert-heading
-           (dl-umbriel-buffer--workspace-heading group grid))
-          (dl-umbriel-buffer--raise-pills start (point)))
-        (dl-umbriel-buffer--insert-workspace-windows workspace windows grid)))))
+  "Insert GROUP, an `(OWNER . WINDOWS)' pair from the model, placed by GRID.
+OWNER is a workspace, a pad, or nil for the model's Unassigned group."
+  (let* ((owner (car group))
+         (windows (cdr group))
+         (pad (alist-get 'scratchpad owner)))
+    (cond
+     ((null owner)
+      (magit-insert-section (umbriel-unassigned)
+        (magit-insert-heading "Unassigned")
+        (dl-umbriel-buffer--insert-windows windows grid)))
+     (pad
+      (magit-insert-section (umbriel-scratchpad pad)
+        (dl-umbriel-buffer--insert-heading group grid)
+        (dl-umbriel-buffer--insert-windows windows grid)))
+     (t
+      (magit-insert-section (umbriel-workspace (alist-get 'id owner))
+        (dl-umbriel-buffer--insert-heading group grid)
+        (dl-umbriel-buffer--insert-workspace-windows owner windows grid))))))
 
 (defun dl-umbriel-buffer--width ()
   "The columns of the narrowest window showing this buffer, or nil if none."
