@@ -2,6 +2,8 @@
 
 (require 'cl-lib)
 (require 'color)
+(require 'tab-bar)
+(require 'tab-line)
 
 ;; Single home for face customization in this config: font roles,
 ;; per-face attrs, line-numbers, mode-line, org headings, flymake /
@@ -25,11 +27,11 @@
 
     ;; Sans
 
-    (inter . "Inter Display")
+    (inter . "Inter")
+    (inter-display . "Inter Display")
     (roboto . "Roboto")
-    (source-sans . "Source Sans 3")
     (noto-sans . "Noto Sans")
-    (geist-sans . "Geist Medium")
+    (geist-sans . "Geist")
 
     ;; Serif
 
@@ -41,19 +43,21 @@
 
 (defvar my/font-roles
   '((mono . jetbrains-mono)
-    (mono-alt . monolisa)
-    (mono-narrow . iosevka)
     (sans . roboto)
-    (serif . inter)
     (ui . inter)
     (modeline . geist)
-    (header . monaspace-neon)
-    (tab . monaspace-argon)
+    (header . mono)
+    (tab . mono)
+    (tab-line . inter)
     (line-number . zedmono)
-    ;; (org-body . et-book)
-    (org-body . monolisa)
+    (org-body . et-book)
+    ;; (org-body . monolisa)
     (org-code . mono)
-    (org-heading . inter)))
+    (org-heading . inter-display)
+    ;; Spare: nothing reads these yet, so setting them changes nothing.
+    (mono-alt . monolisa)
+    (mono-narrow . iosevka)
+    (serif . source-serif)))
 
 (defun my/set-font-role (role font)
   "Set font ROLE to FONT and reapply fonts."
@@ -86,10 +90,6 @@
          :family (my/font-role role)
          attrs))
 
-(defun my/apply-lambda-line-faces ()
-  (my/set-face-font 'mode-line 'modeline :height 140 :weight 'semibold)
-  (my/set-face-font 'mode-line-inactive 'modeline :height 140 :weight 'regular))
-
 (defun my/refresh-window-margins ()
   "Re-apply margin settings of the current buffer in windows showing it.
 Margins take effect on `set-window-buffer'.  Never pulls the buffer into
@@ -112,8 +112,6 @@ which override the variable, so it gets the pad as extra indent."
       (jit-lock-refontify))))
 
 (add-hook 'display-line-numbers-mode-hook #'my/pad-line-numbers)
-(add-hook 'display-line-numbers-mode-hook #'my/apply-fonts) ;; hopefully fix spacing issue with ruler
-(add-hook 'prog-mode-hook #'my/apply-fonts)
 
 (defun my/apply-line-number-faces ()
   "Give both line-number faces one family, height and weight.
@@ -127,8 +125,19 @@ ad-hoc edits, leaving the two faces in different families (misaligned)."
                             `(line-number-current-line
                               ((t :inherit line-number :family ,family :height 1.0 :weight regular))))))
 
+(defface dl-faces-org-body '((t))
+  "Plain text in org buffers.  `my/org-face-styles' gives it the `org-body' role.")
+
+(defun dl-faces--draw-org-body ()
+  "Draw the current buffer's plain text in `dl-faces-org-body'.
+Remapped to a face, not a family, so a role change reaches open buffers."
+  (face-remap-add-relative 'default 'dl-faces-org-body))
+
+(add-hook 'org-mode-hook #'dl-faces--draw-org-body)
+
 (defvar my/org-face-styles
-  '((org-document-title  :role org-heading :height 1.6  :weight semibold)
+  '((dl-faces-org-body   :role org-body)
+    (org-document-title  :role org-heading :height 1.6  :weight semibold)
     (org-level-1        :role org-heading :height 1.4  :weight semibold)
     (org-level-2        :role org-heading :height 1.25 :weight semibold)
     (org-level-3        :role org-heading :height 1.15 :weight regular)
@@ -178,11 +187,18 @@ with `text-scale-adjust' (C-mousewheel).  Edit and call
            ("CANCELED" :background "#313244" :foreground "#585b70")
            ("MOVED"    :background "#89b4fa" :foreground "#1e1e2e"))))
 
+(defconst my/chrome-role-faces
+  '((header header-line header-line-inactive)
+    (tab tab-bar tab-bar-tab tab-bar-tab-inactive)
+    (tab-line tab-line tab-line-tab tab-line-tab-current
+              tab-line-tab-inactive tab-line-tab-special))
+  "Font roles and the header and tab faces they set.
+Named one by one: themes drop their inheritance, leaving them in `default'.")
+
 (defun my/apply-ui-faces ()
   "Apply font roles to core UI faces."
   (let ((ui       (my/font-role 'ui))
-        (modeline (my/font-role 'modeline))
-        (mono     (my/font-role 'mono)))
+        (modeline (my/font-role 'modeline)))
     ;; Minibuffer / prompt / completions.
     (set-face-attribute 'minibuffer-prompt nil
                         :family ui
@@ -212,15 +228,9 @@ with `text-scale-adjust' (C-mousewheel).  Edit and call
                           :height 1.0))
 
     ;; Header/tab/line numbers.
-    (set-face-attribute 'header-line nil
-                        :family ui
-                        :height 1.0)
-    (set-face-attribute 'tab-bar nil
-                        :family ui
-                        :height 1.0)
-    (set-face-attribute 'tab-line nil
-                        :family ui
-                        :height 1.0)
+    (pcase-dolist (`(,role . ,faces) my/chrome-role-faces)
+      (dolist (face faces)
+        (my/set-face-font face role :height 1.0)))
 
     (my/apply-line-number-faces)))
 
@@ -256,9 +266,6 @@ Variadic to fit `enable-theme-functions', which passes the theme."
   (my/apply-ui-faces)
   (my/apply-org-faces)
   (my/apply-hl-line-faces))
-
-(with-eval-after-load 'lambda-line
-  (my/apply-lambda-line-faces))
 
 ;; Diagnostic underlines — straight lines, muted hues. Wave style is noisy.
 (with-eval-after-load 'flymake

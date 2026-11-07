@@ -112,5 +112,71 @@ unresolved; the hooks are idempotent, so they re-run once a real frame exists."
       (should (equal (my/font-role 'mono)
                      (symbol-name (font-get font :family)))))))
 
+;; Font roles
+
+(ert-deftest dl-faces/every-role-names-a-known-font ()
+  "Each role reaches a family, directly or through another role."
+  (pcase-dolist (`(,role . ,_) my/font-roles)
+    (should (stringp (my/font-role role)))))
+
+(ert-deftest dl-faces/ui-text-and-org-headings-use-their-own-cuts ()
+  "Small UI text gets the text cut of Inter, headings the display cut."
+  (should (equal (my/font-role 'ui) "Inter"))
+  (should (equal (my/font-role 'org-heading) "Inter Display")))
+
+;; The legend in *umbriel*'s header aligns by columns, so it needs a mono font.
+(ert-deftest dl-faces/headers-and-tab-bar-are-mono-and-tab-line-fits-more ()
+  "Headers and the tab bar stay fixed-width; the tab line is proportional."
+  (should (equal (my/font-role 'header) (my/font-role 'mono)))
+  (should (equal (my/font-role 'tab) (my/font-role 'mono)))
+  (should (equal (my/font-role 'tab-line) "Inter")))
+
+(defconst dl-faces-test--chrome
+  '((header header-line header-line-inactive)
+    (tab tab-bar tab-bar-tab tab-bar-tab-inactive)
+    (tab-line tab-line tab-line-tab tab-line-tab-current
+              tab-line-tab-inactive tab-line-tab-special))
+  "Which faces each chrome role must set, independent of the code's table.")
+
+(ert-deftest dl-faces/chrome-roles-each-set-only-their-own-faces ()
+  "Changing one chrome role moves its faces, active and inactive, and no others.
+Themes leave some of these with no family, so they would draw in `default'."
+  (unwind-protect
+      (pcase-dolist (`(,role . ,_) dl-faces-test--chrome)
+        (let ((my/font-roles (cons (cons role 'hack)
+                                   (assq-delete-all role
+                                                    (copy-alist my/font-roles)))))
+          (my/apply-ui-faces)
+          (pcase-dolist (`(,owner . ,faces) dl-faces-test--chrome)
+            (dolist (face faces)
+              (should (eq (eq owner role)
+                          (equal (face-attribute face :family nil) "Hack")))))))
+    (my/apply-ui-faces)))
+
+;; A role, not a family: the role can change while org buffers are open.
+(ert-deftest dl-faces/org-body-role-draws-org-text-and-nothing-else ()
+  "Org buffers draw plain text in the `org-body' role; others stay on `default'."
+  (with-temp-buffer
+    (org-mode)
+    (should (member 'dl-faces-org-body (alist-get 'default face-remapping-alist))))
+  (with-temp-buffer
+    (text-mode)
+    (should-not (alist-get 'default face-remapping-alist)))
+  (unwind-protect
+      (let ((my/font-roles (cons '(org-body . hack) my/font-roles)))
+        (my/apply-org-faces)
+        (should (equal (face-attribute 'dl-faces-org-body :family nil) "Hack")))
+    (my/apply-org-faces)))
+
+(ert-deftest dl-faces/visiting-a-buffer-leaves-global-faces-alone ()
+  "Faces are global: mode hooks must not reapply them per buffer."
+  (let ((applied 0))
+    (cl-letf (((symbol-function 'my/apply-fonts)
+               (lambda (&rest _) (cl-incf applied))))
+      (with-temp-buffer
+        (prog-mode)
+        (display-line-numbers-mode 1)))
+    (should (zerop applied))))
+
 (provide 'dl-faces-test)
 ;;; dl-faces-test.el ends here

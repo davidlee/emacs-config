@@ -2,6 +2,21 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-11-07 — fonts: roles own their faces
+
+Each font role now sets its own faces, so `my/set-font-role` works on each one
+separately. `header` and `tab` set the header line and tab bar, in mono; the new
+`tab-line` role sets the tab line, in Inter (`my/chrome-role-faces`). `ui` keeps the
+minibuffer and completions, and moves from Inter Display to Inter. `org-heading` keeps
+Inter Display through a new `inter-display` font. `org-body` now draws plain text in
+org buffers, through the new `dl-faces-org-body` face. `mono-alt`, `mono-narrow` and
+`serif` stay as spare roles, and `serif` now names `source-serif`.
+
+`header-line-inactive` and the tab faces no longer fall back to `default`.
+`my/apply-fonts` no longer runs on every `prog-mode` buffer or line-number toggle, and
+`my/apply-lambda-line-faces` is gone. `source-sans` is removed, and `geist-sans` now
+names `Geist`.
+
 ## 2026-11-07 — umbriel: the `*umbriel*` buffer gets faces and columns
 
 `my/umbriel` (`C-c u u`) now shows state by colour as well as by text. The
