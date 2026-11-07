@@ -13,6 +13,9 @@ Run this config on a Guix System VM without changing behaviour on Nix hosts.
 - `hunk-notes` and the `org-timeblock` fork are `:vc` entries in that module, not
   `use-package` stanzas, which would also clone on Nix.
 - `core/dl-faces.el` loads `hl-line` itself; init aborted on Guix without it.
+- `apps/dl-satan.el` skips SATAN and Malebolge on Guix: both are built with Nix. Revisit
+  once it's decided whether Nix runs on the VM, and at what level.
+- `lang/dl-nushell.el` is guarded on the `nu` grammar, which Guix lacks. Nix hosts keep it.
 
 Governance: the user waived a slice for this change on 2026-11-08 and chose a backlog
 item with direct commits.

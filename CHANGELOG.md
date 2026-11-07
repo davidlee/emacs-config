@@ -9,6 +9,9 @@ packages; `just guix-packages` fetches the rest into `elpa/`. Startup stays offl
 `package-archives` stays nil at runtime. Nix hosts are unaffected. `core/dl-faces.el` now
 loads `hl-line` itself: it set that face at load and relied on something else loading it.
 
+On Guix, `apps/dl-satan.el` skips SATAN and Malebolge, which are built with Nix.
+`lang/dl-nushell.el` now loads only where the `nu` grammar exists, so Nix hosts keep it.
+
 ## 2026-11-07 — zmx: new terminals dock, and shell history works
 
 `my/zmx-new`, `my/zmx-project`, `my/zmx-resume`, `my/zmx-switch` and `C-x b z` now open a

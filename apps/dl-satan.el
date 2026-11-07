@@ -1,5 +1,11 @@
 ;;; dl-satan.el --- integration with SATAN (github.com:davidlee/satan) -*- lexical-binding: t; -*-
 
+;; SATAN and Malebolge are built with Nix, so Guix leaves them out until
+;; there is a plan for Nix there.  This gate is the only edge: nothing else
+;; in the config needs them at load.
+
+(require 'dl-guix)
+
 (defun dl-satan--compile-stale ()
   "Byte-compile SATAN sources whose .elc is missing or older.
 The package loads from a git checkout, so nothing else compiles it;
@@ -10,7 +16,7 @@ interpreted, its timers stall input.  Native-comp JIT follows the .elc."
         (when (file-newer-than-file-p el (byte-compile-dest-file el))
           (byte-compile-file el))))))
 
-(unless (eq system-type 'darwin)
+(unless (or (eq system-type 'darwin) (dl-guix-system-p))
   (dl-satan--compile-stale)
   (use-package satan
     :ensure nil
@@ -40,12 +46,11 @@ interpreted, its timers stall input.  Native-comp JIT follows the .elc."
     (malebolge-tool-face ((t :inherit success)))
     ;; foxglove-dark has no orange ink; warning's amber sat too near SATAN's red.
     (malebolge-thread-face ((t :inherit warning :weight normal :foreground "#e8915a")))
-    (malebolge-reap-face ((t :inherit warning :weight bold :underline t)))))
+    (malebolge-reap-face ((t :inherit warning :weight bold :underline t))))
 
-(require 'malebolge-mail)
-(setopt malebolge-mail-plans-directory "~/.local/state/malebolge/mail-plans"
-        malebolge-mail-acts-directory  "~/.local/state/malebolge/mail-acts")
-
+  (require 'malebolge-mail)
+  (setopt malebolge-mail-plans-directory "~/.local/state/malebolge/mail-plans"
+          malebolge-mail-acts-directory  "~/.local/state/malebolge/mail-acts"))
 
 (provide 'dl-satan)
 ;;; dl-satan.el ends here

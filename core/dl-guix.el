@@ -21,10 +21,11 @@
   '(australia-holidays breadcrumb buffer-terminator comment-dwim-2
     copy-as-format dired-toggle dogears flyover gptel-inline macher
     magit-filenotify markdown-preview-eww markdown-toc minuet
-    molokai-theme nano-agenda nushell-ts-mode org-alert org-gcal org-mcp
-    org-review org-srs popterm quick-sdcv ready-player slim-mode
-    treesit-fold visual-regexp-steroids zoom-window)
-  "Packages in ~/flakes/emacs/emacs.nix that Guix lacks.")
+    molokai-theme nano-agenda org-alert org-gcal org-mcp org-review
+    org-srs popterm quick-sdcv ready-player slim-mode treesit-fold
+    visual-regexp-steroids zoom-window)
+  "Packages in ~/flakes/emacs/emacs.nix that Guix lacks and this config uses.
+Excludes `nushell-ts-mode': Guix has no grammar for it.")
 
 (defconst dl-guix-vc-packages
   '((hunk-notes :url "https://github.com/ArthurHeymans/emacs-hunk-notes")
