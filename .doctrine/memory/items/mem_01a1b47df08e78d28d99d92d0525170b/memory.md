@@ -1,0 +1,1 @@
+`defvar-keymap` is a `defvar`, so `load`, `eval-buffer` and compile-on-save leave an existing map as it was. A key added to the form stays unbound in a running Emacs, while new commands and `defconst` tables in the same file do load. To test without restarting, run `keymap-set` on the live map (seen in SL-017).

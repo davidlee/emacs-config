@@ -1,0 +1,177 @@
+id    = 22
+slug  = "reconciliation-review-of-sl-017"
+title = "reconciliation review of SL-017"
+# no status — a review's status is DERIVED from its findings, so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "reconciliation"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+rounds_base = 0
+contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "Examined conformance, VT mandates, just check, the diff against design.md, and the user VH-1 report."
+
+[target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
+ref   = "SL-017"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "major"
+title = "Expected a shown pad window to report a workspace; it reports none"
+detail = """
+Expected: design Model section and DEC-028 context say a shown pad window keeps a workspace, so row plans still see it.
+Observed: live, discord had visible true and workspace "". Grouping is unaffected, but `s` and `L` refused such rows.
+"""
+disposition = "design-wrong"
+response = "Design is wrong, not the code. Reconcile design.md Model; DEC-032 records the correction to DEC-028 context. See the brief."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = "Design is wrong, not the code. Reconcile design.md Model; DEC-032 records the correction to DEC-028 context. See the brief."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "minor"
+title = "Expected window rows in a pad unchanged; s now prompts"
+detail = """
+Expected: design and DEC-030 keep window-row behaviour in a pad.
+Observed: DEC-032 adds a pad-workspace prompt to `s`, made after the VH-1 check at the user's request. design.md does not mention it.
+"""
+disposition = "design-wrong"
+response = "User-directed change during VH-1. Reconcile design.md Buffer and cite DEC-032. See the brief."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = "User-directed change during VH-1. Reconcile design.md Buffer and cite DEC-032. See the brief."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "minor"
+title = "Expected L to act on a pad window; it refuses"
+detail = """
+Expected by the user's report on `s`: a pad row should not dead-end.
+Observed: `L` still says "Window has no workspace". The user was asked and closed the slice without requesting a change.
+"""
+disposition = "follow-up"
+response = "Captured in IMP-031 with the option of using the active workspace on the window output."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "follow-up"
+response = "Captured in IMP-031 with the option of using the active workspace on the window output."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "nit"
+title = "Expected heading function named for what it serves"
+detail = """
+Expected: names follow the concern. Observed: dl-umbriel-buffer--workspace-heading also drew pad headings.
+"""
+disposition = "fix-now"
+response = "Renamed to dl-umbriel-buffer--group-heading and updated the file header."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Renamed to dl-umbriel-buffer--group-heading and updated the file header."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-5"
+status = "verified"
+severity = "nit"
+title = "Conformance lists seven undeclared .doctrine paths"
+detail = """
+Expected: no undeclared paths. Observed: slice-017 files, notes, plan.toml and DEC-032. All source paths are conformant, none undelivered.
+"""
+disposition = "tolerated"
+response = "These are doctrine workflow records, not delivered source. Declaring them would add noise to the selector fence."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "tolerated"
+response = "These are doctrine workflow records, not delivered source. Declaring them would add noise to the selector fence."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-6"
+status = "verified"
+severity = "minor"
+title = "Expected doctrine check gate to run; no gate recipe exists"
+detail = """
+Expected: audit runs `doctrine check gate`. Observed: "justfile does not contain recipe `gate`". `just check`, the project commit gate, passed 512 of 514 with 2 skipped.
+"""
+disposition = "follow-up"
+response = "Already tracked as CHR-008. just check is the commit gate named in AGENTS.md."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "follow-up"
+response = "Already tracked as CHR-008. just check is the commit gate named in AGENTS.md."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+# Findings are append-only `[[finding]]` tables, added by `review raise`.
+# Empty here at creation — a fresh review is Active, awaiting the raiser.

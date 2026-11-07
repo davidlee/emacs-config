@@ -1,0 +1,42 @@
+memory_uid = "mem_01a1b47df08e78d28d99d92d0525170b"
+memory_key = "mem.fact.emacs.defvar-keymap-reload"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "Reloading a file does not rebind a defvar-keymap"
+summary = "A new key in a defvar-keymap needs keymap-set live or a restart."
+created = "2026-11-07"
+updated = "2026-11-07"
+
+[scope]
+paths = []
+globs = ["**/*.el"]
+commands = []
+tags = ["emacs"]
+workspace = "default"
+repo = "github.com/davidlee/emacs-config"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "627e1ffb5101010275958992e6b913bc314d0f38"
+ref_name = "refs/heads/main"
+checkout_state_id = "b658b78a5d8532875797c1e7506aae7c2c8427c47706196c4e4b182b81d3191a"
+base_commit = "aae2511e26686ebf32b7c54bc717d12b3560c510"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0
+

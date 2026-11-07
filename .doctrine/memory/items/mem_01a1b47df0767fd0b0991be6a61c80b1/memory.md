@@ -1,0 +1,3 @@
+umbriel reports `workspace: ""` for a pad window whether the pad is shown or hidden (observed live 2026-11-07, SL-017). `scratchpad`, `output` and `visible` are set. So the workspace join finds nothing for any pad window, and a row action needing a workspace must get one another way (DEC-032).
+
+`window-move-to-workspace[-silent]` takes a window out of its pad and sends it to the workspace (umbriel docs/user/scratchpad.md). Under `back_and_forth`, `workspace-switch` to the active workspace toggles to the previous one.

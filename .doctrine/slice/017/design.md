@@ -14,7 +14,7 @@ windows ──> dl-umbriel-model-group ──> workspace groups   heading + rows
 - `dl-umbriel-model-window-scratchpad WINDOW`: the pad name when `scratchpad` is a non-empty string, else nil.
 - `dl-umbriel-model-group`: the owner of a window is its pad entry `((scratchpad . NAME))`, else its workspace, else nil. Pad entries are built once per name and sorted by name, so `dl-umbriel-model--windows-of` keeps comparing owners with `eq`. Groups come out as workspaces, pads, then the nil group. Every window still appears exactly once.
 - `dl-umbriel-model-group-cells OWNER COUNT`: heading cells for either owner. A pad gives `id` `scratchpad`, `name` NAME and the window count, with `layout` and `marks` empty. A workspace gives `dl-umbriel-model-workspace-cells`.
-- `dl-umbriel-model-window-workspace` is unchanged, so the row plans for a shown pad window still see its workspace.
+- `dl-umbriel-model-window-workspace` is unchanged. umbriel reports `workspace: ""` for a pad window, shown or hidden, so it joins nothing there.
 <!-- doctrine:section sec-3 -->
 ## Buffer (`apps/dl-umbriel-buffer.el`)
 
@@ -24,6 +24,7 @@ windows ──> dl-umbriel-model-group ──> workspace groups   heading + rows
 - `dl-umbriel-buffer-actions` gains `(my/umbriel-toggle-scratchpad "scratchpad-toggle" scratchpad)`.
 - `dl-umbriel-buffer--plan`: `scratchpad` addressing sends the action with a `scratchpad` field, from the heading or the row window; with neither it refuses "Not in a scratchpad". Any other addressing on a `:scratchpad` target refuses (DEC-030).
 - `dl-umbriel-buffer-mode-map` binds `v`.
+- `s` carries a `pad-workspace` prompt: on a pad window that joins no workspace it asks for one and sends `workspace-switch` to it (DEC-032).
 <!-- doctrine:section sec-4 -->
 ## Code impact
 
