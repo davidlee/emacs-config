@@ -1,0 +1,43 @@
+memory_uid = "mem_01a1b368979e73008df0434dbb314456"
+memory_key = "mem.fact.umbriel.buffer-face-layering"
+schema_version = 1
+lifespan = "semantic"
+memory_type = "fact"
+status = "active"
+title = "umbriel buffer face layering and its traps"
+summary = "How *umbriel* faces stack and the traps: overlay vs text property, align-to units, user-theme specs, heading faces"
+created = "2026-11-07"
+updated = "2026-11-07"
+
+[scope]
+paths = ["apps/dl-umbriel-buffer.el", "apps/dl-umbriel-columns.el", "core/dl-faces.el"]
+globs = []
+commands = []
+tags = ["umbriel", "faces"]
+workspace = "default"
+repo = "github.com/davidlee/emacs-config"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "d4427e409bf18714a4b4e747f50ca1fe2e74e4c4"
+ref_name = "refs/heads/main"
+checkout_state_id = "f076b476804db31013126964189e27a8273aa06918242eab67a5c78fee95a7f9"
+base_commit = "a871f23e2774c7a729bbbe74322808fabe01d8d2"
+verified_sha = "593239d337d42aedf66f478828fc1ada1227b837"
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "verified"
+reviewed = "2026-11-07"
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "medium"
+weight = 0
+

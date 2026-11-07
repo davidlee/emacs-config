@@ -1,0 +1,43 @@
+memory_uid = "mem_01a1b368978378608841acf5bcec6d01"
+memory_key = "mem.pattern.emacs.render-live-frame-to-png"
+schema_version = 1
+lifespan = "procedural"
+memory_type = "pattern"
+status = "active"
+title = "Render a live Emacs frame to PNG to check visual work"
+summary = "Check visual Emacs work by rendering a live frame to PNG with x-export-frames, then reading the image"
+created = "2026-11-07"
+updated = "2026-11-07"
+
+[scope]
+paths = ["core/dl-faces.el"]
+globs = ["apps/dl-umbriel-*.el"]
+commands = []
+tags = ["emacs", "visual"]
+workspace = "default"
+repo = "github.com/davidlee/emacs-config"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "commit"
+commit = "a871f23e2774c7a729bbbe74322808fabe01d8d2"
+tree = "d4427e409bf18714a4b4e747f50ca1fe2e74e4c4"
+ref_name = "refs/heads/main"
+checkout_state_id = ""
+base_commit = "a871f23e2774c7a729bbbe74322808fabe01d8d2"
+verified_sha = "317bfc7d9be47ea004908bf68b2a2fdec69d6c2a"
+normalizer = ""
+
+[review]
+verification_state = "verified"
+reviewed = "2026-11-07"
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "low"
+weight = 0
+
