@@ -456,9 +456,46 @@ Of the sessions, only `dl-zmx-test--open-session' has a live terminal."
   (should (plist-get dl-zmx-consult-source :hidden))
   (should (equal (plist-get dl-zmx-consult-source :narrow) '(?z . "zmx"))))
 
-(ert-deftest dl-zmx/ghostel-exec-callable-before-ghostel-loads ()
-  "ghostel is lazy-loaded and doesn't autoload `ghostel-exec' itself."
-  (should (fboundp 'ghostel-exec)))
+;; A stand-in for ghostel, so that these need neither its module nor a terminal.
+(defmacro dl-zmx-test--with-open-terminal (&rest body)
+  "Run BODY with `dl-zmx--open' reaching stub ghostel functions.
+`docked' holds the buffers a `ghostel-mode' display rule took; `spawned' the argv
+of each `ghostel-exec'.  `buffer' is the terminal for session `hris.2'."
+  (declare (indent 0))
+  `(let* ((docked nil)
+          (spawned nil)
+          (buffer (get-buffer-create (dl-zmx-buffer-name "hris.2")))
+          (dl-zmx-shell "zsh")
+          (display-buffer-alist
+           `(((major-mode . ghostel-mode)
+              ,(lambda (shown _alist)
+                 (push shown docked)
+                 (display-buffer-same-window shown nil))))))
+     (cl-letf (((symbol-function 'ghostel-mode)
+                (lambda () (setq major-mode 'ghostel-mode)))
+               ((symbol-function 'ghostel-exec)
+                (lambda (_buffer program args) (push (cons program args) spawned))))
+       (save-window-excursion
+         (unwind-protect (progn ,@body)
+           (kill-buffer buffer))))))
+
+(ert-deftest dl-zmx/first-attach-reaches-the-terminal-display-rule ()
+  "The rule matches on the mode, so the mode has to precede the display."
+  (dl-zmx-test--with-open-terminal
+    (dl-zmx--open "hris.2" '("zmx" "attach" "hris.2"))
+    (should (equal docked (list buffer)))
+    (should (equal spawned '(("zmx" "attach" "hris.2"))))))
+
+(ert-deftest dl-zmx/open-tells-ghostel-the-shell ()
+  "`ghostel-shell-history' reads it, and `ghostel-exec' leaves it unset."
+  (dl-zmx-test--with-open-terminal
+    (dl-zmx--open "hris.2" '("zmx" "attach" "hris.2"))
+    (should (equal (buffer-local-value 'ghostel--shell-program buffer) "zsh"))))
+
+(ert-deftest dl-zmx/ghostel-callable-before-ghostel-loads ()
+  "ghostel is lazy-loaded and autoloads neither of these itself."
+  (should (fboundp 'ghostel-exec))
+  (should (fboundp 'ghostel-mode)))
 
 (ert-deftest dl-zmx/offered-on-project-switch ()
   "`project-switch-project' menu offers zmx on `z'."

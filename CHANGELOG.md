@@ -2,6 +2,13 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-11-07 — zmx: new terminals dock, and shell history works
+
+`my/zmx-new`, `my/zmx-project`, `my/zmx-resume`, `my/zmx-switch` and `C-x b z` now open a
+new terminal in the bottom window (`apps/dl-term.el`): that rule matches on `ghostel-mode`,
+which was set too late. `consult-ghostel-history` works in
+zmx terminals, reading the history of `dl-zmx-shell`.
+
 ## 2026-11-07 — zmx: `consult-buffer` previews a session's scrollback
 
 In `C-x b z SPC`, moving over a session shows the end of its `zmx history`, without

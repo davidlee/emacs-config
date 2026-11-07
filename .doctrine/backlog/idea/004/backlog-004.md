@@ -61,10 +61,11 @@ switches session instead of attaching.
    `harness/pi/zmx-state.ts`, writing `zmx set . state=...` from inside the
    session. That work belongs to the zmux repo. Nothing here changes:
    `dl-zmx--state-icons` already shows the label. See Rejected for the bridge.
-4. Make `consult-ghostel-history` work in zmx buffers. It needs
-   `ghostel--shell-program`, which `ghostel-exec` does not set, so
-   `ghostel-shell-history` signals "Buffer has no recognized shell" (run). The fix
-   sets a private variable; an upstream hook would be cleaner.
+4. Done 2026-11-07: `dl-zmx--open` sets the private `ghostel--shell-program` to
+   `dl-zmx-shell`, as `ghostel-exec` does not, so `ghostel-shell-history` no longer
+   signals "Buffer has no recognized shell" (run, real ghostel). Chosen over an
+   upstream change for now. `dl-zmx-shell` names the shell for new sessions, so a
+   session started under another shell reads the wrong history (inferred).
 5. A `zmx:` Org link type, such as `[[zmx:emacs.2]]`.
 6. Replace the Eat block in `apps/dl-term.el` with
    `ghostel-eshell-visual-command-mode`. `eat-eshell-mode` and
@@ -94,15 +95,17 @@ stray bottom windows in the real minibuffer. An earlier run driving the preview
 function directly, with a stand-in `ghostel-mode`, had suggested it would.
 
 Bookmarks need no work: the record keeps the `zmx attach` command and jumping
-respawns it. Expect 80x24 until the buffer is displayed.
+respawns it. Expect 80x24 until the buffer is displayed. A respawn calls `ghostel-exec` directly,
+not `dl-zmx--open`, so `consult-ghostel-history` should still fail in that buffer
+(read, not run).
 
 ## Open
 
-- `dl-zmx--open` displays the buffer before `ghostel-mode` is set, so the
-  `apps/dl-term.el` docking rule misses a first attach: reattaching from `C-x b z`
-  landed in another window (run). `my/zmx-new` shares the path. Setting the mode
-  first is safe for ghostel, as `ghostel--init-buffer` skips a buffer already in
-  it, but it would dock every new terminal. Undecided.
+- Docking stacks: `dl-zmx--open` now sets `ghostel-mode` before display, so every
+  zmx terminal takes the `apps/dl-term.el` rule, and a first attach docks at 30%
+  (run, real ghostel). With one already docked, a second opens its own bottom
+  window beside it, as `display-buffer-reuse-mode-window` passes over the dedicated
+  one. Three terminals crowd a small frame. Whether to reuse the dock is undecided.
 - Shell integration varies by session: `zmx list` reports `kitty-shell-cwd://`
   for some sessions and `file://` for others, which suggests only sessions born
   under ghostel source it. Sessions predating a ghostel upgrade keep the old

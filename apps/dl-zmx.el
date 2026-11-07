@@ -34,6 +34,7 @@
 (require 'project)
 (require 'url-util)
 (autoload 'ghostel-exec "ghostel")   ; ghostel only autoloads its commands
+(autoload 'ghostel-mode "ghostel")
 (declare-function ghostel "ghostel")
 (declare-function consult--buffer-preview "consult")
 
@@ -241,11 +242,18 @@ A `role' follows the name, aligned, in the candidate so that it can be searched.
 ;;; Commands
 
 (defun dl-zmx--open (session argv)
-  "Pop to SESSION's ghostel buffer; run ARGV in it unless already running."
+  "Pop to SESSION's ghostel buffer; run ARGV in it unless already running.
+The mode comes before the display, for the terminal rule in `dl-term'."
   (let ((buf (get-buffer-create (dl-zmx-buffer-name session))))
+    (with-current-buffer buf
+      (unless (derived-mode-p 'ghostel-mode)
+        (ghostel-mode)))
     (pop-to-buffer buf)              ; display first: size the PTY to the window
     (unless (process-live-p (get-buffer-process buf))
-      (ghostel-exec buf (car argv) (cdr argv)))))
+      (ghostel-exec buf (car argv) (cdr argv))
+      ;; ghostel has no public way to name the shell, which its history needs.
+      (with-current-buffer buf
+        (setq-local ghostel--shell-program dl-zmx-shell)))))
 
 (defun my/zmx-project (identifier)
   "Open zmx session PROJECT.IDENTIFIER in a terminal at the project root.
