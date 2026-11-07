@@ -2,6 +2,13 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-11-08 — run on Guix System
+
+The config now boots on Guix System (`core/dl-guix.el`). Guix Home supplies Emacs and most
+packages; `just guix-packages` fetches the rest into `elpa/`. Startup stays offline, and
+`package-archives` stays nil at runtime. Nix hosts are unaffected. `core/dl-faces.el` now
+loads `hl-line` itself: it set that face at load and relied on something else loading it.
+
 ## 2026-11-07 — zmx: new terminals dock, and shell history works
 
 `my/zmx-new`, `my/zmx-project`, `my/zmx-resume`, `my/zmx-switch` and `C-x b z` now open a

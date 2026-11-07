@@ -11,12 +11,17 @@
   "Applying faces at load needs `hl-line', so dl-faces must load it itself.
 Runs in a fresh Emacs: in this one, other tests have already loaded it."
   (let* ((core (file-name-directory (locate-library "dl-faces")))
-         (form "(progn (require 'org) (require 'dl-faces) (princ (facep 'hl-line)))")
+         (form (prin1-to-string
+                '(progn
+                   (setq load-prefer-newer t)
+                   (require 'org)
+                   (require 'dl-faces)
+                   (princ (if (facep 'hl-line) "yes" "no")))))
          (output (with-output-to-string
                    (with-current-buffer standard-output
                      (call-process (expand-file-name invocation-name invocation-directory)
                                    nil t nil "-Q" "--batch" "-L" core "--eval" form)))))
-    (should (string-suffix-p "t" (string-trim output)))))
+    (should (string-suffix-p "yes" output))))
 
 (ert-deftest dl-faces/line-numbers-pad-the-text-while-shown ()
   "Text is prefixed off the line numbers only while they are displayed."
