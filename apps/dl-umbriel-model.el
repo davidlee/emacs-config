@@ -92,11 +92,16 @@ with a nil owner for the windows that join nothing."
                                   pairs))
         :key #'dl-umbriel-model--window-key))
 
+(defun dl-umbriel-model-pad-names (windows)
+  "The name of each pad among WINDOWS, sorted.
+A pad with no windows is in no window, so it is not here."
+  (sort (seq-uniq (delq nil (mapcar #'dl-umbriel-model-window-scratchpad
+                                    windows)))))
+
 (defun dl-umbriel-model--pads (windows)
   "One `((scratchpad . NAME))' entry per pad among WINDOWS, ordered by name."
   (mapcar (lambda (name) (list (cons 'scratchpad name)))
-          (sort (seq-uniq (delq nil (mapcar #'dl-umbriel-model-window-scratchpad
-                                            windows))))))
+          (dl-umbriel-model-pad-names windows)))
 
 (defun dl-umbriel-model--owner (window pads workspaces)
   "The group that takes WINDOW: its entry in PADS, else in WORKSPACES, else nil.

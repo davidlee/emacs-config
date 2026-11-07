@@ -420,6 +420,116 @@ pair, so a lone `%' would be read as a construct."
   (should (eq 'my/umbriel-toggle-scratchpad
               (keymap-lookup dl-umbriel-buffer-mode-map "v"))))
 
+;;;; sending a window to a pad (IMP-031)
+
+(defconst dl-umbriel-buffer-test--send-to-pad
+  (assq 'my/umbriel-send-to-pad dl-umbriel-buffer-actions)
+  "The send-to-pad row of the action table.")
+
+(defconst dl-umbriel-buffer-test--pad-fields '((scratchpad . "main"))
+  "The fields a send to the pad `main' carries.")
+
+(defun dl-umbriel-buffer-test--refused-send (target workspaces)
+  "The refusal a send of TARGET to `main' gets among WORKSPACES."
+  (dl-umbriel-buffer-test--refused dl-umbriel-buffer-test--send-to-pad target
+                                   dl-umbriel-buffer-test--pad-fields workspaces))
+
+(ert-deftest dl-umbriel-buffer--plan/send-to-pad-focuses-acts-and-restores ()
+  "The row's window is focused, sent, and the previous focus comes back."
+  (should (equal
+           (list (dl-umbriel-action "window-focus" '((window . "w-dp1")))
+                 (dl-umbriel-action "window-move-to-scratchpad"
+                                    dl-umbriel-buffer-test--pad-fields)
+                 (dl-umbriel-action "window-focus" '((window . "w-emacs"))))
+           (dl-umbriel-buffer--plan
+            dl-umbriel-buffer-test--send-to-pad
+            (list :window (dl-umbriel-buffer-test--window
+                           :id "w-dp1" :workspace "DP-1:1"))
+            dl-umbriel-buffer-test--pad-fields
+            (dl-umbriel-buffer-test--action-workspaces-focusing "w-emacs")))))
+
+(ert-deftest dl-umbriel-buffer--plan/send-to-pad-refuses-a-pad-window ()
+  "The action takes the workspace's focus, so a pad row would send another window."
+  (should (dl-umbriel-buffer-test--mentions-p
+           (dl-umbriel-buffer-test--refused-send
+            (list :window (dl-umbriel-buffer-test--window
+                           :workspace "" :scratchpad "signal"))
+            (dl-umbriel-buffer-test--action-workspaces))
+           "already in a scratchpad")))
+
+(ert-deftest dl-umbriel-buffer--plan/send-to-pad-refuses-a-workspace-row ()
+  "A workspace row must not send whatever happens to be focused."
+  (should (equal "Not a window"
+                 (dl-umbriel-buffer-test--refused-send
+                  (list :workspace (dl-umbriel-buffer-test--workspace))
+                  (dl-umbriel-buffer-test--action-workspaces)))))
+
+(ert-deftest dl-umbriel-buffer--plan/send-to-pad-refuses-another-output ()
+  "`window-focus' leaves the pointer, and the action follows the pointer."
+  (should (dl-umbriel-buffer-test--mentions-p
+           (dl-umbriel-buffer-test--refused-send
+            (list :window (dl-umbriel-buffer-test--window
+                           :id "w-dp2" :workspace "DP-2:1"))
+            (dl-umbriel-buffer-test--action-workspaces))
+           "under the pointer")))
+
+(ert-deftest dl-umbriel-buffer--plan/send-to-pad-refuses-an-orphan ()
+  "A window in no pad and no workspace has no output to judge."
+  (should (equal "Window has no workspace"
+                 (dl-umbriel-buffer-test--refused-send
+                  (list :window (dl-umbriel-buffer-test--window :workspace ""))
+                  (dl-umbriel-buffer-test--action-workspaces)))))
+
+(ert-deftest dl-umbriel-buffer/send-to-pad-offers-held-pads-and-takes-any-name ()
+  "Held pads complete in order; an empty pad, which no window names, can be typed."
+  (let ((workspaces (dl-umbriel-buffer-test--action-workspaces)))
+    (dl-umbriel-buffer-test--with-state
+        (dl-umbriel-buffer-test--held
+         (list (dl-umbriel-buffer-test--window :id "w-dp1" :workspace "DP-1:1")
+               (dl-umbriel-buffer-test--window
+                :id "w-signal" :workspace "" :scratchpad "signal")
+               (dl-umbriel-buffer-test--window
+                :id "w-discord" :workspace "" :scratchpad "discord"))
+         workspaces)
+      (with-current-buffer (dl-umbriel-buffer-test--mode-buffer)
+        (dl-umbriel-buffer--repaint)
+        (dl-umbriel-buffer-test--with-send-all
+          (dl-umbriel-buffer-test--with-prompts
+            (setq dl-umbriel-buffer-test--prompt-choice "main")
+            (dl-umbriel-buffer-test--call-on-row
+             'my/umbriel-send-to-pad 'umbriel-window "w-dp1")
+            (pcase-let ((`(,_kind ,_prompt ,collection ,match)
+                         (car dl-umbriel-buffer-test--prompts)))
+              (should (equal '("discord" "signal")
+                             (dl-umbriel-buffer-test--offered collection)))
+              (should-not match))
+            (should (member (dl-umbriel-action
+                             "window-move-to-scratchpad"
+                             dl-umbriel-buffer-test--pad-fields)
+                            (caar dl-umbriel-buffer-test--send-all-calls)))))))))
+
+(ert-deftest dl-umbriel-buffer/send-to-pad-sends-nothing-without-a-name ()
+  "Empty input names no pad, and umbriel would reject a bare action."
+  (let ((workspaces (dl-umbriel-buffer-test--action-workspaces)))
+    (dl-umbriel-buffer-test--with-state
+        (dl-umbriel-buffer-test--held
+         (list (dl-umbriel-buffer-test--window :id "w-dp1" :workspace "DP-1:1"))
+         workspaces)
+      (with-current-buffer (dl-umbriel-buffer-test--mode-buffer)
+        (dl-umbriel-buffer--repaint)
+        (dl-umbriel-buffer-test--with-send-all
+          (dl-umbriel-buffer-test--with-prompts
+            (setq dl-umbriel-buffer-test--prompt-choice "")
+            (should-error (dl-umbriel-buffer-test--call-on-row
+                           'my/umbriel-send-to-pad 'umbriel-window "w-dp1")
+                          :type 'user-error)
+            (should-not dl-umbriel-buffer-test--send-all-calls)))))))
+
+(ert-deftest dl-umbriel-buffer/P-sends-to-a-pad ()
+  "`P' sends the row's window to a pad."
+  (should (eq 'my/umbriel-send-to-pad
+              (keymap-lookup dl-umbriel-buffer-mode-map "P"))))
+
 ;;;; render (VT-1, EX-1)
 
 (ert-deftest dl-umbriel-buffer/draws-a-section-per-pad ()
@@ -1666,7 +1776,8 @@ unknown."
                                   workspace)
     (my/umbriel-switch "workspace-switch" workspace pad-workspace)
     (my/umbriel-set-layout "workspace-set-layout" active-workspace layout)
-    (my/umbriel-toggle-scratchpad "scratchpad-toggle" scratchpad))
+    (my/umbriel-toggle-scratchpad "scratchpad-toggle" scratchpad)
+    (my/umbriel-send-to-pad "window-move-to-scratchpad" pointer-window pad))
   "The design's action table, as this file expects it to be held.
 DEC-025: moving a window to a workspace goes silently, so the plan's
 own focus steps are the only ones the user sees.")
@@ -2836,11 +2947,14 @@ Each one leaves only after the previous replied successfully."
 
 (ert-deftest dl-umbriel-buffer/no-row-callback-prompts ()
   "VT-5/EX-7: no row command's send-all callback opens any prompt.
-The row sits in a pad, so that every action in the table has a target."
+The row sits in a pad, so that every action in the table has a target;
+a send to a pad, which refuses a pad window, gets a plain row instead."
   (let ((workspaces (dl-umbriel-buffer-test--action-workspaces))
-        (windows (mapcar (lambda (window)
-                           (cons '(scratchpad . "signal") window))
-                         (dl-umbriel-buffer-test--action-windows))))
+        (windows (cons (dl-umbriel-buffer-test--window :id "w-plain"
+                                                       :workspace "DP-1:1")
+                       (mapcar (lambda (window)
+                                 (cons '(scratchpad . "signal") window))
+                               (dl-umbriel-buffer-test--action-windows)))))
     (dl-umbriel-buffer-test--with-state
         (dl-umbriel-buffer-test--held windows workspaces)
       (let ((buffer (dl-umbriel-buffer-test--mode-buffer)))
@@ -2857,8 +2971,9 @@ The row sits in a pad, so that every action in the table has a target."
                         (car (nth 0 (dl-umbriel-model-workspace-choices
                                      workspaces)))))
                 (setq dl-umbriel-buffer-test--prompt-confirm t)
-                (dl-umbriel-buffer-test--call-on-row (nth 0 spec)
-                                                     'umbriel-window "w-dp1")
+                (dl-umbriel-buffer-test--call-on-row
+                 (nth 0 spec) 'umbriel-window
+                 (if (eq (nth 2 spec) 'pointer-window) "w-plain" "w-dp1"))
                 (let ((plan (caar dl-umbriel-buffer-test--send-all-calls))
                       (callback (cdar dl-umbriel-buffer-test--send-all-calls))
                       (asked (length dl-umbriel-buffer-test--prompts)))

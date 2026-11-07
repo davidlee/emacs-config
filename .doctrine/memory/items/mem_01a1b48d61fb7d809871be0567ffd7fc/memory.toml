@@ -1,0 +1,43 @@
+memory_uid = "mem_01a1b48d61fb7d809871be0567ffd7fc"
+memory_key = "mem.fact.umbriel.move-to-scratchpad-target"
+schema_version = 1
+lifespan = "semantic"
+memory_type = "fact"
+status = "active"
+title = "umbriel window-move-to-scratchpad targets the workspace focus, not the keyboard"
+summary = "window-move-to-scratchpad acts on the pointer output's active workspace focus, so window-focus first does not aim it at a pad window or a window on another output."
+created = "2026-11-07"
+updated = "2026-11-07"
+
+[scope]
+paths = ["apps/dl-umbriel-buffer.el"]
+globs = []
+commands = []
+tags = ["umbriel"]
+workspace = "default"
+repo = "github.com/davidlee/emacs-config"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "6ed9571d17a50d80c4799552a91bc6e0467c2a51"
+ref_name = "refs/heads/main"
+checkout_state_id = "bd7ba98f337e0da850d6fb4731c97ccff5839217fb4eac4650ace12cbc37b10f"
+base_commit = "f99db425e0cdadaf4d77e19b04fe3564288c2744"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0
+

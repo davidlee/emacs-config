@@ -91,6 +91,15 @@ A non-string fails the test as an assertion instead of erroring below."
     (should-not (dl-umbriel-model-window-scratchpad
                  (dl-umbriel-model-test--window :scratchpad value)))))
 
+(ert-deftest dl-umbriel-model-pad-names/names-each-held-pad-once-in-order ()
+  "A pad counts once however many windows it holds; a plain window names none."
+  (should (equal '("discord" "signal")
+                 (dl-umbriel-model-pad-names
+                  (list (dl-umbriel-model-test--window :scratchpad "signal")
+                        (dl-umbriel-model-test--window :scratchpad "discord")
+                        (dl-umbriel-model-test--window :scratchpad "signal")
+                        (dl-umbriel-model-test--window))))))
+
 (ert-deftest dl-umbriel-model-group/pads-sit-between-workspaces-and-unassigned ()
   "DEC-028: pads by name after the workspaces; a shown pad window stays in its pad."
   (let* ((held (dl-umbriel-model-test--workspace))

@@ -23,3 +23,18 @@ Send-to-pad facts, checked 2026-11-07:
 - `window-restore-from-scratchpad` needs the pad to be visible.
 - Free in `dl-umbriel-buffer-mode-map` and `magit-section-mode-map`: `P`, `z`, `S`, `x`,
   `r`. `p` is `magit-section-backward`.
+
+Send-to-pad done 2026-11-07: `P` (`my/umbriel-send-to-pad`), `pointer-window` addressing.
+The prompt offers held pads and takes free text; reading umbriel's config would couple
+this code to its TOML layout. From umbriel source, not run live:
+
+- `window-move-to-scratchpad` acts on the active workspace's remembered focus on the
+  pointer's output (`FocusSource::Workspace`), not on the keyboard focus. A pad row or a
+  row on another output would send a different window, so `P` refuses them. A workspace
+  row is refused too, rather than sending whatever is focused.
+- It does not move a window between pads: `admit` rejects an interactive move of a
+  member. Use `m`, then `P`.
+- The focus restore holds: `focused_window` is a workspace window, never a pad member.
+
+Open: `L` on a pad window; a remove-from-pad key, if `m` proves not to be enough.
+Not yet checked live: `P` on a real window.

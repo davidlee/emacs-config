@@ -199,13 +199,18 @@ In `*umbriel*`, on the row at point:
 | `k` | `my/umbriel-kill` | `window-kill` | window row; asks to confirm |
 | `L` | `my/umbriel-set-layout` | `workspace-set-layout` | workspace or window row; prompts for the layout |
 | `v` | `my/umbriel-toggle-scratchpad` | `scratchpad-toggle` | pad heading or a window row in a pad |
+| `P` | `my/umbriel-send-to-pad` | `window-move-to-scratchpad` | workspace window row on the output under the pointer; prompts for the pad |
 | `g` | `my/umbriel-refresh` | none | reconnects or repaints |
 | `q` | `quit-window` | none | |
 
 (\*) On a workspace row these act on whatever window the compositor has
 focused, with no focus step. `RET`, `t` and `k` refuse a workspace row
-(`Not a window`). A pad heading has no window, so every key but `v` refuses it
-(`Not a window`).
+(`Not a window`), and so does `P`. A pad heading has no window, so every key but
+`v` refuses it (`Not a window`).
+
+`P` offers the pads that hold windows. The IPC lists no others, so an empty pad
+must be typed, and umbriel rejects a name it does not know. That failure comes
+after the focus step, so focus stays on the row's window.
 
 There are no scroll keys: strip scrolling is a viewport action, not an action
 on the row at point (DEC-026). Use umbriel's own bindings.
@@ -247,6 +252,7 @@ the prompt, so a refused row never asks anything.
 | workspace | `s` | `workspace-switch` to the row's workspace |
 | active workspace | `L` | `workspace-switch` first, unless already focused, then `workspace-set-layout` |
 | scratchpad | `v` | `scratchpad-toggle` with the row's pad name |
+| pointer window | `P` | as focused, for a workspace window on the output under the pointer |
 
 - **Focus, act, restore.** For a focused-only action on a window that is not
   the focused one, Emacs focuses it, acts, then refocuses the window the
@@ -261,6 +267,12 @@ the prompt, so a refused row never asks anything.
   output. It switches to the row's workspace first only when that workspace is
   not already the focused one: switching to the active workspace would toggle
   back to the previous one under umbriel's `back_and_forth` setting.
+- **A send to a pad acts on the workspace under the pointer.**
+  `window-move-to-scratchpad` takes the remembered focus of the active workspace
+  on the pointer's output, whatever holds the keyboard, and `window-focus` does
+  not move the pointer. On a pad window or a row on another output it would send
+  a different window, often this Emacs, so `P` refuses both. To move a window
+  between pads, take it out with `m`, then send it.
 - **Refusals.** A heading, an empty buffer or an entry no longer held gives
   `No umbriel row at point`. A window with no workspace cannot be switched to.
 
