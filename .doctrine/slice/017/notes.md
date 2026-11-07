@@ -6,13 +6,19 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: <yyyy-mm-dd> · <PHASE-NN | stage> · <head-commit>
+fresh-as-of: 2026-11-07 · done · 3e768d8
 
 ### Produced
 
+DEC-028, DEC-029, DEC-030, DEC-031, DEC-032, RV-021, RV-022
+
 ### Learned
 
+mem.fact.umbriel.pad-window-fields, mem.fact.emacs.defvar-keymap-reload
+
 ### Open
+
+IMP-031, CHR-008
 
 ## Design review pass (2026-11-07)
 
