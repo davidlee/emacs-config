@@ -16,6 +16,12 @@ New faces: `dl-umbriel-buffer-active-window`, `-focused-window`,
 `-window-app`, `-window-placement`, `-window-flags`. `core/dl-faces.el` now requires
 `color`, which it was using without loading.
 
+Workspace headings in `my/umbriel` also style their names and layouts. A name is a
+padded pill, muted unless its workspace is active
+(`dl-umbriel-buffer-workspace-name`, `-active-workspace-name`), and each layout has
+its own colour (`dl-umbriel-buffer-layout-scrolling`, `-dwindle`, `-master`,
+`-stacking`, `-toggle`).
+
 ## 2026-11-06 — `just check` passes in the jail
 
 The hippie-expand remap in `core/dl-keybind.el` is now a `bind-keys` form, which the

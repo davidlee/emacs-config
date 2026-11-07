@@ -82,5 +82,21 @@ unresolved; the hooks are idempotent, so they re-run once a real frame exists."
                (dl-faces-test--red 'dl-umbriel-buffer-active-workspace-window)
                (car (color-values-from-color-spec default))))))
 
+(ert-deftest dl-faces/umbriel-muted-name-sits-below-its-accent-and-survives-recalc ()
+  "An inactive workspace's name pill is a darker shade of the active accent."
+  ;; White: batch `color-name-to-rgb' snaps to the nearest terminal colour.
+  (let ((accent "#ffffff"))
+    (cl-letf (((symbol-function 'face-attribute)
+               (let ((real (symbol-function 'face-attribute)))
+                 (lambda (face &rest args)
+                   (if (eq face 'success)
+                       accent
+                     (apply real face args)))))
+              ((symbol-function 'color-defined-p) #'always))
+      (my/mute-umbriel-workspace-name))
+    (custom-theme-recalc-face 'dl-umbriel-buffer-workspace-name)
+    (should (< (dl-faces-test--red 'dl-umbriel-buffer-workspace-name)
+               (car (color-values-from-color-spec accent))))))
+
 (provide 'dl-faces-test)
 ;;; dl-faces-test.el ends here

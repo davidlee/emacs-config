@@ -158,6 +158,13 @@ HDMI-1 2 scrolling 0 windows
   `-placement` and `-flags`, which inherit theme faces; the `active` and
   `focused` row colours replace them on those rows. An `active` workspace's
   output and index use `dl-umbriel-buffer-active-workspace-id`, bold white.
+- A workspace name is a padded pill: `dl-umbriel-buffer-active-workspace-name`
+  when active, otherwise `dl-umbriel-buffer-workspace-name`, a muted shade
+  derived in `core/dl-faces.el`. The point highlight hides the muted pill's
+  background.
+- Each layout has a face, `dl-umbriel-buffer-layout-scrolling`, `-dwindle`,
+  `-master`, `-stacking` and `-toggle`, listed in
+  `dl-umbriel-buffer-layout-faces`. Any other layout reads as its heading.
 - `visible` means: on the active workspace, not a hidden tab, not minimized.
   It does not mean "on screen"; such a window may be scrolled out of view.
 

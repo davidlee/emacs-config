@@ -29,4 +29,11 @@ display strings in `apps/dl-umbriel-model.el`.
   placement and flags have faces, and an active workspace's id is bold white.
 - 2026-11-07: layout moved to `apps/dl-umbriel-columns.el` (DEC-027); a workspace
   heading's marks now sit over the rows' flags column.
+- 2026-11-07, headings: a name is a padded pill, muted unless its workspace is
+  active, and each layout has a face. The faces alist is per call, so
+  `dl-umbriel-buffer--heading-faces` picks a layout's face by value and
+  `dl-umbriel-columns-row` did not change. Every heading now sets its own base
+  face, because a styled cell stops magit applying `magit-section-heading`.
+- Known: magit's point highlight hides the muted pill's background, because the
+  pill is a text property.
 - Open: fit the title to the window width instead of a fixed cap of 40.

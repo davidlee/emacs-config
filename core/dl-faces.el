@@ -325,6 +325,22 @@ the defface spec, so these carry the whole face."
 (my/shade-umbriel-active-workspace)
 (add-hook 'enable-theme-functions #'my/shade-umbriel-active-workspace)
 
+(defun my/mute-umbriel-workspace-name (&rest _)
+  "Mute an inactive workspace's name pill in *umbriel*: a dull, dark `success'.
+Declared in the `user' theme, and so re-run on theme change, for the
+reasons `my/blend-borders-into-background' gives."
+  (let ((accent (face-attribute 'success :foreground nil t)))
+    (when (color-defined-p accent)
+      (custom-theme-set-faces
+       'user
+       `(dl-umbriel-buffer-workspace-name
+         ((t :inherit default
+             :background ,(color-darken-name
+                           (color-desaturate-name accent 50) 50))))))))
+
+(my/mute-umbriel-workspace-name)
+(add-hook 'enable-theme-functions #'my/mute-umbriel-workspace-name)
+
 (defun my/refire-theme-hooks-on-graphical-frame (frame)
   "Re-run `enable-theme-functions' for the enabled themes once FRAME is graphical.
 A daemon starts on a terminal frame, where theme-derived colours (`default'

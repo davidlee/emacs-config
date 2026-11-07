@@ -131,6 +131,42 @@ the overlay, which then evaporates."
   "Face for the output and index in an active workspace's heading."
   :group 'faces)
 
+(defface dl-umbriel-buffer-active-workspace-name
+  '((t :inherit success :inverse-video t))
+  "Face for the name pill in an active workspace's heading."
+  :group 'faces)
+
+(defface dl-umbriel-buffer-workspace-name
+  '((t :inherit default))
+  "Face for the name pill in an inactive workspace's heading.
+`core/dl-faces.el' gives it a muted shade of the active pill's colour."
+  :group 'faces)
+
+(defface dl-umbriel-buffer-layout-scrolling
+  '((t :inherit font-lock-comment-face :slant normal))
+  "Face for the `scrolling' layout in a workspace's heading."
+  :group 'faces)
+
+(defface dl-umbriel-buffer-layout-dwindle
+  '((t :inherit warning :weight normal))
+  "Face for the `dwindle' layout in a workspace's heading."
+  :group 'faces)
+
+(defface dl-umbriel-buffer-layout-master
+  '((t :inherit success :weight normal))
+  "Face for the `master' layout in a workspace's heading."
+  :group 'faces)
+
+(defface dl-umbriel-buffer-layout-stacking
+  '((t :inherit font-lock-string-face))
+  "Face for the `stacking' layout in a workspace's heading."
+  :group 'faces)
+
+(defface dl-umbriel-buffer-layout-toggle
+  '((t :inherit shadow))
+  "Face for the `toggle' layout in a workspace's heading."
+  :group 'faces)
+
 (defface dl-umbriel-buffer-window-app
   '((t :inherit font-lock-string-face))
   "Face for the app id column of a window row."
@@ -151,6 +187,14 @@ the overlay, which then evaporates."
     (placement . dl-umbriel-buffer-window-placement)
     (flags . dl-umbriel-buffer-window-flags))
   "The face of each window row column; a column left out has none.")
+
+(defconst dl-umbriel-buffer-layout-faces
+  '(("scrolling" . dl-umbriel-buffer-layout-scrolling)
+    ("dwindle" . dl-umbriel-buffer-layout-dwindle)
+    ("master" . dl-umbriel-buffer-layout-master)
+    ("stacking" . dl-umbriel-buffer-layout-stacking)
+    ("toggle" . dl-umbriel-buffer-layout-toggle))
+  "The face of each layout; a layout left out reads as its heading.")
 
 (defconst dl-umbriel-buffer-column-limits '((app . 24) (title . 40))
   "The widest each column may grow; a column left out is unlimited.")
@@ -181,24 +225,40 @@ the overlay, which then evaporates."
       (dl-umbriel-buffer--insert-window window starts))))
 
 (defun dl-umbriel-buffer--group-cells (group)
-  "The heading cells of GROUP, a `(WORKSPACE . WINDOWS)' pair."
-  (dl-umbriel-model-workspace-cells (car group) (length (cdr group))))
+  "The heading cells of GROUP, a `(WORKSPACE . WINDOWS)' pair.
+A name is padded, so that its face reads as a pill."
+  (let ((cells (dl-umbriel-model-workspace-cells (car group)
+                                                 (length (cdr group)))))
+    (unless (string-empty-p (alist-get 'name cells))
+      (setf (alist-get 'name cells) (format " %s " (alist-get 'name cells))))
+    cells))
+
+(defun dl-umbriel-buffer--heading-faces (cells active)
+  "The face of each heading column for CELLS, in a workspace ACTIVE or not.
+Built per heading, because a layout's face depends on its value."
+  `((id . ,(and active 'dl-umbriel-buffer-active-workspace-id))
+    (name . ,(if active
+                 'dl-umbriel-buffer-active-workspace-name
+               'dl-umbriel-buffer-workspace-name))
+    (layout . ,(alist-get (alist-get 'layout cells)
+                          dl-umbriel-buffer-layout-faces nil nil #'equal))))
 
 (defun dl-umbriel-buffer--workspace-heading (group starts)
   "The heading of GROUP at STARTS, shaded when its workspace is active.
-The newline is part of an active heading, so the shade spans the line."
-  (let ((cells (dl-umbriel-buffer--group-cells group)))
-    (if (not (alist-get 'active (car group)))
-        (dl-umbriel-columns-row cells starts nil)
-      (let ((heading
-             (concat (dl-umbriel-columns-row
-                      cells starts
-                      '((id . dl-umbriel-buffer-active-workspace-id)))
-                     "\n")))
-        (font-lock-append-text-property
-         0 (length heading) 'font-lock-face
-         'dl-umbriel-buffer-active-workspace heading)
-        heading))))
+A styled cell stops `magit-insert-heading' applying its face, so the
+heading sets its own, under the cells.  The newline is part of the
+heading, so an active shade spans the line."
+  (let* ((cells (dl-umbriel-buffer--group-cells group))
+         (active (alist-get 'active (car group)))
+         (heading (concat (dl-umbriel-columns-row
+                           cells starts
+                           (dl-umbriel-buffer--heading-faces cells active))
+                          "\n")))
+    (font-lock-append-text-property
+     0 (length heading) 'font-lock-face
+     (if active 'dl-umbriel-buffer-active-workspace 'magit-section-heading)
+     heading)
+    heading))
 
 (defun dl-umbriel-buffer--insert-workspace-windows (workspace windows starts)
   "Insert WINDOWS, WORKSPACE's rows at STARTS, shaded when it is active.

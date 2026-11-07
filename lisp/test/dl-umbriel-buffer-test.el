@@ -524,6 +524,73 @@ There w-abc is both `active' and `focused', and w-def is neither."
       (should-not (memq 'dl-umbriel-buffer-active-workspace-id
                         (dl-umbriel-buffer-test--faces-at other))))))
 
+(defun dl-umbriel-buffer-test--workspace-start (id)
+  "Where the heading of workspace ID starts."
+  (oref (dl-umbriel-buffer-test--find 'umbriel-workspace id) start))
+
+(defun dl-umbriel-buffer-test--heading-text-pos (id text)
+  "Where TEXT starts in the heading of workspace ID."
+  (save-excursion
+    (goto-char (dl-umbriel-buffer-test--workspace-start id))
+    (search-forward text (line-end-position))
+    (match-beginning 0)))
+
+(ert-deftest dl-umbriel-buffer/inactive-heading-keeps-its-face-beside-styled-cells ()
+  "A styled cell does not cost the rest of an inactive heading its face."
+  (dl-umbriel-buffer-test--with-fixture-render
+    (dl-umbriel-buffer-test--activate-workspace "HDMI-A-1:3")
+    (should (dl-umbriel-buffer-test--line-has-face-p
+             (dl-umbriel-buffer-test--find 'umbriel-workspace "DP-1:3")
+             'magit-section-heading))))
+
+(ert-deftest dl-umbriel-buffer/workspace-name-is-a-padded-pill ()
+  "A name's face covers its padding, and is muted unless its workspace is active."
+  (dl-umbriel-buffer-test--with-fixture-render
+    (let ((name-face (lambda ()
+                       (car (dl-umbriel-buffer-test--faces-at
+                             (dl-umbriel-buffer-test--heading-text-pos
+                              "DP-1:3" " web "))))))
+      (dl-umbriel-buffer-test--activate-workspace "HDMI-A-1:3")
+      (should (eq 'dl-umbriel-buffer-workspace-name (funcall name-face)))
+      (dl-umbriel-buffer-test--activate-workspace "DP-1:3")
+      (should (eq 'dl-umbriel-buffer-active-workspace-name
+                  (funcall name-face))))))
+
+(ert-deftest dl-umbriel-buffer/unnamed-workspace-has-no-pill ()
+  "A workspace without a name shows no empty pill."
+  (dl-umbriel-buffer-test--with-fixture-render
+    (let ((start (dl-umbriel-buffer-test--workspace-start "HDMI-A-1:3")))
+      (should-not (text-property-any
+                   start (save-excursion (goto-char start) (line-end-position))
+                   'font-lock-face 'dl-umbriel-buffer-workspace-name)))))
+
+(ert-deftest dl-umbriel-buffer/each-layout-has-its-own-face ()
+  "Every layout the model offers shows in a face no other layout has."
+  (dl-umbriel-buffer-test--with-fixture-render
+    (let ((faces
+           (mapcar
+            (lambda (layout)
+              (dl-umbriel-buffer-test--render
+               nil (list (dl-umbriel-buffer-test--workspace
+                          :id "DP-1:3" :layout layout)))
+              (car (dl-umbriel-buffer-test--faces-at
+                    (dl-umbriel-buffer-test--heading-text-pos
+                     "DP-1:3" layout))))
+            dl-umbriel-model-layouts)))
+      (should-not (memq 'magit-section-heading faces))
+      (should (equal faces (seq-uniq faces))))))
+
+(ert-deftest dl-umbriel-buffer/unknown-layout-keeps-the-heading-face ()
+  "A layout the buffer has no face for reads as the rest of its heading."
+  (dl-umbriel-buffer-test--with-fixture-render
+    (dl-umbriel-buffer-test--render
+     nil (list (dl-umbriel-buffer-test--workspace :id "DP-1:3"
+                                                  :layout "spiral")))
+    (should (equal '(magit-section-heading)
+                   (dl-umbriel-buffer-test--faces-at
+                    (dl-umbriel-buffer-test--heading-text-pos
+                     "DP-1:3" "spiral"))))))
+
 (ert-deftest dl-umbriel-buffer/row-mark-shows-over-the-workspace-shade ()
   "The active row keeps its own face inside a shaded workspace."
   (dl-umbriel-buffer-test--with-fixture-render
