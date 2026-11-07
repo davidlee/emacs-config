@@ -9,8 +9,9 @@ window holding the keyboard (`active`) has an amber row and each workspace's
 remembered focus (`focused`) a teal one; both show over the point highlight. An
 `active` workspace is shaded darker than `default`, its heading more so, with its
 output and index in bold white. Window rows and workspace headings line up in
-columns; app ids and titles over their limit are cut with `…`, and prompts still
-show them in full. New faces: `dl-umbriel-buffer-active-window`, `-focused-window`,
+columns, with a heading's `active` and `focused` marks over the rows' flags; app ids
+and titles over their limit are cut with `…`, and prompts still show them in full.
+New faces: `dl-umbriel-buffer-active-window`, `-focused-window`,
 `-active-workspace`, `-active-workspace-window`, `-active-workspace-id`,
 `-window-app`, `-window-placement`, `-window-flags`. `core/dl-faces.el` now requires
 `color`, which it was using without loading.

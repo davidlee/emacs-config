@@ -230,18 +230,20 @@ WORKSPACE is the model's Unassigned group, which has no id."
   "Insert the held WORKSPACES and WINDOWS as sections at point.
 The caller erases the buffer first; this inserts the whole tree.  Columns
 line up across every group, so they are measured before anything is
-inserted."
+inserted, and a heading's marks sit over the rows' flags."
   (magit-insert-section (umbriel-root)
     (if (and (null workspaces) (null windows))
         (insert "No windows or workspaces held.\n")
       (let* ((groups (dl-umbriel-model-group workspaces windows))
-             (heading-starts (dl-umbriel-columns-starts
-                              (mapcar #'dl-umbriel-buffer--group-cells
-                                      (seq-filter #'car groups))
-                              0))
              (row-starts (dl-umbriel-columns-starts
                           (mapcar #'dl-umbriel-buffer--window-cells windows)
-                          (length dl-umbriel-buffer-row-indent))))
+                          (length dl-umbriel-buffer-row-indent)))
+             (heading-starts (dl-umbriel-columns-at-least
+                              (dl-umbriel-columns-starts
+                               (mapcar #'dl-umbriel-buffer--group-cells
+                                       (seq-filter #'car groups))
+                               0)
+                              'marks (alist-get 'flags row-starts))))
         (dolist (group groups)
           (dl-umbriel-buffer--insert-group group heading-starts row-starts))))))
 

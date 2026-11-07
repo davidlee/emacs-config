@@ -27,4 +27,6 @@ display strings in `apps/dl-umbriel-model.el`.
   them. The buffer aligns with one-space `:align-to (N . width)` gaps; a bare
   number counts the frame's font, which is narrower than this buffer's. App,
   placement and flags have faces, and an active workspace's id is bold white.
+- 2026-11-07: layout moved to `apps/dl-umbriel-columns.el` (DEC-027); a workspace
+  heading's marks now sit over the rows' flags column.
 - Open: fit the title to the window width instead of a fixed cap of 40.

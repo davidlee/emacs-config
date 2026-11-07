@@ -78,4 +78,19 @@
     (should-not (get-text-property 3 'font-lock-face row))
     (should-not (get-text-property 4 'font-lock-face row))))
 
+(ert-deftest dl-umbriel-columns-at-least/moves-a-column-right ()
+  "A column short of POSITION moves there; the others stay."
+  (should (equal '((a . 0) (b . 9))
+                 (dl-umbriel-columns-at-least '((a . 0) (b . 4)) 'b 9))))
+
+(ert-deftest dl-umbriel-columns-at-least/never-moves-a-column-left ()
+  "A column already past POSITION stays, so its cells cannot overlap."
+  (should (equal '((a . 0) (b . 4))
+                 (dl-umbriel-columns-at-least '((a . 0) (b . 4)) 'b 2))))
+
+(ert-deftest dl-umbriel-columns-at-least/no-position-changes-nothing ()
+  "A nil POSITION, from a table with no such column, leaves STARTS alone."
+  (should (equal '((a . 0) (b . 4))
+                 (dl-umbriel-columns-at-least '((a . 0) (b . 4)) 'b nil))))
+
 ;;; dl-umbriel-columns-test.el ends here

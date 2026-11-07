@@ -609,6 +609,34 @@ There w-abc is both `active' and `focused', and w-def is neither."
                                                   "HDMI-A-1:3"))))
       (should (= (nth 1 named) (nth 0 unnamed))))))
 
+(ert-deftest dl-umbriel-buffer/workspace-marks-line-up-with-window-flags ()
+  "A heading's marks start where the window rows' flags do."
+  (dl-umbriel-buffer-test--with-fixture-render
+    (dl-umbriel-buffer-test--render
+     (list (dl-umbriel-buffer-test--window :id "w-wide" :workspace "DP-1:3"
+                                           :title (make-string 40 ?t)
+                                           :active t))
+     (list (dl-umbriel-buffer-test--workspace :id "DP-1:3" :active t)))
+    (should (= (car (last (dl-umbriel-buffer-test--stops
+                           (dl-umbriel-buffer-test--find 'umbriel-workspace
+                                                         "DP-1:3"))))
+               (car (last (dl-umbriel-buffer-test--stops
+                           (dl-umbriel-buffer-test--find 'umbriel-window
+                                                         "w-wide"))))))))
+
+(ert-deftest dl-umbriel-buffer/wide-heading-keeps-its-marks-clear ()
+  "Marks stay past the heading's own cells when those outrun the flags."
+  (dl-umbriel-buffer-test--with-fixture-render
+    (let ((name (make-string 60 ?n)))
+      (dl-umbriel-buffer-test--render
+       (dl-umbriel-windows)
+       (list (dl-umbriel-buffer-test--workspace
+              :id "DP-1:3" :name name :index 3 :output "DP-1" :active t)))
+      (should (> (car (last (dl-umbriel-buffer-test--stops
+                             (dl-umbriel-buffer-test--find 'umbriel-workspace
+                                                           "DP-1:3"))))
+                 (length name))))))
+
 (ert-deftest dl-umbriel-buffer/window-cells-have-their-column-faces ()
   "App, placement and flags are coloured; the title keeps the default."
   (dl-umbriel-buffer-test--with-fixture-render

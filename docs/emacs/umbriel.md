@@ -138,7 +138,8 @@ HDMI-1 2 scrolling 0 windows
 - The window count is the number of windows joined under the workspace, not the
   wire's `window_count`, so the label always matches the rows beneath it.
 - Columns line up across the whole buffer, headings and window rows each on
-  their own stops. Over-long app ids and titles are cut with an ellipsis
+  their own stops, except that a heading's marks sit over the rows' flags
+  unless the heading's own columns run past them. Over-long app ids and titles are cut with an ellipsis
   (`dl-umbriel-buffer-column-limits`). Alignment is display only: the buffer's
   text is still the single-spaced label, and prompts show the full one.
 - `active` and `focused` differ. `active` is seat-global (the window holding

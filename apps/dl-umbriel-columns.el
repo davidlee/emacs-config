@@ -39,6 +39,16 @@ INDENT and each next one a gap past the previous column's widest cell."
                                   rows))))))
             (mapcar #'car (car rows)))))
 
+(defun dl-umbriel-columns-at-least (starts column position)
+  "STARTS with COLUMN moved right to POSITION, if that is further right.
+A nil POSITION changes nothing, and no other column moves, so this suits
+the last column, or a POSITION from another table of columns."
+  (mapcar (lambda (start)
+            (if (and position (eq (car start) column))
+                (cons column (max (cdr start) position))
+              start))
+          starts))
+
 (defun dl-umbriel-columns-row (cells starts faces)
   "CELLS as one line, each at its place in STARTS and its face in FACES.
 FACES is an alist of column to face; a column left out has none.  An
