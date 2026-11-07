@@ -34,6 +34,14 @@ display strings in `apps/dl-umbriel-model.el`.
   `dl-umbriel-buffer--heading-faces` picks a layout's face by value and
   `dl-umbriel-columns-row` did not change. Every heading now sets its own base
   face, because a styled cell stops magit applying `magit-section-heading`.
-- Known: magit's point highlight hides the muted pill's background, because the
-  pill is a text property.
+- 2026-11-07, heading layout: the layout is a pill with a Nerd Font icon over the
+  rows' placement, and the count is right-justified to the title column.
+  `--group-cells` reorders the model's cells, so the model's labels keep their
+  order. The widest layout pill pushes `flags` right. Pills are overlays
+  (`--raise-pills`) so they survive point.
+- Deferred by the user: layout pill colours. Either one background with the
+  current foregrounds (the interim state) or a different background per layout.
+- Known: in a 90-column window the placement column sits at the right edge, so
+  layout pills are clipped, flags are off screen, and point near a heading's end
+  scrolls the view. Fitting the title to the window would address this.
 - Open: fit the title to the window width instead of a fixed cap of 40.

@@ -82,21 +82,22 @@ unresolved; the hooks are idempotent, so they re-run once a real frame exists."
                (dl-faces-test--red 'dl-umbriel-buffer-active-workspace-window)
                (car (color-values-from-color-spec default))))))
 
-(ert-deftest dl-faces/umbriel-muted-name-sits-below-its-accent-and-survives-recalc ()
-  "An inactive workspace's name pill is a darker shade of the active accent."
+(ert-deftest dl-faces/umbriel-pills-sit-below-their-sources-and-survive-recalc ()
+  "The muted name and layout pills are darker than the colours they derive from."
   ;; White: batch `color-name-to-rgb' snaps to the nearest terminal colour.
-  (let ((accent "#ffffff"))
+  (let ((source "#ffffff"))
     (cl-letf (((symbol-function 'face-attribute)
                (let ((real (symbol-function 'face-attribute)))
                  (lambda (face &rest args)
-                   (if (eq face 'success)
-                       accent
+                   (if (memq face '(default success))
+                       source
                      (apply real face args)))))
               ((symbol-function 'color-defined-p) #'always))
-      (my/mute-umbriel-workspace-name))
-    (custom-theme-recalc-face 'dl-umbriel-buffer-workspace-name)
-    (should (< (dl-faces-test--red 'dl-umbriel-buffer-workspace-name)
-               (car (color-values-from-color-spec accent))))))
+      (my/shade-umbriel-pills))
+    (dolist (face '(dl-umbriel-buffer-workspace-name dl-umbriel-buffer-layout))
+      (custom-theme-recalc-face face)
+      (should (< (dl-faces-test--red face)
+                 (car (color-values-from-color-spec source)))))))
 
 (provide 'dl-faces-test)
 ;;; dl-faces-test.el ends here

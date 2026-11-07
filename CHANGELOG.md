@@ -18,9 +18,11 @@ New faces: `dl-umbriel-buffer-active-window`, `-focused-window`,
 
 Workspace headings in `my/umbriel` also style their names and layouts. A name is a
 padded pill, muted unless its workspace is active
-(`dl-umbriel-buffer-workspace-name`, `-active-workspace-name`), and each layout has
-its own colour (`dl-umbriel-buffer-layout-scrolling`, `-dwindle`, `-master`,
-`-stacking`, `-toggle`).
+(`dl-umbriel-buffer-workspace-name`, `-active-workspace-name`). A layout is a pill
+too, with a Nerd Font icon and its own colour (`dl-umbriel-buffer-layout`,
+`-layout-scrolling`, `-dwindle`, `-master`, `-stacking`, `-toggle`), and it sits over
+the rows' placement, with the window count right-justified to the title column.
+Pills stay shown under the point highlight.
 
 ## 2026-11-06 — `just check` passes in the jail
 

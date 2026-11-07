@@ -449,7 +449,10 @@ There w-abc is both `active' and `focused', and w-def is neither."
                 (dl-umbriel-buffer-test--row-face "w-def")))
     (should (eq 'dl-umbriel-buffer-focused-window
                 (dl-umbriel-buffer-test--row-face "w-abc")))
-    (should (= 2 (seq-count (lambda (overlay) (overlay-get overlay 'face))
+    (should (= 2 (seq-count (lambda (overlay)
+                              (memq (overlay-get overlay 'face)
+                                    '(dl-umbriel-buffer-active-window
+                                      dl-umbriel-buffer-focused-window)))
                             (overlays-in (point-min) (point-max)))))))
 
 ;;;; active workspace (IMP-030)
@@ -580,16 +583,94 @@ There w-abc is both `active' and `focused', and w-def is neither."
       (should-not (memq 'magit-section-heading faces))
       (should (equal faces (seq-uniq faces))))))
 
-(ert-deftest dl-umbriel-buffer/unknown-layout-keeps-the-heading-face ()
-  "A layout the buffer has no face for reads as the rest of its heading."
+(ert-deftest dl-umbriel-buffer/unknown-layout-is-a-plain-pill ()
+  "A layout the buffer does not know shows in the base pill, without an icon."
   (dl-umbriel-buffer-test--with-fixture-render
     (dl-umbriel-buffer-test--render
      nil (list (dl-umbriel-buffer-test--workspace :id "DP-1:3"
                                                   :layout "spiral")))
-    (should (equal '(magit-section-heading)
-                   (dl-umbriel-buffer-test--faces-at
-                    (dl-umbriel-buffer-test--heading-text-pos
-                     "DP-1:3" "spiral"))))))
+    (should (eq 'dl-umbriel-buffer-layout
+                (car (dl-umbriel-buffer-test--faces-at
+                      (dl-umbriel-buffer-test--heading-text-pos
+                       "DP-1:3" " spiral ")))))))
+
+(ert-deftest dl-umbriel-buffer/each-layout-has-its-own-icon ()
+  "Every layout the model offers shows a distinct icon before its name."
+  (dl-umbriel-buffer-test--with-fixture-render
+    (let ((icons
+           (mapcar
+            (lambda (layout)
+              (dl-umbriel-buffer-test--render
+               nil (list (dl-umbriel-buffer-test--workspace
+                          :id "DP-1:3" :layout layout)))
+              (let ((pos (dl-umbriel-buffer-test--heading-text-pos
+                          "DP-1:3" (concat " " layout " "))))
+                (char-before pos)))
+            dl-umbriel-model-layouts)))
+      (should (seq-every-p (lambda (icon) (>= icon #xe000)) icons))
+      (should (equal icons (seq-uniq icons))))))
+
+(ert-deftest dl-umbriel-buffer/pills-show-over-the-point-highlight ()
+  "A pill is an overlay above magit's, so point on its heading leaves it shown."
+  (dl-umbriel-buffer-test--with-fixture-render
+    (dl-umbriel-buffer-test--activate-workspace "HDMI-A-1:3")
+    (dolist (text '(" web " " dwindle "))
+      (should (eq (car (dl-umbriel-buffer-test--faces-at
+                        (dl-umbriel-buffer-test--heading-text-pos "DP-1:3" text)))
+                  (dl-umbriel-buffer-test--top-face
+                   (dl-umbriel-buffer-test--heading-text-pos "DP-1:3" text)))))))
+
+(defun dl-umbriel-buffer-test--render-aligned ()
+  "Paint a named workspace and an unnamed one, with a window in each."
+  (dl-umbriel-buffer-test--render
+   (list (dl-umbriel-buffer-test--window :id "w-wide" :workspace "DP-1:3"
+                                         :title (make-string 30 ?t))
+         (dl-umbriel-buffer-test--window :id "w-two" :workspace "DP-1:3")
+         (dl-umbriel-buffer-test--window :id "w-other" :workspace "DP-1:4"))
+   (list (dl-umbriel-buffer-test--workspace :id "DP-1:3" :active t)
+         (dl-umbriel-buffer-test--workspace :id "DP-1:4" :index 4 :name nil
+                                            :named nil))))
+
+(defun dl-umbriel-buffer-test--stop-before (id text)
+  "The `:align-to' column of the gap before TEXT in workspace ID's heading."
+  (car (plist-get (cdr (get-text-property
+                        (1- (dl-umbriel-buffer-test--heading-text-pos id text))
+                        'display))
+                  :align-to)))
+
+(ert-deftest dl-umbriel-buffer/layout-lines-up-with-placement ()
+  "A heading's layout pill starts where the rows' placement does."
+  (dl-umbriel-buffer-test--with-fixture-render
+    (dl-umbriel-buffer-test--render-aligned)
+    (should (= (nth 1 (dl-umbriel-buffer-test--stops
+                       (dl-umbriel-buffer-test--find 'umbriel-window "w-wide")))
+               (dl-umbriel-buffer-test--stop-before
+                "DP-1:3" (dl-umbriel-buffer--layout-pill "dwindle"))))))
+
+(ert-deftest dl-umbriel-buffer/window-count-ends-with-the-title-column ()
+  "Window counts are right-justified to the title column's right edge."
+  (dl-umbriel-buffer-test--with-fixture-render
+    (dl-umbriel-buffer-test--render-aligned)
+    (let ((edge (- (nth 1 (dl-umbriel-buffer-test--stops
+                           (dl-umbriel-buffer-test--find 'umbriel-window
+                                                         "w-wide")))
+                   dl-umbriel-columns-gap)))
+      (should (= edge (+ (dl-umbriel-buffer-test--stop-before "DP-1:3" "2 windows")
+                         (length "2 windows"))))
+      (should (= edge (+ (dl-umbriel-buffer-test--stop-before "DP-1:4" "1 window")
+                         (length "1 window")))))))
+
+(ert-deftest dl-umbriel-buffer/marks-clear-the-layout-pill ()
+  "Flags and marks start past the widest layout pill, not over it."
+  (dl-umbriel-buffer-test--with-fixture-render
+    (dl-umbriel-buffer-test--render-aligned)
+    (let* ((section (dl-umbriel-buffer-test--find 'umbriel-workspace "DP-1:3"))
+           (stops (dl-umbriel-buffer-test--stops section))
+           (marks (car (last stops)))
+           (layout (car (last stops 2)))
+           (pill (dl-umbriel-buffer--layout-pill "dwindle")))
+      (should (>= marks (+ layout (string-width pill)
+                           dl-umbriel-columns-gap))))))
 
 (ert-deftest dl-umbriel-buffer/row-mark-shows-over-the-workspace-shade ()
   "The active row keeps its own face inside a shaded workspace."

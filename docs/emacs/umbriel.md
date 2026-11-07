@@ -133,8 +133,8 @@ HDMI-1 2 scrolling 0 windows
 - Window rows show app id, title, placement (`tile COLUMN,ROW`, bare `tile`
   while the column is unplaced, `float`, `tab INDEX`), then each flag that is set: `active`, `focused`, `visible`,
   `minimized`, `fullscreen`, `urgent`, `xwayland`.
-- Workspace rows show output, index, name (named workspaces only), layout, the
-  window count, then `active`, `focused`, `urgent`.
+- Workspace rows show output, index, name (named workspaces only), the window
+  count, layout, then `active`, `focused`, `urgent`.
 - The window count is the number of windows joined under the workspace, not the
   wire's `window_count`, so the label always matches the rows beneath it.
 - Columns line up across the whole buffer, headings and window rows each on
@@ -158,13 +158,17 @@ HDMI-1 2 scrolling 0 windows
   `-placement` and `-flags`, which inherit theme faces; the `active` and
   `focused` row colours replace them on those rows. An `active` workspace's
   output and index use `dl-umbriel-buffer-active-workspace-id`, bold white.
-- A workspace name is a padded pill: `dl-umbriel-buffer-active-workspace-name`
-  when active, otherwise `dl-umbriel-buffer-workspace-name`, a muted shade
-  derived in `core/dl-faces.el`. The point highlight hides the muted pill's
-  background.
-- Each layout has a face, `dl-umbriel-buffer-layout-scrolling`, `-dwindle`,
-  `-master`, `-stacking` and `-toggle`, listed in
-  `dl-umbriel-buffer-layout-faces`. Any other layout reads as its heading.
+- A heading's window count is right-justified to the title column's right edge,
+  its layout sits over the rows' placement and its marks over their flags, so the
+  layout can push the flags right.
+- A workspace name and a layout are padded pills, overlays that stay shown under
+  the point highlight. A name uses `dl-umbriel-buffer-active-workspace-name` when
+  active, otherwise `dl-umbriel-buffer-workspace-name`, a muted shade derived in
+  `core/dl-faces.el`.
+- A layout shows a Nerd Font icon and its face, `dl-umbriel-buffer-layout-scrolling`,
+  `-dwindle`, `-master`, `-stacking` or `-toggle`, listed in
+  `dl-umbriel-buffer-layouts`. Each inherits the shared background of
+  `dl-umbriel-buffer-layout`, which an unknown layout shows alone, without an icon.
 - `visible` means: on the active workspace, not a hidden tab, not minimized.
   It does not mean "on screen"; such a window may be scrolled out of view.
 
