@@ -77,6 +77,8 @@
 (declare-function flymake-show-project-diagnostics "flymake")
 (declare-function flymake-switch-to-log-buffer "flymake")
 (declare-function ghostel-other "") ; FIXME: defining file unknown
+(declare-function consult-ghostel "consult-ghostel")
+(declare-function consult-ghostel-status "consult-ghostel")
 (declare-function git-link "git-link")
 (declare-function gptel "gptel")
 (declare-function gptel-abort "gptel-request")
@@ -556,6 +558,8 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-term-map   "z" #'my/zmx-project                    "zmx project")
 (my/bind my-term-map   "Z" #'my/zmx-switch                     "zmx switch")
 (my/bind my-term-map   "k" #'my/zmx-kill                       "zmx kill")
+(my/bind my-term-map   "b" #'consult-ghostel                   "pick terminal")
+(my/bind my-term-map   "a" #'consult-ghostel-status            "needs attention")
 
 ;; Fold map -- kirigami routes to active backend (outline / hs / treesit-fold).
 (my/bind my-fold-map   "o" #'kirigami-open-fold      "open")

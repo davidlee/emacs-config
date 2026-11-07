@@ -2,6 +2,16 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-11-07 — ghostel: terminals needing attention show up
+
+The modeline counts terminals by program status, via
+`ghostel-status-indicator-mode` and a `dl-modeline-segments` entry, since lambda-line
+ignores `global-mode-string`. A click runs `ghostel-status-next`. `consult-ghostel` now
+loads: `C-c m b` (`consult-ghostel`) picks a terminal with live preview, `C-c m a`
+(`consult-ghostel-status`) picks one needing attention, and `consult-buffer` gains the
+narrow keys `g` (terminals) and `a` (needing attention). `consult-ghostel-history` stays
+unbound, as it can't yet read a zmx buffer's shell (IDE-004).
+
 ## 2026-11-07 — umbriel: `*umbriel*` shows scratchpads
 
 `my/umbriel` (`C-c u u`) now lists each scratchpad that holds windows in its own

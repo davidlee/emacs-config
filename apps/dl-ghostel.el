@@ -16,13 +16,27 @@
 ;; inside the repo, not at the root.  package-vc writes autoloads /
 ;; load-path entries based on this.
 (require 'dl-keymap-shadow)
+(require 'dl-modeline)
 (defvar ghostel-mode-map)
+(defvar ghostel-status--indicator)
+(declare-function ghostel-status-indicator-mode "ghostel-status")
+(declare-function consult-ghostel-mode "consult-ghostel")
 
 (defun dl-ghostel--pass-paging-keys ()
   "Send PgUp/PgDn to the terminal in this buffer.
 `pixel-scroll-precision-mode' binds them to scroll the window; wheel
 scrolling stays smooth."
   (dl-keymap-shadow-yield 'pixel-scroll-precision-mode "<prior>" "<next>"))
+
+;; lambda-line ignores `global-mode-string', where the indicator shows.
+;; ghostel has no public indicator string, so read the private one.
+(defun dl-ghostel--status-segment ()
+  "Terminals by program status for the active window's modeline, or nil."
+  (when-let* ((indicator (bound-and-true-p ghostel-status--indicator))
+              ((dl-modeline-window-active-p)))
+    (concat indicator " ")))
+
+(add-to-list 'dl-modeline-segments #'dl-ghostel--status-segment 'append)
 
 (use-package ghostel
   :ensure nil
@@ -41,11 +55,22 @@ scrolling stays smooth."
        "C-M-<prior>" "C-M-<next>" "S-<prior>" "S-<next>"
        "C-M-<left>" "C-M-<right>" "C-M-<up>" "C-M-<down>" "M-o"))
   :hook (ghostel-mode . dl-ghostel--pass-paging-keys)
+  :config (ghostel-status-indicator-mode)
   ;; The scrollback is buffer text, so paging it is a window scroll.
   ;; Bound in the parent map: the semi-char map is rebuilt on change.
   :bind (:map ghostel-mode-map
           ("S-<prior>" . scroll-down-command)
           ("S-<next>"  . scroll-up-command)))
+
+;; Lives in the checkout's `extensions/', outside `:lisp-dir', so package-vc
+;; neither puts it on the path nor autoloads it.
+(use-package consult-ghostel
+  :ensure nil
+  :load-path "elpa/ghostel/extensions/consult-ghostel"
+  :after (ghostel consult)
+  :demand t                             ; `:commands' alone would defer past `:after'
+  :commands (consult-ghostel consult-ghostel-status)
+  :config (consult-ghostel-mode))
 
 (use-package popterm
   :config

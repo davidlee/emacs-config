@@ -2,8 +2,10 @@
 
 ;; Run: `just check' (dl-test scans lisp/test), or M-x ert RET dl-ghostel RET.
 
+(require 'cl-lib)
 (require 'ert)
 (require 'pixel-scroll)
+(require 'dl-modeline)
 
 (defconst dl-ghostel-test--package-dir
   (expand-file-name "elpa/ghostel/lisp" user-emacs-directory)
@@ -39,6 +41,31 @@ must stay unbound there; an ordinary meta key still goes through."
     (should-not (keymap-lookup ghostel-semi-char-mode-map key)))
   (should (eq (keymap-lookup ghostel-semi-char-mode-map "M-p")
               #'ghostel--send-event)))
+
+(ert-deftest dl-ghostel/status-shows-in-the-modeline ()
+  "lambda-line ignores `global-mode-string', so a segment carries the indicator.
+It shows in the active window only, and adds nothing while no terminal counts."
+  (should (memq #'dl-ghostel--status-segment dl-modeline-segments))
+  (cl-letf (((symbol-function 'dl-modeline-window-active-p) (lambda () t)))
+    (let ((ghostel-status--indicator "2"))
+      (should (equal (dl-ghostel--status-segment) "2 ")))
+    (let ((ghostel-status--indicator nil))
+      (should-not (dl-ghostel--status-segment))))
+  (cl-letf (((symbol-function 'dl-modeline-window-active-p) #'ignore))
+    (let ((ghostel-status--indicator "2"))
+      (should-not (dl-ghostel--status-segment)))))
+
+(ert-deftest dl-ghostel/status-indicator-tracks-terminals ()
+  "Loading ghostel turns the indicator on."
+  (skip-unless (featurep 'ghostel))
+  (should ghostel-status-indicator-mode))
+
+(ert-deftest dl-ghostel/consult-reaches-terminals ()
+  "`consult-buffer' narrows to terminals and to those needing attention."
+  (skip-unless (and (featurep 'ghostel) (require 'consult nil t)))
+  (should (fboundp 'consult-ghostel))
+  (should (memq 'consult-ghostel-source-hidden consult-buffer-sources))
+  (should (memq 'consult-ghostel-status-source-hidden consult-buffer-sources)))
 
 (provide 'dl-ghostel-test)
 ;;; dl-ghostel-test.el ends here
