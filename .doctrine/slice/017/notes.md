@@ -31,3 +31,12 @@ buffer tests and the live check cover that risk.
   unaffected. Row keys that need a workspace (`s`, `L`) refuse such a row with "Window
   has no workspace". VH-1 should confirm this across a toggle.
 - PHASE-02 stays in progress until VH-1, the user's live check.
+
+## VH-1 findings (2026-11-07)
+
+- `v` was unbound after a reload: `defvar-keymap` does not rebind an existing map. Fixed
+  in the live session with `keymap-set`; a restart gives the same result.
+- `discord`, shown, reported `visible: true` and `workspace: ""`, so a pad window has no
+  workspace whether shown or hidden. This corrects the user's recollection and design
+  section Model.
+- `s` refused such rows. DEC-032: it now prompts. `L` still refuses them.

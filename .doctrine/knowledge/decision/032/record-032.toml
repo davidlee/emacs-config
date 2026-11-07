@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 32
+slug = "umbriel-pad-window-switch"
+title = "umbriel s prompts for a workspace on a pad window"
+record_kind = "decision"
+status = "accepted"
+created = "2026-11-07"
+updated = "2026-11-07"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = 'The VH check found `s` refusing a pad window with "Window has no workspace". Live probes show umbriel reports workspace "" for a pad window, shown or hidden, which corrects the context of DEC-028. The user asked for `s` to either pick a workspace or default to the active one.'
+choice = "On a pad window that joins no workspace, `s` prompts with the existing workspace chooser and sends workspace-switch to the choice. A joined window switches without a prompt, and an orphan window is still refused."
+alternatives = ["default to the active workspace of the window's output: the pad already sits over it, and under back_and_forth a switch there toggles to the previous workspace"]
+rationale = "Picking is the only one of the two options that gives `s` an effect. It reuses the row prompt machinery."
+consequences = ["`L` still refuses a pad window", "picking the active workspace toggles under back_and_forth, as `s` and C-c u w do elsewhere"]
+decided_by = "agent, between the two options the user named"
+decided_on = "2026-11-07"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-017"

@@ -5,9 +5,7 @@
 Umbriel reports a `scratchpad` name on every window, but the Emacs client never
 reads it. A hidden pad window arrives with `workspace: ""`, so
 `dl-umbriel-model-group` files it under `Unassigned` with no pad name (DEC-013
-chose this). The user reports that a shown pad's windows carry the workspace the
-pad was brought to (not yet observed), so they would look like ordinary floats
-there.
+chose this).
 
 ## Scope & Objectives
 
@@ -20,7 +18,7 @@ there.
   through umbriel's `scratchpad-toggle` with the `scratchpad` field. Any other row
   is refused.
 - Every other row action refuses a pad heading (DEC-030). Window rows in a pad keep
-  their existing behaviour.
+  their existing behaviour, except that `s` asks for a workspace (DEC-032).
 
 Affected surface: `apps/dl-umbriel-model.el`, `apps/dl-umbriel-buffer.el`, their
 tests, `docs/emacs/umbriel.md`, `CHANGELOG.md`.
@@ -36,8 +34,8 @@ tests, `docs/emacs/umbriel.md`, `CHANGELOG.md`.
 
 Risks and assumptions:
 
-- The shown-pad `workspace` value is the user's recollection. Grouping on
-  `scratchpad` first is correct either way; verify live during VH.
+- Observed live: a pad window reports `workspace: ""` whether shown or hidden.
+  Grouping on `scratchpad` first is correct either way.
 - DEC-013 fixes the group shape and the trailing group, so this slice amends it.
 - `(WORKSPACE . WINDOWS)` is read by the grid and the heading code, so a pad group
   must not reach workspace-only paths such as `dl-umbriel-buffer--group-cells`.

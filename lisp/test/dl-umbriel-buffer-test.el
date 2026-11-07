@@ -352,6 +352,56 @@ pair, so a lone `%' would be read as a construct."
       (should (stringp (dl-umbriel-buffer--plan
                         spec '(:scratchpad "signal") nil nil))))))
 
+(ert-deftest dl-umbriel-buffer/switch-prompts-from-an-unjoined-pad-window ()
+  "A pad window with no workspace asks where to switch, and sends that."
+  (let ((workspaces (dl-umbriel-buffer-test--action-workspaces)))
+    (dl-umbriel-buffer-test--with-state
+        (dl-umbriel-buffer-test--held
+         (list (dl-umbriel-buffer-test--window
+                :id "w-pad" :workspace "" :scratchpad "signal"))
+         workspaces)
+      (with-current-buffer (dl-umbriel-buffer-test--mode-buffer)
+        (dl-umbriel-buffer--repaint)
+        (dl-umbriel-buffer-test--with-send-all
+          (dl-umbriel-buffer-test--with-prompts
+            (let ((choice (nth 0 (dl-umbriel-model-workspace-choices
+                                  workspaces))))
+              (setq dl-umbriel-buffer-test--prompt-choice (car choice))
+              (dl-umbriel-buffer-test--call-on-row
+               'my/umbriel-switch 'umbriel-window "w-pad")
+              (should (= 1 (length dl-umbriel-buffer-test--prompts)))
+              (should (equal
+                       (list (dl-umbriel-action
+                              "workspace-switch"
+                              (dl-umbriel-model-workspace-selector (cdr choice))))
+                       (caar dl-umbriel-buffer-test--send-all-calls))))))))))
+
+(ert-deftest dl-umbriel-buffer/switch-does-not-prompt-from-a-joined-window ()
+  "A window with a workspace, in a pad or not, switches without asking."
+  (let* ((workspaces (dl-umbriel-buffer-test--action-workspaces))
+         (id (alist-get 'id (car workspaces))))
+    (dl-umbriel-buffer-test--with-state
+        (dl-umbriel-buffer-test--held
+         (list (dl-umbriel-buffer-test--window
+                :id "w-pad" :workspace id :scratchpad "signal"))
+         workspaces)
+      (with-current-buffer (dl-umbriel-buffer-test--mode-buffer)
+        (dl-umbriel-buffer--repaint)
+        (dl-umbriel-buffer-test--with-send-all
+          (dl-umbriel-buffer-test--with-prompts
+            (dl-umbriel-buffer-test--call-on-row
+             'my/umbriel-switch 'umbriel-window "w-pad")
+            (should-not dl-umbriel-buffer-test--prompts)
+            (should dl-umbriel-buffer-test--send-all-calls)))))))
+
+(ert-deftest dl-umbriel-buffer--plan/switch-still-refuses-an-orphan ()
+  "A window in no pad and no workspace has nothing to switch from."
+  (should (equal "Window has no workspace"
+                 (dl-umbriel-buffer--plan
+                  (assq 'my/umbriel-switch dl-umbriel-buffer-actions)
+                  (list :window (dl-umbriel-buffer-test--window :workspace ""))
+                  nil nil))))
+
 (ert-deftest dl-umbriel-buffer--target/reads-a-pad-heading ()
   "DEC-029: point on a pad heading targets that pad."
   (dl-umbriel-buffer-test--with-state
@@ -1614,7 +1664,7 @@ unknown."
     (my/umbriel-column-right "column-move-right" focused)
     (my/umbriel-move-to-workspace "window-move-to-workspace-silent" focused
                                   workspace)
-    (my/umbriel-switch "workspace-switch" workspace)
+    (my/umbriel-switch "workspace-switch" workspace pad-workspace)
     (my/umbriel-set-layout "workspace-set-layout" active-workspace layout)
     (my/umbriel-toggle-scratchpad "scratchpad-toggle" scratchpad))
   "The design's action table, as this file expects it to be held.

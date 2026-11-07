@@ -8,7 +8,8 @@ Notable changes to this Emacs config. Loosely dated; not versioned.
 section, after the workspaces. A pad window stays there while the pad is shown, and
 `Unassigned` keeps only windows in no pad and no workspace. `v`
 (`my/umbriel-toggle-scratchpad`) shows or hides the pad at point, from its heading or
-one of its window rows. Other row keys refuse a pad heading.
+one of its window rows. Other row keys refuse a pad heading. `s` on a pad window asks
+which workspace to switch to, since the window has none.
 
 ## 2026-11-07 — org: the line highlight spares TODO labels
 

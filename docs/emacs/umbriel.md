@@ -117,8 +117,8 @@ A multi-step action stops at its first failure.
 on first use. It is a `magit-section` tree: one section per workspace, its
 windows beneath, then one section per scratchpad holding windows, by name, and a
 final `Unassigned` section for windows that join neither. Sections fold as usual.
-A pad window stays in its pad's section while the pad is shown. An empty pad has
-no section.
+A pad window stays in its pad's section while the pad is shown, and umbriel reports
+no workspace for it either way. An empty pad has no section.
 
 Workspaces are ordered by output, then index. Tiled windows sort by column,
 row, tab index, then title, before floating ones. Every compositor-supplied
@@ -189,7 +189,7 @@ In `*umbriel*`, on the row at point:
 | Key | Command | Action sent | Needs |
 | --- | --- | --- | --- |
 | `RET` | `my/umbriel-focus` | `window-focus` | window row |
-| `s` | `my/umbriel-switch` | `workspace-switch` | workspace or window row |
+| `s` | `my/umbriel-switch` | `workspace-switch` | workspace or window row; prompts on a pad window, which has no workspace |
 | `m` | `my/umbriel-move-to-workspace` | `window-move-to-workspace-silent` | window row (\*); prompts for the workspace |
 | `t` | `my/umbriel-toggle-floating` | `window-toggle-floating` | window row |
 | `c` | `my/umbriel-center` | `window-center` | window row (\*) |

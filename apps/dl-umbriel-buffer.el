@@ -668,7 +668,7 @@ already delivered."
       (my/umbriel-column-right "column-move-right" focused)
       (my/umbriel-move-to-workspace "window-move-to-workspace-silent"
                                     focused workspace)
-      (my/umbriel-switch "workspace-switch" workspace)
+      (my/umbriel-switch "workspace-switch" workspace pad-workspace)
       (my/umbriel-set-layout "workspace-set-layout" active-workspace
                              layout)
       (my/umbriel-toggle-scratchpad "scratchpad-toggle" scratchpad))
@@ -681,7 +681,8 @@ the focused workspace, then act: switching to a workspace umbriel holds
 active on its output toggles back to the previous one under
 `back_and_forth') or `scratchpad' (the action takes the row's pad name;
 the one action a pad heading allows).  PROMPT,
-when given, is `workspace', `layout' or `confirm-kill'; a prompting
+when given, is `workspace', `pad-workspace', `layout' or
+`confirm-kill'; a prompting
 row prompts in its command, never in a reply.  Moving a window goes
 silently, so the plan's own focus steps are the only ones seen
 (DEC-025)."))
@@ -753,7 +754,9 @@ row whose known previous focus is a different window plans one more
 focused one, in which case it only acts: switching to a workspace
 umbriel already holds active toggles back under `back_and_forth'.  A
 `scratchpad' row names the pad of its heading or window; any other
-addressing refuses a pad heading, which has no window (DEC-030)."
+addressing refuses a pad heading, which has no window (DEC-030).  A
+`workspace' row on a pad window with no workspace sends the action with
+FIELDS, the workspace the user picked."
   (let* ((action (nth 1 spec))
          (addressing (nth 2 spec))
          (window (plist-get target :window))
@@ -798,7 +801,9 @@ addressing refuses a pad heading, which has no window (DEC-030)."
                (list focus act)))
          (list act)))
       ('workspace
-       (if switch (list switch) "Window has no workspace"))
+       (cond (switch (list switch))
+             (pad (list act))
+             (t "Window has no workspace")))
       ('active-workspace
        (cond ((not switch) "Window has no workspace")
              ((dl-umbriel-buffer--off-pointer-p workspace workspaces)
@@ -859,14 +864,27 @@ captured before the prompt, so a repaint cannot redirect the kill."
                               pid))
       'declined)))
 
+(defun dl-umbriel-buffer--unjoined-pad-window-p (window)
+  "Non-nil when WINDOW is in a pad and joins no held workspace.
+umbriel reports no workspace for a pad window, shown or hidden."
+  (and window
+       (dl-umbriel-model-window-scratchpad window)
+       (not (dl-umbriel-model-window-workspace (dl-umbriel-workspaces)
+                                               window))))
+
 (defun dl-umbriel-buffer--fields (kind target)
   "The action fields KIND yields for TARGET, or `declined'.
 KIND is a row's PROMPT: `workspace' and `layout' prompt with
-`completing-read', `confirm-kill' confirms TARGET's window, and nil
-prompts nothing.  Any other kind signals an `error': a mistyped
+`completing-read', `pad-workspace' does the same only for a pad window
+that joins no workspace, `confirm-kill' confirms TARGET's window, and
+nil prompts nothing.  Any other kind signals an `error': a mistyped
 prompt must never send unconfirmed."
   (cond ((null kind) nil)
         ((eq kind 'workspace) (dl-umbriel-buffer--workspace-fields))
+        ((eq kind 'pad-workspace)
+         (when (dl-umbriel-buffer--unjoined-pad-window-p
+                (plist-get target :window))
+           (dl-umbriel-buffer--workspace-fields)))
         ((eq kind 'layout) (dl-umbriel-buffer--layout-fields))
         ((eq kind 'confirm-kill)
          (dl-umbriel-buffer--confirm-kill (plist-get target :window)))
