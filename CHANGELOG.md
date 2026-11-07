@@ -8,7 +8,8 @@ Notable changes to this Emacs config. Loosely dated; not versioned.
 then returns focus. The prompt offers pads holding windows and `main`
 (`dl-umbriel-buffer-known-pads`), and takes any typed name that umbriel's config defines,
 since umbriel doesn't list empty pads. `P` refuses a pad window and a row on another output:
-the action follows the pointer's workspace, so it would send a different window.
+the action follows the pointer's workspace, so it would send a different window. `L` on a
+pad window now points to `C-c u l`.
 
 ## 2026-11-07 — ghostel: terminals needing attention show up
 

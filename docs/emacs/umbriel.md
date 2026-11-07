@@ -277,6 +277,7 @@ the prompt, so a refused row never asks anything.
   between pads, take it out with `m`, then send it.
 - **Refusals.** A heading, an empty buffer or an entry no longer held gives
   `No umbriel row at point`. A window with no workspace cannot be switched to.
+  `L` refuses a pad window, which has no layout, and points to `C-c u l`.
 
 ### `window-kill` kills the owning process
 

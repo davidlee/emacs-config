@@ -36,7 +36,9 @@ this code to its TOML layout. From umbriel source, not run live:
   member. Use `m`, then `P`.
 - The focus restore holds: `focused_window` is a workspace window, never a pad member.
 
-Open: `L` on a pad window; a remove-from-pad key, if `m` proves not to be enough.
+`L` on a pad window stays refused, by the user's choice 2026-11-07: a pad window has no
+layout, so the refusal now points to `C-c u l`. Remove-from-pad dropped by the user 2026-11-07: `m` and the
+compositor's workspace move binds are enough.
 Checked live by the user 2026-11-07: `P` works. The prompt then gained
 `dl-umbriel-buffer-known-pads` (`main`), since an empty pad has no window to name it. Pads
 exist only as `[[scratchpad]]` config entries, so `P` cannot create one.

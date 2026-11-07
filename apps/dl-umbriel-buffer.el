@@ -824,7 +824,8 @@ would act on the workspace's focus instead, often this Emacs (IMP-031)."
              (pad (list act))
              (t "Window has no workspace")))
       ('active-workspace
-       (cond ((not switch) "Window has no workspace")
+       (cond ((and pad (not switch)) "A pad window has no layout; use C-c u l")
+             ((not switch) "Window has no workspace")
              ((dl-umbriel-buffer--off-pointer-p workspace workspaces)
               "The layout acts on the output under the pointer, not here")
              (already (list act))

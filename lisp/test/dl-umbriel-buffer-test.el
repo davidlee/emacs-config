@@ -402,6 +402,17 @@ pair, so a lone `%' would be read as a construct."
                   (list :window (dl-umbriel-buffer-test--window :workspace ""))
                   nil nil))))
 
+(ert-deftest dl-umbriel-buffer--plan/layout-points-a-pad-window-elsewhere ()
+  "A pad window has no layout, so `L' names the key that sets one."
+  (should (dl-umbriel-buffer-test--mentions-p
+           (dl-umbriel-buffer-test--refused
+            (assq 'my/umbriel-set-layout dl-umbriel-buffer-actions)
+            (list :window (dl-umbriel-buffer-test--window
+                           :workspace "" :scratchpad "signal"))
+            '((layout . "master"))
+            (dl-umbriel-buffer-test--action-workspaces))
+           "C-c u l")))
+
 (ert-deftest dl-umbriel-buffer--target/reads-a-pad-heading ()
   "DEC-029: point on a pad heading targets that pad."
   (dl-umbriel-buffer-test--with-state
