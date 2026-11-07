@@ -25,7 +25,7 @@
 
     ;; Sans
 
-    (inter . "Inter Regular")
+    (inter . "Inter Display")
     (roboto . "Roboto")
     (source-sans . "Source Sans 3")
     (noto-sans . "Noto Sans")
