@@ -2,6 +2,14 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-11-07 — zmx: `consult-buffer` reaches sessions without a terminal
+
+`C-x b z SPC` narrows `consult-buffer` to running zmx sessions with no live terminal buffer
+(`dl-zmx-consult-source`), annotated as in `my/zmx-switch`; picking one reattaches. Without
+`z` the source stays hidden. `C-c m b` and `C-c m a` now work in a fresh Emacs: they were
+void until both ghostel and consult had loaded. `dl-zmx-sessions` also works from a buffer
+whose directory has gone, and reads the session `zmx list` marks with an arrow.
+
 ## 2026-11-07 — umbriel: send a window to a scratchpad
 
 `P` (`my/umbriel-send-to-pad`) in `*umbriel*` sends the window at point to a scratchpad,

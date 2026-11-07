@@ -67,5 +67,26 @@ It shows in the active window only, and adds nothing while no terminal counts."
   (should (memq 'consult-ghostel-source-hidden consult-buffer-sources))
   (should (memq 'consult-ghostel-status-source-hidden consult-buffer-sources)))
 
+(ert-deftest dl-ghostel/pickers-work-before-consult-loads ()
+  "Startup loads neither ghostel nor consult, so a picker must load them itself.
+A fresh Emacs, as `dl-ghostel' in this one has long since met consult."
+  (skip-unless (featurep 'ghostel))
+  (let* ((script
+          (format "%S"
+                  `(progn
+                     (setq user-emacs-directory ,user-emacs-directory
+                           load-path ',load-path
+                           load-prefer-newer t)
+                     (require 'use-package)
+                     (require 'dl-ghostel)
+                     (prin1 (list (featurep 'consult)
+                                  (commandp 'consult-ghostel)
+                                  (commandp 'consult-ghostel-status))))))
+         (output (with-output-to-string
+                   (call-process (expand-file-name invocation-name invocation-directory)
+                                 nil (list standard-output nil) nil
+                                 "-Q" "--batch" "--eval" script))))
+    (should (equal (car (read-from-string output)) '(nil t t)))))
+
 (provide 'dl-ghostel-test)
 ;;; dl-ghostel-test.el ends here

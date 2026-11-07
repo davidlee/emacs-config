@@ -63,13 +63,13 @@ scrolling stays smooth."
           ("S-<next>"  . scroll-up-command)))
 
 ;; Lives in the checkout's `extensions/', outside `:lisp-dir', so package-vc
-;; neither puts it on the path nor autoloads it.
+;; neither puts it on the path nor autoloads it.  It requires ghostel and
+;; consult itself: `:after' would leave its commands void until both had loaded.
 (use-package consult-ghostel
   :ensure nil
   :load-path "elpa/ghostel/extensions/consult-ghostel"
-  :after (ghostel consult)
-  :demand t                             ; `:commands' alone would defer past `:after'
   :commands (consult-ghostel consult-ghostel-status)
+  :init (with-eval-after-load 'consult (require 'consult-ghostel))
   :config (consult-ghostel-mode))
 
 (use-package popterm

@@ -29,23 +29,38 @@ recorded the same events.
 | OSC 9;4 progress | yes (`ghostel-program-status-functions`, `working` 40) |
 | OSC 7501 status | yes (`ghostel-program-status-functions`, `blocked` 40) |
 
-Not tested: the OSC 7501 support query, which needs an answer travelling back
-through zmx, and anything emitted while no client is attached.
+A second probe ran in hidden buffers with an isolated `ZMX_DIR`:
+
+| Case | Result |
+|---|---|
+| OSC 7501 support query, attached | ghostel's answer comes back through zmx, same as direct |
+| OSC 7501 support query, detached | no answer; DA1 (device attributes) is still answered |
+| BEL, OSC 9, OSC 7501 while detached | lost: no event on reattach, `ghostel-program-status` nil |
+| Title and directory set while detached | restored on reattach |
+| Buffer killed (detach) with a `working` record | hook fires with the record removed, as for a process exit |
+| New zsh session through `ghostel-exec` and zmx | OSC 133 arrives (`false` finishes with exit 1); no status record |
+
+Unproven: a real program reporting status through zmx. Text printed while
+detached was not established, as the hidden buffer's text can't be trusted.
+
+Probing from a shell inside a zmx session: unset `ZMX_SESSION`, or `zmx attach`
+switches session instead of attaching.
 
 ## Candidates, in order
 
 1. Done 2026-11-07: `consult-ghostel` loads, `ghostel-status-indicator-mode` is
    on, and `dl-ghostel--status-segment` carries the indicator into lambda-line.
-2. A `consult-buffer` source for detached zmx sessions, narrow key `z`, reusing
-   `dl-zmx--annotation` and `dl-zmx--reattach`. `consult-ghostel` sees live
-   buffers only.
-3. Bridge `ghostel-program-status-functions` to zmx `state` labels with
-   `zmx set`, so `dl-zmx--state-icons` shows status for detached sessions.
-   ghostel `error` maps to zmx `failed`. Reports only arrive while a ghostel
-   buffer is attached.
+2. Done 2026-11-07: `dl-zmx-consult-source`, hidden, on narrow key `z`, offers
+   every session without a live terminal buffer, not only `clients=0`, so a
+   session attached from another terminal is reachable. `consult-ghostel` sees
+   live buffers only.
+3. Replaced 2026-11-07: a Claude Code harness in zmux, beside
+   `harness/pi/zmx-state.ts`, writing `zmx set . state=...` from inside the
+   session. That work belongs to the zmux repo. Nothing here changes:
+   `dl-zmx--state-icons` already shows the label. See Rejected for the bridge.
 4. Make `consult-ghostel-history` work in zmx buffers. It needs
-   `ghostel--shell-program`, which `ghostel-exec` does not set, so it should
-   signal "Buffer has no recognized shell" (read in source, not run). The fix
+   `ghostel--shell-program`, which `ghostel-exec` does not set, so
+   `ghostel-shell-history` signals "Buffer has no recognized shell" (run). The fix
    sets a private variable; an upstream hook would be cleaner.
 5. A `zmx:` Org link type, such as `[[zmx:emacs.2]]`.
 6. Replace the Eat block in `apps/dl-term.el` with
@@ -63,6 +78,11 @@ through zmx, and anything emitted while no client is attached.
 - **`desktop.el` for zmx.** `ghostel-desktop--spawn` refuses `command`
   identities, `desktop-save-mode` is off, and zmx already holds the session
   list. A restore would also create an empty session if the original died.
+- **Bridging `ghostel-program-status-functions` to `state` labels.** Reports only
+  arrive while a ghostel buffer is attached, so a label freezes at detach: a
+  session that blocks while detached still shows `working`. It would also be a
+  third `state` writer, against zmux's "nothing watches", and would have to ignore
+  the record removal that fires on every detach.
 - **`ghostel-comint-mode` for `malebolge-attach`.** The filter would run, but
   the daemon emits no escape sequences. Revisit if it emits OSC 8 links.
 
@@ -71,6 +91,10 @@ respawns it. Expect 80x24 until the buffer is displayed.
 
 ## Open
 
+- Preview: with `switch-to-buffer-obey-display-actions` on, `consult--buffer-preview`
+  sends a terminal through the `apps/dl-term.el` display rule. Driving the preview
+  function directly, with a stand-in `ghostel-mode`, opened one dedicated bottom
+  window per terminal and did not remove them. Unconfirmed in the real minibuffer.
 - Shell integration varies by session: `zmx list` reports `kitty-shell-cwd://`
   for some sessions and `file://` for others, which suggests only sessions born
   under ghostel source it. Sessions predating a ghostel upgrade keep the old

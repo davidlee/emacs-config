@@ -324,6 +324,75 @@
       (call-interactively #'my/zmx-kill))
     (should-not called)))
 
+(ert-deftest dl-zmx/parse-sessions-reads-the-current-session ()
+  "Inside a session, `zmx list' marks that session's line with an arrow."
+  (should (equal (alist-get 'name (car (dl-zmx--parse-sessions
+                                        "→ name=emacs.4\tpid=1\tclients=1\n")))
+                 "emacs.4")))
+
+(ert-deftest dl-zmx/sessions-survive-a-deleted-directory ()
+  "A buffer whose directory has gone can still list sessions."
+  (let ((dl-zmx-command "true")
+        (default-directory "/no/such/directory/"))
+    (should-not (dl-zmx-sessions))))
+
+(defconst dl-zmx-test--open-session
+  '((name . "hris.1") (clients . "1"))
+  "A session with a live terminal in `dl-zmx-test--with-consult-items'.")
+
+(defconst dl-zmx-test--unopened-session
+  '((name . "hris.2") (role . "tests") (clients . "0"))
+  "A session with no terminal in `dl-zmx-test--with-consult-items'.")
+
+(defmacro dl-zmx-test--with-consult-items (sessions &rest body)
+  "Run BODY with `items' bound to the consult source's items for SESSIONS.
+Of the sessions, only `dl-zmx-test--open-session' has a live terminal."
+  (declare (indent 1))
+  `(cl-letf (((symbol-function 'dl-zmx-sessions) (lambda () ,sessions))
+             ((symbol-function 'dl-zmx--terminal-live-p)
+              (lambda (session) (eq session dl-zmx-test--open-session))))
+     (let ((items (funcall (plist-get dl-zmx-consult-source :items))))
+       ,@body)))
+
+(ert-deftest dl-zmx/consult-offers-sessions-without-a-terminal ()
+  "Live terminals are `consult-ghostel's; this source offers the rest."
+  (dl-zmx-test--with-consult-items
+      (list dl-zmx-test--open-session dl-zmx-test--unopened-session)
+    (should (equal (mapcar #'substring-no-properties items) '("hris.2  tests")))))
+
+(ert-deftest dl-zmx/consult-offers-nothing-without-sessions ()
+  "No session to offer is an empty group, not an error in `consult-buffer'."
+  (dl-zmx-test--with-consult-items (list dl-zmx-test--open-session)
+    (should-not items))
+  (dl-zmx-test--with-consult-items nil
+    (should-not items)))
+
+(ert-deftest dl-zmx/consult-annotates-as-the-session-picker-does ()
+  (dl-zmx-test--with-consult-items (list dl-zmx-test--unopened-session)
+    (should (equal (funcall (plist-get dl-zmx-consult-source :annotate) (car items))
+                   (dl-zmx--annotation dl-zmx-test--unopened-session)))))
+
+(ert-deftest dl-zmx/consult-reattaches-the-chosen-session ()
+  (dl-zmx-test--with-consult-items (list dl-zmx-test--unopened-session)
+    (cl-letf* ((reattached nil)
+               ((symbol-function 'dl-zmx--reattach)
+                (lambda (session) (setq reattached session))))
+      (funcall (plist-get dl-zmx-consult-source :action) (car items))
+      (should (eq reattached dl-zmx-test--unopened-session)))))
+
+(ert-deftest dl-zmx/consult-source-needs-zmx ()
+  "Without zmx, `consult-buffer' goes on without the source."
+  (let ((enabled (plist-get dl-zmx-consult-source :enabled))
+        (dl-zmx-command "no-such-zmx-command"))
+    (should-not (funcall enabled))))
+
+(ert-deftest dl-zmx/consult-buffer-offers-sessions ()
+  "`consult-buffer' reaches the source, narrowed by `z' and otherwise hidden."
+  (skip-unless (require 'consult nil t))
+  (should (memq 'dl-zmx-consult-source consult-buffer-sources))
+  (should (plist-get dl-zmx-consult-source :hidden))
+  (should (equal (plist-get dl-zmx-consult-source :narrow) '(?z . "zmx"))))
+
 (ert-deftest dl-zmx/ghostel-exec-callable-before-ghostel-loads ()
   "ghostel is lazy-loaded and doesn't autoload `ghostel-exec' itself."
   (should (fboundp 'ghostel-exec)))

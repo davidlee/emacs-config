@@ -11,6 +11,8 @@
 ;;   `my/zmx-switch'       any running session: its buffer, or reattach
 ;;   `my/zmx-kill'         end a running session
 ;;
+;; `consult-buffer' offers sessions without a terminal on the narrow key `z'.
+;;
 ;; Outside a project, the directory's name stands in for PROJECT.  A TRAMP
 ;; directory gets a plain ghostel, as zmx is local.
 ;;
@@ -93,21 +95,23 @@ That is one dot, with a part on each side."
 (defun dl-zmx--parse-sessions (output)
   "Return the sessions in `zmx list' OUTPUT, as alists of fields.
 An `ended' field reports the last `zmx run' task, not the session: its shell
-lives on, and attaching reaches it."
+lives on, and attaching reaches it.  An arrow marks the caller's own session."
   (mapcar (lambda (line)
             (mapcar (lambda (field)
                       (let ((i (string-search "=" field)))
                         (cons (intern (substring field 0 i))
                               (substring field (1+ i)))))
-                    (split-string line "\t" t " +")))
+                    (split-string line "\t" t "[ →]+")))
           (split-string output "\n" t)))
 
 (defun dl-zmx-sessions ()
   "Return running zmx sessions, as alists of fields.
-stderr is discarded: with no sessions, zmx reports that there."
-  (dl-zmx--parse-sessions
-   (with-output-to-string
-     (call-process dl-zmx-command nil (list standard-output nil) nil "list"))))
+stderr is discarded: with no sessions, zmx reports that there.  The caller's
+directory may no longer exist, and `call-process' would refuse it."
+  (let ((default-directory temporary-file-directory))
+    (dl-zmx--parse-sessions
+     (with-output-to-string
+       (call-process dl-zmx-command nil (list standard-output nil) nil "list")))))
 
 (defun dl-zmx--session-names ()
   "Return the names of running zmx sessions."
@@ -188,7 +192,7 @@ its own face, as the icon's stops a completion UI applying one."
 
 (defun dl-zmx--widest (strings)
   "Return the width of the widest of STRINGS."
-  (apply #'max (mapcar #'string-width strings)))
+  (apply #'max 0 (mapcar #'string-width strings)))
 
 (defun dl-zmx--candidates (sessions)
   "Return an alist of completion candidate to record for SESSIONS.
@@ -203,6 +207,13 @@ A `role' follows the name, aligned, in the candidate so that it can be searched.
                       session)))
             sessions)))
 
+(defun dl-zmx--annotator (by-candidate)
+  "Return a function annotating the keys of BY-CANDIDATE, aligned."
+  (let ((width (dl-zmx--widest (mapcar #'car by-candidate))))
+    (lambda (candidate)
+      (concat (make-string (- width (string-width candidate)) ?\s)
+              (dl-zmx--annotation (alist-get candidate by-candidate nil nil #'equal))))))
+
 (defun dl-zmx-project-identifiers (project names)
   "Return identifiers of PROJECT's sessions among session NAMES."
   (let ((prefix (dl-zmx-session-name project "")))
@@ -214,13 +225,8 @@ A `role' follows the name, aligned, in the candidate so that it can be searched.
   (let* ((by-candidate (dl-zmx--candidates
                         (or (dl-zmx-sessions)
                             (user-error "No running zmx sessions"))))
-         (width (dl-zmx--widest (mapcar #'car by-candidate)))
          (completion-extra-properties
-          (list :annotation-function
-                (lambda (candidate)
-                  (concat (make-string (- width (string-width candidate)) ?\s)
-                          (dl-zmx--annotation
-                           (alist-get candidate by-candidate nil nil #'equal)))))))
+          (list :annotation-function (dl-zmx--annotator by-candidate))))
     (alist-get (completing-read prompt by-candidate nil t)
                by-candidate nil nil #'equal)))
 
@@ -291,6 +297,43 @@ Completes the identifiers of the project's running sessions."
   (let ((name (alist-get 'name session)))
     (when (y-or-n-p (format "Kill zmx session %s? " name))
       (call-process dl-zmx-command nil nil nil "kill" name))))
+
+;;; `consult-buffer': sessions without a terminal
+
+(defun dl-zmx--terminal-live-p (session)
+  "Return non-nil if SESSION, a record, has a live terminal buffer."
+  (process-live-p (get-buffer-process
+                   (dl-zmx-buffer-name (alist-get 'name session)))))
+
+(defun dl-zmx--consult-items ()
+  "Return candidates for sessions without a live terminal.
+Each carries its record and annotation as text properties."
+  (let* ((by-candidate (dl-zmx--candidates
+                        (seq-remove #'dl-zmx--terminal-live-p (dl-zmx-sessions))))
+         (annotate (dl-zmx--annotator by-candidate)))
+    (mapcar (pcase-lambda (`(,candidate . ,session))
+              (propertize candidate
+                          'dl-zmx-session session
+                          'dl-zmx-annotation (funcall annotate candidate)))
+            by-candidate)))
+
+(defvar dl-zmx-consult-source
+  `( :name     "zmx"
+     :narrow   (?z . "zmx")
+     :hidden   t
+     :category zmx-session
+     :enabled  ,(lambda () (executable-find dl-zmx-command))
+     :items    ,#'dl-zmx--consult-items
+     :annotate ,(lambda (candidate)
+                  (get-text-property 0 'dl-zmx-annotation candidate))
+     :action   ,(lambda (candidate)
+                  (dl-zmx--reattach (get-text-property 0 'dl-zmx-session candidate))))
+  "`consult-buffer' source of sessions without a terminal.
+Live terminals are `consult-ghostel's, on the narrow key `g'.")
+
+(defvar consult-buffer-sources)
+(with-eval-after-load 'consult
+  (add-to-list 'consult-buffer-sources 'dl-zmx-consult-source t))
 
 ;; `C-c p p' menu: switch project, then `z'.
 (add-to-list 'project-switch-commands '(my/zmx-project "zmx" "z") t)
