@@ -227,6 +227,14 @@ with `text-scale-adjust' (C-mousewheel).  Edit and call
 (defvar my/font-default-height 105
   "Base font height for the default face.")
 
+(defconst my/nerd-icon-range '(#xF0001 . #xF1AF0)
+  "The codepoints of Nerd Fonts' Material Design icons.")
+
+(defun my/apply-icon-fontset ()
+  "Find Nerd Font icons in the mono font, for faces whose own font lacks them."
+  (set-fontset-font t my/nerd-icon-range
+                    (font-spec :family (my/font-role 'mono))))
+
 (defun my/apply-fonts (&rest _)
   "Apply all font role assignments and per-face attrs.
 Variadic to fit `enable-theme-functions', which passes the theme."
@@ -244,6 +252,7 @@ Variadic to fit `enable-theme-functions', which passes the theme."
                       :family (my/font-role 'sans)
                       :height 1.0)
 
+  (my/apply-icon-fontset)
   (my/apply-ui-faces)
   (my/apply-org-faces)
   (my/apply-hl-line-faces))

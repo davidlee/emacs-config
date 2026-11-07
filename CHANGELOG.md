@@ -27,7 +27,9 @@ width the other columns leave, down to `dl-umbriel-buffer-title-min-width`, and
 resizing the window repaints `*umbriel*`. Flags are now icons, or letters where no
 font has them (`dl-umbriel-buffer-flags`), with `visible`, `active` and `focused` in
 columns of their own, and the header line carries a legend for the flags in use.
-Prompts keep the words.
+Prompts keep the words. `my/apply-fonts` now sends Nerd Font's Material icons to the
+`mono` font role, so a face whose own font lacks them, such as the selected
+`header-line-active`, shows the icon, not a hex box.
 
 ## 2026-11-06 — `just check` passes in the jail
 

@@ -99,5 +99,18 @@ unresolved; the hooks are idempotent, so they re-run once a real frame exists."
       (should (< (dl-faces-test--red face)
                  (car (color-values-from-color-spec source)))))))
 
+(ert-deftest dl-faces/nerd-icons-fall-back-to-the-mono-font ()
+  "A face whose own font lacks the icons still finds them in the mono font."
+  ;; The rule, not its effect: batch has no fonts to resolve.
+  (let (rule)
+    (cl-letf (((symbol-function 'set-fontset-font)
+               (lambda (&rest args) (setq rule args))))
+      (my/apply-icon-fontset))
+    (pcase-let ((`(,fontset (,first . ,last) ,font) rule))
+      (should (eq t fontset))
+      (should (<= first #xF0208 last))
+      (should (equal (my/font-role 'mono)
+                     (symbol-name (font-get font :family)))))))
+
 (provide 'dl-faces-test)
 ;;; dl-faces-test.el ends here

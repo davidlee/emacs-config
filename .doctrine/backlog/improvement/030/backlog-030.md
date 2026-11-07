@@ -53,4 +53,9 @@ display strings in `apps/dl-umbriel-model.el`.
   a font, so terminals get letters. The legend in the header lists flags in use.
   `active` without `focused` is real: a scratchpad window showed it, so both keep
   an icon despite the row colours.
+- 2026-11-07, fontset: the legend showed hex boxes while the pane was selected.
+  `header-line-active` wants `Inter Regular`, which resolves to a font without the
+  icons, and nothing else offered them: `face-font` for the glyph returned nil.
+  `my/apply-icon-fontset` fixes every face. `dl-umbriel-buffer--icon` tests the
+  default face only, so it cannot see a per-face gap like this one.
 - Deferred by the user: layout pill colours (see above).
