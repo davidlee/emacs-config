@@ -1,0 +1,42 @@
+memory_uid = "mem_01a1b3b5780a7b52ae0207111eb7ab90"
+memory_key = "mem.fact.emacs.font-and-width-probes"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "Measuring window columns and a face's font for a glyph"
+summary = "How to measure a window's columns and which font a face uses for a glyph"
+created = "2026-11-07"
+updated = "2026-11-07"
+
+[scope]
+paths = ["core/dl-faces.el", "apps/dl-umbriel-buffer.el"]
+globs = []
+commands = []
+tags = ["emacs", "fonts"]
+workspace = "default"
+repo = "github.com/davidlee/emacs-config"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "ba7d600696b327f125ae9fd22256a036deb72939"
+ref_name = "refs/heads/main"
+checkout_state_id = "bcfad5889b6060b42916a2ba4979324e1f9bf9f6df001a80cb7a54e1f6dc8b91"
+base_commit = "e63414ec8359718423da1851a18439e706bbc292"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "none"
+weight = 0
+
