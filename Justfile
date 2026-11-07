@@ -25,6 +25,12 @@ check:
     -l dev/dl-test.el \
     --eval '(princ (dl-test-run-suite))' 2>&1 | tee /dev/stderr | grep -q PASS
 
+# On Guix System, fetch the packages Guix lacks into elpa/ (core/dl-guix.el).
+guix-packages:
+  @emacs --batch -Q --init-directory="{{justfile_directory()}}" \
+    -l "{{justfile_directory()}}/early-init.el" \
+    -f dl-guix-install-packages
+
 db-start:
   supabase start
 

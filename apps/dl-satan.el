@@ -19,6 +19,8 @@ interpreted, its timers stall input.  Native-comp JIT follows the .elc."
     (satan-notes-root "~/notes")
     (satan-mcp-enabled t)
     (satan-goad-enabled t)
+    ;; SL-037 interim: remove once satan-attrd accepts content_backlog.
+    (satan-sensor-content-enabled nil)
     (satan-journal-today
      (lambda ()
        (my/journal--ensure-today)

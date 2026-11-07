@@ -870,7 +870,7 @@ The prompt offers the layouts in model order.  Empty input is a
       (user-error "No layout chosen"))
     (list (cons 'layout layout))))
 
-(defconst dl-umbriel-buffer-known-pads '("main")
+(defconst dl-umbriel-buffer-known-pads '("main" "secondary" "tertiary")
   "Pads the send prompt offers even while empty.
 The IPC names only pads holding windows.  A name here must also be a
 `[[scratchpad]]' in umbriel's config, the only way to create a pad.")

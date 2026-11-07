@@ -82,6 +82,12 @@ reads `~/flakes/emacs` live, bypassing `flake.lock`). Host and devshell run
 **one derivation** — same list, same pins. Plain `nix develop` / CI / darwin
 without the justfile use their locks: `nix flake update emacs`.
 
+On Guix System the list above is not used: Guix Home supplies Emacs and most
+packages, and `just guix-packages` fetches the rest into `elpa/`
+(`core/dl-guix.el`). Archives are bound only during that step, so
+`package-archives` stays nil at runtime there too. A package added to
+`emacs.nix` that Guix lacks also needs adding to `dl-guix-archive-packages`.
+
 The user's systemd `services.emacs` unit is **disabled** — the server is started
 from `init.el`.
 

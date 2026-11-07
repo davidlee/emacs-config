@@ -7,6 +7,17 @@
 (require 'dl-faces)
 (require 'dl-umbriel-buffer)
 
+(ert-deftest dl-faces/loads-before-anything-defines-hl-line ()
+  "Applying faces at load needs `hl-line', so dl-faces must load it itself.
+Runs in a fresh Emacs: in this one, other tests have already loaded it."
+  (let* ((core (file-name-directory (locate-library "dl-faces")))
+         (form "(progn (require 'org) (require 'dl-faces) (princ (facep 'hl-line)))")
+         (output (with-output-to-string
+                   (with-current-buffer standard-output
+                     (call-process (expand-file-name invocation-name invocation-directory)
+                                   nil t nil "-Q" "--batch" "-L" core "--eval" form)))))
+    (should (string-suffix-p "t" (string-trim output)))))
+
 (ert-deftest dl-faces/line-numbers-pad-the-text-while-shown ()
   "Text is prefixed off the line numbers only while they are displayed."
   (with-temp-buffer

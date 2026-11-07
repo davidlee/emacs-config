@@ -8,6 +8,8 @@
 ;; -- package-vc: a `:vc' use-package stanza clones into elpa/ here
 ;;    at runtime, for packages not in nixpkgs or needing a writable dir
 ;;    (see dl-ghostel.el). `package-initialize' below activates them.
+;; -- guix: Guix Home supplies most packages; `just guix-packages' fetches
+;;    the rest into elpa/ (see dl-guix.el). Startup never downloads.
 
 (setq my/debug-startup nil)
 
@@ -42,4 +44,6 @@
 (setq x-underline-at-descent-line t)            ; Prettier underlines
 
 (load-file (expand-file-name "core/dl-path.el" user-emacs-directory))
+(require 'dl-guix)
+(dl-guix-configure-packages)
 ;;; early-init.el ends here

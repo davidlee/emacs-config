@@ -2,6 +2,7 @@
 
 (require 'cl-lib)
 (require 'color)
+(require 'hl-line)
 (require 'tab-bar)
 (require 'tab-line)
 
