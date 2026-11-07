@@ -24,7 +24,10 @@ too, with a Nerd Font icon and its own colour (`dl-umbriel-buffer-layout`,
 the rows' placement, with the window count right-justified to the title column.
 Pills stay shown under the point highlight. Titles now fit the window: they take the
 width the other columns leave, down to `dl-umbriel-buffer-title-min-width`, and
-resizing the window repaints `*umbriel*`.
+resizing the window repaints `*umbriel*`. Flags are now icons, or letters where no
+font has them (`dl-umbriel-buffer-flags`), with `visible`, `active` and `focused` in
+columns of their own, and the header line carries a legend for the flags in use.
+Prompts keep the words.
 
 ## 2026-11-06 — `just check` passes in the jail
 

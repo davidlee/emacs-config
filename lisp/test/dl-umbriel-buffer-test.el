@@ -597,18 +597,20 @@ There w-abc is both `active' and `focused', and w-def is neither."
 (ert-deftest dl-umbriel-buffer/each-layout-has-its-own-icon ()
   "Every layout the model offers shows a distinct icon before its name."
   (dl-umbriel-buffer-test--with-fixture-render
-    (let ((icons
-           (mapcar
-            (lambda (layout)
-              (dl-umbriel-buffer-test--render
-               nil (list (dl-umbriel-buffer-test--workspace
-                          :id "DP-1:3" :layout layout)))
-              (let ((pos (dl-umbriel-buffer-test--heading-text-pos
-                          "DP-1:3" (concat " " layout " "))))
-                (char-before pos)))
-            dl-umbriel-model-layouts)))
-      (should (seq-every-p (lambda (icon) (>= icon #xe000)) icons))
-      (should (equal icons (seq-uniq icons))))))
+    (cl-letf (((symbol-function 'char-displayable-p)
+               (lambda (&rest _) (font-spec))))
+      (let ((icons
+             (mapcar
+              (lambda (layout)
+                (dl-umbriel-buffer-test--render
+                 nil (list (dl-umbriel-buffer-test--workspace
+                            :id "DP-1:3" :layout layout)))
+                (let ((pos (dl-umbriel-buffer-test--heading-text-pos
+                            "DP-1:3" (concat " " layout " "))))
+                  (char-before pos)))
+              dl-umbriel-model-layouts)))
+        (should (seq-every-p (lambda (icon) (>= icon #xe000)) icons))
+        (should (equal icons (seq-uniq icons)))))))
 
 (ert-deftest dl-umbriel-buffer/pills-show-over-the-point-highlight ()
   "A pill is an overlay above magit's, so point on its heading leaves it shown."
@@ -682,10 +684,9 @@ There w-abc is both `active' and `focused', and w-def is neither."
      (list (dl-umbriel-buffer-test--workspace :id "DP-1:3")))))
 
 (defun dl-umbriel-buffer-test--row-end (id)
-  "The column where window ID's row ends, as its stops and last cell place it."
+  "The column where window ID's row ends, its last cell being one flag."
   (let ((section (dl-umbriel-buffer-test--find 'umbriel-window id)))
-    (+ (car (last (dl-umbriel-buffer-test--stops section)))
-       (length "active"))))
+    (1+ (car (last (dl-umbriel-buffer-test--stops section))))))
 
 (ert-deftest dl-umbriel-buffer/title-shrinks-so-the-row-fits-the-window ()
   "A long title gives way, so the columns after it stay inside the window."
@@ -717,10 +718,12 @@ There w-abc is both `active' and `focused', and w-def is neither."
 
 (ert-deftest dl-umbriel-buffer/title-budget-leaves-room-for-heading-columns ()
   "Marks and layouts wider than the rows' cells take from the title too."
-  (let ((rows '(((app . "app") (title . "") (placement . "tile") (flags . "")))))
+  (let ((rows '(((app . "app") (title . "") (placement . "tile") (visible . "")
+                 (active . "") (focused . "") (flags . "")))))
     (should (> (dl-umbriel-buffer--title-limit rows nil 100)
                (dl-umbriel-buffer--title-limit
-                rows '(((layout . "wider than tile") (marks . "active focused")))
+                rows '(((layout . "wider than tile") (visible . "") (active . "")
+                        (focused . "") (flags . "! x")))
                 100)))))
 
 (ert-deftest dl-umbriel-buffer/resizing-its-window-schedules-a-repaint ()
@@ -734,6 +737,90 @@ There w-abc is both `active' and `focused', and w-def is neither."
       (when dl-umbriel-buffer--repaint-timer
         (cancel-timer dl-umbriel-buffer--repaint-timer)
         (setq dl-umbriel-buffer--repaint-timer nil)))))
+
+(defun dl-umbriel-buffer-test--render-flagged ()
+  "Paint rows with different flags under one active, focused workspace."
+  (dl-umbriel-buffer-test--render
+   (list (dl-umbriel-buffer-test--window :id "w-all" :workspace "DP-1:3"
+                                         :title (make-string 40 ?t)
+                                         :visible t :active t :focused t)
+         (dl-umbriel-buffer-test--window :id "w-focused" :workspace "DP-1:3"
+                                         :focused t)
+         (dl-umbriel-buffer-test--window :id "w-rare" :workspace "DP-1:3"
+                                         :minimized t :urgent t))
+   (list (dl-umbriel-buffer-test--workspace :id "DP-1:3" :active t :focused t))))
+
+(ert-deftest dl-umbriel-buffer/flags-read-visible-active-focused ()
+  "A row shows its flags in that order, as letters when icons are unavailable."
+  (dl-umbriel-buffer-test--with-fixture-render
+    (dl-umbriel-buffer-test--render-flagged)
+    (should (string-suffix-p
+             " V A F" (dl-umbriel-buffer-test--line-text
+                       (dl-umbriel-buffer-test--find 'umbriel-window "w-all"))))))
+
+(ert-deftest dl-umbriel-buffer/each-main-flag-keeps-its-column ()
+  "A flag sits in the same place whichever flags its row also has."
+  (dl-umbriel-buffer-test--with-fixture-render
+    (dl-umbriel-buffer-test--render-flagged)
+    (let ((stops (lambda (id)
+                   (dl-umbriel-buffer-test--stops
+                    (dl-umbriel-buffer-test--find 'umbriel-window id)))))
+      (should (= (car (last (funcall stops "w-all")))
+                 (car (last (funcall stops "w-focused"))))))))
+
+(ert-deftest dl-umbriel-buffer/rarer-flags-share-the-last-column ()
+  "Flags without a column of their own follow the main ones, joined."
+  (dl-umbriel-buffer-test--with-fixture-render
+    (dl-umbriel-buffer-test--render-flagged)
+    (should (string-suffix-p
+             " m !" (dl-umbriel-buffer-test--line-text
+                     (dl-umbriel-buffer-test--find 'umbriel-window "w-rare"))))))
+
+(ert-deftest dl-umbriel-buffer/heading-marks-share-the-rows-flag-columns ()
+  "A heading's `focused' sits over its rows' `focused'."
+  (dl-umbriel-buffer-test--with-fixture-render
+    (dl-umbriel-buffer-test--render-flagged)
+    (should (= (car (last (dl-umbriel-buffer-test--stops
+                           (dl-umbriel-buffer-test--find 'umbriel-workspace
+                                                         "DP-1:3"))))
+               (car (last (dl-umbriel-buffer-test--stops
+                           (dl-umbriel-buffer-test--find 'umbriel-window
+                                                         "w-focused"))))))))
+
+(ert-deftest dl-umbriel-buffer/flags-are-icons-when-a-font-has-them ()
+  "With a font for the glyphs a flag is its icon; without one, its letter."
+  (cl-letf (((symbol-function 'char-displayable-p)
+             (lambda (&rest _) (font-spec))))
+    (should (equal "\U000F0208" (dl-umbriel-buffer--flag-glyph 'visible))))
+  (cl-letf (((symbol-function 'char-displayable-p) (lambda (&rest _) 'unicode)))
+    (should (equal "V" (dl-umbriel-buffer--flag-glyph 'visible)))))
+
+(ert-deftest dl-umbriel-buffer/layout-drops-its-icon-without-a-font ()
+  "Without a font for the icon, a layout pill is just its name."
+  (cl-letf (((symbol-function 'char-displayable-p) #'ignore))
+    (should (equal " dwindle " (dl-umbriel-buffer--layout-pill "dwindle")))))
+
+(ert-deftest dl-umbriel-buffer/legend-names-the-flags-in-use ()
+  "The header explains each flag something has set, and no others."
+  (dl-umbriel-buffer-test--with-fixture-render
+    (dl-umbriel-buffer-test--render-flagged)
+    (let ((legend (dl-umbriel-buffer--legend)))
+      (dolist (entry '("V visible" "A active" "F focused" "m minimized"
+                       "! urgent"))
+        (should (string-search entry legend)))
+      (should-not (string-search "xwayland" legend)))))
+
+(ert-deftest dl-umbriel-buffer/header-shows-the-status-before-the-legend ()
+  "The status keeps its place, and the legend is aligned right after it."
+  (dl-umbriel-buffer-test--with-fixture-render
+    (dl-umbriel-buffer-test--render-flagged)
+    (let* ((header (dl-umbriel-buffer--header-line))
+           (legend (dl-umbriel-buffer--legend)))
+      (should (string-suffix-p legend header))
+      (should (string-prefix-p (dl-umbriel-buffer--header-text
+                                (dl-umbriel-stream-status)
+                                (dl-umbriel-skipped))
+                               header)))))
 
 (ert-deftest dl-umbriel-buffer/row-mark-shows-over-the-workspace-shade ()
   "The active row keeps its own face inside a shaded workspace."
@@ -789,12 +876,12 @@ There w-abc is both `active' and `focused', and w-def is neither."
                           (dl-umbriel-buffer-test--find 'umbriel-window id)))))))))
 
 (ert-deftest dl-umbriel-buffer/aligned-row-reads-as-its-label ()
-  "Alignment is display only: the text stays the model's one-line label."
+  "Alignment is display only: an unflagged row's text is the model's label."
   (dl-umbriel-buffer-test--with-fixture-render
-    (let ((window (dl-umbriel-window "w-abc")))
+    (let ((window (dl-umbriel-window "w-def")))
       (should (equal (concat "  " (dl-umbriel-model-window-label window))
                      (dl-umbriel-buffer-test--line-text
-                      (dl-umbriel-buffer-test--find 'umbriel-window "w-abc")))))))
+                      (dl-umbriel-buffer-test--find 'umbriel-window "w-def")))))))
 
 (ert-deftest dl-umbriel-buffer/long-cell-is-cut-to-its-column ()
   "An over-long title ends in an ellipsis, and sets no wider column."
@@ -867,7 +954,8 @@ There w-abc is both `active' and `focused', and w-def is neither."
     (let ((row (dl-umbriel-buffer-test--find 'umbriel-window "w-abc")))
       (save-excursion
         (goto-char (oref row start))
-        (search-forward "active")
+        (let ((case-fold-search nil))
+          (search-forward "A"))
         (should (equal '(dl-umbriel-buffer-window-flags)
                        (dl-umbriel-buffer-test--faces-at
                         (match-beginning 0))))))))

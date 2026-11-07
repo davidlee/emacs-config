@@ -46,5 +46,11 @@ display strings in `apps/dl-umbriel-model.el`.
   `window-max-chars-per-line` measures it; `window-width` counts the frame's font
   and overstates by a quarter here. `dl-umbriel-buffer--grid` bundles limits and
   starts for the insert functions. A resize repaints through the usual timer.
-- Open: flags. At the floor, the longest flags clip. Evidence on redundancy and a
-  proposal are with the user.
+- 2026-11-07, flags: icons always, in the buffer only; the model's labels and
+  prompts keep the words. `visible`, `active` and `focused` are columns, because
+  icons in this font render wider than a cell and padded text would drift.
+  `dl-umbriel-buffer--icon` takes the icon only when `char-displayable-p` returns
+  a font, so terminals get letters. The legend in the header lists flags in use.
+  `active` without `focused` is real: a scratchpad window showed it, so both keep
+  an icon despite the row colours.
+- Deferred by the user: layout pill colours (see above).

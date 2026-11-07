@@ -131,19 +131,26 @@ HDMI-1 2 scrolling 0 windows
 ```
 
 - Window rows show app id, title, placement (`tile COLUMN,ROW`, bare `tile`
-  while the column is unplaced, `float`, `tab INDEX`), then each flag that is set: `active`, `focused`, `visible`,
-  `minimized`, `fullscreen`, `urgent`, `xwayland`.
+  while the column is unplaced, `float`, `tab INDEX`), then a glyph for each flag
+  that is set. `visible`, `active` and `focused` have a column each, so they line
+  up; `minimized`, `fullscreen`, `urgent` and `xwayland` share the last one.
+- Flags are Nerd Font icons where a font has them and letters otherwise
+  (`dl-umbriel-buffer-flags`). A terminal names no font, so it always gets letters.
+  A layout without its icon is just its name. Prompts keep the words. The header
+  line explains the flags in use, aligned right after the status, and a long
+  status pushes it out of view.
 - Workspace rows show output, index, name (named workspaces only), the window
-  count, layout, then `active`, `focused`, `urgent`.
+  count, layout, then the `active`, `focused` and `urgent` glyphs in the rows'
+  flag columns.
 - The window count is the number of windows joined under the workspace, not the
   wire's `window_count`, so the label always matches the rows beneath it.
 - Columns line up across the whole buffer, headings and window rows each on
-  their own stops, except that a heading's marks sit over the rows' flags
-  unless the heading's own columns run past them. Over-long app ids and titles are cut with an ellipsis
+  their own stops, except that a heading's flags sit over the rows'
+  unless the heading's own columns run past them, as they can over short titles. Over-long app ids and titles are cut with an ellipsis
   (`dl-umbriel-buffer-column-limits`). Titles take the width the other columns
   leave in the narrowest window showing the buffer, down to
   `dl-umbriel-buffer-title-min-width`, and resizing that window repaints. Alignment is display only: the buffer's
-  text is still the single-spaced label, and prompts show the full one.
+  text is still its cells joined by single spaces, and prompts show the full label.
 - `active` and `focused` differ. `active` is seat-global (the window holding
   the keyboard); `focused` is the workspace's remembered focus. A layer
   surface or scratchpad holding the keyboard makes them disagree.
@@ -161,8 +168,7 @@ HDMI-1 2 scrolling 0 windows
   `focused` row colours replace them on those rows. An `active` workspace's
   output and index use `dl-umbriel-buffer-active-workspace-id`, bold white.
 - A heading's window count is right-justified to the title column's right edge,
-  its layout sits over the rows' placement and its marks over their flags, so the
-  layout can push the flags right.
+  and its layout sits over the rows' placement, which it can widen.
 - A workspace name and a layout are padded pills, overlays that stay shown under
   the point highlight. A name uses `dl-umbriel-buffer-active-workspace-name` when
   active, otherwise `dl-umbriel-buffer-workspace-name`, a muted shade derived in

@@ -192,6 +192,9 @@ the overlay, which then evaporates."
 (defconst dl-umbriel-buffer-window-cell-faces
   '((app . dl-umbriel-buffer-window-app)
     (placement . dl-umbriel-buffer-window-placement)
+    (visible . dl-umbriel-buffer-window-flags)
+    (active . dl-umbriel-buffer-window-flags)
+    (focused . dl-umbriel-buffer-window-flags)
     (flags . dl-umbriel-buffer-window-flags))
   "The face of each window row column; a column left out has none.")
 
@@ -204,6 +207,20 @@ the overlay, which then evaporates."
   "The face and Nerd Font icon of each layout.
 A layout left out shows in `dl-umbriel-buffer-layout', without an icon.")
 
+(defconst dl-umbriel-buffer-flags
+  '((visible "\U000F0208" "V")
+    (active "\U000F030C" "A")
+    (focused "\U000F04FE" "F")
+    (minimized "\U000F05B0" "m")
+    (fullscreen "\U000F0293" "f")
+    (urgent "\U000F009E" "!")
+    (xwayland "\U000F0B1F" "x"))
+  "Each flag's Nerd Font icon and its letter where icons cannot show.
+In display order.")
+
+(defconst dl-umbriel-buffer-flag-columns '(visible active focused)
+  "The flags with a column each, so they line up; the rest share `flags'.")
+
 (defconst dl-umbriel-buffer-column-limits '((app . 24) (title . 40))
   "The widest each column may grow; a column left out is unlimited.
 A window showing the buffer replaces the title's limit with what fits it.")
@@ -214,9 +231,39 @@ A window showing the buffer replaces the title's limit with what fits it.")
 (defconst dl-umbriel-buffer-row-indent "  "
   "What a window row starts with, under its workspace's heading.")
 
+(defun dl-umbriel-buffer--icon (icon fallback)
+  "ICON when a font has it, else FALLBACK.
+A terminal names no font, so it gets FALLBACK whatever it could show."
+  (if (fontp (char-displayable-p (aref icon 0))) icon fallback))
+
+(defun dl-umbriel-buffer--flag-glyph (flag)
+  "What stands for FLAG: its icon, or its letter."
+  (apply #'dl-umbriel-buffer--icon (alist-get flag dl-umbriel-buffer-flags)))
+
+(defun dl-umbriel-buffer--flag-glyphs (entry flags)
+  "The glyphs of those FLAGS that ENTRY has set, joined."
+  (string-join (mapcar #'dl-umbriel-buffer--flag-glyph
+                       (seq-filter (lambda (flag) (alist-get flag entry)) flags))
+               " "))
+
+(defun dl-umbriel-buffer--flag-cells (entry)
+  "ENTRY's flags as cells, one for each flag column and `flags' for the rest.
+ENTRY is a window or a workspace, so headings and rows share the columns."
+  (append (mapcar (lambda (flag)
+                    (cons flag (dl-umbriel-buffer--flag-glyphs entry (list flag))))
+                  dl-umbriel-buffer-flag-columns)
+          (list (cons 'flags
+                      (dl-umbriel-buffer--flag-glyphs
+                       entry (seq-difference
+                              (mapcar #'car dl-umbriel-buffer-flags)
+                              dl-umbriel-buffer-flag-columns))))))
+
 (defun dl-umbriel-buffer--window-cells (window limits)
-  "WINDOW's cells, cut to fit LIMITS."
-  (dl-umbriel-columns-fit (dl-umbriel-model-window-cells window) limits))
+  "WINDOW's cells, cut to fit LIMITS, with its flags as glyphs."
+  (dl-umbriel-columns-fit
+   (append (assq-delete-all 'flags (dl-umbriel-model-window-cells window))
+           (dl-umbriel-buffer--flag-cells window))
+   limits))
 
 (defun dl-umbriel-buffer--insert-window (window grid)
   "Insert WINDOW's row at point, placed by GRID, in the face that marks it, if any."
@@ -248,61 +295,70 @@ A window showing the buffer replaces the title's limit with what fits it.")
   (pcase-let ((`(,face ,icon)
                (or (cdr (assoc layout dl-umbriel-buffer-layouts))
                    '(dl-umbriel-buffer-layout))))
-    (dl-umbriel-buffer--pill (string-join (remq nil (list icon layout)) " ")
-                             face)))
+    (dl-umbriel-buffer--pill
+     (string-join (remq nil (list (and icon (dl-umbriel-buffer--icon icon nil))
+                                  layout))
+                  " ")
+     face)))
 
 (defun dl-umbriel-buffer--group-cells (group)
   "The heading cells of GROUP, a `(WORKSPACE . WINDOWS)' pair.
 The count comes before the layout, so the layout can sit over the rows'
-placement, and the name and layout are pills."
+placement, the name and layout are pills, and the flags are the rows'."
   (let* ((workspace (car group))
          (cells (dl-umbriel-model-workspace-cells workspace
                                                   (length (cdr group)))))
-    (list (assq 'id cells)
-          (cons 'name (dl-umbriel-buffer--pill
-                       (alist-get 'name cells)
-                       (if (alist-get 'active workspace)
-                           'dl-umbriel-buffer-active-workspace-name
-                         'dl-umbriel-buffer-workspace-name)))
-          (assq 'windows cells)
-          (cons 'layout (dl-umbriel-buffer--layout-pill
-                         (alist-get 'layout cells)))
-          (assq 'marks cells))))
+    (append
+     (list (assq 'id cells)
+           (cons 'name (dl-umbriel-buffer--pill
+                        (alist-get 'name cells)
+                        (if (alist-get 'active workspace)
+                            'dl-umbriel-buffer-active-workspace-name
+                          'dl-umbriel-buffer-workspace-name)))
+           (assq 'windows cells)
+           (cons 'layout (dl-umbriel-buffer--layout-pill
+                          (alist-get 'layout cells))))
+     (dl-umbriel-buffer--flag-cells workspace))))
+
+(defun dl-umbriel-buffer--flag-column-names ()
+  "Every column that holds flags, rows and headings alike."
+  (append dl-umbriel-buffer-flag-columns '(flags)))
 
 (defun dl-umbriel-buffer--title-limit (rows heading-cells width)
   "The widest a title can be, for ROWS and HEADING-CELLS to fit WIDTH columns.
-A layout shares the placement column and marks share the flags column,
-so each column takes the wider of the two."
-  (max dl-umbriel-buffer-title-min-width
-       (- width
-          (length dl-umbriel-buffer-row-indent)
-          (dl-umbriel-columns-width rows 'app)
-          (max (dl-umbriel-columns-width rows 'placement)
-               (dl-umbriel-columns-width heading-cells 'layout))
-          (max (dl-umbriel-columns-width rows 'flags)
-               (dl-umbriel-columns-width heading-cells 'marks))
-          (* 3 dl-umbriel-columns-gap))))
+A layout shares the placement column and headings share the flag
+columns, so each takes the wider of the two."
+  (let ((flag-columns (dl-umbriel-buffer--flag-column-names))
+        (all (append rows heading-cells)))
+    (max dl-umbriel-buffer-title-min-width
+         (- width
+            (length dl-umbriel-buffer-row-indent)
+            (dl-umbriel-columns-width rows 'app)
+            (max (dl-umbriel-columns-width rows 'placement)
+                 (dl-umbriel-columns-width heading-cells 'layout))
+            (apply #'+ (mapcar (lambda (column)
+                                 (dl-umbriel-columns-width all column))
+                               flag-columns))
+            (* (+ 2 (length flag-columns)) dl-umbriel-columns-gap)))))
 
 (defun dl-umbriel-buffer--row-starts (rows heading-cells)
   "Where ROWS' columns start, leaving room for HEADING-CELLS' layouts.
-A layout sits over the placement column, so it can push the flags right."
-  (let* ((starts (dl-umbriel-columns-starts
-                  rows (length dl-umbriel-buffer-row-indent)))
-         (placement (alist-get 'placement starts)))
-    (dl-umbriel-columns-at-least
-     starts 'flags
-     (and placement
-          (+ placement dl-umbriel-columns-gap
-             (dl-umbriel-columns-width heading-cells 'layout))))))
+A layout sits over the placement column, so it can widen it."
+  (dl-umbriel-columns-starts
+   rows (length dl-umbriel-buffer-row-indent)
+   `((placement . ,(dl-umbriel-columns-width heading-cells 'layout)))))
 
 (defun dl-umbriel-buffer--heading-starts (heading-cells row-starts)
   "Where HEADING-CELLS' columns start, lined up with ROW-STARTS.
-A heading's layout sits over the rows' placement and its marks over their
-flags, unless its own cells run past them."
-  (dl-umbriel-columns-at-least
-   (dl-umbriel-columns-at-least (dl-umbriel-columns-starts heading-cells 0)
-                                'layout (alist-get 'placement row-starts))
-   'marks (alist-get 'flags row-starts)))
+A heading's layout sits over the rows' placement and its flags over
+theirs, unless its own cells run past them."
+  (seq-reduce (lambda (starts column)
+                (dl-umbriel-columns-at-least starts column
+                                             (alist-get column row-starts)))
+              (dl-umbriel-buffer--flag-column-names)
+              (dl-umbriel-columns-at-least
+               (dl-umbriel-columns-starts heading-cells 0)
+               'layout (alist-get 'placement row-starts))))
 
 (defun dl-umbriel-buffer--grid (groups windows width)
   "How to lay out GROUPS and WINDOWS in WIDTH columns, as a plist.
@@ -373,6 +429,31 @@ Its text property alone would lose its background under point."
          start next (car (ensure-list (get-text-property start
                                                          'font-lock-face)))))
       (setq start next))))
+
+(defun dl-umbriel-buffer--legend ()
+  "What each flag in use means, aligned to the header's right edge.
+Only flags something has set, because all of them would not fit.  An icon
+can be wider than the one column it counts for, so each gets one spare."
+  (let* ((held (append (dl-umbriel-windows) (dl-umbriel-workspaces)))
+         (flags (seq-filter (lambda (flag)
+                              (seq-some (lambda (entry) (alist-get flag entry))
+                                        held))
+                            (mapcar #'car dl-umbriel-buffer-flags)))
+         (text (mapconcat (lambda (flag)
+                            (format "%s %s" (dl-umbriel-buffer--flag-glyph flag)
+                                    flag))
+                          flags "  ")))
+    (concat (propertize " " 'display
+                        `(space :align-to
+                                (- right ,(+ (string-width text)
+                                             (length flags)))))
+            text)))
+
+(defun dl-umbriel-buffer--header-line ()
+  "The header: the stream's status, then the legend if it fits beside it."
+  (concat (dl-umbriel-buffer--header-text (dl-umbriel-stream-status)
+                                          (dl-umbriel-skipped))
+          (dl-umbriel-buffer--legend)))
 
 (defun dl-umbriel-buffer--insert-workspace-windows (workspace windows grid)
   "Insert WINDOWS, WORKSPACE's rows placed by GRID, shaded when it is active.
@@ -891,9 +972,7 @@ Displays the held state as a section tree and sends the requests the
 row keys name.  It never opens the stream: `my/umbriel' owns the
 connection."
   (setq-local header-line-format
-              '(:eval (dl-umbriel-buffer--header-text
-                       (dl-umbriel-stream-status)
-                       (dl-umbriel-skipped))))
+              '(:eval (dl-umbriel-buffer--header-line)))
   (add-hook 'window-buffer-change-functions
             #'dl-umbriel-buffer--on-display nil t)
   (add-hook 'window-size-change-functions
