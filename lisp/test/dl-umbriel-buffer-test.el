@@ -481,8 +481,9 @@ pair, so a lone `%' would be read as a construct."
                   (dl-umbriel-buffer-test--action-workspaces)))))
 
 (ert-deftest dl-umbriel-buffer/send-to-pad-offers-held-pads-and-takes-any-name ()
-  "Held pads complete in order; an empty pad, which no window names, can be typed."
-  (let ((workspaces (dl-umbriel-buffer-test--action-workspaces)))
+  "Held and known pads complete in order, and any other name can be typed."
+  (let ((workspaces (dl-umbriel-buffer-test--action-workspaces))
+        (dl-umbriel-buffer-known-pads '("main" "signal")))
     (dl-umbriel-buffer-test--with-state
         (dl-umbriel-buffer-test--held
          (list (dl-umbriel-buffer-test--window :id "w-dp1" :workspace "DP-1:1")
@@ -500,7 +501,7 @@ pair, so a lone `%' would be read as a construct."
              'my/umbriel-send-to-pad 'umbriel-window "w-dp1")
             (pcase-let ((`(,_kind ,_prompt ,collection ,match)
                          (car dl-umbriel-buffer-test--prompts)))
-              (should (equal '("discord" "signal")
+              (should (equal '("discord" "main" "signal")
                              (dl-umbriel-buffer-test--offered collection)))
               (should-not match))
             (should (member (dl-umbriel-action

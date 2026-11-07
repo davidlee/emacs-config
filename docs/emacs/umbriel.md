@@ -208,9 +208,11 @@ focused, with no focus step. `RET`, `t` and `k` refuse a workspace row
 (`Not a window`), and so does `P`. A pad heading has no window, so every key but
 `v` refuses it (`Not a window`).
 
-`P` offers the pads that hold windows. The IPC lists no others, so an empty pad
-must be typed, and umbriel rejects a name it does not know. That failure comes
-after the focus step, so focus stays on the row's window.
+`P` offers the pads that hold windows, plus `dl-umbriel-buffer-known-pads`
+(`main`), because the IPC lists no empty pads. Any other empty pad must be typed.
+Pads exist only as `[[scratchpad]]` entries in umbriel's config, so `P` cannot
+create one, and umbriel rejects a name it does not know. That failure comes after
+the focus step, so focus stays on the row's window.
 
 There are no scroll keys: strip scrolling is a viewport action, not an action
 on the row at point (DEC-026). Use umbriel's own bindings.

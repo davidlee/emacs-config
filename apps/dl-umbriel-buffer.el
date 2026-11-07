@@ -869,15 +869,23 @@ The prompt offers the layouts in model order.  Empty input is a
       (user-error "No layout chosen"))
     (list (cons 'layout layout))))
 
+(defconst dl-umbriel-buffer-known-pads '("main")
+  "Pads the send prompt offers even while empty.
+The IPC names only pads holding windows.  A name here must also be a
+`[[scratchpad]]' in umbriel's config, the only way to create a pad.")
+
 (defun dl-umbriel-buffer--pad-fields ()
   "The scratchpad field the user picks or types.
-The prompt offers the pads holding windows.  The IPC lists no others,
-so any name may be typed, and umbriel refuses one it does not know.
-Empty input is a `user-error', as for a workspace."
+The prompt offers `dl-umbriel-buffer-known-pads' and the pads holding
+windows.  Any name may be typed, and umbriel refuses one it does not
+know.  Empty input is a `user-error', as for a workspace."
   (let ((name (completing-read
                "Send to scratchpad: "
                (dl-umbriel-buffer--ordered-table
-                (dl-umbriel-model-pad-names (dl-umbriel-windows))))))
+                (sort (seq-uniq
+                       (append dl-umbriel-buffer-known-pads
+                               (dl-umbriel-model-pad-names
+                                (dl-umbriel-windows)))))))))
     (when (string-empty-p name)
       (user-error "No scratchpad chosen"))
     (list (cons 'scratchpad name))))

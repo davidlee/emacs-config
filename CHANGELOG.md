@@ -5,8 +5,9 @@ Notable changes to this Emacs config. Loosely dated; not versioned.
 ## 2026-11-07 — umbriel: send a window to a scratchpad
 
 `P` (`my/umbriel-send-to-pad`) in `*umbriel*` sends the window at point to a scratchpad,
-then returns focus. The prompt offers pads holding windows and takes any typed name, since
-umbriel doesn't list empty pads. `P` refuses a pad window and a row on another output:
+then returns focus. The prompt offers pads holding windows and `main`
+(`dl-umbriel-buffer-known-pads`), and takes any typed name that umbriel's config defines,
+since umbriel doesn't list empty pads. `P` refuses a pad window and a row on another output:
 the action follows the pointer's workspace, so it would send a different window.
 
 ## 2026-11-07 — ghostel: terminals needing attention show up
