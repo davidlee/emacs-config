@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 29
+slug = "umbriel-pad-toggle"
+title = "umbriel pad toggle is an action-table row with scratchpad addressing"
+record_kind = "decision"
+status = "accepted"
+created = "2026-11-07"
+updated = "2026-11-07"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "DEC-016 declares row actions in one table. scratchpad-toggle takes a scratchpad name field and acts on no window."
+choice = 'Add a scratchpad addressing to dl-umbriel-buffer-actions. The row sends scratchpad-toggle with the pad name, taken from a umbriel-scratchpad heading or from the scratchpad field of a window row. Any other row is refused with "Not in a scratchpad".'
+alternatives = []
+rationale = "Costs a table row and a key, as DEC-016 intends. The compositor reports the effect through the stream, per DEC-021."
+consequences = []
+decided_by   = ""
+decided_on   = ""
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-017"

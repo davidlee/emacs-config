@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 31
+slug = "umbriel-pad-toggle-key"
+title = "umbriel pad toggle key is v"
+record_kind = "decision"
+status = "accepted"
+created = "2026-11-07"
+updated = "2026-11-07"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "DEC-024 lists the buffer row keys and avoids magit-section defaults. v is unbound in dl-umbriel-buffer-mode-map and magit-section-mode-map."
+choice = "Adds v (my/umbriel-toggle-scratchpad) to the DEC-024 key list."
+alternatives = []
+rationale = "Matches the visible flag the toggle changes."
+consequences = []
+decided_by   = ""
+decided_on   = ""
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-017"

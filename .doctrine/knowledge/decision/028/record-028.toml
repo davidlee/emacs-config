@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 28
+slug = "umbriel-pad-groups"
+title = "umbriel scratchpads group as pad sections, membership before workspace"
+record_kind = "decision"
+status = "accepted"
+created = "2026-11-07"
+updated = "2026-11-07"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = 'DEC-013 sends windows with workspace "" to the trailing group, so pad windows show as Unassigned, and a shown pad window reports the workspace it was brought to.'
+choice = "Amends DEC-013. dl-umbriel-model-group stays the one grouping function. A group owner is a workspace, a pad entry ((scratchpad . NAME)), or nil. A window whose scratchpad is a non-empty string joins its pad, else its workspace, else the nil group. Order: workspaces, pads by name, nil group. A model function gives a pad the same heading cells as a workspace."
+alternatives = []
+rationale = "One grouping function keeps every window appearing exactly once, and shared heading cells keep pad headings aligned without a second heading path."
+consequences = []
+decided_by   = ""
+decided_on   = ""
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-017"

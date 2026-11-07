@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 30
+slug = "umbriel-pad-heading-refusal"
+title = "umbriel row actions refuse a pad heading"
+record_kind = "decision"
+status = "accepted"
+created = "2026-11-07"
+updated = "2026-11-07"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "DEC-016 lets focused actions on a non-window row act on what is focused. That suits a workspace row, but on a pad heading it would act on an unrelated window."
+choice = "Every action except the pad toggle refuses a pad heading. Window rows inside a pad keep their existing behaviour."
+alternatives = []
+rationale = "A pad heading names no window and no workspace, so no other action has a target there."
+consequences = []
+decided_by   = ""
+decided_on   = ""
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-017"

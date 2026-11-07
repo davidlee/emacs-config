@@ -1,0 +1,52 @@
+# Implementation plan for SL-017 — the authored, durable phase plan.
+#
+# This is the single source of each phase's objective, criteria, verification,
+# and links. Runtime status lives separately under .doctrine/state/ (phase
+# tracking) — never record progress here. Hand-edit freely: the tool reads this
+# file but does not rewrite it.
+schema  = "doctrine.plan.overview"
+version = 1
+slice   = "SL-017"
+
+# Canonical spec/requirement links — cite ids, never restate what they say. The
+# plan reader does not model these yet, so nothing downstream consumes them.
+[specs]
+primary       = []
+collaborators = []
+
+[requirements]
+targets      = []
+dependencies = []
+
+# One [[phase]]
+id        = "PHASE-01"
+name      = "Pad sections"
+objective = "Group windows by scratchpad in the model and draw one section per pad, leaving Unassigned to true orphans (DEC-028)."
+entrance_criteria = [
+  { id = "EN-1", text = "SL-017 design locked." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "dl-umbriel-model-group orders workspaces, pads by name, then the nil group, and a window with a non-empty scratchpad joins its pad even when it has a real workspace." },
+  { id = "EX-2", text = "The buffer draws a umbriel-scratchpad section per pad with an aligned heading through the shared heading path." },
+]
+verification = [
+  { id = "VT-1", expects = "model: pad membership wins over workspace, order, every window once", test_file = "lisp/test/dl-umbriel-model-test.el", keywords = ["dl-umbriel-model-window-scratchpad", "dl-umbriel-model-group-cells"], waived = false },
+  { id = "VT-2", expects = "buffer: pad sections sit between workspaces and Unassigned", test_file = "lisp/test/dl-umbriel-buffer-test.el", keywords = ["umbriel-scratchpad"], waived = false },
+]
+
+[[phase]]
+id        = "PHASE-02"
+name      = "Pad toggle"
+objective = "Toggle the pad at point with v, refuse other actions on a pad heading, and document the change (DEC-029, DEC-030, DEC-031)."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-01 complete." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "v sends scratchpad-toggle with the pad name from a pad heading or a pad window row, and refuses any other row." },
+  { id = "EX-2", text = "Every other action refuses a pad heading." },
+  { id = "EX-3", text = "docs/emacs/umbriel.md and CHANGELOG.md name the sections and the key; just check is green." },
+]
+verification = [
+  { id = "VT-1", expects = "plan: toggle from heading and row, refusals", test_file = "lisp/test/dl-umbriel-buffer-test.el", keywords = ["scratchpad-toggle", "Not in a scratchpad"], waived = false },
+  { id = "VH-1", expects = "User: pads list hidden and shown, v toggles them, a shown pad window stays in its pad section." },
+]
