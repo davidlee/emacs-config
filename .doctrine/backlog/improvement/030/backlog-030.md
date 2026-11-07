@@ -41,7 +41,10 @@ display strings in `apps/dl-umbriel-model.el`.
   (`--raise-pills`) so they survive point.
 - Deferred by the user: layout pill colours. Either one background with the
   current foregrounds (the interim state) or a different background per layout.
-- Known: in a 90-column window the placement column sits at the right edge, so
-  layout pills are clipped, flags are off screen, and point near a heading's end
-  scrolls the view. Fitting the title to the window would address this.
-- Open: fit the title to the window width instead of a fixed cap of 40.
+- 2026-11-07, title fit: the title takes what the other columns leave in the
+  narrowest window showing the buffer, floor 16, 40 only with no window.
+  `window-max-chars-per-line` measures it; `window-width` counts the frame's font
+  and overstates by a quarter here. `dl-umbriel-buffer--grid` bundles limits and
+  starts for the insert functions. A resize repaints through the usual timer.
+- Open: flags. At the floor, the longest flags clip. Evidence on redundancy and a
+  proposal are with the user.

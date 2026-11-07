@@ -140,7 +140,9 @@ HDMI-1 2 scrolling 0 windows
 - Columns line up across the whole buffer, headings and window rows each on
   their own stops, except that a heading's marks sit over the rows' flags
   unless the heading's own columns run past them. Over-long app ids and titles are cut with an ellipsis
-  (`dl-umbriel-buffer-column-limits`). Alignment is display only: the buffer's
+  (`dl-umbriel-buffer-column-limits`). Titles take the width the other columns
+  leave in the narrowest window showing the buffer, down to
+  `dl-umbriel-buffer-title-min-width`, and resizing that window repaints. Alignment is display only: the buffer's
   text is still the single-spaced label, and prompts show the full one.
 - `active` and `focused` differ. `active` is seat-global (the window holding
   the keyboard); `focused` is the workspace's remembered focus. A layer

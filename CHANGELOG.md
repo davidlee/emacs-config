@@ -22,7 +22,9 @@ padded pill, muted unless its workspace is active
 too, with a Nerd Font icon and its own colour (`dl-umbriel-buffer-layout`,
 `-layout-scrolling`, `-dwindle`, `-master`, `-stacking`, `-toggle`), and it sits over
 the rows' placement, with the window count right-justified to the title column.
-Pills stay shown under the point highlight.
+Pills stay shown under the point highlight. Titles now fit the window: they take the
+width the other columns leave, down to `dl-umbriel-buffer-title-min-width`, and
+resizing the window repaints `*umbriel*`.
 
 ## 2026-11-06 — `just check` passes in the jail
 

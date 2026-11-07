@@ -25,8 +25,9 @@ LIMITS is an alist of column to width; a column left out is unlimited."
           cells))
 
 (defun dl-umbriel-columns-width (rows column)
-  "The width of the widest cell of COLUMN in ROWS."
-  (seq-max (mapcar (lambda (row) (string-width (alist-get column row))) rows)))
+  "The width of the widest cell of COLUMN in ROWS, 0 for no ROWS."
+  (apply #'max 0 (mapcar (lambda (row) (string-width (alist-get column row)))
+                         rows)))
 
 (defun dl-umbriel-columns-starts (rows indent)
   "Where each column of ROWS starts, as an alist of column to position.

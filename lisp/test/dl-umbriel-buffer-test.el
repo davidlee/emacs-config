@@ -672,6 +672,69 @@ There w-abc is both `active' and `focused', and w-def is neither."
       (should (>= marks (+ layout (string-width pill)
                            dl-umbriel-columns-gap))))))
 
+(defun dl-umbriel-buffer-test--render-in-width (width title)
+  "Paint one window titled TITLE as if the buffer's window held WIDTH columns."
+  (cl-letf (((symbol-function 'window-max-chars-per-line)
+             (lambda (&rest _) width)))
+    (dl-umbriel-buffer-test--render
+     (list (dl-umbriel-buffer-test--window :id "w-long" :workspace "DP-1:3"
+                                           :title title :active t))
+     (list (dl-umbriel-buffer-test--workspace :id "DP-1:3")))))
+
+(defun dl-umbriel-buffer-test--row-end (id)
+  "The column where window ID's row ends, as its stops and last cell place it."
+  (let ((section (dl-umbriel-buffer-test--find 'umbriel-window id)))
+    (+ (car (last (dl-umbriel-buffer-test--stops section)))
+       (length "active"))))
+
+(ert-deftest dl-umbriel-buffer/title-shrinks-so-the-row-fits-the-window ()
+  "A long title gives way, so the columns after it stay inside the window."
+  (dl-umbriel-buffer-test--with-fixture-render
+    (dl-umbriel-buffer-test--render-in-width 60 (make-string 200 ?t))
+    (should (<= (dl-umbriel-buffer-test--row-end "w-long") 60))
+    (should (string-match-p
+             "…" (dl-umbriel-buffer-test--line-text
+                  (dl-umbriel-buffer-test--find 'umbriel-window "w-long"))))))
+
+(ert-deftest dl-umbriel-buffer/title-grows-into-a-wide-window ()
+  "A wide window shows a title in full, past the limit used without a window."
+  (dl-umbriel-buffer-test--with-fixture-render
+    (let ((title (make-string 100 ?t)))
+      (dl-umbriel-buffer-test--render-in-width 200 title)
+      (should (string-match-p
+               title (dl-umbriel-buffer-test--line-text
+                      (dl-umbriel-buffer-test--find 'umbriel-window
+                                                    "w-long")))))))
+
+(ert-deftest dl-umbriel-buffer/title-keeps-its-minimum-in-a-tiny-window ()
+  "A window too narrow for the row still gets a readable title."
+  (dl-umbriel-buffer-test--with-fixture-render
+    (dl-umbriel-buffer-test--render-in-width 10 (make-string 200 ?t))
+    (should (string-match-p
+             (format "t\\{%d\\}…" (1- (1- dl-umbriel-buffer-title-min-width)))
+             (dl-umbriel-buffer-test--line-text
+              (dl-umbriel-buffer-test--find 'umbriel-window "w-long"))))))
+
+(ert-deftest dl-umbriel-buffer/title-budget-leaves-room-for-heading-columns ()
+  "Marks and layouts wider than the rows' cells take from the title too."
+  (let ((rows '(((app . "app") (title . "") (placement . "tile") (flags . "")))))
+    (should (> (dl-umbriel-buffer--title-limit rows nil 100)
+               (dl-umbriel-buffer--title-limit
+                rows '(((layout . "wider than tile") (marks . "active focused")))
+                100)))))
+
+(ert-deftest dl-umbriel-buffer/resizing-its-window-schedules-a-repaint ()
+  "A resize of a window showing the buffer repaints it to the new width."
+  (dl-umbriel-buffer-test--with-fixture-render
+    (should (memq #'dl-umbriel-buffer--on-resize window-size-change-functions))
+    (unwind-protect
+        (progn
+          (dl-umbriel-buffer--on-resize (selected-window))
+          (should dl-umbriel-buffer--repaint-timer))
+      (when dl-umbriel-buffer--repaint-timer
+        (cancel-timer dl-umbriel-buffer--repaint-timer)
+        (setq dl-umbriel-buffer--repaint-timer nil)))))
+
 (ert-deftest dl-umbriel-buffer/row-mark-shows-over-the-workspace-shade ()
   "The active row keeps its own face inside a shaded workspace."
   (dl-umbriel-buffer-test--with-fixture-render
@@ -736,11 +799,12 @@ There w-abc is both `active' and `focused', and w-def is neither."
 (ert-deftest dl-umbriel-buffer/long-cell-is-cut-to-its-column ()
   "An over-long title ends in an ellipsis, and sets no wider column."
   (dl-umbriel-buffer-test--with-fixture-render
-    (dl-umbriel-buffer-test--render
-     (list (dl-umbriel-buffer-test--window :id "w-long" :workspace "DP-1:3"
-                                           :app_id "foot"
-                                           :title (make-string 200 ?x)))
-     (dl-umbriel-workspaces))
+    (cl-letf (((symbol-function 'dl-umbriel-buffer--width) #'ignore))
+      (dl-umbriel-buffer-test--render
+       (list (dl-umbriel-buffer-test--window :id "w-long" :workspace "DP-1:3"
+                                             :app_id "foot"
+                                             :title (make-string 200 ?x)))
+       (dl-umbriel-workspaces)))
     (let ((row (dl-umbriel-buffer-test--find 'umbriel-window "w-long"))
           (limit (alist-get 'title dl-umbriel-buffer-column-limits)))
       (should (string-match-p "x…" (dl-umbriel-buffer-test--line-text row)))

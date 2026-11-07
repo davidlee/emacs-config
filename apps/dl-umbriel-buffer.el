@@ -205,32 +205,36 @@ the overlay, which then evaporates."
 A layout left out shows in `dl-umbriel-buffer-layout', without an icon.")
 
 (defconst dl-umbriel-buffer-column-limits '((app . 24) (title . 40))
-  "The widest each column may grow; a column left out is unlimited.")
+  "The widest each column may grow; a column left out is unlimited.
+A window showing the buffer replaces the title's limit with what fits it.")
+
+(defconst dl-umbriel-buffer-title-min-width 16
+  "The narrowest a window may make the title column.")
 
 (defconst dl-umbriel-buffer-row-indent "  "
   "What a window row starts with, under its workspace's heading.")
 
-(defun dl-umbriel-buffer--window-cells (window)
-  "WINDOW's cells, cut to fit their columns."
-  (dl-umbriel-columns-fit (dl-umbriel-model-window-cells window)
-                          dl-umbriel-buffer-column-limits))
+(defun dl-umbriel-buffer--window-cells (window limits)
+  "WINDOW's cells, cut to fit LIMITS."
+  (dl-umbriel-columns-fit (dl-umbriel-model-window-cells window) limits))
 
-(defun dl-umbriel-buffer--insert-window (window starts)
-  "Insert WINDOW's row at point, at STARTS, in the face that marks it, if any."
+(defun dl-umbriel-buffer--insert-window (window grid)
+  "Insert WINDOW's row at point, placed by GRID, in the face that marks it, if any."
   (let ((start (point)))
     (insert dl-umbriel-buffer-row-indent
-            (dl-umbriel-columns-row (dl-umbriel-buffer--window-cells window)
-                                    starts
-                                    dl-umbriel-buffer-window-cell-faces)
+            (dl-umbriel-columns-row
+             (dl-umbriel-buffer--window-cells window (plist-get grid :limits))
+             (plist-get grid :row-starts)
+             dl-umbriel-buffer-window-cell-faces)
             "\n")
     (when-let* ((face (dl-umbriel-buffer--window-face window)))
       (dl-umbriel-buffer--overlay-face start (point) face))))
 
-(defun dl-umbriel-buffer--insert-windows (windows starts)
-  "Insert each of WINDOWS as a child section at STARTS, in the given order."
+(defun dl-umbriel-buffer--insert-windows (windows grid)
+  "Insert each of WINDOWS as a child section placed by GRID, in the given order."
   (dolist (window windows)
     (magit-insert-section (umbriel-window (alist-get 'id window))
-      (dl-umbriel-buffer--insert-window window starts))))
+      (dl-umbriel-buffer--insert-window window grid))))
 
 (defun dl-umbriel-buffer--pill (text face)
   "TEXT padded, in FACE, as a pill; an empty TEXT stays empty."
@@ -265,16 +269,29 @@ placement, and the name and layout are pills."
                          (alist-get 'layout cells)))
           (assq 'marks cells))))
 
-(defun dl-umbriel-buffer--row-starts (windows heading-cells)
-  "Where WINDOWS' columns start, leaving room for HEADING-CELLS' layouts.
+(defun dl-umbriel-buffer--title-limit (rows heading-cells width)
+  "The widest a title can be, for ROWS and HEADING-CELLS to fit WIDTH columns.
+A layout shares the placement column and marks share the flags column,
+so each column takes the wider of the two."
+  (max dl-umbriel-buffer-title-min-width
+       (- width
+          (length dl-umbriel-buffer-row-indent)
+          (dl-umbriel-columns-width rows 'app)
+          (max (dl-umbriel-columns-width rows 'placement)
+               (dl-umbriel-columns-width heading-cells 'layout))
+          (max (dl-umbriel-columns-width rows 'flags)
+               (dl-umbriel-columns-width heading-cells 'marks))
+          (* 3 dl-umbriel-columns-gap))))
+
+(defun dl-umbriel-buffer--row-starts (rows heading-cells)
+  "Where ROWS' columns start, leaving room for HEADING-CELLS' layouts.
 A layout sits over the placement column, so it can push the flags right."
   (let* ((starts (dl-umbriel-columns-starts
-                  (mapcar #'dl-umbriel-buffer--window-cells windows)
-                  (length dl-umbriel-buffer-row-indent)))
+                  rows (length dl-umbriel-buffer-row-indent)))
          (placement (alist-get 'placement starts)))
     (dl-umbriel-columns-at-least
      starts 'flags
-     (and placement heading-cells
+     (and placement
           (+ placement dl-umbriel-columns-gap
              (dl-umbriel-columns-width heading-cells 'layout))))))
 
@@ -287,25 +304,52 @@ flags, unless its own cells run past them."
                                 'layout (alist-get 'placement row-starts))
    'marks (alist-get 'flags row-starts)))
 
+(defun dl-umbriel-buffer--grid (groups windows width)
+  "How to lay out GROUPS and WINDOWS in WIDTH columns, as a plist.
+`:limits' cuts a row's cells, and `:row-starts' and `:heading-starts'
+place rows and headings.  A nil WIDTH keeps the default title limit."
+  (let* ((heading-cells (mapcar #'dl-umbriel-buffer--group-cells
+                                (seq-filter #'car groups)))
+         (cells-at (lambda (limits)
+                     (mapcar (lambda (window)
+                               (dl-umbriel-buffer--window-cells window limits))
+                             windows)))
+         (limits (if width
+                     (cons (cons 'title
+                                 (dl-umbriel-buffer--title-limit
+                                  (funcall cells-at
+                                           dl-umbriel-buffer-column-limits)
+                                  heading-cells width))
+                           dl-umbriel-buffer-column-limits)
+                   dl-umbriel-buffer-column-limits))
+         (row-starts (dl-umbriel-buffer--row-starts (funcall cells-at limits)
+                                                    heading-cells)))
+    (list :limits limits
+          :row-starts row-starts
+          :heading-starts (dl-umbriel-buffer--heading-starts heading-cells
+                                                             row-starts))))
+
 (defun dl-umbriel-buffer--count-end (row-starts)
   "Where a heading's window count ends: the right edge of ROW-STARTS' titles.
 Nil when there are no rows to line up with."
   (when-let* ((placement (alist-get 'placement row-starts)))
     (- placement dl-umbriel-columns-gap)))
 
-(defun dl-umbriel-buffer--workspace-heading (group starts count-end)
-  "The heading of GROUP at STARTS, shaded when its workspace is active.
-Its window count ends at COUNT-END, if that leaves the count clear of
-the cells before it.  A styled cell stops `magit-insert-heading' applying
-its face, so the heading sets its own, under the cells.  The newline is
-part of the heading, so an active shade spans the line."
+(defun dl-umbriel-buffer--workspace-heading (group grid)
+  "The heading of GROUP placed by GRID, shaded when its workspace is active.
+Its window count ends with the title column, if that leaves the count
+clear of the cells before it.  A styled cell stops `magit-insert-heading'
+applying its face, so the heading sets its own, under the cells.  The
+newline is part of the heading, so an active shade spans the line."
   (let* ((cells (dl-umbriel-buffer--group-cells group))
          (active (alist-get 'active (car group)))
+         (count-end (dl-umbriel-buffer--count-end
+                     (plist-get grid :row-starts)))
          (heading
           (concat (dl-umbriel-columns-row
                    cells
                    (dl-umbriel-columns-at-least
-                    starts 'windows
+                    (plist-get grid :heading-starts) 'windows
                     (and count-end
                          (- count-end
                             (string-width (alist-get 'windows cells)))))
@@ -330,51 +374,50 @@ Its text property alone would lose its background under point."
                                                          'font-lock-face)))))
       (setq start next))))
 
-(defun dl-umbriel-buffer--insert-workspace-windows (workspace windows starts)
-  "Insert WINDOWS, WORKSPACE's rows at STARTS, shaded when it is active.
+(defun dl-umbriel-buffer--insert-workspace-windows (workspace windows grid)
+  "Insert WINDOWS, WORKSPACE's rows placed by GRID, shaded when it is active.
 A text property, so magit's point highlight still shows over the shade."
   (let ((start (point)))
-    (dl-umbriel-buffer--insert-windows windows starts)
+    (dl-umbriel-buffer--insert-windows windows grid)
     (when (alist-get 'active workspace)
       (font-lock-append-text-property
        start (point) 'font-lock-face
        'dl-umbriel-buffer-active-workspace-window))))
 
-(defun dl-umbriel-buffer--insert-group (group heading-starts row-starts)
-  "Insert GROUP, a `(WORKSPACE . WINDOWS)' pair from the model.
-HEADING-STARTS and ROW-STARTS place its heading and rows.  A nil
-WORKSPACE is the model's Unassigned group, which has no id."
+(defun dl-umbriel-buffer--insert-group (group grid)
+  "Insert GROUP, a `(WORKSPACE . WINDOWS)' pair from the model, placed by GRID.
+A nil WORKSPACE is the model's Unassigned group, which has no id."
   (let ((workspace (car group))
         (windows (cdr group)))
     (if (not workspace)
         (magit-insert-section (umbriel-unassigned)
           (magit-insert-heading "Unassigned")
-          (dl-umbriel-buffer--insert-windows windows row-starts))
+          (dl-umbriel-buffer--insert-windows windows grid))
       (magit-insert-section (umbriel-workspace (alist-get 'id workspace))
         (let ((start (point)))
           (magit-insert-heading
-           (dl-umbriel-buffer--workspace-heading
-            group heading-starts (dl-umbriel-buffer--count-end row-starts)))
+           (dl-umbriel-buffer--workspace-heading group grid))
           (dl-umbriel-buffer--raise-pills start (point)))
-        (dl-umbriel-buffer--insert-workspace-windows workspace windows
-                                                     row-starts)))))
+        (dl-umbriel-buffer--insert-workspace-windows workspace windows grid)))))
+
+(defun dl-umbriel-buffer--width ()
+  "The columns of the narrowest window showing this buffer, or nil if none."
+  (when-let* ((windows (get-buffer-window-list nil nil t)))
+    (seq-min (mapcar #'window-max-chars-per-line windows))))
 
 (defun dl-umbriel-buffer--insert (workspaces windows)
   "Insert the held WORKSPACES and WINDOWS as sections at point.
 The caller erases the buffer first; this inserts the whole tree.  Columns
-line up across every group, so they are measured before anything is
-inserted."
+line up across every group and fit the window, so they are measured
+before anything is inserted."
   (magit-insert-section (umbriel-root)
     (if (and (null workspaces) (null windows))
         (insert "No windows or workspaces held.\n")
       (let* ((groups (dl-umbriel-model-group workspaces windows))
-             (heading-cells (mapcar #'dl-umbriel-buffer--group-cells
-                                    (seq-filter #'car groups)))
-             (row-starts (dl-umbriel-buffer--row-starts windows heading-cells))
-             (heading-starts (dl-umbriel-buffer--heading-starts heading-cells
-                                                                row-starts)))
+             (grid (dl-umbriel-buffer--grid groups windows
+                                            (dl-umbriel-buffer--width))))
         (dolist (group groups)
-          (dl-umbriel-buffer--insert-group group heading-starts row-starts))))))
+          (dl-umbriel-buffer--insert-group group grid))))))
 
 ;;;; Keeping point
 
@@ -481,6 +524,10 @@ burst of changes shares one repaint."
     (setq dl-umbriel-buffer--repaint-timer
           (run-at-time dl-umbriel-buffer-repaint-delay nil
                        #'dl-umbriel-buffer--repaint-due))))
+
+(defun dl-umbriel-buffer--on-resize (_window)
+  "Schedule a repaint, so the columns fit a window that changed size."
+  (dl-umbriel-buffer--schedule-repaint))
 
 (defun dl-umbriel-buffer--on-display (_window)
   "Schedule a repaint when this newly displayed buffer is stale.
@@ -849,6 +896,8 @@ connection."
                        (dl-umbriel-skipped))))
   (add-hook 'window-buffer-change-functions
             #'dl-umbriel-buffer--on-display nil t)
+  (add-hook 'window-size-change-functions
+            #'dl-umbriel-buffer--on-resize nil t)
   (add-hook 'dl-umbriel-state-changed-hook
             #'dl-umbriel-buffer--schedule-repaint))
 
