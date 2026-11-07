@@ -115,8 +115,10 @@ A multi-step action stops at its first failure.
 
 `M-x my/umbriel` (or `C-c u u`) opens it, creating the buffer and the stream
 on first use. It is a `magit-section` tree: one section per workspace, its
-windows beneath, and a final `Unassigned` section for windows that join no
-workspace. Sections fold as usual.
+windows beneath, then one section per scratchpad holding windows, by name, and a
+final `Unassigned` section for windows that join neither. Sections fold as usual.
+A pad window stays in its pad's section while the pad is shown. An empty pad has
+no section.
 
 Workspaces are ordered by output, then index. Tiled windows sort by column,
 row, tab index, then title, before floating ones. Every compositor-supplied
@@ -196,11 +198,13 @@ In `*umbriel*`, on the row at point:
 | `M-<right>` or `>` | `my/umbriel-column-right` | `column-move-right` | window row (\*) |
 | `k` | `my/umbriel-kill` | `window-kill` | window row; asks to confirm |
 | `L` | `my/umbriel-set-layout` | `workspace-set-layout` | workspace or window row; prompts for the layout |
+| `v` | `my/umbriel-toggle-scratchpad` | `scratchpad-toggle` | pad heading or a window row in a pad |
 | `g` | `my/umbriel-refresh` | none | reconnects or repaints |
 | `q` | `quit-window` | none | |
 
 (\*) On a workspace row these act on whatever window the compositor has
 focused, with no focus step. `RET`, `t` and `k` refuse a workspace row
+(`Not a window`). A pad heading has no window, so every key but `v` refuses it
 (`Not a window`).
 
 There are no scroll keys: strip scrolling is a viewport action, not an action
@@ -242,6 +246,7 @@ the prompt, so a refused row never asks anything.
 | focused | `c`, `e`, `E`, `M-<left>`, `M-<right>`, `m` | `window-focus` row, the action, then `window-focus` back |
 | workspace | `s` | `workspace-switch` to the row's workspace |
 | active workspace | `L` | `workspace-switch` first, unless already focused, then `workspace-set-layout` |
+| scratchpad | `v` | `scratchpad-toggle` with the row's pad name |
 
 - **Focus, act, restore.** For a focused-only action on a window that is not
   the focused one, Emacs focuses it, acts, then refocuses the window the

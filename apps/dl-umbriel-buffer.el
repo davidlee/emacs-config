@@ -670,7 +670,8 @@ already delivered."
                                     focused workspace)
       (my/umbriel-switch "workspace-switch" workspace)
       (my/umbriel-set-layout "workspace-set-layout" active-workspace
-                             layout))
+                             layout)
+      (my/umbriel-toggle-scratchpad "scratchpad-toggle" scratchpad))
     "Row actions: COMMAND, umbriel ACTION, ADDRESSING and a PROMPT.
 ADDRESSING is `window' (the action takes the row's window id),
 `focused' (focus the row's window first, then act, then restore the
@@ -678,7 +679,8 @@ focus the compositor held), `workspace' (always switch to the row's
 workspace) or `active-workspace' (switch there, unless that is already
 the focused workspace, then act: switching to a workspace umbriel holds
 active on its output toggles back to the previous one under
-`back_and_forth').  PROMPT,
+`back_and_forth') or `scratchpad' (the action takes the row's pad name;
+the one action a pad heading allows).  PROMPT,
 when given, is `workspace', `layout' or `confirm-kill'; a prompting
 row prompts in its command, never in a reply.  Moving a window goes
 silently, so the plan's own focus steps are the only ones seen
@@ -687,7 +689,8 @@ silently, so the plan's own focus steps are the only ones seen
 (defun dl-umbriel-buffer--target ()
   "The held entry the row at point addresses, as a one-pair plist.
 A `umbriel-window' section gives `(:window ENTRY)', an
-`umbriel-workspace' one `(:workspace ENTRY)'; a heading, an empty
+`umbriel-workspace' one `(:workspace ENTRY)', a `umbriel-scratchpad'
+one `(:scratchpad NAME)'; a heading, an empty
 buffer or an entry no longer held is a `user-error'.  Capturing the
 entry here is what keeps a later prompt from redirecting the action."
   (let* ((section (magit-section-at))
@@ -704,6 +707,7 @@ entry here is what keeps a later prompt from redirecting the action."
                                       (dl-umbriel-workspaces))))
            (list :workspace workspace)
          (user-error "No umbriel row at point")))
+      ('umbriel-scratchpad (list :scratchpad value))
       (_ (user-error "No umbriel row at point")))))
 
 (defun dl-umbriel-buffer--focused-workspace (workspaces)
@@ -747,7 +751,9 @@ row whose known previous focus is a different window plans one more
 `window-focus' at the end, putting that focus back (DEC-025).  An
 `active-workspace' row switches to its workspace unless that is the
 focused one, in which case it only acts: switching to a workspace
-umbriel already holds active toggles back under `back_and_forth'."
+umbriel already holds active toggles back under `back_and_forth'.  A
+`scratchpad' row names the pad of its heading or window; any other
+addressing refuses a pad heading, which has no window (DEC-030)."
   (let* ((action (nth 1 spec))
          (addressing (nth 2 spec))
          (window (plist-get target :window))
@@ -762,8 +768,18 @@ umbriel already holds active toggles back under `back_and_forth'."
                       (dl-umbriel-action
                        "workspace-switch"
                        (dl-umbriel-model-workspace-selector workspace))))
-         (act (dl-umbriel-action action fields)))
-    (pcase addressing
+         (act (dl-umbriel-action action fields))
+         (heading-pad (plist-get target :scratchpad))
+         (pad (or heading-pad
+                  (and window (dl-umbriel-model-window-scratchpad window)))))
+    (pcase (if (and heading-pad (not (eq addressing 'scratchpad)))
+               'pad-heading
+             addressing)
+      ('pad-heading "Not a window")
+      ('scratchpad
+       (if pad
+           (list (dl-umbriel-action action `((scratchpad . ,pad))))
+         "Not in a scratchpad"))
       ('window
        (if window
            (list (dl-umbriel-action
@@ -971,6 +987,7 @@ The layout is prompted for at once: the choices need no held state
   ">" #'my/umbriel-column-right
   "e" #'my/umbriel-cycle-extent
   "E" #'my/umbriel-cycle-extent-back
+  "v" #'my/umbriel-toggle-scratchpad
   "g" #'my/umbriel-refresh
   "q" #'quit-window)
 

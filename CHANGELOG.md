@@ -2,6 +2,14 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-11-07 — umbriel: `*umbriel*` shows scratchpads
+
+`my/umbriel` (`C-c u u`) now lists each scratchpad that holds windows in its own
+section, after the workspaces. A pad window stays there while the pad is shown, and
+`Unassigned` keeps only windows in no pad and no workspace. `v`
+(`my/umbriel-toggle-scratchpad`) shows or hides the pad at point, from its heading or
+one of its window rows. Other row keys refuse a pad heading.
+
 ## 2026-11-07 — org: the line highlight spares TODO labels
 
 In org buffers the `hl-line` highlight now starts after a heading's TODO keyword, so

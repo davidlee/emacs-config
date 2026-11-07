@@ -317,6 +317,59 @@ pair, so a lone `%' would be read as a construct."
   "STRING with every `%' doubled, as a mode-line construct needs."
   (replace-regexp-in-string "%" "%%" string t t))
 
+;;;; scratchpads (SL-017)
+
+(defconst dl-umbriel-buffer-test--toggle
+  (assq 'my/umbriel-toggle-scratchpad dl-umbriel-buffer-actions)
+  "The pad toggle's row of the action table.")
+
+(ert-deftest dl-umbriel-buffer--plan/toggles-the-pad-of-a-heading-or-row ()
+  "DEC-029: the name comes from a pad heading or a pad window's row."
+  (let ((expected (list (dl-umbriel-action
+                         "scratchpad-toggle" '((scratchpad . "signal"))))))
+    (should (equal expected
+                   (dl-umbriel-buffer--plan dl-umbriel-buffer-test--toggle
+                                            '(:scratchpad "signal") nil nil)))
+    (should (equal expected
+                   (dl-umbriel-buffer--plan
+                    dl-umbriel-buffer-test--toggle
+                    (list :window (dl-umbriel-buffer-test--window
+                                   :scratchpad "signal"))
+                    nil nil)))))
+
+(ert-deftest dl-umbriel-buffer--plan/refuses-to-toggle-outside-a-pad ()
+  "DEC-029: a plain window row or a workspace row has no pad to toggle."
+  (dolist (target (list (list :window (dl-umbriel-buffer-test--window))
+                        (list :workspace (dl-umbriel-buffer-test--workspace))))
+    (should (equal "Not in a scratchpad"
+                   (dl-umbriel-buffer--plan dl-umbriel-buffer-test--toggle
+                                            target nil nil)))))
+
+(ert-deftest dl-umbriel-buffer--plan/other-actions-refuse-a-pad-heading ()
+  "DEC-030: a pad heading names no window, so nothing else acts on it."
+  (dolist (spec dl-umbriel-buffer-actions)
+    (unless (eq spec dl-umbriel-buffer-test--toggle)
+      (should (stringp (dl-umbriel-buffer--plan
+                        spec '(:scratchpad "signal") nil nil))))))
+
+(ert-deftest dl-umbriel-buffer--target/reads-a-pad-heading ()
+  "DEC-029: point on a pad heading targets that pad."
+  (dl-umbriel-buffer-test--with-state
+      (dl-umbriel-buffer-test--held
+       (list (dl-umbriel-buffer-test--window
+              :id "w-signal" :workspace "" :scratchpad "signal"))
+       (dl-umbriel-buffer-test--point-workspaces))
+    (with-current-buffer (dl-umbriel-buffer-test--mode-buffer)
+      (dl-umbriel-buffer--repaint)
+      (goto-char (oref (dl-umbriel-buffer-test--find 'umbriel-scratchpad "signal")
+                       start))
+      (should (equal '(:scratchpad "signal") (dl-umbriel-buffer--target))))))
+
+(ert-deftest dl-umbriel-buffer/v-toggles-the-pad ()
+  "DEC-031: `v' is the pad toggle."
+  (should (eq 'my/umbriel-toggle-scratchpad
+              (keymap-lookup dl-umbriel-buffer-mode-map "v"))))
+
 ;;;; render (VT-1, EX-1)
 
 (ert-deftest dl-umbriel-buffer/draws-a-section-per-pad ()
@@ -1562,7 +1615,8 @@ unknown."
     (my/umbriel-move-to-workspace "window-move-to-workspace-silent" focused
                                   workspace)
     (my/umbriel-switch "workspace-switch" workspace)
-    (my/umbriel-set-layout "workspace-set-layout" active-workspace layout))
+    (my/umbriel-set-layout "workspace-set-layout" active-workspace layout)
+    (my/umbriel-toggle-scratchpad "scratchpad-toggle" scratchpad))
   "The design's action table, as this file expects it to be held.
 DEC-025: moving a window to a workspace goes silently, so the plan's
 own focus steps are the only ones the user sees.")
@@ -2731,9 +2785,12 @@ Each one leaves only after the previous replied successfully."
                                (car (car dl-umbriel-buffer-test--send-all-calls))))))))))))
 
 (ert-deftest dl-umbriel-buffer/no-row-callback-prompts ()
-  "VT-5/EX-7: no row command's send-all callback opens any prompt."
+  "VT-5/EX-7: no row command's send-all callback opens any prompt.
+The row sits in a pad, so that every action in the table has a target."
   (let ((workspaces (dl-umbriel-buffer-test--action-workspaces))
-        (windows (dl-umbriel-buffer-test--action-windows)))
+        (windows (mapcar (lambda (window)
+                           (cons '(scratchpad . "signal") window))
+                         (dl-umbriel-buffer-test--action-windows))))
     (dl-umbriel-buffer-test--with-state
         (dl-umbriel-buffer-test--held windows workspaces)
       (let ((buffer (dl-umbriel-buffer-test--mode-buffer)))
