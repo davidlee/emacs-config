@@ -95,6 +95,9 @@ respawns it. Expect 80x24 until the buffer is displayed.
   sends a terminal through the `apps/dl-term.el` display rule. Driving the preview
   function directly, with a stand-in `ghostel-mode`, opened one dedicated bottom
   window per terminal and did not remove them. Unconfirmed in the real minibuffer.
+- `dl-zmx--open` displays the buffer before `ghostel-mode` is set, so the
+  `apps/dl-term.el` docking rule probably misses a first attach (read, not run).
+  Reattaching from `C-x b z` takes this path.
 - Shell integration varies by session: `zmx list` reports `kitty-shell-cwd://`
   for some sessions and `file://` for others, which suggests only sessions born
   under ghostel source it. Sessions predating a ghostel upgrade keep the old
