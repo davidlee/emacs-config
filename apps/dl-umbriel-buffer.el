@@ -87,34 +87,202 @@ Every `%' is doubled, because the result is a mode-line construct."
 
 ;;;; Rendering
 
-(defun dl-umbriel-buffer--insert-windows (windows)
-  "Insert each of WINDOWS as a child section, in the given order."
+(defface dl-umbriel-buffer-active-window
+  '((t :inherit isearch :extend t))
+  "Face for the row of the window holding the keyboard."
+  :group 'faces)
+
+(defface dl-umbriel-buffer-focused-window
+  '((t :inherit highlight :extend t))
+  "Face for the row of a workspace's remembered focus."
+  :group 'faces)
+
+(defface dl-umbriel-buffer-active-workspace
+  '((t :inherit magit-section-heading :extend t))
+  "Face for the heading of an active workspace.
+`core/dl-faces.el' shades it a step darker than the rows below it."
+  :group 'faces)
+
+(defface dl-umbriel-buffer-active-workspace-window
+  '((t :extend t))
+  "Face for the window rows of an active workspace.
+`core/dl-faces.el' shades it darker than `default'."
+  :group 'faces)
+
+(defun dl-umbriel-buffer--window-face (window)
+  "The face that marks WINDOW's row, or nil for an unmarked one.
+`active' is seat-global, `focused' is per workspace, so `active' wins."
+  (cond ((alist-get 'active window) 'dl-umbriel-buffer-active-window)
+        ((alist-get 'focused window) 'dl-umbriel-buffer-focused-window)))
+
+(defun dl-umbriel-buffer--mark-row (start end face)
+  "Show START to END in FACE.
+An overlay, because magit's point highlight is one and would hide a
+text property; the priority outranks it.  The repaint's erase empties
+the overlay, which then evaporates."
+  (let ((overlay (make-overlay start end)))
+    (overlay-put overlay 'face face)
+    (overlay-put overlay 'priority 1)
+    (overlay-put overlay 'evaporate t)))
+
+(defface dl-umbriel-buffer-active-workspace-id
+  '((t :inherit bold :foreground "white"))
+  "Face for the output and index in an active workspace's heading."
+  :group 'faces)
+
+(defface dl-umbriel-buffer-window-app
+  '((t :inherit font-lock-string-face))
+  "Face for the app id column of a window row."
+  :group 'faces)
+
+(defface dl-umbriel-buffer-window-placement
+  '((t :inherit shadow))
+  "Face for the placement column of a window row."
+  :group 'faces)
+
+(defface dl-umbriel-buffer-window-flags
+  '((t :inherit font-lock-comment-face))
+  "Face for the flags column of a window row."
+  :group 'faces)
+
+(defconst dl-umbriel-buffer-window-cell-faces
+  '((app . dl-umbriel-buffer-window-app)
+    (placement . dl-umbriel-buffer-window-placement)
+    (flags . dl-umbriel-buffer-window-flags))
+  "The face of each window row column; a column left out has none.")
+
+(defconst dl-umbriel-buffer-column-limits '((app . 24) (title . 40))
+  "The widest each column may grow; a column left out is unlimited.")
+
+(defconst dl-umbriel-buffer-column-gap 2
+  "Columns of space between one cell's column and the next.")
+
+(defconst dl-umbriel-buffer-row-indent "  "
+  "What a window row starts with, under its workspace's heading.")
+
+(defun dl-umbriel-buffer--fit (cell)
+  "The text of CELL, cut to its column's limit if it has one."
+  (if-let* ((limit (alist-get (car cell) dl-umbriel-buffer-column-limits)))
+      (truncate-string-to-width (cdr cell) limit nil nil "…")
+    (cdr cell)))
+
+(defun dl-umbriel-buffer--column-starts (rows indent)
+  "Where each column of ROWS starts, as an alist of column to position.
+ROWS are cell alists with the same columns.  The first column starts at
+INDENT and each next one a gap past the previous column's widest cell."
+  (let ((start indent))
+    (mapcar (lambda (column)
+              (prog1 (cons column start)
+                (setq start
+                      (+ start dl-umbriel-buffer-column-gap
+                         (seq-max
+                          (mapcar (lambda (row)
+                                    (string-width
+                                     (dl-umbriel-buffer--fit
+                                      (assq column row))))
+                                  rows))))))
+            (mapcar #'car (car rows)))))
+
+(defun dl-umbriel-buffer--row (cells starts faces)
+  "CELLS as one line, each at its place in STARTS and its face in FACES.
+An empty cell is skipped.  A gap is one space displayed `:align-to' the
+next cell, counted in this buffer's font, not the frame's: the text stays
+the model's label, and a title's emoji cannot push the columns out,
+whatever width its font gives it."
+  (let ((shown (seq-remove (lambda (cell) (string-empty-p (cdr cell))) cells)))
+    (mapconcat
+     (lambda (cell)
+       (let ((text (dl-umbriel-buffer--fit cell))
+             (face (alist-get (car cell) faces)))
+         (concat (unless (eq cell (car shown))
+                   (propertize " " 'display
+                               `(space :align-to
+                                       (,(alist-get (car cell) starts)
+                                        . width))))
+                 (if face (propertize text 'font-lock-face face) text))))
+     shown "")))
+
+(defun dl-umbriel-buffer--insert-window (window starts)
+  "Insert WINDOW's row at point, at STARTS, in the face that marks it, if any."
+  (let ((start (point)))
+    (insert dl-umbriel-buffer-row-indent
+            (dl-umbriel-buffer--row (dl-umbriel-model-window-cells window)
+                                    starts
+                                    dl-umbriel-buffer-window-cell-faces)
+            "\n")
+    (when-let* ((face (dl-umbriel-buffer--window-face window)))
+      (dl-umbriel-buffer--mark-row start (point) face))))
+
+(defun dl-umbriel-buffer--insert-windows (windows starts)
+  "Insert each of WINDOWS as a child section at STARTS, in the given order."
   (dolist (window windows)
     (magit-insert-section (umbriel-window (alist-get 'id window))
-      (insert "  " (dl-umbriel-model-window-label window) "\n"))))
+      (dl-umbriel-buffer--insert-window window starts))))
 
-(defun dl-umbriel-buffer--insert-group (group)
+(defun dl-umbriel-buffer--group-cells (group)
+  "The heading cells of GROUP, a `(WORKSPACE . WINDOWS)' pair."
+  (dl-umbriel-model-workspace-cells (car group) (length (cdr group))))
+
+(defun dl-umbriel-buffer--workspace-heading (group starts)
+  "The heading of GROUP at STARTS, shaded when its workspace is active.
+The newline is part of an active heading, so the shade spans the line."
+  (let ((cells (dl-umbriel-buffer--group-cells group)))
+    (if (not (alist-get 'active (car group)))
+        (dl-umbriel-buffer--row cells starts nil)
+      (let ((heading
+             (concat (dl-umbriel-buffer--row
+                      cells starts
+                      '((id . dl-umbriel-buffer-active-workspace-id)))
+                     "\n")))
+        (font-lock-append-text-property
+         0 (length heading) 'font-lock-face
+         'dl-umbriel-buffer-active-workspace heading)
+        heading))))
+
+(defun dl-umbriel-buffer--insert-workspace-windows (workspace windows starts)
+  "Insert WINDOWS, WORKSPACE's rows at STARTS, shaded when it is active.
+A text property, so magit's point highlight still shows over the shade."
+  (let ((start (point)))
+    (dl-umbriel-buffer--insert-windows windows starts)
+    (when (alist-get 'active workspace)
+      (font-lock-append-text-property
+       start (point) 'font-lock-face
+       'dl-umbriel-buffer-active-workspace-window))))
+
+(defun dl-umbriel-buffer--insert-group (group heading-starts row-starts)
   "Insert GROUP, a `(WORKSPACE . WINDOWS)' pair from the model.
-A nil WORKSPACE is the model's Unassigned group, which has no id."
+HEADING-STARTS and ROW-STARTS place its heading and rows.  A nil
+WORKSPACE is the model's Unassigned group, which has no id."
   (let ((workspace (car group))
         (windows (cdr group)))
     (if (not workspace)
         (magit-insert-section (umbriel-unassigned)
           (magit-insert-heading "Unassigned")
-          (dl-umbriel-buffer--insert-windows windows))
+          (dl-umbriel-buffer--insert-windows windows row-starts))
       (magit-insert-section (umbriel-workspace (alist-get 'id workspace))
         (magit-insert-heading
-         (dl-umbriel-model-workspace-label workspace (length windows)))
-        (dl-umbriel-buffer--insert-windows windows)))))
+         (dl-umbriel-buffer--workspace-heading group heading-starts))
+        (dl-umbriel-buffer--insert-workspace-windows workspace windows
+                                                     row-starts)))))
 
 (defun dl-umbriel-buffer--insert (workspaces windows)
   "Insert the held WORKSPACES and WINDOWS as sections at point.
-The caller erases the buffer first; this inserts the whole tree."
+The caller erases the buffer first; this inserts the whole tree.  Columns
+line up across every group, so they are measured before anything is
+inserted."
   (magit-insert-section (umbriel-root)
     (if (and (null workspaces) (null windows))
         (insert "No windows or workspaces held.\n")
-      (dolist (group (dl-umbriel-model-group workspaces windows))
-        (dl-umbriel-buffer--insert-group group)))))
+      (let* ((groups (dl-umbriel-model-group workspaces windows))
+             (heading-starts (dl-umbriel-buffer--column-starts
+                              (mapcar #'dl-umbriel-buffer--group-cells
+                                      (seq-filter #'car groups))
+                              0))
+             (row-starts (dl-umbriel-buffer--column-starts
+                          (mapcar #'dl-umbriel-model-window-cells windows)
+                          (length dl-umbriel-buffer-row-indent))))
+        (dolist (group groups)
+          (dl-umbriel-buffer--insert-group group heading-starts row-starts))))))
 
 ;;;; Keeping point
 

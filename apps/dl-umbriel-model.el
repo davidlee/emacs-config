@@ -154,22 +154,38 @@ LABEL is `dl-umbriel-model-workspace-label' without a window count."
                            tokens)
                " "))
 
-(defun dl-umbriel-model-workspace-label (workspace &optional count)
-  "One display line for WORKSPACE.
-The line holds the output, the index, the name (named workspaces only) and
-the layout; then, when COUNT is non-nil, how many windows the join placed
-under it; then the `active', `focused' and `urgent' marks.  The wire's
+(defun dl-umbriel-model--cells-line (cells)
+  "CELLS, an alist of column to text, as one display line."
+  (dl-umbriel-model--line (mapcar #'cdr cells)))
+
+(defun dl-umbriel-model-workspace-cells (workspace &optional count)
+  "WORKSPACE's display parts as an alist, in column order.
+`id' is the output and index, `name' the name of a named workspace,
+`layout' the layout, `windows' how many windows the join placed under it
+when COUNT is non-nil, and `marks' the `active', `focused' and `urgent'
+marks.  A part WORKSPACE lacks is the empty string.  The wire's
 `window_count' is never read."
-  (dl-umbriel-model--line
-   (append (list (dl-umbriel-model--text workspace 'output)
-                 (number-to-string
-                  (dl-umbriel-model--number (alist-get 'index workspace -1))))
-           (when (alist-get 'named workspace)
-             (list (dl-umbriel-model--text workspace 'name)))
-           (list (dl-umbriel-model--text workspace 'layout))
-           (when count
-             (list (if (equal count 1) "1 window" (format "%s windows" count))))
-           (dl-umbriel-model--marks workspace '(active focused urgent)))))
+  (list (cons 'id (dl-umbriel-model--line
+                   (list (dl-umbriel-model--text workspace 'output)
+                         (number-to-string
+                          (dl-umbriel-model--number
+                           (alist-get 'index workspace -1))))))
+        (cons 'name (if (alist-get 'named workspace)
+                        (dl-umbriel-model--text workspace 'name)
+                      ""))
+        (cons 'layout (dl-umbriel-model--text workspace 'layout))
+        (cons 'windows (cond ((null count) "")
+                             ((equal count 1) "1 window")
+                             (t (format "%s windows" count))))
+        (cons 'marks (dl-umbriel-model--line
+                      (dl-umbriel-model--marks
+                       workspace '(active focused urgent))))))
+
+(defun dl-umbriel-model-workspace-label (workspace &optional count)
+  "One display line for WORKSPACE, its cells for COUNT windows joined.
+See `dl-umbriel-model-workspace-cells'."
+  (dl-umbriel-model--cells-line
+   (dl-umbriel-model-workspace-cells workspace count)))
 
 (defun dl-umbriel-model--placement (window column row tab)
   "Placement token for WINDOW at COLUMN, ROW and TAB.
@@ -180,22 +196,29 @@ COLUMN is placed, else the bare `tile'."
         ((>= column 0) (format "tile %d,%d" column row))
         (t "tile")))
 
+(defun dl-umbriel-model-window-cells (window)
+  "WINDOW's display parts as an alist, in column order.
+`app' is the app id, `title' the title, `placement' the placement, and
+`flags' every flag that is set, in the order `active', `focused',
+`visible', `minimized', `fullscreen', `urgent', `xwayland'.  A part
+WINDOW lacks is the empty string."
+  (list (cons 'app (dl-umbriel-model--text window 'app_id))
+        (cons 'title (dl-umbriel-model--text window 'title))
+        (cons 'placement
+              (dl-umbriel-model--placement
+               window
+               (dl-umbriel-model--number (alist-get 'column window -1))
+               (dl-umbriel-model--number (alist-get 'row window -1))
+               (dl-umbriel-model--number (alist-get 'tab_index window -1))))
+        (cons 'flags (dl-umbriel-model--line
+                      (dl-umbriel-model--marks
+                       window '(active focused visible minimized fullscreen
+                                urgent xwayland))))))
+
 (defun dl-umbriel-model-window-label (window)
-  "One display line for WINDOW.
-The line holds the app id, the title and the placement, then every flag
-that is set, in the order `active', `focused', `visible', `minimized',
-`fullscreen', `urgent', `xwayland'."
-  (dl-umbriel-model--line
-   (append (list (dl-umbriel-model--text window 'app_id)
-                 (dl-umbriel-model--text window 'title)
-                 (dl-umbriel-model--placement
-                  window
-                  (dl-umbriel-model--number (alist-get 'column window -1))
-                  (dl-umbriel-model--number (alist-get 'row window -1))
-                  (dl-umbriel-model--number (alist-get 'tab_index window -1))))
-           (dl-umbriel-model--marks
-            window '(active focused visible minimized fullscreen urgent
-                     xwayland)))))
+  "One display line for WINDOW, its cells joined.
+See `dl-umbriel-model-window-cells'."
+  (dl-umbriel-model--cells-line (dl-umbriel-model-window-cells window)))
 
 ;;;; Layouts
 

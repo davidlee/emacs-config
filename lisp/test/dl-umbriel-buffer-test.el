@@ -377,6 +377,272 @@ pair, so a lone `%' would be read as a construct."
         (should (eq (oref (dl-umbriel-buffer-test--root) type) 'umbriel-root))
         (should-not (dl-umbriel-buffer-test--children))))))
 
+;;;; active and focused windows (IMP-030)
+
+(defun dl-umbriel-buffer-test--top-face (pos)
+  "The face of the highest-priority overlay at POS that sets one, or nil."
+  (seq-some (lambda (overlay)
+              (or (overlay-get overlay 'face)
+                  (overlay-get overlay 'font-lock-face)))
+            (overlays-at pos t)))
+
+(defun dl-umbriel-buffer-test--row-face (id)
+  "The top overlay face at the start of the window row ID."
+  (dl-umbriel-buffer-test--top-face
+   (oref (dl-umbriel-buffer-test--find 'umbriel-window id) start)))
+
+(defmacro dl-umbriel-buffer-test--with-fixture-render (&rest body)
+  "Run BODY in a displayed *umbriel* painted from the render fixture.
+There w-abc is both `active' and `focused', and w-def is neither."
+  (declare (indent 0) (debug t))
+  `(dl-umbriel-buffer-test--with-state
+       (dl-umbriel-buffer-test--held
+        (dl-umbriel-buffer-test--fixture-windows)
+        (dl-umbriel-buffer-test--fixture-workspaces))
+     (let ((buffer (dl-umbriel-buffer-test--mode-buffer)))
+       (set-window-buffer (selected-window) buffer)
+       (with-current-buffer buffer
+         (dl-umbriel-buffer--repaint)
+         ,@body))))
+
+(defun dl-umbriel-buffer-test--move-active-to (id)
+  "Make window ID the only `active' one and repaint; `focused' stays put."
+  (setq dl-umbriel--state
+        (dl-umbriel-buffer-test--held
+         (mapcar (lambda (window)
+                   (dl-umbriel-buffer-test--entry
+                    window (list :active (equal id (alist-get 'id window)))))
+                 (dl-umbriel-windows))
+         (dl-umbriel-workspaces)))
+  (dl-umbriel-buffer--repaint))
+
+(ert-deftest dl-umbriel-buffer/active-window-row-has-the-active-face ()
+  "The active row carries its face to the newline, over its `focused' mark."
+  (dl-umbriel-buffer-test--with-fixture-render
+    (let ((row (dl-umbriel-buffer-test--find 'umbriel-window "w-abc")))
+      (dolist (pos (list (oref row start) (1- (oref row end))))
+        (should (eq 'dl-umbriel-buffer-active-window
+                    (dl-umbriel-buffer-test--top-face pos)))))))
+
+(ert-deftest dl-umbriel-buffer/plain-window-row-has-no-mark ()
+  "A row neither `active' nor `focused' gets neither face."
+  (dl-umbriel-buffer-test--with-fixture-render
+    (should-not (dl-umbriel-buffer-test--row-face "w-def"))))
+
+(ert-deftest dl-umbriel-buffer/row-face-outranks-the-point-highlight ()
+  "Point on the row, or on its workspace, leaves the row's face showing."
+  (dl-umbriel-buffer-test--with-fixture-render
+    (dolist (section (list (dl-umbriel-buffer-test--find 'umbriel-window "w-abc")
+                           (dl-umbriel-buffer-test--find 'umbriel-workspace
+                                                         "DP-1:3")))
+      (goto-char (oref section start))
+      (magit-section-update-highlight t)
+      (should magit-section-highlight-overlays)
+      (should (eq 'dl-umbriel-buffer-active-window
+                  (dl-umbriel-buffer-test--row-face "w-abc"))))))
+
+(ert-deftest dl-umbriel-buffer/row-faces-follow-the-keyboard ()
+  "Active moving away leaves the old row focused, and one overlay per row."
+  (dl-umbriel-buffer-test--with-fixture-render
+    (dl-umbriel-buffer-test--move-active-to "w-def")
+    (should (eq 'dl-umbriel-buffer-active-window
+                (dl-umbriel-buffer-test--row-face "w-def")))
+    (should (eq 'dl-umbriel-buffer-focused-window
+                (dl-umbriel-buffer-test--row-face "w-abc")))
+    (should (= 2 (seq-count (lambda (overlay) (overlay-get overlay 'face))
+                            (overlays-in (point-min) (point-max)))))))
+
+;;;; active workspace (IMP-030)
+
+(defun dl-umbriel-buffer-test--activate-workspace (id)
+  "Make workspace ID the only `active' one and repaint."
+  (setq dl-umbriel--state
+        (dl-umbriel-buffer-test--held
+         (dl-umbriel-windows)
+         (mapcar (lambda (workspace)
+                   (dl-umbriel-buffer-test--entry
+                    workspace (list :active (equal id (alist-get 'id workspace)))))
+                 (dl-umbriel-workspaces))))
+  (dl-umbriel-buffer--repaint))
+
+(defun dl-umbriel-buffer-test--faces-at (pos)
+  "The `font-lock-face' value at POS, as a list."
+  (ensure-list (get-text-property pos 'font-lock-face)))
+
+(defun dl-umbriel-buffer-test--line-end (section)
+  "The position of the newline ending SECTION's first line."
+  (save-excursion
+    (goto-char (oref section start))
+    (line-end-position)))
+
+(defun dl-umbriel-buffer-test--line-has-face-p (section face)
+  "Non-nil when FACE runs from SECTION's start to its first line's newline."
+  (and (memq face (dl-umbriel-buffer-test--faces-at (oref section start)))
+       (memq face (dl-umbriel-buffer-test--faces-at
+                   (dl-umbriel-buffer-test--line-end section)))))
+
+(ert-deftest dl-umbriel-buffer/active-workspace-heading-is-shaded ()
+  "The active workspace's heading is shaded to its newline; others are not."
+  (dl-umbriel-buffer-test--with-fixture-render
+    (dl-umbriel-buffer-test--activate-workspace "DP-1:3")
+    (should (dl-umbriel-buffer-test--line-has-face-p
+             (dl-umbriel-buffer-test--find 'umbriel-workspace "DP-1:3")
+             'dl-umbriel-buffer-active-workspace))
+    (should (equal '(magit-section-heading)
+                   (dl-umbriel-buffer-test--faces-at
+                    (oref (dl-umbriel-buffer-test--find 'umbriel-workspace
+                                                        "HDMI-A-1:3")
+                          start))))))
+
+(ert-deftest dl-umbriel-buffer/active-workspace-rows-are-shaded ()
+  "Every row of the active workspace is shaded; rows elsewhere are not."
+  (dl-umbriel-buffer-test--with-fixture-render
+    (dl-umbriel-buffer-test--activate-workspace "DP-1:3")
+    (dolist (id '("w-abc" "w-def"))
+      (should (dl-umbriel-buffer-test--line-has-face-p
+               (dl-umbriel-buffer-test--find 'umbriel-window id)
+               'dl-umbriel-buffer-active-workspace-window)))
+    (should-not (dl-umbriel-buffer-test--line-has-face-p
+                 (dl-umbriel-buffer-test--find 'umbriel-window "w-ghost")
+                 'dl-umbriel-buffer-active-workspace-window))))
+
+(ert-deftest dl-umbriel-buffer/active-workspace-id-stands-out ()
+  "The output and index of the active workspace, and only those, are bright."
+  (dl-umbriel-buffer-test--with-fixture-render
+    (dl-umbriel-buffer-test--activate-workspace "DP-1:3")
+    (let ((start (oref (dl-umbriel-buffer-test--find 'umbriel-workspace "DP-1:3")
+                       start))
+          (other (oref (dl-umbriel-buffer-test--find 'umbriel-workspace
+                                                     "HDMI-A-1:3")
+                       start)))
+      (should (equal '(dl-umbriel-buffer-active-workspace-id
+                       dl-umbriel-buffer-active-workspace)
+                     (dl-umbriel-buffer-test--faces-at start)))
+      (should-not (memq 'dl-umbriel-buffer-active-workspace-id
+                        (dl-umbriel-buffer-test--faces-at
+                         (+ start (length "DP-1 3")))))
+      (should-not (memq 'dl-umbriel-buffer-active-workspace-id
+                        (dl-umbriel-buffer-test--faces-at other))))))
+
+(ert-deftest dl-umbriel-buffer/row-mark-shows-over-the-workspace-shade ()
+  "The active row keeps its own face inside a shaded workspace."
+  (dl-umbriel-buffer-test--with-fixture-render
+    (dl-umbriel-buffer-test--activate-workspace "DP-1:3")
+    (should (eq 'dl-umbriel-buffer-active-window
+                (dl-umbriel-buffer-test--row-face "w-abc")))))
+
+;;;; columns (IMP-030)
+
+(defun dl-umbriel-buffer-test--stops (section)
+  "The `:align-to' columns on SECTION's first line, left to right."
+  (let ((pos (oref section start))
+        (end (dl-umbriel-buffer-test--line-end section))
+        stops)
+    (while (< pos end)
+      (when-let* ((display (get-text-property pos 'display)))
+        (let ((stop (plist-get (cdr display) :align-to)))
+          ;; A bare number counts the frame's font, not the buffer's, whose
+          ;; wider glyphs then overrun the stops.
+          (should (eq 'width (cdr stop)))
+          (push (car stop) stops)))
+      (setq pos (1+ pos)))
+    (nreverse stops)))
+
+(defun dl-umbriel-buffer-test--render (windows workspaces)
+  "Paint *umbriel* from WINDOWS and WORKSPACES in the current buffer."
+  (setq dl-umbriel--state
+        (dl-umbriel-buffer-test--held windows workspaces))
+  (dl-umbriel-buffer--repaint))
+
+(defun dl-umbriel-buffer-test--line-text (section)
+  "The text of SECTION's first line, without its newline."
+  (buffer-substring-no-properties
+   (oref section start) (dl-umbriel-buffer-test--line-end section)))
+
+(ert-deftest dl-umbriel-buffer/window-columns-align-across-workspaces ()
+  "Titles start a gap past the widest app id, in every group."
+  (dl-umbriel-buffer-test--with-fixture-render
+    (let ((title-column (+ 2 (length "pavucontrol") 2)))
+      (dolist (id '("w-abc" "w-def" "w-scratch" "w-ghost"))
+        (should (= title-column
+                   (car (dl-umbriel-buffer-test--stops
+                         (dl-umbriel-buffer-test--find 'umbriel-window id)))))))))
+
+(ert-deftest dl-umbriel-buffer/placement-column-aligns ()
+  "Placement starts a gap past the widest title, whichever row has it."
+  (dl-umbriel-buffer-test--with-fixture-render
+    (let ((placement-column (+ 2 (length "pavucontrol") 2 (length "notes.org") 2)))
+      (dolist (id '("w-abc" "w-def"))
+        (should (= placement-column
+                   (cadr (dl-umbriel-buffer-test--stops
+                          (dl-umbriel-buffer-test--find 'umbriel-window id)))))))))
+
+(ert-deftest dl-umbriel-buffer/aligned-row-reads-as-its-label ()
+  "Alignment is display only: the text stays the model's one-line label."
+  (dl-umbriel-buffer-test--with-fixture-render
+    (let ((window (dl-umbriel-window "w-abc")))
+      (should (equal (concat "  " (dl-umbriel-model-window-label window))
+                     (dl-umbriel-buffer-test--line-text
+                      (dl-umbriel-buffer-test--find 'umbriel-window "w-abc")))))))
+
+(ert-deftest dl-umbriel-buffer/long-cell-is-cut-to-its-column ()
+  "An over-long title ends in an ellipsis, and sets no wider column."
+  (dl-umbriel-buffer-test--with-fixture-render
+    (dl-umbriel-buffer-test--render
+     (list (dl-umbriel-buffer-test--window :id "w-long" :workspace "DP-1:3"
+                                           :app_id "foot"
+                                           :title (make-string 200 ?x)))
+     (dl-umbriel-workspaces))
+    (let ((row (dl-umbriel-buffer-test--find 'umbriel-window "w-long"))
+          (limit (alist-get 'title dl-umbriel-buffer-column-limits)))
+      (should (string-match-p "x…" (dl-umbriel-buffer-test--line-text row)))
+      (should (= (+ 2 (length "foot") 2 limit 2)
+                 (cadr (dl-umbriel-buffer-test--stops row)))))))
+
+(ert-deftest dl-umbriel-buffer/workspace-columns-skip-an-absent-name ()
+  "An unnamed workspace's layout still lines up with a named one's."
+  (dl-umbriel-buffer-test--with-fixture-render
+    (let ((named (dl-umbriel-buffer-test--stops
+                  (dl-umbriel-buffer-test--find 'umbriel-workspace "DP-1:3")))
+          (unnamed (dl-umbriel-buffer-test--stops
+                    (dl-umbriel-buffer-test--find 'umbriel-workspace
+                                                  "HDMI-A-1:3"))))
+      (should (= (nth 1 named) (nth 0 unnamed))))))
+
+(ert-deftest dl-umbriel-buffer/window-cells-have-their-column-faces ()
+  "App, placement and flags are coloured; the title keeps the default."
+  (dl-umbriel-buffer-test--with-fixture-render
+    (let* ((row (dl-umbriel-buffer-test--find 'umbriel-window "w-def"))
+           (start (oref row start))
+           (face-of (lambda (text)
+                      (save-excursion
+                        (goto-char start)
+                        (search-forward text)
+                        (dl-umbriel-buffer-test--faces-at (match-beginning 0))))))
+      (should (equal '(dl-umbriel-buffer-window-app)
+                     (funcall face-of "emacs")))
+      (should (equal '(dl-umbriel-buffer-window-placement)
+                     (funcall face-of "tile 1,0")))
+      (should-not (car (funcall face-of "notes.org"))))
+    (let ((row (dl-umbriel-buffer-test--find 'umbriel-window "w-abc")))
+      (save-excursion
+        (goto-char (oref row start))
+        (search-forward "active")
+        (should (equal '(dl-umbriel-buffer-window-flags)
+                       (dl-umbriel-buffer-test--faces-at
+                        (match-beginning 0))))))))
+
+(ert-deftest dl-umbriel-buffer/shade-keeps-the-cell-faces ()
+  "A shaded row keeps its column colours and gains the shade."
+  (dl-umbriel-buffer-test--with-fixture-render
+    (dl-umbriel-buffer-test--activate-workspace "DP-1:3")
+    (should (equal '(dl-umbriel-buffer-window-app
+                     dl-umbriel-buffer-active-workspace-window)
+                   (dl-umbriel-buffer-test--faces-at
+                    (+ 2 (oref (dl-umbriel-buffer-test--find 'umbriel-window
+                                                             "w-def")
+                               start)))))))
+
 ;;;; header (VT-2, EX-2)
 
 (ert-deftest dl-umbriel-buffer/header-names-the-stream ()

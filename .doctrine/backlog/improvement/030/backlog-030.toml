@@ -5,10 +5,10 @@ id = 30
 slug = "umbriel-buffer-visual-design-highlight-focusedactive-align-columns-colour"
 title = "umbriel buffer visual design: highlight focused/active, align columns, colour"
 kind = "improvement"
-status = "open"
-resolution = ""                 # seeded empty so `backlog edit` sets it in place
+status = "started"
+resolution = ""
 created = "2026-11-04"
-updated = "2026-11-04"
+updated = "2026-11-06"
 tags = []
 
 # outbound-only. Cross-kind structural edges (e.g. references with a role

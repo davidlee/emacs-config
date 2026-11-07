@@ -2,6 +2,19 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-11-07 — umbriel: the `*umbriel*` buffer gets faces and columns
+
+`my/umbriel` (`C-c u u`) now shows state by colour as well as by text. The
+window holding the keyboard (`active`) has an amber row and each workspace's
+remembered focus (`focused`) a teal one; both show over the point highlight. An
+`active` workspace is shaded darker than `default`, its heading more so, with its
+output and index in bold white. Window rows and workspace headings line up in
+columns; app ids and titles over their limit are cut with `…`, and prompts still
+show them in full. New faces: `dl-umbriel-buffer-active-window`, `-focused-window`,
+`-active-workspace`, `-active-workspace-window`, `-active-workspace-id`,
+`-window-app`, `-window-placement`, `-window-flags`. `core/dl-faces.el` now requires
+`color`, which it was using without loading.
+
 ## 2026-11-06 — `just check` passes in the jail
 
 The hippie-expand remap in `core/dl-keybind.el` is now a `bind-keys` form, which the

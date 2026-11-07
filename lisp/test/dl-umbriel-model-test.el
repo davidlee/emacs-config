@@ -442,6 +442,33 @@ Unassigned group, which is last."
 
 ;;;; workspace label (C-6, C-8, C-9, VT-3)
 
+(ert-deftest dl-umbriel-model-window-cells/columns-in-order ()
+  "A window's cells are its label's parts, keyed by column."
+  (should (equal '((app . "foot") (title . "shell") (placement . "tile 1,0")
+                   (flags . "active urgent"))
+                 (dl-umbriel-model-window-cells
+                  (dl-umbriel-model-test--window
+                   :app_id "foot" :title "shell" :column 1 :row 0
+                   :active t :focused nil :visible nil :urgent t)))))
+
+(ert-deftest dl-umbriel-model-workspace-cells/absent-parts-are-empty ()
+  "Every column is present; what a workspace lacks is the empty string."
+  (should (equal '((id . "DP-1 3") (name . "") (layout . "dwindle")
+                   (windows . "") (marks . ""))
+                 (dl-umbriel-model-workspace-cells
+                  (dl-umbriel-model-test--workspace
+                   :output "DP-1" :index 3 :named nil :name nil
+                   :layout "dwindle" :active nil :focused nil :urgent nil)))))
+
+(ert-deftest dl-umbriel-model-workspace-cells/count-reads-as-windows ()
+  "COUNT fills the `windows' column, singular for one."
+  (dolist (case '((1 . "1 window") (0 . "0 windows") (3 . "3 windows")))
+    (should (equal (cdr case)
+                   (alist-get 'windows
+                              (dl-umbriel-model-workspace-cells
+                               (dl-umbriel-model-test--workspace)
+                               (car case)))))))
+
 (ert-deftest dl-umbriel-model-workspace-label/name-only-when-named ()
   "The name is shown for named workspaces only; output, index and layout show."
   (let ((named (dl-umbriel-model-workspace-label

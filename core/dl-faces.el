@@ -1,6 +1,7 @@
 ;;; dl-faces.el --- font roles + universal face customization -*- lexical-binding: t; -*-
 
 (require 'cl-lib)
+(require 'color)
 
 ;; Single home for face customization in this config: font roles,
 ;; per-face attrs, line-numbers, mode-line, org headings, flymake /
@@ -305,6 +306,24 @@ start) the background is `unspecified-bg', so wait for a real colour."
 
 (my/blend-borders-into-background)
 (add-hook 'enable-theme-functions #'my/blend-borders-into-background)
+
+(defun my/shade-umbriel-active-workspace (&rest _)
+  "Shade an active workspace in *umbriel*: rows below `default', heading lower.
+Declared in the `user' theme, and so re-run on theme change, for the
+reasons `my/blend-borders-into-background' gives.  A `user' spec replaces
+the defface spec, so these carry the whole face."
+  (let ((bg (face-attribute 'default :background nil t)))
+    (when (color-defined-p bg)
+      (custom-theme-set-faces
+       'user
+       `(dl-umbriel-buffer-active-workspace-window
+         ((t :background ,(color-darken-name bg 20) :extend t)))
+       `(dl-umbriel-buffer-active-workspace
+         ((t :inherit magit-section-heading
+             :background ,(color-darken-name bg 40) :extend t)))))))
+
+(my/shade-umbriel-active-workspace)
+(add-hook 'enable-theme-functions #'my/shade-umbriel-active-workspace)
 
 (defun my/refire-theme-hooks-on-graphical-frame (frame)
   "Re-run `enable-theme-functions' for the enabled themes once FRAME is graphical.

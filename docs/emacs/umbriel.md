@@ -136,9 +136,26 @@ HDMI-1 2 scrolling 0 windows
   window count, then `active`, `focused`, `urgent`.
 - The window count is the number of windows joined under the workspace, not the
   wire's `window_count`, so the label always matches the rows beneath it.
+- Columns line up across the whole buffer, headings and window rows each on
+  their own stops. Over-long app ids and titles are cut with an ellipsis
+  (`dl-umbriel-buffer-column-limits`). Alignment is display only: the buffer's
+  text is still the single-spaced label, and prompts show the full one.
 - `active` and `focused` differ. `active` is seat-global (the window holding
   the keyboard); `focused` is the workspace's remembered focus. A layer
   surface or scratchpad holding the keyboard makes them disagree.
+- Window rows are coloured to match: `dl-umbriel-buffer-active-window` (inherits
+  `isearch`) on the `active` row, else `dl-umbriel-buffer-focused-window`
+  (inherits `highlight`) on a `focused` row. Both span the full line and stay
+  visible under magit's point highlight.
+- An `active` workspace is shaded darker than `default`:
+  `dl-umbriel-buffer-active-workspace-window` on its rows,
+  `dl-umbriel-buffer-active-workspace` a step darker on its heading. The shades
+  derive from `default` in `core/dl-faces.el`, so they follow the theme, and
+  the point highlight and the row colours above show over them.
+- Window columns take their colour from `dl-umbriel-buffer-window-app`,
+  `-placement` and `-flags`, which inherit theme faces; the `active` and
+  `focused` row colours replace them on those rows. An `active` workspace's
+  output and index use `dl-umbriel-buffer-active-workspace-id`, bold white.
 - `visible` means: on the active workspace, not a hidden tab, not minimized.
   It does not mean "on screen"; such a window may be scrolled out of view.
 
