@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 27
+slug = "umbriel-column-layout-file"
+title = "umbriel column layout gets its own file"
+record_kind = "decision"
+status = "accepted"
+created = "2026-11-07"
+updated = "2026-11-07"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "IMP-030 added pure column layout to dl-umbriel-buffer.el, taking it to 782 lines. STD-001: a file's name states its one concern. DEC-014 fixed umbriel at four files."
+choice = "Amends DEC-014: apps/dl-umbriel-columns.el owns laying cells out in aligned columns, a fifth file, tested in lisp/test/dl-umbriel-columns-test.el. It knows no column by name: limits and faces arrive as alists from the buffer."
+alternatives = ["keep layout in dl-umbriel-buffer.el", "put layout in dl-umbriel-model.el (the model holds data and labels; display properties are presentation)"]
+rationale = "Layout is pure and has no reason to load magit-section; the buffer keeps what each column means. Chosen by the user."
+consequences = ["new file must be git added before home-manager switch (trap 1)", "docs/emacs/umbriel.md file table gains a row"]
+decided_by = 'user (session 2026-11-07: "moving column layout out would def make sense now")'
+decided_on = "2026-11-07"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "IMP-030"

@@ -27,6 +27,7 @@
 
 (require 'magit-section)
 (require 'dl-umbriel)
+(require 'dl-umbriel-columns)
 (require 'dl-umbriel-model)
 
 ;;;; State of the buffer
@@ -154,59 +155,19 @@ the overlay, which then evaporates."
 (defconst dl-umbriel-buffer-column-limits '((app . 24) (title . 40))
   "The widest each column may grow; a column left out is unlimited.")
 
-(defconst dl-umbriel-buffer-column-gap 2
-  "Columns of space between one cell's column and the next.")
-
 (defconst dl-umbriel-buffer-row-indent "  "
   "What a window row starts with, under its workspace's heading.")
 
-(defun dl-umbriel-buffer--fit (cell)
-  "The text of CELL, cut to its column's limit if it has one."
-  (if-let* ((limit (alist-get (car cell) dl-umbriel-buffer-column-limits)))
-      (truncate-string-to-width (cdr cell) limit nil nil "…")
-    (cdr cell)))
-
-(defun dl-umbriel-buffer--column-starts (rows indent)
-  "Where each column of ROWS starts, as an alist of column to position.
-ROWS are cell alists with the same columns.  The first column starts at
-INDENT and each next one a gap past the previous column's widest cell."
-  (let ((start indent))
-    (mapcar (lambda (column)
-              (prog1 (cons column start)
-                (setq start
-                      (+ start dl-umbriel-buffer-column-gap
-                         (seq-max
-                          (mapcar (lambda (row)
-                                    (string-width
-                                     (dl-umbriel-buffer--fit
-                                      (assq column row))))
-                                  rows))))))
-            (mapcar #'car (car rows)))))
-
-(defun dl-umbriel-buffer--row (cells starts faces)
-  "CELLS as one line, each at its place in STARTS and its face in FACES.
-An empty cell is skipped.  A gap is one space displayed `:align-to' the
-next cell, counted in this buffer's font, not the frame's: the text stays
-the model's label, and a title's emoji cannot push the columns out,
-whatever width its font gives it."
-  (let ((shown (seq-remove (lambda (cell) (string-empty-p (cdr cell))) cells)))
-    (mapconcat
-     (lambda (cell)
-       (let ((text (dl-umbriel-buffer--fit cell))
-             (face (alist-get (car cell) faces)))
-         (concat (unless (eq cell (car shown))
-                   (propertize " " 'display
-                               `(space :align-to
-                                       (,(alist-get (car cell) starts)
-                                        . width))))
-                 (if face (propertize text 'font-lock-face face) text))))
-     shown "")))
+(defun dl-umbriel-buffer--window-cells (window)
+  "WINDOW's cells, cut to fit their columns."
+  (dl-umbriel-columns-fit (dl-umbriel-model-window-cells window)
+                          dl-umbriel-buffer-column-limits))
 
 (defun dl-umbriel-buffer--insert-window (window starts)
   "Insert WINDOW's row at point, at STARTS, in the face that marks it, if any."
   (let ((start (point)))
     (insert dl-umbriel-buffer-row-indent
-            (dl-umbriel-buffer--row (dl-umbriel-model-window-cells window)
+            (dl-umbriel-columns-row (dl-umbriel-buffer--window-cells window)
                                     starts
                                     dl-umbriel-buffer-window-cell-faces)
             "\n")
@@ -228,9 +189,9 @@ whatever width its font gives it."
 The newline is part of an active heading, so the shade spans the line."
   (let ((cells (dl-umbriel-buffer--group-cells group)))
     (if (not (alist-get 'active (car group)))
-        (dl-umbriel-buffer--row cells starts nil)
+        (dl-umbriel-columns-row cells starts nil)
       (let ((heading
-             (concat (dl-umbriel-buffer--row
+             (concat (dl-umbriel-columns-row
                       cells starts
                       '((id . dl-umbriel-buffer-active-workspace-id)))
                      "\n")))
@@ -274,12 +235,12 @@ inserted."
     (if (and (null workspaces) (null windows))
         (insert "No windows or workspaces held.\n")
       (let* ((groups (dl-umbriel-model-group workspaces windows))
-             (heading-starts (dl-umbriel-buffer--column-starts
+             (heading-starts (dl-umbriel-columns-starts
                               (mapcar #'dl-umbriel-buffer--group-cells
                                       (seq-filter #'car groups))
                               0))
-             (row-starts (dl-umbriel-buffer--column-starts
-                          (mapcar #'dl-umbriel-model-window-cells windows)
+             (row-starts (dl-umbriel-columns-starts
+                          (mapcar #'dl-umbriel-buffer--window-cells windows)
                           (length dl-umbriel-buffer-row-indent))))
         (dolist (group groups)
           (dl-umbriel-buffer--insert-group group heading-starts row-starts))))))

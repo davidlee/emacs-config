@@ -19,6 +19,7 @@ over its IPC (inter-process communication) socket, from four files in
 | --- | --- |
 | `dl-umbriel.el` | the socket client: requests, the event stream, held state, failure kinds |
 | `dl-umbriel-model.el` | pure functions: grouping, labels, workspace selectors |
+| `dl-umbriel-columns.el` | pure layout of cells into aligned columns |
 | `dl-umbriel-buffer.el` | the `*umbriel*` buffer, row actions, global commands |
 | `dl-umbriel-focus.el` | focusing the frame `emacsclient` reuses |
 
