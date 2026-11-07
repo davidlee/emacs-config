@@ -148,7 +148,7 @@ The shell reports it by OSC 7: `file://' percent-encodes the path, and
   '((nil "·" shadow)
     ("done" "●" success)
     ("working" "◐" font-lock-keyword-face)
-    ("blocked" "◌" warning)
+    ("blocked" "🔔" warning)
     ("failed" "⊘" error))
   "Icon and face for each value of the `state' label; nil is an absent one.")
 
@@ -157,6 +157,11 @@ The shell reports it by OSC 7: `file://' percent-encodes the path, and
   (pcase-let ((`(,icon ,face) (or (cdr (assoc state dl-zmx--state-icons))
                                   '("*" shadow))))
     (propertize icon 'face face)))
+
+(defun dl-zmx--state-column (state)
+  "Return the icon for STATE, padded so that the text after it lines up."
+  (let ((icon (dl-zmx--state-icon state)))
+    (concat icon (make-string (- 3 (string-width icon)) ?\s))))
 
 (defconst dl-zmx--unpaired-fields
   '(name pid clients created cwd ended exit_code cmd project id role state)
@@ -177,17 +182,15 @@ zmx's own, which it doesn't mark apart from labels, and labels shown elsewhere."
 Its state icon, then project, clients, directory and labels.  The text carries
 its own face, as the icon's stops a completion UI applying one."
   (concat "  "
-          (dl-zmx--state-icon (alist-get 'state session))
+          (dl-zmx--state-column (alist-get 'state session))
           (propertize
-           (concat
-            "  "
-            (string-join
-             (append (delq nil (list (alist-get 'project session)
-                                     (concat (alist-get 'clients session) " attached")
-                                     (when-let* ((dir (dl-zmx--session-dir session)))
-                                       (abbreviate-file-name dir))))
-                     (dl-zmx--field-pairs session))
-             "  "))
+           (string-join
+            (append (delq nil (list (alist-get 'project session)
+                                    (concat (alist-get 'clients session) " attached")
+                                    (when-let* ((dir (dl-zmx--session-dir session)))
+                                      (abbreviate-file-name dir))))
+                    (dl-zmx--field-pairs session))
+            "  ")
            'face 'completions-annotations)))
 
 (defun dl-zmx--widest (strings)

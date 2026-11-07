@@ -2,6 +2,11 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-11-07 — zmx: a blocked session shows a bell
+
+The picker's icon for `state=blocked` is now `🔔`, not `◌`: it is the state that most needs
+seeing. The bell is two columns wide, so the annotation pads by width to stay aligned.
+
 ## 2026-11-07 — zmx: `consult-buffer` reaches sessions without a terminal
 
 `C-x b z SPC` narrows `consult-buffer` to running zmx sessions with no live terminal buffer

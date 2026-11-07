@@ -126,7 +126,16 @@
 (ert-deftest dl-zmx/state-icon-tells-the-states-apart ()
   (should (equal (mapcar #'dl-zmx--state-icon
                          '("done" "working" "blocked" "failed" nil "other"))
-                 '("●" "◐" "◌" "⊘" "·" "*"))))
+                 '("●" "◐" "🔔" "⊘" "·" "*"))))
+
+(ert-deftest dl-zmx/annotation-aligns-text-after-a-wide-icon ()
+  "A bell is two columns wide, and the text after it stays in its column."
+  (let ((text-column
+         (lambda (state)
+           (let ((annotation (dl-zmx--annotation
+                              `((name . "a") (clients . "0") (state . ,state)))))
+             (string-width (substring annotation 0 (string-search "0 attached" annotation)))))))
+    (should (= (funcall text-column "blocked") (funcall text-column "done")))))
 
 (ert-deftest dl-zmx/state-icon-is-coloured ()
   (should (eq (get-text-property 0 'face (dl-zmx--state-icon "failed")) 'error)))
