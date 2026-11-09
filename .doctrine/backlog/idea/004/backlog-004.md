@@ -61,6 +61,13 @@ switches session instead of attaching.
    `harness/pi/zmx-state.ts`, writing `zmx set . state=...` from inside the
    session. That work belongs to the zmux repo. Nothing here changes:
    `dl-zmx--state-icons` already shows the label. See Rejected for the bridge.
+   Done 2026-11-09: `dl-zmx-status-mode` (`apps/dl-zmx-status.el`) reads that
+   label into the mode line, counting every session, attached or not: `🔔2 ◐1`.
+   `zmx list` runs as a subprocess every 3 s, so Emacs never waits on it. zmx
+   terminals leave ghostel's indicator while the mode is on, by a wrap of the
+   private `ghostel-status--indicator-text`. Claude Code's own OSC 9;4 moved
+   ghostel's indicator through zmx (run by hand), but `remove` at a turn's end
+   leaves nothing, so it can't signal input required.
 4. Done 2026-11-07: `dl-zmx--open` sets the private `ghostel--shell-program` to
    `dl-zmx-shell`, as `ghostel-exec` does not, so `ghostel-shell-history` no longer
    signals "Buffer has no recognized shell" (run, real ghostel). Chosen over an

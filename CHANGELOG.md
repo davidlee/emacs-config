@@ -12,6 +12,14 @@ loads `hl-line` itself: it set that face at load and relied on something else lo
 On Guix, `apps/dl-satan.el` skips SATAN and Malebolge, which are built with Nix.
 `lang/dl-nushell.el` now loads only where the `nu` grammar exists, so Nix hosts keep it.
 
+## 2026-11-09 — zmx: session states in the mode line
+
+`dl-zmx-status-mode` counts zmx sessions by their `state` label, with the picker's icons:
+`🔔2 ◐1` is two sessions waiting for input and one working, attached or not. It polls
+`zmx list` every `dl-zmx-status-interval` seconds (3) as a subprocess, so Emacs never waits
+on it. ghostel's own indicator now leaves zmx terminals out, so a session isn't counted
+twice. New file `apps/dl-zmx-status.el`.
+
 ## 2026-11-09 — zmx: `C-x b z` annotations line up
 
 Annotations in `consult-buffer`'s zmx group started further right the shorter the session

@@ -87,6 +87,8 @@
 (require 'dl-term)
 (require 'dl-ghostel)
 (require 'dl-zmx)
+(require 'dl-zmx-status)
+(when (executable-find dl-zmx-command) (dl-zmx-status-mode))
 (require 'dl-magit)
 (require 'dl-agent-review)
 (require 'dl-ediff)

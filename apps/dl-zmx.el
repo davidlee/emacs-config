@@ -89,6 +89,10 @@ That is one dot, with a part on each side."
   "Return the ghostel buffer name for zmx SESSION."
   (concat "term-" session))
 
+(defun dl-zmx-terminal-p (buffer)
+  "Return non-nil if BUFFER is named as a zmx session's terminal."
+  (string-prefix-p (dl-zmx-buffer-name "") (buffer-name buffer)))
+
 (defun dl-zmx-attach-argv (session)
   "Return argv attaching to SESSION, creating it if absent."
   (list dl-zmx-command "attach" session dl-zmx-shell))
@@ -152,11 +156,12 @@ The shell reports it by OSC 7: `file://' percent-encodes the path, and
 
 (defconst dl-zmx--state-icons
   '((nil "·" shadow)
-    ("done" "●" success)
-    ("working" "◐" font-lock-keyword-face)
     ("blocked" "🔔" warning)
-    ("failed" "⊘" error))
-  "Icon and face for each value of the `state' label; nil is an absent one.")
+    ("failed" "⊘" error)
+    ("done" "●" success)
+    ("working" "◐" font-lock-keyword-face))
+  "Icon and face for each value of the `state' label, most urgent first.
+nil is an absent label.")
 
 (defun dl-zmx--state-icon (state)
   "Return the coloured icon for STATE, a `state' label's value or nil."
