@@ -62,7 +62,7 @@ switches session instead of attaching.
    session. That work belongs to the zmux repo. Nothing here changes:
    `dl-zmx--state-icons` already shows the label. See Rejected for the bridge.
    Done 2026-11-09: `dl-zmx-status-mode` (`apps/dl-zmx-status.el`) reads that
-   label into the mode line, counting every session, attached or not: `🔔2 ◐1`.
+   label into the mode line, counting every session, attached or not: `🔔×2 ◐×1`.
    `zmx list` runs as a subprocess every 3 s, so Emacs never waits on it. zmx
    terminals leave ghostel's indicator while the mode is on, by a wrap of the
    private `ghostel-status--indicator-text`. Claude Code's own OSC 9;4 moved

@@ -1,7 +1,7 @@
 ;;; dl-zmx-status.el --- zmx session states in the mode line -*- lexical-binding: t; -*-
 
 ;; `dl-zmx-status-mode' counts zmx sessions, attached or not, by their `state'
-;; label, with the session picker's icons: `🔔2 ◐1' is two waiting, one working.
+;; label, with the session picker's icons: `🔔×2 ◐×1' is two waiting, one working.
 ;; Harnesses write the label (zmux), so it holds while no terminal is attached,
 ;; which ghostel's own status reports cannot.
 ;;
@@ -43,8 +43,8 @@ In `dl-zmx--state-icons' order; a session without a known `state' isn't counted.
                                                (equal (alist-get 'state session) state))
                                              sessions)))
                                  (when (> count 0)
-                                   (concat (dl-zmx--state-icon state)
-                                           (number-to-string count)))))
+                                   (format "%s×%d" (dl-zmx--state-icon state)
+                                           count))))
                              (delq nil (mapcar #'car dl-zmx--state-icons))))))
     (string-join counts " ")))
 
@@ -78,7 +78,7 @@ stderr goes to its own buffer, unread: with no sessions, zmx reports that there.
 (defun dl-zmx-status--segment ()
   "zmx session states for the active window's mode line, or nil."
   (when (and dl-zmx-status--text (dl-modeline-window-active-p))
-    (concat dl-zmx-status--text " ")))
+    (concat " " dl-zmx-status--text)))
 
 ;; ghostel has no public way to leave a terminal out of its indicator.
 (defun dl-zmx-status--without-zmx-terminals (indicator-text)

@@ -24,7 +24,7 @@
                          (dl-zmx-status-test--session "a.2" "blocked")
                          (dl-zmx-status-test--session "a.3" "blocked")
                          (dl-zmx-status-test--session "a.4" nil))))
-                 "🔔2 ◐1")))
+                 "🔔×2 ◐×1")))
 
 (ert-deftest dl-zmx-status/text-is-nil-without-states ()
   "A session no harness labels says nothing, so neither does the mode line."
@@ -58,7 +58,7 @@
 (ert-deftest dl-zmx-status/poll-shows-what-zmx-lists ()
   (dl-zmx-status-test--polling
       "printf 'name=a.1\\tstate=blocked\\nname=a.2\\tstate=working\\n'\n"
-    (should (equal (substring-no-properties dl-zmx-status--text) "🔔1 ◐1"))))
+    (should (equal (substring-no-properties dl-zmx-status--text) "🔔×1 ◐×1"))))
 
 (ert-deftest dl-zmx-status/poll-ignores-stderr ()
   "With no sessions, zmx says so on stderr and fails: nothing to show."
@@ -87,7 +87,7 @@
 (ert-deftest dl-zmx-status/segment-shows-in-the-active-window-only ()
   (let ((dl-zmx-status--text "🔔1"))
     (cl-letf (((symbol-function 'dl-modeline-window-active-p) (lambda () t)))
-      (should (equal (dl-zmx-status--segment) "🔔1 ")))
+      (should (equal (dl-zmx-status--segment) " 🔔1")))
     (cl-letf (((symbol-function 'dl-modeline-window-active-p) (lambda () nil)))
       (should-not (dl-zmx-status--segment)))))
 
