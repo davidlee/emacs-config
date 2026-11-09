@@ -23,6 +23,17 @@ Segments returning nil add nothing."
         (dl-modeline-segments (list (lambda () nil) (lambda () "S "))))
     (should (equal (dl-modeline--prepend-segments "line") "M S line"))))
 
+(ert-deftest dl-modeline/segments-draw-in-the-mode-line-font ()
+  "Unfaced segment text would take the default face's font, not the mode line's.
+A segment's own faces stay on top."
+  (let* ((lambda-line-user-mode nil)
+         (dl-modeline-segments
+          (list (lambda () (concat (propertize "!" 'face 'warning) "×2"))))
+         (line (dl-modeline--prepend-segments "line")))
+    (should (equal (get-text-property 0 'face line) '(warning mode-line-active)))
+    (should (eq (get-text-property 1 'face line) 'mode-line-active))
+    (should-not (get-text-property 3 'face line))))
+
 (ert-deftest dl-modeline/window-active-p ()
   "A window is active only when it is the one lambda-line marks selected."
   (dl-modeline-test--in-window t

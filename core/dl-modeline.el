@@ -27,10 +27,16 @@ into `lambda-line-mode-name') gets wiped because compose calls
 `(propertize SEGMENT \\='face …)' which strips per-character faces set by
 the segment renderers (e.g. `meow-indicator')."
   (concat
-    (mapconcat #'funcall
-      (cons (if (functionp lambda-line-user-mode) lambda-line-user-mode #'ignore)
-        dl-modeline-segments))
+    (if (functionp lambda-line-user-mode) (funcall lambda-line-user-mode) "")
+    (dl-modeline--segments-text)
     composed))
+
+(defun dl-modeline--segments-text ()
+  "Return the text of `dl-modeline-segments', over the mode line's face.
+Text a segment leaves unfaced would take the default face's font."
+  (let ((text (mapconcat #'funcall dl-modeline-segments)))
+    (add-face-text-property 0 (length text) 'mode-line-active t text)
+    text))
 
 ;; `lambda-line-compose' is margin-naive in two places:
 ;;   1. lambda-line.el:639 -- uses `window-body-width' (excludes margins),

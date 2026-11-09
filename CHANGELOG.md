@@ -12,6 +12,12 @@ loads `hl-line` itself: it set that face at load and relied on something else lo
 On Guix, `apps/dl-satan.el` skips SATAN and Malebolge, which are built with Nix.
 `lang/dl-nushell.el` now loads only where the `nu` grammar exists, so Nix hosts keep it.
 
+## 2026-11-09 — mode line: segments draw in the mode line's font
+
+Text a `dl-modeline-segments` entry left unfaced, such as the counts in `🔔×4`, drew in the
+default face's font, not the mode line's. Segments now sit over `mode-line-active`, under
+their own faces. This covers the zmx and ghostel status segments and the org-iw one.
+
 ## 2026-11-09 — zmx: session states in the mode line
 
 `dl-zmx-status-mode` counts zmx sessions by their `state` label, with the picker's icons:
