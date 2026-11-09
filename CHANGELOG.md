@@ -2,6 +2,22 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-11-09 — terminals: a new terminal replaces the docked one
+
+A ghostel terminal opened while another is docked at the bottom now takes the dock, instead
+of opening a second bottom window beside it. This covers every ghostel terminal, including
+zmx ones (`C-x b z`) and `C-c m` terminals. The dock stays dedicated, so other buffers still
+stay out of it. `quit-window` closes the dock; it does not bring back the previous terminal.
+`my/ghostel-named` now names the buffer even when `dl-term.el` was compiled before ghostel
+loaded.
+
+## 2026-11-09 — eshell: visual commands run in ghostel; Eat removed
+
+Eshell's visual commands (`less`, `htop`, `top`, and others in `eshell-visual-commands`) now
+open in a ghostel buffer through `ghostel-eshell-visual-command-mode`, and `ghostel PROGRAM`
+at the eshell prompt runs any program the same way. The Eat setup was inert, as both of its
+modes were nil, so Eat is gone from `apps/dl-term.el` and from `~/flakes/emacs/emacs.nix`.
+
 ## 2026-11-08 — run on Guix System
 
 The config now boots on Guix System (`core/dl-guix.el`). Guix Home supplies Emacs and most

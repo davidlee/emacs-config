@@ -79,6 +79,11 @@ switches session instead of attaching.
    `eat-eshell-visual-command-mode` sit under `:custom` with no value, so both
    are nil and the integration is dead. Eat can leave `emacs.nix` if nothing
    else needs it.
+   Done 2026-11-09: `eshell-load-hook` turns on
+   `ghostel-eshell-visual-command-mode` (live: loading eshell advises
+   `eshell-exec-visual`). The Eat block is gone, and nothing else in the config
+   used Eat, so it left `emacs.nix` as well, which takes effect at the next
+   `just home-switch`.
 
 ## Rejected
 
@@ -112,7 +117,14 @@ not `dl-zmx--open`, so `consult-ghostel-history` should still fail in that buffe
   zmx terminal takes the `apps/dl-term.el` rule, and a first attach docks at 30%
   (run, real ghostel). With one already docked, a second opens its own bottom
   window beside it, as `display-buffer-reuse-mode-window` passes over the dedicated
-  one. Three terminals crowd a small frame. Whether to reuse the dock is undecided.
+  one. Three terminals crowd a small frame.
+  Decided 2026-11-09: a new terminal replaces the docked one.
+  `dl-term--display-in-dock`, placed after `display-buffer-reuse-mode-window` in
+  `dl-term-ghostel-display-rule`, shows it in the dedicated ghostel window and
+  keeps that window dedicated, so other buffers still stay out. This holds for
+  every ghostel terminal, not only zmx ones. `quit-window` on the dock deletes it
+  and does not show the previous terminal (run, batch): the window's
+  `quit-restore` still records it as created for the first terminal.
 - Shell integration varies by session: `zmx list` reports `kitty-shell-cwd://`
   for some sessions and `file://` for others, which suggests only sessions born
   under ghostel source it. Sessions predating a ghostel upgrade keep the old
