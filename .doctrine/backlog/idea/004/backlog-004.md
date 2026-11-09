@@ -74,6 +74,13 @@ switches session instead of attaching.
    upstream change for now. `dl-zmx-shell` names the shell for new sessions, so a
    session started under another shell reads the wrong history (inferred).
 5. A `zmx:` Org link type, such as `[[zmx:emacs.2]]`.
+   Done 2026-11-09: `apps/dl-zmx-org.el`, loaded after `ol`. Following a link
+   reattaches through `dl-zmx--reattach`, so the shell, the dock and history
+   work as in the picker. A link to a session that isn't running is refused
+   (run, live), since `zmx attach` would create an empty one in its place.
+   `org-store-link` in a zmx terminal stores `[[zmx:NAME][NAME]]`, and `C-c C-l`
+   completes `zmx:` with the session picker (both in tests only, as no zmx
+   terminal was open).
 6. Replace the Eat block in `apps/dl-term.el` with
    `ghostel-eshell-visual-command-mode`. `eat-eshell-mode` and
    `eat-eshell-visual-command-mode` sit under `:custom` with no value, so both

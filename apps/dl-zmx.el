@@ -93,6 +93,11 @@ That is one dot, with a part on each side."
   "Return non-nil if BUFFER is named as a zmx session's terminal."
   (string-prefix-p (dl-zmx-buffer-name "") (buffer-name buffer)))
 
+(defun dl-zmx-buffer-session (buffer)
+  "Return the zmx session BUFFER is named as the terminal of, or nil."
+  (when (dl-zmx-terminal-p buffer)
+    (string-remove-prefix (dl-zmx-buffer-name "") (buffer-name buffer))))
+
 (defun dl-zmx-attach-argv (session)
   "Return argv attaching to SESSION, creating it if absent."
   (list dl-zmx-command "attach" session dl-zmx-shell))
