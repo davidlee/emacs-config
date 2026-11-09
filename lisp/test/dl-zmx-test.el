@@ -377,9 +377,12 @@ Of the sessions, only `dl-zmx-test--open-session' has a live terminal."
     (should-not items)))
 
 (ert-deftest dl-zmx/consult-annotates-as-the-session-picker-does ()
-  (dl-zmx-test--with-consult-items (list dl-zmx-test--unopened-session)
-    (should (equal (funcall (plist-get dl-zmx-consult-source :annotate) (car items))
-                   (dl-zmx--annotation dl-zmx-test--unopened-session)))))
+  "Unpadded: consult aligns annotations past the widest candidate itself."
+  (let ((long-named '((name . "a-much-longer-name.3") (clients . "0"))))
+    (dl-zmx-test--with-consult-items (list dl-zmx-test--unopened-session long-named)
+      (should (equal (mapcar (plist-get dl-zmx-consult-source :annotate) items)
+                     (list (dl-zmx--annotation dl-zmx-test--unopened-session)
+                           (dl-zmx--annotation long-named)))))))
 
 (ert-deftest dl-zmx/consult-reattaches-the-chosen-session ()
   (dl-zmx-test--with-consult-items (list dl-zmx-test--unopened-session)

@@ -323,15 +323,11 @@ Completes the identifiers of the project's running sessions."
 
 (defun dl-zmx--consult-items ()
   "Return candidates for sessions without a live terminal.
-Each carries its record and annotation as text properties."
-  (let* ((by-candidate (dl-zmx--candidates
-                        (seq-remove #'dl-zmx--terminal-live-p (dl-zmx-sessions))))
-         (annotate (dl-zmx--annotator by-candidate)))
-    (mapcar (pcase-lambda (`(,candidate . ,session))
-              (propertize candidate
-                          'dl-zmx-session session
-                          'dl-zmx-annotation (funcall annotate candidate)))
-            by-candidate)))
+Each carries its record as a text property."
+  (mapcar (pcase-lambda (`(,candidate . ,session))
+            (propertize candidate 'dl-zmx-session session))
+          (dl-zmx--candidates
+           (seq-remove #'dl-zmx--terminal-live-p (dl-zmx-sessions)))))
 
 (defconst dl-zmx--preview-buffer-name " *zmx preview*"
   "Buffer holding the scrollback `consult-buffer' previews.")
@@ -371,8 +367,9 @@ Attaching would disturb the session, and leave a terminal behind."
      :enabled  ,(lambda () (executable-find dl-zmx-command))
      :items    ,#'dl-zmx--consult-items
      :state    ,#'dl-zmx--consult-state
+     ;; Unpadded, unlike the picker's: consult aligns annotations itself.
      :annotate ,(lambda (candidate)
-                  (get-text-property 0 'dl-zmx-annotation candidate))
+                  (dl-zmx--annotation (get-text-property 0 'dl-zmx-session candidate)))
      :action   ,(lambda (candidate)
                   (dl-zmx--reattach (get-text-property 0 'dl-zmx-session candidate))))
   "`consult-buffer' source of sessions without a terminal.

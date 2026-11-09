@@ -12,6 +12,11 @@ loads `hl-line` itself: it set that face at load and relied on something else lo
 On Guix, `apps/dl-satan.el` skips SATAN and Malebolge, which are built with Nix.
 `lang/dl-nushell.el` now loads only where the `nu` grammar exists, so Nix hosts keep it.
 
+## 2026-11-09 — zmx: `C-x b z` annotations line up
+
+Annotations in `consult-buffer`'s zmx group started further right the shorter the session
+name: consult aligns annotations past the widest candidate, and the source padded them again.
+
 ## 2026-11-07 — zmx: new terminals dock, and shell history works
 
 `my/zmx-new`, `my/zmx-project`, `my/zmx-resume`, `my/zmx-switch` and `C-x b z` now open a
