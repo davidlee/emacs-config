@@ -78,6 +78,7 @@ switches session instead of attaching.
    reattaches through `dl-zmx--reattach`, so the shell, the dock and history
    work as in the picker. A link to a session that isn't running is refused
    (run, live), since `zmx attach` would create an empty one in its place.
+   `C-u C-c C-o` starts it instead, at the Org file's directory (tests).
    `org-store-link` in a zmx terminal stores `[[zmx:NAME][NAME]]`, and `C-c C-l`
    completes `zmx:` with the session picker (both in tests only, as no zmx
    terminal was open).

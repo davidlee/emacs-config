@@ -7,7 +7,8 @@ Notable changes to this Emacs config. Loosely dated; not versioned.
 `[[zmx:hris.2]]` opens zmx session `hris.2`: its terminal, or a new one reattached to it.
 `org-store-link` in a zmx terminal stores such a link, and `C-c C-l` then `zmx:` offers the
 running sessions. A link to a session that is no longer running is refused, rather than
-starting an empty one. New file `apps/dl-zmx-org.el`.
+starting an empty one; `C-u C-c C-o` starts it, at the Org file's directory. New file
+`apps/dl-zmx-org.el`.
 
 ## 2026-11-09 — terminals: a new terminal replaces the docked one
 
