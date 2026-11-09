@@ -6,7 +6,7 @@ status = "active"
 title = "Measuring window columns and a face's font for a glyph"
 summary = "How to measure a window's columns and which font a face uses for a glyph"
 created = "2026-11-07"
-updated = "2026-11-07"
+updated = "2026-11-09"
 
 [scope]
 paths = ["core/dl-faces.el", "apps/dl-umbriel-buffer.el"]
