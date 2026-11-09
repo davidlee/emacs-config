@@ -2,6 +2,13 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-11-09 — zmx: Org links to sessions
+
+`[[zmx:hris.2]]` opens zmx session `hris.2`: its terminal, or a new one reattached to it.
+`org-store-link` in a zmx terminal stores such a link, and `C-c C-l` then `zmx:` offers the
+running sessions. A link to a session that is no longer running is refused, rather than
+starting an empty one. New file `apps/dl-zmx-org.el`.
+
 ## 2026-11-09 — terminals: a new terminal replaces the docked one
 
 A ghostel terminal opened while another is docked at the bottom now takes the dock, instead
@@ -17,6 +24,14 @@ Eshell's visual commands (`less`, `htop`, `top`, and others in `eshell-visual-co
 open in a ghostel buffer through `ghostel-eshell-visual-command-mode`, and `ghostel PROGRAM`
 at the eshell prompt runs any program the same way. The Eat setup was inert, as both of its
 modes were nil, so Eat is gone from `apps/dl-term.el` and from `~/flakes/emacs/emacs.nix`.
+
+## 2026-11-09 — emskin: nested compositor client
+
+New file `apps/dl-emskin.el` loads the `emskin` client when Emacs runs inside the emskin
+compositor (`XDG_SESSION_DESKTOP=emskin`), and nowhere else. The elisp joins the package
+list in `~/flakes/emacs/emacs.nix`, and the `emskin` binary goes on PATH; both come from one
+flake input, so they match. Launch `emskin` without `--standalone`. Embed an app with
+`M-x emskin-open-native-app`.
 
 ## 2026-11-08 — run on Guix System
 
