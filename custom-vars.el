@@ -43,10 +43,12 @@
  '(org-timeblock-current-time-indicator t)
  '(org-timeblock-span 1)
  '(package-selected-packages
-   '(au-themes ef-themes elpher foxglove-themes gptel-annotate
+   '(au-themes book-mode ef-themes elpher foxglove-themes gptel-annotate
                lambda-line nostr super-save))
  '(package-vc-selected-packages
-   '((nostr :url "https://github.com/trevarj/nostr.el" :branch "master")
+   '((book-mode :url "https://github.com/rougier/book-mode.git")
+     (nostr :url "https://github.com/trevarj/nostr.el" :branch
+            "master")
      (elpher :url "https://github.com/emacsmirror/elpher.git")
      (au-themes :url "https://github.com/szymonwilczek/au-themes")
      (foxglove-themes :url
@@ -75,6 +77,10 @@
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
+ '(dl-umbriel-buffer-active-workspace ((t :inherit magit-section-heading :background "#147a13e012ac" :extend t)))
+ '(dl-umbriel-buffer-active-workspace-window ((t :background "#1b4e1a8018e5" :extend t)))
+ '(dl-umbriel-buffer-layout ((t :background "#40d140d13cc4")))
+ '(dl-umbriel-buffer-workspace-name ((t :inherit default :background "#364552289a09")))
  '(fringe ((t :background "#22211f")))
  '(line-number ((t :family "ZedMono NF" :height 1.0 :weight regular)))
  '(line-number-current-line ((t :inherit line-number :family "ZedMono NF" :height 1.0 :weight regular)))

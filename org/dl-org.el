@@ -107,9 +107,11 @@ local `hl-line-mode' is redundant."
 (add-hook 'org-mode-hook #'my/org-setup-line-display)
 
 ;;(add-hook 'org-mode-hook (lambda () (org-bullets-mode 1)))
-;;(add-hook 'org-mode-hook (lambda () (org-pretty-table-mode)))
 
-;; (use-package org-pretty-table)
+(add-to-list 'load-path "~/.config/emacs/elpa/org-pretty-table")
+(require 'org-pretty-table)
+(add-hook 'org-mode-hook (lambda () (org-pretty-table-mode)))
+
 
 ;; this is a checkout of my fork since the original was busted and so is the nix upstream
 ;; davidlee/org-timeblock
@@ -134,90 +136,9 @@ local `hl-line-mode' is redundant."
 
 (add-hook 'org-mode-hook (lambda () (setq tab-width 2)))
 
-;; (use-package org-review
-;;   :bind (:map org-agenda-mode-map
-;; ("C-c C-r" . org-review-insert-last-review)))
+(require 'dl-org-paste-markdown)
 
-;; (add-hook 'org-mode-hook #'variable-pitch-mode)
-
-;; PASTE AGENT SLOP AS ORG-MODE
-;; can you tell an agent wrote this elisp?
-(defun org-paste-markdown-as-org ()
-  "Convert Markdown from the clipboard to Org using Pandoc."
-  (interactive)
-  (unless (executable-find "pandoc")
-    (user-error "Pandoc is not available"))
-  (let ((markdown (gui-get-selection 'CLIPBOARD 'UTF8_STRING)))
-    (unless (and (stringp markdown) (not (string-empty-p markdown)))
-      (user-error "Clipboard has no text"))
-    (let ((stderr-file (make-temp-file "org-paste-pandoc-"))
-          (coding-system-for-read 'utf-8-unix)
-          (coding-system-for-write 'utf-8-unix))
-      (unwind-protect
-          (let ((org-text
-                 (with-temp-buffer
-                   (let ((status (call-process-region
-                                  markdown nil "pandoc" nil (list t stderr-file) nil
-                                  "-f" "markdown" "-t" "org")))
-                     (unless (equal status 0)
-                       (user-error "Pandoc failed (%s): %s" status
-                                   (with-temp-buffer
-                                     (insert-file-contents stderr-file)
-                                     (string-trim (buffer-string)))))
-                     (require 'org-element)
-                     (require 'org-table)
-                     ;; Work backwards so alignment cannot move a later table.
-                     (dolist (pos (reverse
-                                   (org-element-map (org-element-parse-buffer) 'table
-                                     (lambda (table)
-                                       (when (eq (org-element-property :type table) 'org)
-                                         (org-element-property :begin table))))))
-                       (when pos
-                         (goto-char pos)
-                         ;; Pandoc normally emits an Org rule; accept a
-                         ;; Markdown-style header separator as well.
-                         (forward-line 1)
-                         (when (looking-at
-                                "[ \t]*|[ \t]*:?-\\{3,\\}:?[ \t]*\\(?:|[ \t]*:?-\\{3,\\}:?[ \t]*\\)+|?[ \t]*$")
-                           (replace-match "|-"))
-                         (goto-char pos)
-                         (org-table-align)))
-                     (buffer-substring-no-properties (point-min) (point-max))))))
-            (insert org-text))
-        (delete-file stderr-file)))))
-
-
-;; (defun org-paste-markdown-as-org ()
-;;   "Modern Wayland clipboard to native Org-mode table and syntax converter."
-;;   (interactive)
-;;   (unless (executable-find "pandoc") (user-error "Install pandoc first"))
-;;   (let* ((coding-system-for-read 'utf-8)
-;;           (coding-system-for-write 'utf-8)
-;;           ;; Pull the modern Wayland PGTK or GUI clipboard contents directly via Emacs API
-;;           (markdown-text (gui-get-selection 'CLIPBOARD 'TEXT))
-;;           (start (point)))
-;;     (if (not markdown-text)
-;;       (message "Clipboard is empty.")
-;;       ;; 1. Use an isolated temp buffer to map the markdown safely through pandoc's binary
-;;       (let ((org-text (with-temp-buffer
-;;                         (insert markdown-text)
-;;                         (call-process-region (point-min) (point-max) "pandoc" t t nil
-;;                           "-f" "markdown" "-t" "org")
-;;                         (buffer-string))))
-;;         (insert org-text)
-;;         (let ((end (point)))
-;;           (save-excursion
-;;             (goto-char start)
-;;             ;; 2. Hunt down raw grid or block tables and convert them to vanilla Org grids
-;;             (while (re-search-forward "^[ \t]*\\(|\\|\\+\\)-" end t)
-;;               (let ((table-start (line-beginning-position)))
-;;                 (forward-line 1)
-;;                 (while (and (< (point) end) (looking-at "^[ \t]*\\(|\\|\\+\\|\\|\\)"))
-;;                   (forward-line 1))
-;;                 (org-table-convert-region table-start (point))
-;;                 (org-table-align))))
-;;           (message "Successfully pasted clean Org data!")))))
-
+;; (use-package book-mode :vc (:url "https://github.com/rougier/book-mode.git"))
 
 ;;;;;;;;;;;;;;;;
 ;; cheatsheet ;;
@@ -236,5 +157,6 @@ local `hl-line-mode' is redundant."
 ;; M-up/down move heading
 ;; M-left/right promote/demote heading
 
-;; dl-org.el ends here
 (provide 'dl-org)
+;; dl-org.el ends here
+;;; dl-org.el ends here
