@@ -1,0 +1,42 @@
+memory_uid = "mem_01a1c2fcb6b67d02829638e0e30fd7dc"
+memory_key = "mem.fact.emacs.daemon-session-lifetime"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "Emacs daemon lifetime is tied to the Wayland session (PGTK, EWM)"
+summary = "PGTK Emacs exits when its compositor goes; the daemon is bound to graphical-session.target; EWM shares one systemd user manager and one server name with it"
+created = "2026-11-10"
+updated = "2026-11-10"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["emacs", "daemon", "ewm", "systemd"]
+workspace = "default"
+repo = "github.com/davidlee/emacs-config"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "commit"
+commit = "90d10181f683c7e6280bfe2422746fbf234c4709"
+tree = "a80e2aa777c3dd7b6a65e14daf349975085257f1"
+ref_name = "refs/heads/main"
+checkout_state_id = ""
+base_commit = "90d10181f683c7e6280bfe2422746fbf234c4709"
+verified_sha = ""
+normalizer = ""
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "high"
+weight = 0
+
