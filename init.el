@@ -8,6 +8,7 @@
 (require 'dl-notes-paths)
 (require 'dl-backup)
 (require 'dl-persist)
+(require 'dl-session)
 (require 'dl-keymap)
 (require 'dl-policy-lint)
 (require 'dl-theme)

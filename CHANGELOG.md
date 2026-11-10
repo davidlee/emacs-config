@@ -2,6 +2,15 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-11-10 — daemon: buffers come back after a restart
+
+New file `editing/dl-session.el` turns on `desktop-save-mode` (IMP-032). When the daemon dies
+with its compositor and the session starts a new one, file buffers are restored: the first 5 at
+start, the rest when Emacs is idle. Frames are not restored. The desktop saves after 30 s idle,
+since a crash runs no exit hooks, and a lock left by a crashed daemon doesn't block the restore.
+A daemon with no frame skips the save, because nothing could answer desktop's overwrite
+question. State lives in `.emacs.desktop` (gitignored); `M-x desktop-clear` empties it.
+
 ## 2026-11-10 — foxmacs: control Firefox from Emacs under EWM
 
 foxmacs (github.com/adisbladis/foxmacs) joins the package list, and Firefox is now Developer

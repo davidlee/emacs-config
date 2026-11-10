@@ -25,3 +25,16 @@ sessions already survive via zmx.
 - Lazy restore (`desktop-restore-eager`) to keep daemon start fast.
 - Save cadence: on a timer (`desktop-auto-save-timeout`), since a crash gives
   no `kill-emacs-hook`.
+
+## Outcome (2026-11-10)
+
+`editing/dl-session.el`: `desktop-save-mode`, file buffers only
+(`desktop-restore-frames` nil), 5 eager then lazy, saved after 30 s idle.
+`desktop-load-locked-desktop` is `check-pid`, so a crashed daemon's stale
+lock doesn't block the restore. Verified by SIGKILLing a throwaway daemon
+and restoring in a second one.
+
+A frameless daemon skips `desktop-save`. Its conflict question ("Desktop
+file is more recent than the one loaded…") goes to the initial terminal,
+whose stdin is `/dev/null`, and hung the live daemon until restart.
+Tests: `lisp/test/dl-session-test.el`.
