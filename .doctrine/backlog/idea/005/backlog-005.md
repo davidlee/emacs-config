@@ -24,6 +24,32 @@ enforces signing. Options:
 - Firefox built with signing off (no binary cache; hours of build).
 - Self-sign as an unlisted AMO add-on (account; uploads the extension).
 
+## Progress (2026-11-10)
+
+Decided (user): Firefox Developer Edition via home-manager, not the
+NixOS-level `programs.firefox`; tabs-to-windows and its window prefs on in
+every session; keys as a prefix in `ewm-mode-map`. EWM's leftover systemd
+env stays unfixed for now (manual workaround in
+mem.fact.emacs.daemon-session-lifetime).
+
+Wired, uncommitted, built (`just home-build` green; system dry-run evaluates):
+- flakes `foxmacs` input (root + `flakes/emacs`, root `follows`, one pin).
+- `flakes/emacs/emacs.nix`: `(foxmacs.lib.emacsOverlay epkgs epkgs).foxmacs`.
+- `features/web.nix`: `firefox-devedition.override { extraPrefs }`
+  (`xpinstall.signatures.required=false`, open-in-window prefs);
+  `nativeMessagingHosts = [foxmacs-host]`; `globalExtensions` foxmacs +
+  tabs-to-windows (force-installed by policy; `passthru.addonId` added).
+- `features/desktop/core/gui.nix`: `firefox-devedition` in 1Password's
+  allowed browsers (the binary is no longer named `firefox`).
+- `apps/dl-foxmacs.el`: `:after ewm`, `foxmacs-mode`, `s-b` o/h/s/j/r/e/c/u
+  in `ewm-mode-map` (s-b is free in EWM's defaults).
+
+Not done: `home-manager switch` + `nixos-rebuild switch`; check in an EWM
+session; profile choice (below).
+
+Profile: Dev Edition starts its own `dev-edition-default` profile, not
+`ez06zp0k.default` (the main one, which malebolge reads bookmarks from).
+
 ## Open
 
 - Which Firefox route.

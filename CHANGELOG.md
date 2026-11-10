@@ -2,6 +2,18 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-11-10 — foxmacs: control Firefox from Emacs under EWM
+
+foxmacs (github.com/adisbladis/foxmacs) joins the package list, and Firefox is now Developer
+Edition (`~/flakes/features/web.nix`), the only branded build that installs foxmacs' unsigned
+extension. Home-manager installs the extension, its native messaging host and the
+tabs-to-windows extension; links open in new windows rather than tabs, in every session. New
+file `apps/dl-foxmacs.el`, loaded only in an EWM session: `foxmacs-mode` plus keys under `s-b`
+in `ewm-mode-map` — `o` `foxmacs-open-url`, `h` `foxmacs-hint`, `s` `foxmacs-search-page`,
+`j` `foxmacs-jump-to-heading`, `r` `foxmacs-read`, `e` `foxmacs-edit`, `c`
+`foxmacs-org-capture`, `u` `foxmacs-copy-url`. Most foxmacs commands refuse outside a Firefox
+buffer.
+
 ## 2026-11-10 — EWM: Emacs as the compositor, a second session
 
 EWM (Emacs Wayland Manager, codeberg.org/ezemtsov/ewm) joins the package list in
