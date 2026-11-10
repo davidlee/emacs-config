@@ -5,7 +5,7 @@
 ;; can derive their paths from these constants instead of re-expanding
 ;; "~/notes" everywhere.
 ;;
-;; Layout — see NOTES.md for the architecture:
+;; Layout — see docs/emacs/notes.md for the architecture:
 ;;
 ;;   ~/notes/                  personal corpus root
 ;;     {inbox.org,intake,journal,weekly,projects,areas,sources,slips,

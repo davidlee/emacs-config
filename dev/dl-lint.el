@@ -30,24 +30,17 @@
       (insert-file-contents file)
       (line-number-at-pos (min position (point-max))))))
 
-(defconst dl-lint--root
-  (file-name-directory
-   (directory-file-name (file-name-directory (or load-file-name buffer-file-name))))
-  "The config's root directory: this file lives in its dev/.")
-
 (defconst dl-lint-excluded
   '(;; Compiling init.el loads the whole config: processes, gpg prompts,
     ;; network.  Each module it requires is checked on its own.
     "\\`init\\.el\\'"
     ;; Generated, and managed outside this repo.
-    "\\`themes/noctalia-theme\\.el\\'"
-    ;; Retired code and an archived spike: never loaded.
-    "\\`compost/" "\\`\\.spec-driver/")
+    "\\`themes/noctalia-theme\\.el\\'")
   "Regexps matching files, relative to the config root, left unchecked.")
 
 (defun dl-lint-excluded-p (file)
   "Non-nil when FILE is one the byte-compile check leaves alone."
-  (let ((relative (file-relative-name (expand-file-name file) dl-lint--root)))
+  (let ((relative (file-relative-name (expand-file-name file) dl-dirs-root)))
     (and (not (string-prefix-p "../" relative))
          (seq-some (lambda (regexp) (string-match-p regexp relative))
                    dl-lint-excluded))))

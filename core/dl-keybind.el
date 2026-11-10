@@ -13,7 +13,7 @@
          ("C-M-<right>" . windmove-right)))
 
 ;; Keys without an owning `use-package' live here, as `bind-keys'
-;; (KEYS.md R2), so `describe-personal-keybindings' lists them.
+;; (docs/emacs/keys.md R2), so `describe-personal-keybindings' lists them.
 
 ;; Tab chords: C-PgUp/PgDn walk tab-bar tabs (layouts), as in ghostty;
 ;; M-PgUp/PgDn and s-{ / s-} do too.  C-M-PgUp/PgDn walk this window's
@@ -60,7 +60,7 @@
  ("C-S-g"   . exit-minibuffer)
  ("C-s-<return>" . eshell-other-window)) ; `dl-term.el'
 
-;; Org entry points: the reserved `C-c <letter>' singletons (KEYS.md).
+;; Org entry points: the reserved `C-c <letter>' singletons (docs/emacs/keys.md).
 ;; USE KEYMAP FOR THESE FFS
 ;; (bind-keys
 ;;  ("C-c a" . org-agenda)

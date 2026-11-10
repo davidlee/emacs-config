@@ -29,3 +29,20 @@ Keep: `emacs.nix` is a symlink to `~/flakes/emacs/emacs.nix`, not a copy.
 `just check` green; `rg` finds no reference to a removed path.
 
 Raised in a file-structure review (2026-11-10). Sequence: after CHR-010.
+
+## Resolution (2026-11-11)
+
+Done from this card, no slice. User confirmed: delete `agents/`; move
+`docs/memory.brief.md` to the satan repo (`docs/memory/brief.md`, left
+uncommitted there); docs layout below.
+
+- Deleted `.spec-driver/`, `compost/`, `agents/`, `.pi/extensions/spec-driver-*.ts`,
+  `docs/REVIEW.md`; dropped their lint exclusions and `.gitignore` lines.
+- `tools/elisp-locate-paren-error.el` → `bin/` beside its wrapper.
+- `docs/emacs/` is the one home for tracked config docs (kept because closed
+  slices SL-015..017 cite it); top-level docs moved in with lower-case names.
+- `AGENTS.md` dead links → POL-001 and the satan repo (CHR-005).
+- `Justfile` supabase recipes were already gone.
+
+Gate: lint clean; tests 591/594, one failure tolerated by the user:
+`dl-gptel-mcp/org-tools-reach-gptel-and-writes-confirm` (see new issue).

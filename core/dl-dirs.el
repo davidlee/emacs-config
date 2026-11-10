@@ -12,9 +12,19 @@
 ;;   dev/dl-test.el         directories scanned for ERT files
 ;;   Justfile              `check' and `wc'
 ;;
-;; Directories are relative to `user-emacs-directory'.
+;; Tracked directories (config, tests) resolve against `dl-dirs-root',
+;; the checkout holding this file; installed ones (checkouts, elpa/)
+;; against `user-emacs-directory'.  Live, the two are the same; in a
+;; worktree, a batch tool reads the worktree's sources and the live
+;; config's installed packages (elpa/ is untracked, so a worktree has none).
 
 ;;; Code:
+
+(defconst dl-dirs-root
+  (file-name-directory
+   (directory-file-name
+    (file-name-directory (or load-file-name buffer-file-name))))
+  "The checkout holding this file: this file lives in its core/.")
 
 (defconst dl-dirs-config
   '("core" "editing" "completion" "apps" "org" "dev" "lang")
@@ -22,18 +32,19 @@
 
 (defconst dl-dirs-checkouts
   '("checkout" "elpa/org-timeblock" "~/dev/satan/satan")
-  "External checkout Lisp directories.")
+  "Installed checkout Lisp directories, under `user-emacs-directory'.")
 
 (defconst dl-dirs-tests '("test")
   "Directories holding ERT files and their helpers.")
 
-(defun dl-dirs-expand (dirs)
-  "DIRS as absolute paths under `user-emacs-directory'."
-  (mapcar (lambda (dir) (expand-file-name dir user-emacs-directory)) dirs))
+(defun dl-dirs-expand (dirs &optional root)
+  "DIRS as absolute paths under ROOT, by default `dl-dirs-root'."
+  (mapcar (lambda (dir) (expand-file-name dir (or root dl-dirs-root))) dirs))
 
 (defun dl-dirs-load-path ()
   "Absolute config and checkout directories, in `load-path' order."
-  (dl-dirs-expand (append dl-dirs-config dl-dirs-checkouts)))
+  (append (dl-dirs-expand dl-dirs-config)
+          (dl-dirs-expand dl-dirs-checkouts user-emacs-directory)))
 
 (defun dl-dirs-batch-load-path ()
   "Put the config, checkout and test directories on `load-path'.

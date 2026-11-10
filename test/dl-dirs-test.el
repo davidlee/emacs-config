@@ -8,12 +8,12 @@
 (ert-deftest dl-dirs/every-listed-directory-exists ()
   "A stale entry (a directory since moved or removed) fails here."
   (dolist (dir (append dl-dirs-config dl-dirs-tests))
-    (should (file-directory-p (expand-file-name dir user-emacs-directory)))))
+    (should (file-directory-p (expand-file-name dir dl-dirs-root)))))
 
 (ert-deftest dl-dirs/every-config-source-directory-is-listed ()
   "A top-level directory holding config `dl-*.el' sources is in `dl-dirs-config'.
 Catches a new domain directory that was never added to the list."
-  (let ((root (expand-file-name user-emacs-directory)))
+  (let ((root dl-dirs-root))
     (dolist (dir (directory-files root nil "\\`[^.]"))
       (when (and (file-directory-p (expand-file-name dir root))
                  (not (member dir (append dl-dirs-tests '("elpa" "eln-cache"))))
@@ -21,18 +21,28 @@ Catches a new domain directory that was never added to the list."
         (should (member dir dl-dirs-config))))))
 
 (ert-deftest dl-dirs/load-path-is-config-then-checkouts-absolute ()
+  "Config dirs resolve against this checkout, installed checkouts against
+`user-emacs-directory': a worktree lints its own sources with the live
+config's packages."
   (let ((user-emacs-directory "/cfg/"))
     (should (equal (dl-dirs-load-path)
-                   (mapcar (lambda (dir) (expand-file-name dir "/cfg/"))
-                           (append dl-dirs-config dl-dirs-checkouts))))))
+                   (append (mapcar (lambda (dir) (expand-file-name dir dl-dirs-root))
+                                   dl-dirs-config)
+                           (mapcar (lambda (dir) (expand-file-name dir "/cfg/"))
+                                   dl-dirs-checkouts))))))
+
+(ert-deftest dl-dirs/root-is-the-checkout-holding-this-library ()
+  "The root follows where dl-dirs was loaded from, not `user-emacs-directory'."
+  (should (file-equal-p (expand-file-name "core/dl-dirs.el" dl-dirs-root)
+                        (locate-library "dl-dirs.el"))))
 
 (ert-deftest dl-dirs/batch-load-path-adds-tests ()
   (let ((load-path nil)
         (user-emacs-directory "/cfg/"))
     (dl-dirs-batch-load-path)
     (should (equal load-path
-                   (mapcar (lambda (dir) (expand-file-name dir "/cfg/"))
-                           (append dl-dirs-config dl-dirs-checkouts
+                   (append (dl-dirs-load-path)
+                           (mapcar (lambda (dir) (expand-file-name dir dl-dirs-root))
                                    dl-dirs-tests))))))
 
 (ert-deftest dl-dirs/load-path-lets-a-bare-emacs-require-config-libs ()

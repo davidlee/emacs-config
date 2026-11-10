@@ -105,7 +105,7 @@ so the unit starts and stops with the session and inherits the compositor's
 | Add new source directory | add it to `dl-dirs-config` in `core/dl-dirs.el` (load path, lint, tests all read it) |
 | Edit `emacs.nix` | `home-manager switch` |
 | Set `:ensure nil` + want package available | Add to `extraEmacsPackages` in `emacs.nix` |
-| Adding stuff that has nothing to do with a text editor | [read](./docs/satan/refactor/extraction-policy.md)| 
+| Adding stuff that has nothing to do with a text editor | read POL-001 (`doctrine show POL-001`) |
 
 ## six traps 
 
@@ -124,7 +124,8 @@ Full detail: [docs/emacs/traps.md](docs/emacs/traps.md).
 - [docs/emacs/naming.md](docs/emacs/naming.md) — `dl-MODULE` / `my/` / `--private` conventions.
 - [docs/emacs/secrets.md](docs/emacs/secrets.md) — LLM gateway key files, 1Password env-var flow, `dl-secret.el` API.
 - [docs/emacs/debug-commands.md](docs/emacs/debug-commands.md) — rebuild, inspect, cache reset.
-- [docs/satan/INDEX.md](docs/satan/INDEX.md) — SATAN agent runtime (governance, memory, patch-agent, …).
+- `docs/emacs/` also holds `keys.md` (key policy), `notes.md` (notes system), `package-manager.md`, `file-manager.md`, `keyboard-layout.md`.
+- SATAN docs live in its own repo: `~/dev/satan/docs/INDEX.md`.
 
 ## What we know about this user's setup
 

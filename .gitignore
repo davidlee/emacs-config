@@ -11,12 +11,8 @@ oauth2.*
 .mc-lists.el
 /url
 /eca
-/.spec-driver/run/events.jsonl
-/supabase/*
 /tldr
 *.sqlite
-
-.spec-driver
 
 .claude
 .pi
@@ -75,7 +71,6 @@ oauth2-auto.plist
 /url/cache
 /eshell
 /bookmarks
-.spec-driver/run/
 .pi/APPEND_SYSTEM.md
 .doctrine/state/
 .doctrine/slice/*/phases

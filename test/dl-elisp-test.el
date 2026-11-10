@@ -10,7 +10,7 @@
 (defun dl-elisp-test--backends-visiting (file)
   "Flymake backends of an `emacs-lisp-mode' buffer visiting FILE."
   (with-temp-buffer
-    (setq buffer-file-name (expand-file-name file dl-lint--root))
+    (setq buffer-file-name (expand-file-name file dl-dirs-root))
     (delay-mode-hooks (emacs-lisp-mode))
     (run-mode-hooks 'emacs-lisp-mode-hook)
     (prog1 flymake-diagnostic-functions

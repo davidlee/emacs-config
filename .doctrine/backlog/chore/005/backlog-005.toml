@@ -5,10 +5,10 @@ id = 5
 slug = "fix-dead-agentsmd-link-to-docssatanrefactorextraction-policymd"
 title = "Fix dead AGENTS.md link to docs/satan/refactor/extraction-policy.md"
 kind = "chore"
-status = "open"
-resolution = ""                 # seeded empty so `backlog edit` sets it in place
+status = "resolved"
+resolution = "done"
 created = "2026-10-17"
-updated = "2026-10-17"
+updated = "2026-11-10"
 tags = []
 
 # outbound-only. Cross-kind structural edges (e.g. references with a role

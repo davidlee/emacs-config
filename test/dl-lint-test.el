@@ -51,10 +51,9 @@
                  "x.el:1: error: first second")))
 
 (ert-deftest dl-lint/excludes-files-it-cannot-or-should-not-check ()
-  "init.el, generated themes and retired code are not checked; modules are."
-  (let ((root dl-lint--root))
-    (dolist (file '("init.el" "themes/noctalia-theme.el"
-                    "compost/denote-roam.el" ".spec-driver/x/y.el"))
+  "init.el and generated themes are not checked; modules are."
+  (let ((root dl-dirs-root))
+    (dolist (file '("init.el" "themes/noctalia-theme.el"))
       (should (dl-lint-excluded-p (expand-file-name file root))))
     (dolist (file '("core/dl-path.el" "early-init.el" "test/init.el"))
       (should-not (dl-lint-excluded-p (expand-file-name file root))))))

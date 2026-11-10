@@ -1,6 +1,6 @@
 ;;; dl-policy-lint.el --- Key policy lints -*- lexical-binding: t; -*-
 
-;; Enforces the key policy codified in `KEYS.md'.  Three lints:
+;; Enforces the key policy codified in docs/emacs/keys.md.  Three lints:
 ;;
 ;; - L1 (live keymap) walks `mode-specific-map' (the global `C-c'
 ;;   prefix) and reports any single-letter binding whose value is
@@ -53,7 +53,7 @@
   '((?a . org-agenda)
      (?c . org-capture)
      (?l . org-store-link))
-  "Per `KEYS.md' Policy clause 6: single-letter `C-c <letter>' commands
+  "Per docs/emacs/keys.md Policy clause 6: single-letter `C-c <letter>' commands
 allowed to bind directly to a command instead of a `my-*-map' family.")
 
 (defun my-policy-lint--letter-p (event)
@@ -117,7 +117,7 @@ Pops `*Policy Lint*' when there are violations; otherwise echoes
                         (plist-get v :key)
                         (my-policy-lint--format-binding (plist-get v :binding))
                         (plist-get v :reason))))
-            (insert "\nSee KEYS.md `Policy'.  Lift offending bindings into\n"
+            (insert "\nSee docs/emacs/keys.md `Policy'.  Lift offending bindings into\n"
               "`core/dl-keymap.el' under the appropriate `my-*-map' family,\n"
               "or disable the foreign package's global key install.\n")
             (goto-char (point-min)))

@@ -2,6 +2,21 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-11-11 — repo root and docs tidied; lint works in a worktree
+
+Layout and docs only; no command or key changes (CHR-014, CHR-005). Deleted the retired
+`.spec-driver/` spike, `compost/`, the unused `agents/` definitions, pi's two spec-driver
+extensions and `docs/REVIEW.md`. The tracked docs now all live in `docs/emacs/` with
+lower-case names: `keys.md`, `notes.md`, `package-manager.md`, `file-manager.md`,
+`keyboard-layout.md`, `eaf-bug-reports.md`. The SATAN memory brief moved to the satan repo
+(`docs/memory/brief.md`). The paren checker's `.el` now sits beside its wrapper:
+`bin/elisp-locate-paren-error.el`. `AGENTS.md` links to POL-001 and the satan repo instead
+of dead `docs/satan/` paths.
+
+`core/dl-dirs.el` resolves tracked directories against the checkout that holds it
+(`dl-dirs-root`), so `just lint` in a git worktree checks the worktree's sources
+(ISS-021). Installed packages still come from the live config's `elpa/`.
+
 ## 2026-11-11 — lisp/ is gone; every test lives in test/
 
 Layout only; no command or key changes (CHR-010). The files in `lisp/` moved to the

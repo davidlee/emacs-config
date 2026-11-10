@@ -1,1 +1,0 @@
-../ADR-002-satan_arrival_via_metabolic_stochastic_gating.md
