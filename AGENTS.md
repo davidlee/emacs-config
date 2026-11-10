@@ -88,8 +88,10 @@ packages, and `just guix-packages` fetches the rest into `elpa/`
 `package-archives` stays nil at runtime there too. A package added to
 `emacs.nix` that Guix lacks also needs adding to `dl-guix-archive-packages`.
 
-The user's systemd `services.emacs` unit is **disabled** — the server is started
-from `init.el`.
+The daemon is home-manager's `services.emacs` unit (`~/flakes/features/editor/emacs.nix`),
+bound to `graphical-session.target`: PGTK Emacs exits when its compositor goes,
+so the unit starts and stops with the session and inherits the compositor's
+`WAYLAND_DISPLAY` / `UMBRIEL_SOCKET`. `init.el` does not call `server-start`.
 
 ## When a change requires what
 

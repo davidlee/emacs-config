@@ -2,6 +2,15 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-11-10 — daemon: starts and stops with the graphical session
+
+The Emacs daemon (home-manager `services.emacs`, in `~/flakes/features/editor/emacs.nix`) is
+now bound to `graphical-session.target` instead of starting at login. PGTK Emacs exits when its
+compositor goes, and a daemon started before umbriel had no `WAYLAND_DISPLAY` or
+`UMBRIEL_SOCKET`, so `M-x my/umbriel` showed `no-path`. The daemon now starts once umbriel has
+published both, and is not restarted while the session is down. It still does not survive an
+umbriel restart or logout; restoring buffers afterwards is IMP-032.
+
 ## 2026-11-09 — zmx: Org links to sessions
 
 `[[zmx:hris.2]]` opens zmx session `hris.2`: its terminal, or a new one reattached to it.
