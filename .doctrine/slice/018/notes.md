@@ -169,6 +169,14 @@ perl -pi -e 's/(?<![:\w-])((?:DEC|IMP|ISS|IDE|SL|RV)-\d{3})/emacs-config:$1/g' \
 - Host `just check` (exit 0): `Ran 600 tests, 598 results as expected, 0 unexpected, 2 skipped`.
 - **Config test baseline for PHASE-03 VA-3 (design sec-5): total 600, passed 598, skipped 2** (595 at start + 5 dl-checkout tests; skipped: dl-nostr/nostr-reads-key-without-a-key-file, dl-nostr/timeline-keys-beat-meow-motion).
 
+## PHASE-03 evidence
+
+- Commit `09f7962` (config). TDD: pi wrote `test/dl-umbriel-keys-test.el` + `test/dl-faces-test.el` edits first (run-20261110T210324465Z-29); host red with the checkout on load-path: keys 4 unexpected (global-map, smoke, soft-load, load-order), faces 2 unexpected. Pi did the cutover (run-20261110T210503561Z-31); orchestrator fixed declare-function alignment and wrapped the `dl-dirs-checkouts` line.
+- Negative controls (host, scratch copies): smoke test without the `byte-compile-current-file` defvar fails (5 `.elc` written into the checkout; removed after); integration file without the `locate-library` guard fails the soft-load test. No `.elc` in `~/dev/umbriel.el` after `just check`.
+- VA-1: host `just check` exit 0: `Ran 362 tests, 360 results as expected, 0 unexpected, 2 skipped` (same 2 dl-nostr skips); lint clean. All 7 `dl-umbriel-keys/` tests passed (none skipped).
+- VA-2: sweep hits only `docs/emacs/umbriel.md` (removed in PHASE-04, whose VA-1 covers it).
+- VA-3: config 600 - 245 umbriel suites + 7 keys suite (5 moved + smoke + soft-load) = 362 = observed. Package 240 + config 362 = 602 = baseline 600 + 2 new tests. Skipped: 2 before, 2 after.
+
 ## Autonomy log
 - Re-probe at `~/dev/umbriel` (before the rename): pi `write` form writable, has git/just/rg, **no emacs** (no project flake yet). Until PHASE-01's flake exists and its form is approved (`quotient allow`, a user act), the package's lint/tests run on the host. If pi is refused `form-unapproved` there, run the step on the host; do not wait.
 - seat · DEC-033→DEC-038 path/remote rewrite across design.md, plan.toml, plan.md, slice-018.md · user ruling mid-preflight · decided (audit: confirm no stale `~/dev/umbriel` path)
@@ -179,3 +187,7 @@ perl -pi -e 's/(?<![:\w-])((?:DEC|IMP|ISS|IDE|SL|RV)-\d{3})/emacs-config:$1/g' \
 - PHASE-01 · docs/umbriel.md: doctrine frontmatter, `doctrine show` and `docs/emacs/traps.md` refs dropped; "Global keys" says the package binds none and names the author's config · config-only references (sec-3) · decided
 - PHASE-01 · flake.lock hand-built from SATAN's lock nodes instead of `nix flake lock` · avoids network fetch; same pins (EX-8) · decided
 - PHASE-01 · import commit amended once (local, unpushed) to name the right source repo (emacs-config, not nix-config) · factual fix · decided
+- PHASE-03 · run commits the cutover (and PHASE-04) itself once host `just check` is green, overriding plan EX-9's "user commits by hand" · user ruling in this charter · decided
+- PHASE-03 · VA-2 sweep evaluated with docs/emacs/umbriel.md as the one expected hit · the file is removed in PHASE-04 (EX-1), whose VA-1 sweep covers it · decided
+- PHASE-03 · subprocess compile guard set with a top-level `defvar byte-compile-current-file` instead of a `let` · `--eval` is lexically bound, so a `let` is invisible to `bound-and-true-p`; same intent as EX-8 · decided
+- PHASE-03 · deletions staged with `git rm --cached` before `just check` · bin/elisp-lint lints `git ls-files`, so unstaged deletions fail lint · decided
