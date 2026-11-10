@@ -1,0 +1,46 @@
+memory_uid = "mem_01a1c33303937343bc93dc02a9023a57"
+memory_key = "mem.fact.emacs.firefox-devedition-wiring"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "Firefox Developer Edition wiring: profile name and command aliases"
+summary = "Dev Edition opens the profile named dev-edition-default; profiles.ini (unmanaged) maps that name to the main profile; firefox/firefox.desktop are HM aliases"
+created = "2026-11-10"
+updated = "2026-11-10"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["firefox", "foxmacs", "ewm"]
+workspace = "default"
+repo = "github.com/davidlee/emacs-config"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "commit"
+commit = "afde61e27ddfdbb58a99af9c0d231086720d539f"
+tree = "b04aba6a04776e1a57cde84fa9e18aaa74b34463"
+ref_name = "refs/heads/main"
+checkout_state_id = ""
+base_commit = "afde61e27ddfdbb58a99af9c0d231086720d539f"
+verified_sha = ""
+normalizer = ""
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0
+
+[[source]]
+kind = "commit"
+ref = "6b14ac1d"
+
