@@ -12,6 +12,7 @@
 ;; - Restore is lazy past the first few buffers, to keep daemon start fast.
 ;; - A frameless daemon skips the save: desktop's conflict question would
 ;;   go to the initial terminal (stdin /dev/null) and hang the daemon.
+;; - Agenda files are left out: org-agenda reopens them anyway.
 ;; - Never in batch: test runs would overwrite the real desktop on exit.
 ;;
 ;; File: .emacs.desktop in `user-emacs-directory' (gitignored).
@@ -23,6 +24,15 @@
 Nothing can answer a prompt there."
   (and (daemonp) (seq-every-p #'frame-initial-p (frame-list))))
 
+(defun dl-session--save-buffer-p (filename &rest _)
+  "Return non-nil unless FILENAME is an org agenda file.
+For `desktop-buffers-not-to-save-function', which saves on non-nil.
+Membership, not `org-agenda-file-p': that resolves truenames, about
+5 ms a buffer on every save."
+  (not (and filename
+            (fboundp 'org-agenda-files)
+            (member filename (org-agenda-files t)))))
+
 (use-package desktop
   :ensure nil
   :demand t
@@ -33,6 +43,8 @@ Nothing can answer a prompt there."
   (desktop-load-locked-desktop 'check-pid)
   (desktop-save t)
   :config
+  ;; A defvar, not a defcustom: `:custom' would not set it.
+  (setq desktop-buffers-not-to-save-function #'dl-session--save-buffer-p)
   (advice-add 'desktop-save :before-until #'dl-session--frameless-daemon-p)
   (unless noninteractive
     (desktop-save-mode 1)))

@@ -36,5 +36,14 @@ Its question would go to the initial terminal, whose stdin is
   "With a frame to answer in, a conflicting save still asks."
   (should (dl-session-test--save-conflicting nil)))
 
+(ert-deftest dl-session/agenda-files-not-saved ()
+  "Agenda files stay out of the desktop: org-agenda reopens them anyway."
+  (require 'org)
+  (let ((org-agenda-files '("/tmp/dl-session-agenda.org")))
+    (should-not (desktop-save-buffer-p
+                 "/tmp/dl-session-agenda.org" "dl-session-agenda.org" 'org-mode))
+    (should (desktop-save-buffer-p
+             "/tmp/dl-session-other.org" "dl-session-other.org" 'org-mode))))
+
 (provide 'dl-session-test)
 ;;; dl-session-test.el ends here

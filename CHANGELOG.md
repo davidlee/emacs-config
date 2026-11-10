@@ -9,7 +9,7 @@ with its compositor and the session starts a new one, file buffers are restored:
 start, the rest when Emacs is idle. Frames are not restored. The desktop saves after 30 s idle,
 since a crash runs no exit hooks, and a lock left by a crashed daemon doesn't block the restore.
 A daemon with no frame skips the save, because nothing could answer desktop's overwrite
-question. State lives in `.emacs.desktop` (gitignored); `M-x desktop-clear` empties it.
+question. Agenda files are left out of the desktop: org-agenda reopens them. State lives in `.emacs.desktop` (gitignored); `M-x desktop-clear` empties it.
 
 ## 2026-11-10 — foxmacs: control Firefox from Emacs under EWM
 
