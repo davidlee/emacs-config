@@ -2,6 +2,17 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-11-10 — Emacs 32 (master); excali-mode for Excalidraw drawings
+
+Emacs is now master (32.0.50, emacs-overlay `emacs-git-pgtk`) instead of the latest release
+(31.1); the darwin macport is unchanged. Needed for the `canvas` image type that excali-mode
+(github.com/yibie/excali-mode) draws into. excali-mode joins the package list on Linux from
+the `davidlee/excali-mode` fork's `nix-flake` branch (upstream PR yibie/excali-mode#3), which
+builds its Cairo/Pango module against this Emacs. New file `apps/dl-excali.el`, active only
+when the canvas image type is available: `excali-open` (a `.excalidraw`, or a PNG/SVG with an
+embedded scene), `excali-new`, and `excali-dsl-mode` for `.excalidsl` files (`C-c C-c`
+previews). Excalidraw's own fonts are not packaged; text uses system fonts.
+
 ## 2026-11-10 — daemon: buffers come back after a restart
 
 New file `editing/dl-session.el` turns on `desktop-save-mode` (IMP-032). When the daemon dies

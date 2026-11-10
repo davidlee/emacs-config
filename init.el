@@ -102,6 +102,7 @@
 ;; (require 'dl-eaf)
 (require 'dl-emskin)
 (require 'dl-foxmacs)
+(require 'dl-excali)
 (require 'dl-agent-shell)
 (require 'dl-smudge)
 (require 'dl-secret)
