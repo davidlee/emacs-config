@@ -133,6 +133,49 @@ Seat: /super-orchestrator, started 2026-11-11. Main worktree, no dispatch.
 **Other writers:** the user may edit `.doctrine/` and unrelated files.
 Commit only a phase's own paths.
 
+## PHASE-01 evidence
+
+Package repo `~/dev/umbriel.el` (outside this checkout; VA rows). Built by a Sonnet capsule-worker; verified by the orchestrator on the host.
+
+- VA-1: `cd ~/dev/umbriel.el && nix develop -c just check` exit 0: `Ran 240 tests, 240 results as expected, 0 unexpected` · `umbriel-test-runner: 5 suites loaded` · `PASS 240/240 passed (0 skipped)`. **Package total 240** (245 - 5 keys tests). Zero-loaded guard: scratch copy without `umbriel/test/*-test.el` prints `umbriel-test-runner: 0 suites loaded`, `FAIL no tests loaded`, exit 1. Lint negative controls (scratch copies): an added byte-compile warning and an unbalanced paren each make `just lint` exit 1. No `*.elc` in the tree after `just check`.
+- VA-2: `rg 'dl-umbriel|my/umbriel'`, `rg --pcre2 '\.doctrine|docs/emacs|(?<![:\w])(DEC|IMP|ISS|IDE|SL)-\d{3}'`, `rg '\bdl-|\bmy[-/]'` over the repo: all empty.
+- VA-3: `lm-header`: `Author: David Lee <dav@davlee.com>`, `Version: 0.1.0`, `Package-Requires: ((emacs "30.1") (magit-section "4.0"))`. `rg -i inlight`: empty. `git log --format='%ae %ce'`: `dav@davlee.com dav@davlee.com` (import commit, see below).
+- VA-4: config `git status --short` lists only `.doctrine/` paths during the phase.
+- Import commit `c315b3b` (`~/dev/umbriel.el`, branch main, origin set, not pushed).
+- flake.lock hand-built from `~/dev/satan/flake.lock` nodes (same pins); nothing fetched.
+- EX-3 rename script (`.doctrine/state/slice/018/phase-01-rename.sh`):
+
+```bash
+#!/usr/bin/env bash
+# SL-018 PHASE-01: ordered namespace rewrite over the copied package files.
+# Usage: phase-01-rename.sh DIR   (rewrites DIR/umbriel/*.el, DIR/umbriel/test/*.el, DIR/docs/umbriel.md in place)
+set -euo pipefail
+dir=${1:?usage: phase-01-rename.sh PKG_REPO_DIR}
+perl -pi -e '
+  s/\bdl-umbriel-refresh\b/umbriel-refresh/g;          # (a) library refresh keeps the name
+  s/\bmy\/umbriel-refresh\b/umbriel-buffer-refresh/g;  # (a) command: collision rule
+  s/\bmy\/umbriel/umbriel/g;                           # (b) other my/umbriel[-X]
+  s/\bdl-umbriel/umbriel/g;                            # (c) other dl-umbriel[-X]
+' "$dir"/umbriel/*.el "$dir"/umbriel/test/*.el "$dir"/docs/umbriel.md
+# (d) bare config record ids -> foreign form (not already qualified)
+perl -pi -e 's/(?<![:\w-])((?:DEC|IMP|ISS|IDE|SL|RV)-\d{3})/emacs-config:$1/g' \
+  "$dir"/umbriel/*.el "$dir"/umbriel/test/*.el "$dir"/docs/umbriel.md
+```
+
+## PHASE-02 evidence
+
+- TDD: pi wrote `test/dl-checkout-test.el` first (run-20261110T160728303Z-25); red = `Cannot open load file ... dl-checkout`; a no-op stub fails the 3 compile tests. Pi wrote the helper (run-20261110T160837702Z-27). Guard negative control (helper without the `byte-compile-current-file` guard) fails `dl-checkout/does-nothing-while-compiling`.
+- Targeted: dl-checkout-test 5/5, dl-satan-test 2/2; `bin/elisp-lint` on the 3 files: no output, exit 0.
+- Host `just check` (exit 0): `Ran 600 tests, 598 results as expected, 0 unexpected, 2 skipped`.
+- **Config test baseline for PHASE-03 VA-3 (design sec-5): total 600, passed 598, skipped 2** (595 at start + 5 dl-checkout tests; skipped: dl-nostr/nostr-reads-key-without-a-key-file, dl-nostr/timeline-keys-beat-meow-motion).
+
 ## Autonomy log
 - Re-probe at `~/dev/umbriel` (before the rename): pi `write` form writable, has git/just/rg, **no emacs** (no project flake yet). Until PHASE-01's flake exists and its form is approved (`quotient allow`, a user act), the package's lint/tests run on the host. If pi is refused `form-unapproved` there, run the step on the host; do not wait.
 - seat · DEC-033→DEC-038 path/remote rewrite across design.md, plan.toml, plan.md, slice-018.md · user ruling mid-preflight · decided (audit: confirm no stale `~/dev/umbriel` path)
+- PHASE-02 · fixture `load-path` widened from `(list dir)` to `(cons dir load-path)`; dropped the `bytecomp`/`byte-opt`/`warnings` requires pi had added to `core/dl-checkout.el` · they existed only because the narrowed fixture broke `byte-compile-file`'s lazy loads (test artefact in production code); unique fixture names keep real checkouts out · decided
+- PHASE-02 · VA-1 sweep `rg dl-satan--compile-stale` hits CHANGELOG.md:1223 (history) · changelog is history, excluded as in the other sweeps · decided
+- PHASE-01 · rename script gained step (d): bare record ids (incl. RV-nnn) -> `emacs-config:ID`, and also runs over docs/umbriel.md · VA-2 sweeps cover the whole tree; same sec-3 rule · decided
+- PHASE-01 · test renamed `umbriel-buffer/my-umbriel-opens-once-…` -> `umbriel-buffer/umbriel-opens-once-…`; `bin/elisp-locate-paren-error.el` feature `dl-elisp-locate-paren-error` -> `elisp-locate-paren-error` · third sweep `\bmy[-/]`/`\bdl-` (plan EX-3) · decided
+- PHASE-01 · docs/umbriel.md: doctrine frontmatter, `doctrine show` and `docs/emacs/traps.md` refs dropped; "Global keys" says the package binds none and names the author's config · config-only references (sec-3) · decided
+- PHASE-01 · flake.lock hand-built from SATAN's lock nodes instead of `nix flake lock` · avoids network fetch; same pins (EX-8) · decided
+- PHASE-01 · import commit amended once (local, unpushed) to name the right source repo (emacs-config, not nix-config) · factual fix · decided
