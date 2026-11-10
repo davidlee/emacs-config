@@ -2,6 +2,14 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-11-11 — lint gate matches Flymake
+
+No command or key changes (ISS-019). `just lint` no longer loads `core/dl-path.el`. That
+file's `use-package` require was hiding two warnings in `early-init.el` that live Flymake
+reports. `early-init.el` now sets `use-package-verbose` and `use-package-compute-statistics`
+after `(require 'use-package)`. A test runs `bin/elisp-lint` to check that the gate reports
+what Flymake does.
+
 ## 2026-11-11 — apps/ and core/ split into domain directories
 
 Layout only; no command or key changes (CHR-015). New directories: `ai/` (gptel, minuet,

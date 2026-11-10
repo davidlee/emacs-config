@@ -58,5 +58,16 @@
     (dolist (file '("core/dl-path.el" "early-init.el" "test/init.el"))
       (should-not (dl-lint-excluded-p (expand-file-name file root))))))
 
+(ert-deftest dl-lint/gate-sees-what-flymake-sees ()
+  "The gate's child loads no config side effects that Flymake's lacks.
+ISS-019: the gate once loaded dl-path, whose `use-package' require hid
+free-variable warnings that live Flymake reports."
+  (dl-lint-test--with-fixture file "(setq use-package-verbose t)\n"
+    (with-temp-buffer
+      (should (= 1 (call-process (expand-file-name "bin/elisp-lint" dl-dirs-root)
+                                 nil t nil file)))
+      (should (string-match-p "free variable .use-package-verbose"
+                              (buffer-string))))))
+
 (provide 'dl-lint-test)
 ;;; dl-lint-test.el ends here

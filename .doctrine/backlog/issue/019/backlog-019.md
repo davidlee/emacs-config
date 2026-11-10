@@ -34,3 +34,37 @@ One of these hides the findings. Flymake's live child does not load
 Find which side effect matters; either load just that in the lint child
 (and in `bin/elisp-compile-child` if Flymake needs it too) or fix the six
 findings. Then drop the `dl-path` require from `dev/dl-lint.el`.
+
+## Resolution (2026-11-11)
+
+**Bisect** (lint child without `dl-path`, adding one side effect at a
+time). Only the two `early-init.el` warnings reproduced. Loading
+`use-package` alone (`(require 'use-package)`) hides both. envrc and the
+PATH/exec-path rewrite play no part.
+
+**The org findings no longer reproduce.** That covers `dl-org.el:72` and
+the three `Invalid face: org-heading` errors: none appeared in five runs
+without `dl-path`. They were probably transient while CHR-010 was moving
+directories. `org-bullets` is installed, so its variable is defined at
+compile time. Line 72 does hold a real bug that lint can't see, filed as
+ISS-024.
+
+**Flymake did differ.** The Flymake child is `bin/elisp-compile-child`
+running the same helper on the same load path, with no `dl-path`. The
+bisect's baseline run used exactly that setup and reported the two
+warnings. So live Flymake on `early-init.el` showed them and the gate hid
+them. This was established by construction, not by opening the file in
+the daemon.
+
+**Fix.**
+- `early-init.el`: the `use-package-verbose` and
+  `use-package-compute-statistics` setqs move below
+  `(require 'use-package)`. `debug-on-error` still comes first.
+- `dev/dl-lint.el`: the `dl-path` require is gone. `elisp-compile-child`
+  needed no change.
+- `test/dl-lint-test.el`: `dl-lint/gate-sees-what-flymake-sees` runs
+  `bin/elisp-lint` on a fixture that sets `use-package-verbose` and
+  expects the free-variable warning. It fails with the `dl-path` require
+  back in place and passes without it.
+
+`just check`: green, 593/595 (2 skipped), zero lint findings.

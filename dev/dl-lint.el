@@ -17,10 +17,6 @@
 
 (require 'elisp-mode)
 (require 'dl-dirs)
-;; Load-bearing side effects: without dl-path's environment setup
-;; (exec-path, use-package, envrc) the gate reports findings it did not
-;; when it landed (CHR-013).  Untangling that is ISS-019.
-(require 'dl-path)
 
 (defun dl-lint--line-at (file position)
   "Line number of POSITION in FILE, or 1 when POSITION is nil."

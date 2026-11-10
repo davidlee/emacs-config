@@ -15,13 +15,15 @@
   "Non-nil to debug startup: errors enter the debugger, use-package reports.")
 
 (when my/debug-startup
-  (setq debug-on-error t)
-  (setq use-package-verbose t)
-  (setq use-package-compute-statistics t))
+  (setq debug-on-error t))
 
 (load (expand-file-name "core/dl-package" user-emacs-directory) nil 'nomessage)
 
 (require 'use-package)
+
+(when my/debug-startup
+  (setq use-package-verbose t
+        use-package-compute-statistics t))
 (require 'package-vc)
 
 ;; Don't pop *Warnings* for files lacking a lexical-binding cookie
