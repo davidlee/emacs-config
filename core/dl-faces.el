@@ -149,6 +149,8 @@ Remapped to a face, not a family, so a role change reaches open buffers."
 (defvar my/org-face-styles
   '((dl-faces-org-body   :role org-body)
     (org-document-title  :role org-heading :height 1.6  :weight semibold)
+    (org-document-info  :role org-code :height 1.0 :weight semibold)
+    (org-document-info-keyword  :role org-code :height 1.0  :weight semibold)
     (org-level-1        :role org-heading :height 1.4  :weight semibold)
     (org-level-2        :role org-heading :height 1.25 :weight semibold)
     (org-level-3        :role org-heading :height 1.15 :weight regular)
