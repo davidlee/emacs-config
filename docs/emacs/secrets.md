@@ -21,7 +21,7 @@ serve two populations:
 
 ## LLM gateway keys
 
-`lisp/dl-llm-gateway.el` owns where the gateway is and what a client's key is.
+`apps/dl-llm-gateway.el` owns where the gateway is and what a client's key is.
 
 - `dl-llm-gateway-url` (default `http://127.0.0.1:4000/v1`): the
   OpenAI-compatible base URL.
@@ -67,7 +67,7 @@ the in-process LLM clients.
 - Terminal sessions: `op` plugin / `op run` wraps the shell so the ref is
   resolved by 1Password (biometric/desktop unlock) before any tool sees it.
 - Sway/desktop launchers: zsh init never runs, so Emacs starts with **no**
-  env. `lisp/dl-secret.el` parses `~/.config/zsh/env.zsh` at load and
+  env. `core/dl-secret.el` parses `~/.config/zsh/env.zsh` at load and
   `setenv`s each declared var **only if unset**. Terminal-launched Emacs
   (already resolved values) wins over launcher-started Emacs (op:// refs).
 

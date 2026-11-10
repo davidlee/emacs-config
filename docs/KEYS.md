@@ -439,7 +439,7 @@ Globals: `C-x C-j` dired-jump, `C-x C-n` dirvish-side.
 | `C-c b p` | `my/previous-user-buffer`  | prev (skips `*…*` and dired) |
 | `C-c b t` | `my/tmp-buffer`            | timestamped throwaway, same major mode |
 
-`my/user-buffer-p` in `lisp/dl-buffer-management.el` is the filter.
+`my/user-buffer-p` in `core/dl-buffer-management.el` is the filter.
 Meow leader also mirrors `SPC [` / `SPC ]` for flick-style cycling.
 Global: `C-x b` → `consult-buffer` (in `dl-consult.el`).
 
@@ -469,7 +469,7 @@ Direction keys are arrow keys, not h/j/k/l — see [Layout](#layout).
 
 `transpose-frame` is also bound chord-style at `C-x 7` (see
 `core/dl-interface.el`). Split-and-follow lives in
-`core/dl-interface.el`; rotate-windows live in `lisp/dl-window.el`.
+`core/dl-interface.el`; rotate-windows live in `core/dl-window.el`.
 
 ## Git (`C-c g`)
 

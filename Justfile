@@ -22,7 +22,8 @@ used:
 check: lint
   @emacs --batch -Q --init-directory="{{justfile_directory()}}" \
     --eval '(setq load-prefer-newer t)' \
-    -L core -L lisp -L org -L editing -L completion -L apps -L lang -L dev -L lisp/test -L ~/dev/satan/satan -L /workspace/org-incremental-writing \
+    -l core/dl-dirs.el -f dl-dirs-batch-load-path \
+    -L /workspace/org-incremental-writing \
     -l dev/dl-test.el \
     --eval '(princ (dl-test-run-suite))' 2>&1 | tee /dev/stderr | grep -q PASS
 
@@ -63,7 +64,8 @@ clean-eln:
   done
 
 wc:
-  @find core lisp dev lang editing completion apps org -name '*.el' | xargs wc -l ;
+  @find $(emacs -Q --batch --init-directory="{{justfile_directory()}}" -l core/dl-dirs.el \
+      --eval '(princ (string-join dl-dirs-config " "))') -name '*.el' | xargs wc -l ;
 
 hello-satan:
   emacsclient -e "(satan-mcp-start)"

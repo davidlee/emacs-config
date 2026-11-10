@@ -1,11 +1,6 @@
 ;;; dl-path.el --- Load & Exec Paths -*- lexical-binding: t; -*-
-(defvar my/lisp-dirs
-  '("lisp" "core" "editing" "completion" "apps" "org" "dev" "lang")
-  "My own Lisp directories, relative to `user-emacs-directory'.")
-
-(defvar my/checkout-lisp-dirs
-  '("checkout" "elpa/org-timeblock" "~/dev/satan/satan")
-  "External checkout Lisp directories, relative to `user-emacs-directory'.")
+;; Loaded by file name from early-init.el, before `load-path' holds core/.
+(require 'dl-dirs (expand-file-name "core/dl-dirs" user-emacs-directory))
 
 (defun my/expand-emacs-dir (dir)
   "Expand DIR relative to `user-emacs-directory' as a directory path.
@@ -23,17 +18,12 @@ Returned path is abbreviated (\"~/...\") so it matches what
   "Add DIR under `user-emacs-directory' to `trusted-content'."
   (add-to-list 'trusted-content (my/expand-emacs-dir dir)))
 
-(defun dl-path-config-load-path ()
-  "Absolute directories of my Lisp and external checkouts, as -L arguments."
-  (mapcar (lambda (dir) (expand-file-name dir user-emacs-directory))
-    (append my/lisp-dirs my/checkout-lisp-dirs)))
-
 ;; Load both my code and external checkouts.
 (mapc #'my/add-load-path-dir
-  (append my/lisp-dirs my/checkout-lisp-dirs))
+  (append dl-dirs-config dl-dirs-checkouts))
 
 ;; Trust only my own code.
-(mapc #'my/trust-lisp-dir my/lisp-dirs)
+(mapc #'my/trust-lisp-dir dl-dirs-config)
 
 ;; NIX path
 ;; (use-package exec-path-from-shell

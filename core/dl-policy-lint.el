@@ -23,10 +23,11 @@
 ;;   (:map global-map :key "C-:" :command avy-goto-char
 ;;    :form :bind :file "editing/dl-motion.el" :line 12)
 ;;
-;; They are plain functions run by `lisp/test/dl-policy-lint-test.el'
+;; They are plain functions run by `test/dl-policy-lint-test.el'
 ;; (`just check'); nothing but L1 runs at startup.
 
 (require 'seq)
+(require 'dl-dirs)
 
 ;;; Family naming
 
@@ -269,23 +270,19 @@ form's first line.  Signals an error when FILE does not read."
               (push (append r (list :file rel :line line)) records))))))
     (nreverse records)))
 
-(defconst my-policy-lint-config-dirs
-  '("core" "lisp" "org" "editing" "completion" "apps" "lang" "dev")
-  "Config directories (relative to `user-emacs-directory') read by L2/L3.")
-
 (defun my-policy-lint--test-file-p (name)
   "Non-nil when NAME (a basename) is an ERT file, per `dl-test--file-p'."
   (or (string-suffix-p "-test.el" name) (string-prefix-p "test-" name)))
 
 (defun my-policy-lint-config-files ()
   "Absolute paths of config sources: `init.el' and the top level of
-`my-policy-lint-config-dirs', excluding tests and dotfiles."
+`dl-dirs-config', excluding tests and dotfiles."
   (cons (expand-file-name "init.el" user-emacs-directory)
         (seq-remove (lambda (f) (my-policy-lint--test-file-p (file-name-nondirectory f)))
                     (mapcan (lambda (dir)
                               (directory-files (expand-file-name dir user-emacs-directory)
                                                t "\\`[^.].*\\.el\\'"))
-                            my-policy-lint-config-dirs))))
+                            dl-dirs-config))))
 
 ;;; L2 — sanctioned forms
 

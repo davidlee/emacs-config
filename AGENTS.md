@@ -66,8 +66,10 @@ the Nix integration.
 ~/.config/emacs/flake.nix           devshell; emacs via the `emacs` flake input
 ~/.config/emacs/early-init.el       loads dl-path.el, sets package-archives nil
 ~/.config/emacs/core/dl-path.el     load-path, exec-path, trusted-content, direnv
+~/.config/emacs/core/dl-dirs.el     THE list of config / checkout / test dirs
 ~/.config/emacs/init.el             main config
-~/.config/emacs/{core,apps,lang,lisp,editing,completion,org,dev}/*.el
+~/.config/emacs/{core,apps,lang,editing,completion,org,dev}/*.el
+~/.config/emacs/test/*-test.el      every ERT suite (`just check`)
 ```
 
 Packages are a **manual list** in `~/flakes/emacs/emacs.nix`
@@ -100,6 +102,7 @@ so the unit starts and stops with the session and inherits the compositor's
 | Edit existing `.el`, no new package | `M-x eval-buffer` (live) or restart emacs |
 | Add new `(use-package X)` to tracked file | `home-manager switch` |
 | Add new `.el` file | `git add` it, then `home-manager switch` |
+| Add new source directory | add it to `dl-dirs-config` in `core/dl-dirs.el` (load path, lint, tests all read it) |
 | Edit `emacs.nix` | `home-manager switch` |
 | Set `:ensure nil` + want package available | Add to `extraEmacsPackages` in `emacs.nix` |
 | Adding stuff that has nothing to do with a text editor | [read](./docs/satan/refactor/extraction-policy.md)| 

@@ -6,13 +6,5 @@ file="${1:?usage: elisp-locate-paren-error FILE}"
 repo_root="$(cd "$(dirname "$0")"/.. && pwd)"
 
 emacs -Q --batch \
-  -L "$repo_root/lisp" \
-  -L "$repo_root/core" \
-  -L "$repo_root/editing" \
-  -L "$repo_root/completion" \
-  -L "$repo_root/apps" \
-  -L "$repo_root/org" \
-  -L "$repo_root/dev" \
-  -L "$repo_root/lang" \
   -l "$repo_root/tools/elisp-locate-paren-error.el" \
   "$file"

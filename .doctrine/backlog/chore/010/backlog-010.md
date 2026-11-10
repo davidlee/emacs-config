@@ -67,3 +67,21 @@ Raised while designing SL-016 (2026-11-04).
   Leave `docs/REVIEW.md` (historical; see CHR-014).
 - Stray `lisp/dl-elisp-locate-paren-error.elc`, `lisp/dl-secret.elc`,
   `lisp/test/dl-secret-test.elc`.
+
+## Done (2026-11-11)
+
+- Moves as tabled; `lisp/` removed; all tests (org's included) in `test/`.
+- `core/dl-dirs.el` (new, no load-time side effects): `dl-dirs-config`,
+  `dl-dirs-checkouts`, `dl-dirs-tests`, `dl-dirs-load-path`,
+  `dl-dirs-batch-load-path`. Replaces `my/lisp-dirs`, `my/checkout-lisp-dirs`,
+  `dl-path-config-load-path`, `my-policy-lint-config-dirs` and
+  `dl-test-suite-dirs`. The Justfile's `check` and `wc` read it;
+  `bin/elisp-locate-paren-error` needed no config dirs at all.
+- `test/dl-dirs-test.el` fails on a listed directory that no longer exists
+  and on a directory holding `dl-*.el` that is not listed.
+- `dev/dl-lint.el` still requires `dl-path`: without it the gate reports six
+  findings it did not when CHR-013 landed. Logged as ISS-019.
+- `just check` green: 591/593, 2 skipped (nostr, no key file). Lint failed
+  transiently twice on `org/dl-org.el` (face errors from `org-pretty-table`),
+  then passed unchanged; a clean HEAD worktree also passed. Cause not found.
+- Still to do: `just clean-eln` after the next `home-switch`.

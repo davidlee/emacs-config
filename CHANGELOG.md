@@ -2,6 +2,17 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-11-11 — lisp/ is gone; every test lives in test/
+
+Layout only; no command or key changes (CHR-010). The files in `lisp/` moved to the
+directory for their domain: `dl-keymap-shadow`, `dl-secret`, `dl-buffer-management` and
+`dl-window` to `core/`, `dl-file-ops` to `editing/`, `dl-insert-elisp-header` to `lang/`,
+`dl-llm-gateway` and `dl-sleipnir-doctor` to `apps/`. All ERT files, `org/`'s included, are
+now in a top-level `test/`. New file `core/dl-dirs.el` is the one list of config, checkout
+and test directories: the live load path, Flymake's child, `just lint`, `just check`,
+`just wc`, the policy lint and the test runner all read it. A new source directory needs
+one edit there. Run `just clean-eln` after the next `home-switch`.
+
 ## 2026-11-10 — Emacs 32 (master); excali-mode for Excalidraw drawings
 
 Emacs is now master (32.0.50, emacs-overlay `emacs-git-pgtk`) instead of the latest release

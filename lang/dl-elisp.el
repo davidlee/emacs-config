@@ -22,9 +22,9 @@
 
 ;; Flymake's byte-compile child is a bare `emacs -Q': hand it the config's
 ;; Lisp dirs, or `(require ...)' of my own libraries is "no such file".
-(require 'dl-path)
+(require 'dl-dirs)
 (setq-default elisp-flymake-byte-compile-load-path
-  (cons "./" (dl-path-config-load-path)))
+  (cons "./" (dl-dirs-load-path)))
 ;; ... and its installed packages, or every autoloaded command is "not
 ;; known to be defined".  bin/elisp-lint runs the same child.
 (setq elisp-flymake-byte-compile-executable

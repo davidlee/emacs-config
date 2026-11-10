@@ -193,7 +193,7 @@ Tradeoffs:
 
 The migration cost is the obvious blocker. It's mechanical but not
 trivial — roughly: grep for `(use-package` across `core/`, `apps/`,
-`lang/`, `editing/`, `completion/`, `org/`, `dev/`, `lisp/`, and add
+`lang/`, `editing/`, `completion/`, `org/`, `dev/`, and add
 `:ensure t` to each one whose package should be nix-managed. Built-in
 modes (those using `:ensure nil` today) and VC packages stay as they are.
 

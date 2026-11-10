@@ -32,21 +32,19 @@
 ;; instead, and the suite tests old code.
 (setq load-prefer-newer t)
 
-(defvar dl-test-suite-dirs '("lisp/test" "org")
-  "Directories (relative to `user-emacs-directory') scanned for ERT files.
-A file is a test file when its name ends in \"-test.el\" or begins
-with \"test-\".")
+(require 'dl-dirs)
 
 (defun dl-test--file-p (name)
-  "Non-nil when NAME (a basename) is an ERT test file."
+  "Non-nil when NAME (a basename) is an ERT test file: it ends in
+\"-test.el\" or begins with \"test-\"."
   (and (string-suffix-p ".el" name)
        (or (string-suffix-p "-test.el" name)
            (string-prefix-p "test-" name))))
 
 (defun dl-test--suite-files ()
-  "Absolute paths of every ERT test file under `dl-test-suite-dirs'."
+  "Absolute paths of every ERT test file under `dl-dirs-tests'."
   (let (files)
-    (dolist (dir dl-test-suite-dirs)
+    (dolist (dir dl-dirs-tests)
       (let ((abs (expand-file-name dir user-emacs-directory)))
         (when (file-directory-p abs)
           (dolist (f (directory-files abs t "\\.el\\'"))
