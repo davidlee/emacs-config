@@ -11,7 +11,8 @@ the `davidlee/excali-mode` fork's `nix-flake` branch (upstream PR yibie/excali-m
 builds its Cairo/Pango module against this Emacs. New file `apps/dl-excali.el`, active only
 when the canvas image type is available: `excali-open` (a `.excalidraw`, or a PNG/SVG with an
 embedded scene), `excali-new`, and `excali-dsl-mode` for `.excalidsl` files (`C-c C-c`
-previews). Excalidraw's own fonts are not packaged; text uses system fonts.
+previews). Excalidraw's fonts (Virgil, Excalifont, Xiaolai and the rest) come with the package,
+in the directory excali registers them from.
 
 ## 2026-11-10 — daemon: buffers come back after a restart
 

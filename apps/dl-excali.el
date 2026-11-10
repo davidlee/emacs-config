@@ -8,7 +8,7 @@
 ;;
 ;; Commands: `excali-open' (a .excalidraw, or a PNG/SVG with an embedded
 ;; scene), `excali-new'.  `.excalidsl' text sources get `excali-dsl-mode'
-;; (C-c C-c previews).
+;; (C-c C-c previews).  Excalidraw's fonts ship with the package.
 
 (when (and (fboundp 'canvas-refresh)
            (image-type-available-p 'canvas)
