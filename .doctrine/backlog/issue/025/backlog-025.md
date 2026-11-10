@@ -13,3 +13,11 @@ during extraction (DEC-035).
 Done when: loading `umbriel-focus` changes no global state; the config
 (`desktop/dl-umbriel.el`) turns the hook on explicitly; `emacsclient` still
 raises the frame.
+
+**Also (user, 2026-11-11, at SL-018 VH-1):** `emacsclient` raising its frame
+depends on the umbriel package having loaded. A host without the checkout, or
+a failed package load, silently loses the raise, which is a basic desktop
+behaviour rather than a umbriel-buffer feature. When making the hook opt-in,
+decide where frame-raise lives: keep it in the package and have the config
+wire it explicitly (warning when it can't), or have the config own a minimal
+raise that doesn't need the package.
