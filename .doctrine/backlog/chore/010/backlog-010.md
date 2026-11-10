@@ -39,3 +39,31 @@ test tree for every module, while `org/` colocates its tests — two conventions
 - `just check` green; `just clean-eln` after the switch.
 
 Raised while designing SL-016 (2026-11-04).
+
+## Decisions (2026-11-10)
+
+- All tests go to top-level `test/`, `org/`'s colocated tests included
+  (`dl-denote-journal-test`, `dl-denote-promote-test`, `dl-review-test`).
+  `dl-test-suite-dirs` becomes `("test")`.
+- Wait for CHR-013 to land: its `lisp/test/dl-lint-test.el` is untracked and
+  `git mv` cannot move it.
+- Done directly from this card, without a slice.
+- **Single source of truth for the directory list** (folded in from the
+  file-structure review). The list is now written by hand in five places:
+  `core/dl-path.el:3`, `Justfile:24`/`:63`, `core/dl-policy-lint.el:273`,
+  `bin/elisp-locate-paren-error:9`, plus the test dirs in `dev/dl-test.el:35`.
+  Make `my/lisp-dirs` the only copy: the Justfile and the paren tool load
+  `core/dl-path.el` instead of listing `-L` flags; policy-lint and `dl-test`
+  read the variable. CHR-015 depends on this.
+
+## Touch points the card missed
+
+- `core/dl-policy-lint.el:273` lists `"lisp"`.
+- `test/dl-umbriel-model-test.el:79`: relative `../../apps` becomes `../apps`.
+- `bin/elisp-locate-paren-error:9`: `-L lisp` is stale (`lisp/` holds only a
+  stray `.elc` for the tool, whose source is in `tools/`).
+- `;; Run: … (dl-test scans lisp/test)` headers in each test file.
+- `docs/KEYS.md:442,472` and `docs/emacs/secrets.md:24,70` cite `lisp/…`.
+  Leave `docs/REVIEW.md` (historical; see CHR-014).
+- Stray `lisp/dl-elisp-locate-paren-error.elc`, `lisp/dl-secret.elc`,
+  `lisp/test/dl-secret-test.elc`.
