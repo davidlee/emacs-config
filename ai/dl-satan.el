@@ -5,22 +5,10 @@
 ;; in the config needs them at load.
 
 (require 'dl-guix)
-
-(defun dl-satan--compile-stale ()
-  "Byte-compile SATAN sources whose .elc is missing or older.
-The package loads from a git checkout, so nothing else compiles it;
-interpreted, its timers stall input.  Native-comp JIT follows the .elc."
-  (when-let* ((lib (locate-library "satan.el")))
-    (let ((byte-compile-warnings nil))
-      (dolist (el (directory-files (file-name-directory lib) t "\\.el\\'"))
-        (when (file-newer-than-file-p el (byte-compile-dest-file el))
-          (byte-compile-file el))))))
+(require 'dl-checkout)
 
 (unless (or (eq system-type 'darwin) (dl-guix-system-p))
-  ;; Not while compiling another file (Flymake, `just lint'): that
-  ;; compiler binds where .elc files go, and must not write any.
-  (unless (bound-and-true-p byte-compile-current-file)
-    (dl-satan--compile-stale))
+  (dl-checkout-compile-stale "satan.el")
   (use-package satan
     :ensure nil
     :demand t
