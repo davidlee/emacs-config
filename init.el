@@ -1,15 +1,16 @@
 ;;; init.el --- Emacs init -*- lexical-binding: t; -*-
-(setq debug-on-event 'sigusr2)
-(setq auth-sources '("secrets:Login"))
+(setopt debug-on-event 'sigusr2)
+(setopt auth-sources '("secrets:Login"))
 
 ;; CORE
 (require 'dl-compile)
 (require 'dl-core)
+(require 'dl-keymap)
+(require 'dl-meow-map)
 (require 'dl-notes-paths)
 (require 'dl-backup)
 (require 'dl-persist)
 (require 'dl-session)
-(require 'dl-keymap)
 (require 'dl-policy-lint)
 (require 'dl-theme)
 (require 'dl-faces)
@@ -68,12 +69,13 @@
 (require 'dl-denote-blog)
 (require 'dl-denote-journal)
 (require 'dl-denote-promote)
-(require 'dl-satan)
 (require 'dl-org-ql)
 (require 'dl-review)
 (require 'dl-org-roam)
 (require 'dl-org-gcal)
 (require 'dl-org-iw)
+
+
 
 ;; Language support
 (require 'dl-elisp)
@@ -82,15 +84,16 @@
 (require 'dl-nix)
 (require 'dl-typst)
 (require 'dl-nushell)
-
+(require 'dl-zig)
 
 ;; Apps
+(require 'dl-satan)
 (require 'dl-term)
 (require 'dl-ghostel)
 (require 'dl-zmx)
 (require 'dl-zmx-status)
 (when (executable-find dl-zmx-command) (dl-zmx-status-mode))
-(with-eval-after-load 'ol (require 'dl-zmx-org))
+(with-eval-after-load 'ol (require 'dl-zmx-org)) ;; LLMS be fucking up my pretty
 (require 'dl-magit)
 (require 'dl-agent-review)
 (require 'dl-ediff)
@@ -99,7 +102,6 @@
 (require 'dl-erc)
 (require 'dl-elpher)
 (require 'dl-nostr)
-;; (require 'dl-eaf)
 (require 'dl-emskin)
 (require 'dl-foxmacs)
 (require 'dl-excali)
@@ -110,7 +112,7 @@
 (require 'dl-gptel)
 (require 'dl-minuet)
 (require 'dl-eca)
-;;(require 'dl-bough)
+
 
 (require 'dl-keybind)
 (require 'dl-dired)

@@ -15,10 +15,10 @@
   "Wrap `meow-indicator', greying it out in inactive modelines."
   (let ((s (meow-indicator)))
     (if (and (stringp s)
-          (not (string-empty-p s))
-          (not (dl-modeline-window-active-p)))
-      (propertize (substring-no-properties s)
-        'face 'dl-meow-indicator-inactive)
+             (not (string-empty-p s))
+             (not (dl-modeline-window-active-p)))
+        (propertize (substring-no-properties s)
+                    'face 'dl-meow-indicator-inactive)
       s)))
 
 (use-package meow
@@ -32,6 +32,7 @@
   (add-to-list 'meow-char-thing-table '(?a . angle))
   (meow-setup)
   (meow-global-mode 1)
+  ;;:commands (meow-thing-register meow-global-mode)
   (require 'dl-meow-cheatsheet))
 
 (use-package repeat-fu
@@ -40,17 +41,17 @@
   :commands (repeat-fu-mode repeat-fu-execute)
   ;; Meow's state maps exist by now (`use-package meow' above is eager).
   :bind (:map meow-normal-state-keymap
-         ("C-\\" . repeat-fu-execute)
-         :map meow-insert-state-keymap
-         ("C-\\" . repeat-fu-execute))
+              ("C-\\" . repeat-fu-execute)
+              :map meow-insert-state-keymap
+              ("C-\\" . repeat-fu-execute))
   :config
   (setq repeat-fu-preset 'meow)
   :hook
   ((meow-mode)
-    .
-    (lambda ()
-      (when (and (not (minibufferp)) (not (derived-mode-p 'special-mode)))
-        (repeat-fu-mode)))))
+   .
+   (lambda ()
+     (when (and (not (minibufferp)) (not (derived-mode-p 'special-mode)))
+       (repeat-fu-mode)))))
 
 
 ;; Terminals: disable meow entirely (cleaner than `insert' state — also

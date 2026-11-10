@@ -44,9 +44,10 @@
  '(org-timeblock-span 1)
  '(package-selected-packages
    '(au-themes book-mode ef-themes elpher foxglove-themes gptel-annotate
-               lambda-line nostr super-save))
+               lambda-line nostr super-save zig-ts-mode))
  '(package-vc-selected-packages
-   '((book-mode :url "https://github.com/rougier/book-mode.git")
+   '((zig-ts-mode :url "https://codeberg.org/meow_king/zig-ts-mode")
+     (book-mode :url "https://github.com/rougier/book-mode.git")
      (nostr :url "https://github.com/trevarj/nostr.el" :branch
             "master")
      (elpher :url "https://github.com/emacsmirror/elpher.git")

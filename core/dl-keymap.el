@@ -35,166 +35,170 @@
 
 ;; dl-declare-insert-from-flymake
 
-(declare-function aggressive-indent-mode "aggressive-indent")
-(declare-function avy-goto-char-2 "avy")
-(declare-function avy-goto-char-timer "avy")
-(declare-function avy-goto-line "avy")
-(declare-function avy-goto-word-1 "avy")
-(declare-function consult-buffer "consult")
-(declare-function consult-fd "consult")
-(declare-function consult-find "consult")
-(declare-function consult-flymake "consult-flymake")
-(declare-function consult-global-mark "consult")
-(declare-function consult-imenu "consult-imenu")
-(declare-function consult-imenu-multi "consult-imenu")
-(declare-function consult-line "consult")
-(declare-function consult-line-multi "consult")
-(declare-function consult-mark "consult")
-(declare-function consult-org-heading "consult-org")
-(declare-function consult-outline "consult")
-(declare-function consult-recent-file "consult")
-(declare-function consult-ripgrep "consult")
-(declare-function consult-theme "consult")
-(declare-function crux-kill-buffer-truename "crux")
-(declare-function crux-open-with "crux")
-(declare-function denote "denote")
-(declare-function denote-backlinks "denote")
-(declare-function denote-link "denote")
-(declare-function denote-rename-file "denote")
-(declare-function denote-rename-file-keywords "denote")
-(declare-function denote-rename-file-title "denote")
+(declare-function aggressive-indent-mode                "aggressive-indent")
+(declare-function avy-goto-char-2                       "avy")
+(declare-function avy-goto-char-timer                   "avy")
+(declare-function avy-goto-line                         "avy")
+(declare-function avy-goto-word-1                       "avy")
+(declare-function consult-buffer                        "consult")
+(declare-function consult-fd                            "consult")
+(declare-function consult-find                          "consult")
+(declare-function consult-flymake                       "consult-flymake")
+(declare-function consult-global-mark                   "consult")
+(declare-function consult-imenu                         "consult-imenu")
+(declare-function consult-imenu-multi                   "consult-imenu")
+(declare-function consult-line                          "consult")
+(declare-function consult-line-multi                    "consult")
+(declare-function consult-mark                          "consult")
+(declare-function consult-org-heading                   "consult-org")
+(declare-function consult-outline                       "consult")
+(declare-function consult-recent-file                   "consult")
+(declare-function consult-ripgrep                       "consult")
+(declare-function consult-theme                         "consult")
+(declare-function crux-kill-buffer-truename             "crux")
+(declare-function crux-open-with                        "crux")
+(declare-function denote                                "denote")
+(declare-function denote-backlinks                      "denote")
+(declare-function denote-link                           "denote")
+(declare-function denote-rename-file                    "denote")
+(declare-function denote-rename-file-keywords           "denote")
+(declare-function denote-rename-file-title              "denote")
 (declare-function denote-rename-file-using-front-matter "denote")
-(declare-function diff-hl-mode "diff-hl")
-(declare-function dirvish "dirvish")
-(declare-function dirvish-side "dirvish-side")
-(declare-function dogears-go "dogears")
-(declare-function dogears-sidebar "dogears")
-(declare-function eglot-shutdown "") ; FIXME: defining file unknown
-(declare-function flymake-goto-next-error "flymake")
-(declare-function flymake-goto-prev-error "flymake")
-(declare-function flymake-running-backends "flymake")
-(declare-function flymake-show-buffer-diagnostics "flymake")
-(declare-function flymake-show-project-diagnostics "flymake")
-(declare-function flymake-switch-to-log-buffer "flymake")
-(declare-function ghostel-other "") ; FIXME: defining file unknown
-(declare-function consult-ghostel "consult-ghostel")
-(declare-function consult-ghostel-status "consult-ghostel")
-(declare-function git-link "git-link")
-(declare-function gptel "gptel")
-(declare-function gptel-abort "gptel-request")
-(declare-function gptel-add "gptel-context")
-(declare-function gptel-add-file "gptel-context")
-(declare-function gptel-agent "gptel-agent")
-(declare-function gptel-annotate "gptel-annotate")
-(declare-function gptel-inline "gptel-inline")
-(declare-function gptel-menu "gptel-transient")
-(declare-function gptel-rewrite "gptel-rewrite")
-(declare-function gptel-send "gptel")
-(declare-function jinx-mode "jinx")
-(declare-function kirigami-close-fold "kirigami")
-(declare-function kirigami-close-folds "kirigami")
-(declare-function kirigami-open-fold "kirigami")
-(declare-function kirigami-open-fold-rec "kirigami")
-(declare-function kirigami-open-folds "kirigami")
-(declare-function kirigami-toggle-fold "kirigami")
-(declare-function magit-status "magit-status")
-(declare-function my/bough-export-denote "") ; FIXME: defining file unknown
-(declare-function my/bough-export-org "") ; FIXME: defining file unknown
-(declare-function my/broot-here "dl-dirvish")
-(declare-function my/consult-flymake-project "dl-diagnostics")
-(declare-function my/consult-line-symbol-at-point "dl-consult")
-(declare-function my/consult-ripgrep-prompt-dir "dl-consult")
-(declare-function my/delete-current-buffer-file "dl-file-ops")
-(declare-function my/denote-kill-link-to-current-file "") ; FIXME: defining file unknown
-(declare-function my/denote-new-area "dl-denote-templates")
-(declare-function my/denote-new-blog-entry "dl-denote-blog")
-(declare-function my/denote-new-index "dl-denote-templates")
-(declare-function my/denote-new-project "dl-denote-templates")
-(declare-function my/denote-new-reference "dl-denote-templates")
-(declare-function my/denote-new-reference-markdown "dl-denote-templates")
-(declare-function my/denote-new-slip "dl-denote-templates")
-(declare-function my/denote-new-source "dl-denote-templates")
-(declare-function my/denote-new-work-area "dl-denote-templates")
-(declare-function my/denote-new-work-index "dl-denote-templates")
-(declare-function my/denote-new-work-meeting "dl-denote-templates")
-(declare-function my/denote-new-work-person "dl-denote-templates")
-(declare-function my/denote-new-work-project "dl-denote-templates")
-(declare-function my/denote-new-work-reference "dl-denote-templates")
-(declare-function my/denote-new-work-slip "dl-denote-templates")
-(declare-function my/denote-new-work-source "dl-denote-templates")
-(declare-function my/denote-promote-subtree "dl-denote-promote")
-(declare-function my/diagnostics-toggle-inline-style "dl-diagnostics")
-(declare-function my/forward-or-backward-sexp "dl-motion")
-(declare-function my/jinx-global-mode "dl-prose")
-(declare-function my/journal-note "dl-denote-journal")
-(declare-function my/move-file "dl-file-ops")
-(declare-function my/next-user-buffer "dl-buffer-management")
-(declare-function my/org-ql-find-here "dl-org-ql")
-(declare-function my/org-ql-find-notes "dl-org-ql")
-(declare-function my/org-ql-find-work-notes "dl-org-ql")
-(declare-function my/org-ql-search-notes "dl-org-ql")
-(declare-function my/previous-user-buffer "dl-buffer-management")
-(declare-function my/project-find-file-here "dl-project")
-(declare-function my/review-inbox "dl-review")
-(declare-function my/review-intake "dl-review")
-(declare-function my/review-journal-open "dl-review")
-(declare-function my/review-protocol "dl-review")
-(declare-function my/review-queue "dl-review")
-(declare-function my/review-recent-notes "dl-review")
-(declare-function my/review-references-retained "dl-review")
-(declare-function my/review-references-untrusted "dl-review")
-(declare-function my/review-stale "dl-review")
-(declare-function my/review-weekly "dl-review")
-(declare-function my/review-work-inbox "dl-review")
-(declare-function my/review-work-intake "dl-review")
-(declare-function my/review-work-journal-open "dl-review")
-(declare-function my/review-work-recent-notes "dl-review")
-(declare-function my/review-work-references-retained "dl-review")
-(declare-function my/review-work-references-untrusted "dl-review")
-(declare-function my/review-work-stale "dl-review")
-(declare-function my/review-work-weekly "dl-review")
-(declare-function my/rotate-windows "dl-window")
-(declare-function my/rotate-windows-backward "dl-window")
-(declare-function my/tmp-buffer "dl-buffer-management")
-(declare-function my/toggle-margins "dl-theme")
-(declare-function my/toggle-window-dedicated "dl-window")
-(declare-function my/weekly-note "dl-denote-journal")
-(declare-function my/window-exchange-buffer "dl-window")
-(declare-function my/work-journal-note "dl-denote-journal")
-(declare-function my/work-weekly-note "dl-denote-journal")
-(declare-function my/yazi-here "dl-dirvish")
-(declare-function my/zmx-kill "dl-zmx")
-(declare-function my/zmx-new "dl-zmx")
-(declare-function my/zmx-new-at-root "dl-zmx")
-(declare-function my/zmx-project "dl-zmx")
-(declare-function my/zmx-resume "dl-zmx")
-(declare-function my/zmx-switch "dl-zmx")
-(declare-function olivetti-mode "olivetti")
-(declare-function org-agenda-files "org")
-(declare-function org-clock-goto "org-clock")
-(declare-function org-clock-in-last "org-clock")
-(declare-function org-clock-out "org-clock")
-(declare-function org-insert-link-global "ol")
-(declare-function org-iw-add "org-iw")
-(declare-function org-iw-continue "org-iw")
-(declare-function org-iw-end-session "org-iw")
-(declare-function org-iw-list-queue "org-iw")
-(declare-function org-iw-move "org-iw")
-(declare-function org-iw-remove "org-iw")
-(declare-function org-iw-visit-next "org-iw")
-(declare-function org-mark-ring-goto "org")
-(declare-function org-narrow-to-subtree "org")
-(declare-function org-refile "org-refile")
-(declare-function org-store-link "ol")
-(declare-function rainbow-delimiters-mode "rainbow-delimiters")
-(declare-function rainbow-mode "rainbow-mode")
-(declare-function rg-menu "rg-menu")
-(declare-function spacious-padding-mode "spacious-padding")
-(declare-function split-and-follow-horizontally "dl-window")
-(declare-function split-and-follow-vertically "dl-window")
-(declare-function transpose-frame "transpose-frame")
-(declare-function vr/query-replace "visual-regexp")
-(declare-function vr/replace "visual-regexp")
+(declare-function diff-hl-mode                          "diff-hl")
+(declare-function dirvish                               "dirvish")
+(declare-function dirvish-side                          "dirvish-side")
+(declare-function dogears-go                            "dogears")
+(declare-function dogears-sidebar                       "dogears")
+(declare-function eglot-shutdown                        "") ; FIXME: defining file unknown
+(declare-function flymake-goto-next-error               "flymake")
+(declare-function flymake-goto-prev-error               "flymake")
+(declare-function flymake-running-backends              "flymake")
+(declare-function flymake-show-buffer-diagnostics       "flymake")
+(declare-function flymake-show-project-diagnostics      "flymake")
+(declare-function flymake-switch-to-log-buffer          "flymake")
+(declare-function ghostel-other                         "") ; FIXME: defining file unknown
+(declare-function consult-ghostel                       "consult-ghostel")
+(declare-function consult-ghostel-status                "consult-ghostel")
+(declare-function git-link                              "git-link")
+(declare-function gptel                                 "gptel")
+(declare-function gptel-abort                           "gptel-request")
+(declare-function gptel-add                             "gptel-context")
+(declare-function gptel-add-file                        "gptel-context")
+(declare-function gptel-agent                           "gptel-agent")
+(declare-function gptel-annotate                        "gptel-annotate")
+(declare-function gptel-inline                          "gptel-inline")
+(declare-function gptel-menu                            "gptel-transient")
+(declare-function gptel-rewrite                         "gptel-rewrite")
+(declare-function gptel-send                            "gptel")
+(declare-function jinx-mode                             "jinx")
+(declare-function kirigami-close-fold                   "kirigami")
+(declare-function kirigami-close-folds                  "kirigami")
+(declare-function kirigami-open-fold                    "kirigami")
+(declare-function kirigami-open-fold-rec                "kirigami")
+(declare-function kirigami-open-folds                   "kirigami")
+(declare-function kirigami-toggle-fold                  "kirigami")
+(declare-function magit-status                          "magit-status")
+(declare-function my/bough-export-denote                "") ; FIXME: defining file unknown
+(declare-function my/bough-export-org                   "") ; FIXME: defining file unknown
+(declare-function my/broot-here                         "dl-dirvish")
+(declare-function my/consult-flymake-project            "dl-diagnostics")
+(declare-function my/consult-line-symbol-at-point       "dl-consult")
+(declare-function my/consult-ripgrep-prompt-dir         "dl-consult")
+(declare-function my/delete-current-buffer-file         "dl-file-ops")
+(declare-function my/denote-kill-link-to-current-file   "") ; FIXME: defining file unknown
+(declare-function my/denote-new-area                    "dl-denote-templates")
+(declare-function my/denote-new-blog-entry              "dl-denote-blog")
+(declare-function my/denote-new-index                   "dl-denote-templates")
+(declare-function my/denote-new-project                 "dl-denote-templates")
+(declare-function my/denote-new-reference               "dl-denote-templates")
+(declare-function my/denote-new-reference-markdown      "dl-denote-templates")
+(declare-function my/denote-new-slip                    "dl-denote-templates")
+(declare-function my/denote-new-source                  "dl-denote-templates")
+(declare-function my/denote-new-work-area               "dl-denote-templates")
+(declare-function my/denote-new-work-index              "dl-denote-templates")
+(declare-function my/denote-new-work-meeting            "dl-denote-templates")
+(declare-function my/denote-new-work-person             "dl-denote-templates")
+(declare-function my/denote-new-work-project            "dl-denote-templates")
+(declare-function my/denote-new-work-reference          "dl-denote-templates")
+(declare-function my/denote-new-work-slip               "dl-denote-templates")
+(declare-function my/denote-new-work-source             "dl-denote-templates")
+(declare-function my/denote-promote-subtree             "dl-denote-promote")
+(declare-function my/diagnostics-toggle-inline-style    "dl-diagnostics")
+(declare-function my/forward-or-backward-sexp           "dl-motion")
+(declare-function my/jinx-global-mode                   "dl-prose")
+(declare-function my/journal-note                       "dl-denote-journal")
+(declare-function my/move-file                          "dl-file-ops")
+(declare-function my/next-user-buffer                   "dl-buffer-management")
+(declare-function my/org-ql-find-here                   "dl-org-ql")
+(declare-function my/org-ql-find-notes                  "dl-org-ql")
+(declare-function my/org-ql-find-work-notes             "dl-org-ql")
+(declare-function my/org-ql-search-notes                "dl-org-ql")
+(declare-function my/previous-user-buffer               "dl-buffer-management")
+(declare-function my/project-find-file-here             "dl-project")
+(declare-function my/review-inbox                       "dl-review")
+(declare-function my/review-intake                      "dl-review")
+(declare-function my/review-journal-open                "dl-review")
+(declare-function my/review-protocol                    "dl-review")
+(declare-function my/review-queue                       "dl-review")
+(declare-function my/review-recent-notes                "dl-review")
+(declare-function my/review-references-retained         "dl-review")
+(declare-function my/review-references-untrusted        "dl-review")
+(declare-function my/review-stale                       "dl-review")
+(declare-function my/review-weekly                      "dl-review")
+(declare-function my/review-work-inbox                  "dl-review")
+(declare-function my/review-work-intake                 "dl-review")
+(declare-function my/review-work-journal-open           "dl-review")
+(declare-function my/review-work-recent-notes           "dl-review")
+(declare-function my/review-work-references-retained    "dl-review")
+(declare-function my/review-work-references-untrusted   "dl-review")
+(declare-function my/review-work-stale                  "dl-review")
+(declare-function my/review-work-weekly                 "dl-review")
+(declare-function my/rotate-windows                     "dl-window")
+(declare-function my/rotate-windows-backward            "dl-window")
+(declare-function my/tmp-buffer                         "dl-buffer-management")
+(declare-function my/toggle-margins                     "dl-theme")
+(declare-function my/toggle-window-dedicated            "dl-window")
+(declare-function my/weekly-note                        "dl-denote-journal")
+(declare-function my/window-exchange-buffer             "dl-window")
+(declare-function my/work-journal-note                  "dl-denote-journal")
+(declare-function my/work-weekly-note                   "dl-denote-journal")
+(declare-function my/yazi-here                          "dl-dirvish")
+(declare-function my/zmx-kill                           "dl-zmx")
+(declare-function my/zmx-new                            "dl-zmx")
+(declare-function my/zmx-new-at-root                    "dl-zmx")
+(declare-function my/zmx-project                        "dl-zmx")
+(declare-function my/zmx-resume                         "dl-zmx")
+(declare-function my/zmx-switch                         "dl-zmx")
+(declare-function olivetti-mode                         "olivetti")
+(declare-function org-agenda-files                      "org")
+(declare-function org-clock-goto                        "org-clock")
+(declare-function org-clock-in-last                     "org-clock")
+(declare-function org-clock-out                         "org-clock")
+(declare-function org-insert-link-global                "ol")
+(declare-function org-iw-add                            "org-iw")
+(declare-function org-iw-continue                       "org-iw")
+(declare-function org-iw-end-session                    "org-iw")
+(declare-function org-iw-list-queue                     "org-iw")
+(declare-function org-iw-move                           "org-iw")
+(declare-function org-iw-remove                         "org-iw")
+(declare-function org-iw-visit-next                     "org-iw")
+(declare-function org-mark-ring-goto                    "org")
+(declare-function org-narrow-to-subtree                 "org")
+(declare-function org-refile                            "org-refile")
+(declare-function org-store-link                        "ol")
+(declare-function rainbow-delimiters-mode               "rainbow-delimiters")
+(declare-function rainbow-mode                          "rainbow-mode")
+(declare-function rg-menu                               "rg-menu")
+(declare-function spacious-padding-mode                 "spacious-padding")
+(declare-function split-and-follow-horizontally         "dl-window")
+(declare-function split-and-follow-vertically           "dl-window")
+(declare-function transpose-frame                       "transpose-frame")
+(declare-function vr/query-replace                      "visual-regexp")
+(declare-function vr/replace                            "visual-regexp")
+(declare-function my/umbriel                            "dl-umbriel-buffer")
+(declare-function my/umbriel-switch-workspace           "dl-umbriel-buffer")
+(declare-function my/umbriel-set-active-layout          "dl-umbriel-buffer")
+(declare-function dl-umbriel-focus-frame                "dl-umbriel-focus")
 
 
 (defun my/narrow-or-widen-dwim ()
@@ -227,13 +231,13 @@ Warns when KEY already has a binding in MAP that differs from CMD."
       (which-key-add-keymap-based-replacements map key desc))))
 
 ;; Prefix maps -- one per command family.
-(defvar-keymap my-file-map        :name "file")
-(defvar-keymap my-buffer-map      :name "buffer")
-(defvar-keymap my-window-map      :name "window")
-(defvar-keymap my-search-map      :name "search")
-(defvar-keymap my-project-map     :name "project")
-(defvar-keymap my-jump-map        :name "jump")
-(defvar-keymap my-git-map         :name "git")
+(defvar-keymap my-file-map              :name "file")
+(defvar-keymap my-buffer-map            :name "buffer")
+(defvar-keymap my-window-map            :name "window")
+(defvar-keymap my-search-map            :name "search")
+(defvar-keymap my-project-map           :name "project")
+(defvar-keymap my-jump-map              :name "jump")
+(defvar-keymap my-git-map               :name "git")
 (defvar-keymap my-notes-map             :name "notes")
 (defvar-keymap my-notes-new-map         :name "notes:new")
 (defvar-keymap my-notes-manage-map      :name "notes:manage")
@@ -241,15 +245,15 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (defvar-keymap my-notes-work-map        :name "notes:work")
 (defvar-keymap my-notes-work-review-map :name "notes:work:review")
 (defvar-keymap my-roam-map              :name "roam")
-(defvar-keymap my-org-map         :name "org")
-(defvar-keymap my-toggle-map      :name "toggle")
-(defvar-keymap my-eval-map        :name "eval")
-(defvar-keymap my-term-map        :name "term")
-(defvar-keymap my-fold-map        :name "fold")
-(defvar-keymap my-diagnostics-map :name "diagnostics")
-(defvar-keymap my-llm-map         :name "llm")
-(defvar-keymap my-org-iw-map      :name "org-iw")
-(defvar-keymap my-umbriel-map     :name "umbriel")
+(defvar-keymap my-org-map               :name "org")
+(defvar-keymap my-toggle-map            :name "toggle")
+(defvar-keymap my-eval-map              :name "eval")
+(defvar-keymap my-term-map              :name "term")
+(defvar-keymap my-fold-map              :name "fold")
+(defvar-keymap my-diagnostics-map       :name "diagnostics")
+(defvar-keymap my-llm-map               :name "llm")
+(defvar-keymap my-org-iw-map            :name "org-iw")
+(defvar-keymap my-umbriel-map           :name "umbriel")
 
 ;; Bind prefix maps globally under C-c <letter>.
 (define-key global-map (kbd "C-c f") my-file-map)
@@ -273,87 +277,94 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 ;; Prefix labels for which-key.
 (with-eval-after-load 'which-key
   (which-key-add-key-based-replacements
-    "C-c f"   "file"
-    "C-c b"   "buffer"
-    "C-c w"   "window"
-    "C-c s"   "search"
-    "C-c p"   "project"
-    "C-c j"   "jump"
-    "C-c g"   "git"
-    "C-c n"   "notes"
-    "C-c n N"   "notes:new"
-    "C-c n m"   "notes:manage"
-    "C-c n v"   "notes:review"
-    "C-c n W"   "notes:work"
-    "C-c n W v" "notes:work:review"
-    "C-c n r"   "roam"
-    "C-c o"   "org"
-    "C-c t"   "toggle"
-    "C-c e"   "eval"
-    "C-c m"   "term"
-    "C-c z"   "fold"
-    "C-c d"   "diagnostics"
     "C-c L"   "llm"
-    "C-c u"   "umbriel"))
+    "C-c a"   "toggle"
+    "C-c b"   "buffer"
+    "C-c d"   "diagnostics"
+    "C-c e"   "eval"
+    "C-c f"   "file"
+    "C-c g"   "git"
+    "C-c j"   "jump"
+    "C-c n N"   "notes:new"
+    "C-c n W v" "notes:work:review"
+    "C-c n W"   "notes:work"
+    "C-c n m"   "notes:manage"
+    "C-c n r"   "roam"
+    "C-c n v"   "notes:review"
+    "C-c n"   "notes"
+    "C-c o"   "org"
+    "C-c p"   "project"
+    "C-c s"   "search"
+    "C-c t"   "term"
+    "C-c u"   "umbriel"
+    "C-c w"   "window"
+    "C-c z"   "fold"
+    ))
 
-;; Concrete bindings -- starter set, grow as needed.
-(my/bind my-file-map   "f" #'my/project-find-file-here "find-file infer proj")
-(my/bind my-file-map   "F" #'find-file              "find-file")
-(my/bind my-file-map   "s" #'save-buffer            "save")
-(my/bind my-file-map   "S" #'write-file             "save-as")
-(my/bind my-file-map   "r" #'consult-recent-file    "recent")
-(my/bind my-file-map   "d" #'dired-jump             "dired-jump")
-(my/bind my-file-map   "D" #'dirvish                "dirvish")
-(my/bind my-file-map   "t" #'dirvish-side           "dirvish-side (tree)")
-(my/bind my-file-map   "o" #'crux-open-with         "open external")
-(my/bind my-file-map   "p" #'crux-kill-buffer-truename "copy path (true)")
-(my/bind my-file-map   "y" #'my/yazi-here           "yazi")
-(my/bind my-file-map   "b" #'my/broot-here          "broot")
-(my/bind my-file-map   "K" #'my/delete-current-buffer-file "delete file + buffer")
-(my/bind my-file-map   "M" #'my/move-file           "move file")
-;; Project family lives at C-c p — see `my-project-map' below.
-(my/bind my-buffer-map "b" #'consult-buffer         "switch")
-(my/bind my-buffer-map "k" #'kill-current-buffer    "kill")
-(my/bind my-buffer-map "i" #'ibuffer                "ibuffer")
-(my/bind my-buffer-map "n" #'my/next-user-buffer    "next (skip *…* / dired)")
-(my/bind my-buffer-map "p" #'my/previous-user-buffer "prev (skip *…* / dired)")
-(my/bind my-buffer-map "t" #'my/tmp-buffer          "tmp buffer (same mode)")
-(declare-function hydra-window-resize/body "dl-keybind")
-(my/bind my-window-map "<left>"  #'windmove-left        "left")
-(my/bind my-window-map "<down>"  #'windmove-down        "down")
-(my/bind my-window-map "<up>"    #'windmove-up          "up")
-(my/bind my-window-map "<right>" #'windmove-right       "right")
-(my/bind my-window-map "s"       #'split-and-follow-horizontally "split-below (+focus)")
-(my/bind my-window-map "v"       #'split-and-follow-vertically   "split-right (+focus)")
-(my/bind my-window-map "S"       #'split-window-below   "split-below (no focus)")
-(my/bind my-window-map "V"       #'split-window-right   "split-right (no focus)")
-(my/bind my-window-map "o"       #'delete-other-windows "only")
-(my/bind my-window-map "d"       #'delete-window        "delete")
-(my/bind my-window-map "="       #'balance-windows      "balance")
-(my/bind my-window-map "r"       #'hydra-window-resize/body  "resize (hydra)")
-(my/bind my-window-map "f"       #'transpose-frame           "transpose h ⇄ v")
-(my/bind my-window-map "c"       #'my/rotate-windows         "cycle (rotate)")
-(my/bind my-window-map "C"       #'my/rotate-windows-backward "cycle back")
-(my/bind my-window-map "x"       #'my/window-exchange-buffer  "exchange buffer (ace)")
-(my/bind my-window-map "P"       #'my/toggle-window-dedicated "pin (dedicated)")
-(my/bind my-git-map    "g" #'magit-status           "status")
-(my/bind my-git-map    "l" #'git-link               "link")
+(declare-function  hydra-window-resize/body "dl-keybind")
+
+;;        File
+(my/bind  my-file-map   "f" #'my/project-find-file-here "find-file infer proj")
+(my/bind  my-file-map   "F" #'find-file              "find-file")
+(my/bind  my-file-map   "s" #'save-buffer            "save")
+(my/bind  my-file-map   "S" #'write-file             "save-as")
+(my/bind  my-file-map   "r" #'consult-recent-file    "recent")
+(my/bind  my-file-map   "d" #'dired-jump             "dired-jump")
+(my/bind  my-file-map   "D" #'dirvish                "dirvish")
+(my/bind  my-file-map   "t" #'dirvish-side           "dirvish-side (tree)")
+(my/bind  my-file-map   "o" #'crux-open-with         "open external")
+(my/bind  my-file-map   "p" #'crux-kill-buffer-truename "copy path (true)")
+(my/bind  my-file-map   "y" #'my/yazi-here           "yazi")
+(my/bind  my-file-map   "b" #'my/broot-here          "broot")
+(my/bind  my-file-map   "K" #'my/delete-current-buffer-file "delete file + buffer")
+(my/bind  my-file-map   "M" #'my/move-file           "move file")
+
+;;        Project
+(my/bind  my-buffer-map "b" #'consult-buffer         "switch")
+(my/bind  my-buffer-map "k" #'kill-current-buffer    "kill")
+(my/bind  my-buffer-map "i" #'ibuffer                "ibuffer")
+(my/bind  my-buffer-map "n" #'my/next-user-buffer    "next (skip *…* / dired)")
+(my/bind  my-buffer-map "p" #'my/previous-user-buffer "prev (skip *…* / dired)")
+(my/bind  my-buffer-map "t" #'my/tmp-buffer          "tmp buffer (same mode)")
+
+;;        Window
+(my/bind my-window-map "<left>" #'windmove-left "left")
+(my/bind my-window-map "<down>" #'windmove-down "down")
+(my/bind my-window-map "<up>" #'windmove-up "up")
+(my/bind my-window-map "<right>" #'windmove-right "right")
+(my/bind my-window-map "s" #'split-and-follow-horizontally "split-below (+focus)")
+(my/bind my-window-map "v" #'split-and-follow-vertically "split-right (+focus)")
+(my/bind my-window-map "S" #'split-window-below "split-below (no focus)")
+(my/bind my-window-map "V" #'split-window-right "split-right (no focus)")
+(my/bind my-window-map "o" #'delete-other-windows "only")
+(my/bind my-window-map "d" #'delete-window "delete")
+(my/bind my-window-map "=" #'balance-windows "balance")
+(my/bind my-window-map "r" #'hydra-window-resize/body "resize (hydra)")
+(my/bind my-window-map "f" #'transpose-frame "transpose h ⇄ v")
+(my/bind my-window-map "c" #'my/rotate-windows "cycle (rotate)")
+(my/bind my-window-map "C" #'my/rotate-windows-backward "cycle back")
+(my/bind my-window-map "x" #'my/window-exchange-buffer "exchange buffer (ace)")
+(my/bind my-window-map "P" #'my/toggle-window-dedicated "pin (dedicated)")
+
+;;        Git
+(my/bind  my-git-map "g"       #'magit-status           "status")
+(my/bind  my-git-map "l"       #'git-link               "link")
 
 ;; Project family — parallel to C-c f, project.el-aligned letters so
 ;; muscle memory survives between C-x p and C-c p.
-(my/bind my-project-map "p" #'project-switch-project          "switch project")
-(my/bind my-project-map "f" #'project-find-file               "find file")
-(my/bind my-project-map "b" #'project-switch-to-buffer        "switch buffer")
-(my/bind my-project-map "k" #'project-kill-buffers            "kill buffers")
-(my/bind my-project-map "d" #'project-dired                   "dired")
-(my/bind my-project-map "D" #'project-find-dir                "find dir")
-(my/bind my-project-map "c" #'project-compile                 "compile")
-(my/bind my-project-map "r" #'project-query-replace-regexp    "query-replace")
-(my/bind my-project-map "g" #'project-find-regexp             "grep (xref)")
-(my/bind my-project-map "v" #'project-vc-dir                  "vc-dir")
-(my/bind my-project-map "e" #'project-eshell                  "eshell")
-(my/bind my-project-map "s" #'project-shell                   "shell")
 (my/bind my-project-map "!" #'project-shell-command           "shell-command")
+(my/bind my-project-map "D" #'project-find-dir                "find dir")
+(my/bind my-project-map "b" #'project-switch-to-buffer        "switch buffer")
+(my/bind my-project-map "c" #'project-compile                 "compile")
+(my/bind my-project-map "d" #'project-dired                   "dired")
+(my/bind my-project-map "e" #'project-eshell                  "eshell")
+(my/bind my-project-map "f" #'project-find-file               "find file")
+(my/bind my-project-map "g" #'project-find-regexp             "grep (xref)")
+(my/bind my-project-map "k" #'project-kill-buffers            "kill buffers")
+(my/bind my-project-map "p" #'project-switch-project          "switch project")
+(my/bind my-project-map "r" #'project-query-replace-regexp    "query-replace")
+(my/bind my-project-map "s" #'project-shell                   "shell")
+(my/bind my-project-map "v" #'project-vc-dir                  "vc-dir")
 
 ;; Search map — scope ladder.  Lowercase narrows, uppercase widens.
 ;; Helpers `my/consult-line-symbol-at-point' /
@@ -421,6 +432,11 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 
 ;; Org map — cross-buffer entry points only.  In-buffer Org commands stay
 ;; at Org's own `C-c C-<x>' (mode-specific space, Org owns it).
+;; TRIAL: Do i really need these at C-c _ ?
+(my/bind my-org-map     "a" #'org-agenda                      "agenda")
+(my/bind my-org-map     "c" #'org-capture                     "capture")
+(my/bind my-org-map     "a" #'org-store-link                  "store-link")
+
 (my/bind my-org-map     "h" #'consult-org-heading         "heading (buffer)")
 (my/bind my-org-map     "H" (lambda () (interactive)
                               (consult-org-heading nil (org-agenda-files))) "heading (agenda)")
@@ -432,15 +448,15 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-org-map     "b" #'org-switchb                 "switch org buffer")
 (my/bind my-org-map     "L" #'org-insert-link-global      "insert link (global)")
 
-;; Umbriel map — the compositor (apps/dl-umbriel-buffer.el, dl-umbriel-focus.el).
-(declare-function my/umbriel                    "dl-umbriel-buffer")
-(declare-function my/umbriel-switch-workspace   "dl-umbriel-buffer")
-(declare-function my/umbriel-set-active-layout  "dl-umbriel-buffer")
-(declare-function dl-umbriel-focus-frame        "dl-umbriel-focus")
-(my/bind my-umbriel-map "u" #'my/umbriel                   "buffer")
-(my/bind my-umbriel-map "w" #'my/umbriel-switch-workspace  "switch workspace")
-(my/bind my-umbriel-map "l" #'my/umbriel-set-active-layout "set layout (active)")
-(my/bind my-umbriel-map "f" #'dl-umbriel-focus-frame       "focus frame")
+
+;; org-incremental-writing
+(my/bind my-org-iw-map "a" #'org-iw-add         "org-iw-add")
+(my/bind my-org-iw-map "v" #'org-iw-visit-next  "org-iw-visit-next")
+(my/bind my-org-iw-map "c" #'org-iw-continue    "org-iw-continue")
+(my/bind my-org-iw-map "q" #'org-iw-end-session "org-iw-end-session")
+(my/bind my-org-iw-map "m" #'org-iw-move        "org-iw-move")
+(my/bind my-org-iw-map "r" #'org-iw-remove      "org-iw-remove")
+(my/bind my-org-iw-map "l" #'org-iw-list-queue  "org-iw-list-queue")
 
 ;; Notes (C-c n …) — see plan §4b in ~/.claude/plans/yes-use-dl-for-staged-quiche.md.
 ;; Sub-prefixes for new-by-class / manage / review live below.
@@ -452,12 +468,14 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (declare-function consult-notes                     "consult-notes")
 (declare-function consult-notes-search-in-all-notes "consult-notes")
 (declare-function org-ql-view                       "org-ql-view")
-(declare-function org-roam-node-find       "org-roam-node")
-(declare-function org-roam-node-insert     "org-roam-node")
-(declare-function org-roam-buffer-toggle   "org-roam-mode")
-(declare-function org-roam-capture         "org-roam-capture")
-(declare-function org-roam-db-sync         "org-roam-db")
-(declare-function org-roam-graph           "org-roam-graph")
+(declare-function org-roam-node-find                "org-roam-node")
+(declare-function org-roam-node-insert              "org-roam-node")
+(declare-function org-roam-buffer-toggle            "org-roam-mode")
+(declare-function org-roam-capture                  "org-roam-capture")
+(declare-function org-roam-db-sync                  "org-roam-db")
+(declare-function org-roam-graph                    "org-roam-graph")
+
+;; NOTES
 (my/bind my-notes-map "N" my-notes-new-map    "new-by-class")
 (my/bind my-notes-map "m" my-notes-manage-map "manage")
 (my/bind my-notes-map "v" my-notes-review-map "review")
@@ -478,6 +496,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-notes-map "Q" #'my/org-ql-search-notes            "query: results")
 (my/bind my-notes-map "V" #'org-ql-view                       "query: saved views")
 
+;; Notes > New
 (my/bind my-notes-new-map "p" #'my/denote-new-project    "project")
 (my/bind my-notes-new-map "a" #'my/denote-new-area       "area")
 (my/bind my-notes-new-map "s" #'my/denote-new-source     "source")
@@ -489,6 +508,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-notes-new-map "j" #'my/journal-note          "journal today")
 (my/bind my-notes-new-map "w" #'my/weekly-note           "weekly")
 
+;; Notes > Manage
 (my/bind my-notes-manage-map "b" #'my/bough-export-org                    "bough export org")
 (my/bind my-notes-manage-map "B" #'my/bough-export-denote                 "bough export denote")
 (my/bind my-notes-manage-map "r" #'denote-rename-file                     "rename")
@@ -496,6 +516,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-notes-manage-map "k" #'denote-rename-file-keywords            "edit keywords")
 (my/bind my-notes-manage-map "t" #'denote-rename-file-title               "retitle")
 
+;; Notes > Review
 (my/bind my-notes-review-map "q" #'my/review-queue                  "review queue")
 (my/bind my-notes-review-map "i" #'my/review-inbox                  "inbox")
 (my/bind my-notes-review-map "I" #'my/review-intake                 "intake (dired)")
@@ -522,7 +543,6 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-notes-work-map "j" #'my/work-journal-note  "work journal")
 (my/bind my-notes-work-map "w" #'my/work-weekly-note   "work weekly")
 (my/bind my-notes-work-map "q" #'my/org-ql-find-work-notes "work query")
-
 (my/bind my-notes-work-map "p" #'my/denote-new-work-project   "new work project")
 (my/bind my-notes-work-map "a" #'my/denote-new-work-area      "new work area")
 (my/bind my-notes-work-map "m" #'my/denote-new-work-meeting   "new work meeting")
@@ -532,6 +552,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-notes-work-map "r" #'my/denote-new-work-reference "new work reference")
 (my/bind my-notes-work-map "x" #'my/denote-new-work-index     "new work index")
 
+;; Notes > Work Review
 (my/bind my-notes-work-review-map "i" #'my/review-work-inbox                "inbox")
 (my/bind my-notes-work-review-map "I" #'my/review-work-intake               "intake")
 (my/bind my-notes-work-review-map "j" #'my/review-work-journal-open         "journal open items")
@@ -551,6 +572,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-roam-map   "s" #'org-roam-db-sync        "db sync")
 (my/bind my-roam-map   "g" #'org-roam-graph          "graph")
 
+;; Term map
 (my/bind my-term-map   "t" #'my/zmx-resume                     "zmx resume")
 (my/bind my-term-map   "T" #'my/zmx-new                        "zmx (new, here)")
 (my/bind my-term-map   "o" #'my/zmx-new-at-root                "zmx (new, project)")
@@ -601,403 +623,17 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-toggle-map "R" #'rainbow-mode                     "rainbow (colors)")
 (my/bind my-toggle-map "=" #'aggressive-indent-mode           "aggressive-indent")
 (my/bind my-toggle-map "E" #'my/eglot-toggle                  "eglot")
-;; org-incremental-writing
-(my/bind my-org-iw-map "a" #'org-iw-add         "org-iw-add")
-(my/bind my-org-iw-map "v" #'org-iw-visit-next  "org-iw-visit-next")
-(my/bind my-org-iw-map "c" #'org-iw-continue    "org-iw-continue")
-(my/bind my-org-iw-map "q" #'org-iw-end-session "org-iw-end-session")
-(my/bind my-org-iw-map "m" #'org-iw-move        "org-iw-move")
-(my/bind my-org-iw-map "r" #'org-iw-remove      "org-iw-remove")
-(my/bind my-org-iw-map "l" #'org-iw-list-queue  "org-iw-list-queue")
 
+;; Umbriel map — the compositor (apps/dl-umbriel-buffer.el, dl-umbriel-focus.el).
 
-;; Gallium alpha positions → meow-normal bindings
-;; b:block l:line  d:del  c:chg  v:visit    j:join y:save  o:C-c  u:undo ,:thing
-;; n:srch  r:repl  t:till s:—    g:cancel   p:yank h:←word a:appd e:word→ i:ins
-;; x:grow  q:quit  m:surr w:mark z:pop      k:—    f:find  ':rpt  ;:rev  .:thing
-;; X:shrink  >/<:indent  U:redo  C-o/C-S-o:jump back/forward (dogears)
-;; m:surround (s/d/r)  #:comment  =:reindent  ~/`:up/downcase  P:paste-pick
-;; T:till+  ^/$:line start(text)/end  C:change to EOL
-
-(declare-function meow-kill "meow-command")
-(declare-function meow-delete "meow-command")
-(declare-function meow-change "meow-command")
-(declare-function meow--select "meow-util")
-(declare-function meow--make-selection "meow-util")
-(declare-function meow-normal-define-key "meow-helpers")
-(declare-function meow-leader-define-key "meow-helpers")
-(declare-function meow-motion-define-key "meow-helpers")
-(defvar meow-cheatsheet-layout)
-(defvar meow-cheatsheet-layout-qwerty)
-(defvar meow-char-thing-table)
-
-(defun my/meow-delete-dwim ()
-  "Cut the active selection, or delete one character forward."
-  (interactive)
-  (if (region-active-p)
-      (meow-kill)
-    (meow-delete)))
-
-(defun my/meow-select-to-line-end ()
-  "Extend the selection's right edge to the logical line end."
-  (interactive)
-  (let* ((beg (if (region-active-p) (region-beginning) (point)))
-         (right (if (region-active-p) (region-end) (point)))
-         (end (save-excursion
-                (goto-char right)
-                (line-end-position))))
-    (meow--select (meow--make-selection '(select . transient) beg end) t)))
-
-(defun my/meow-change-to-line-end ()
-  "Change to the line end: `D' then `c'."
-  (interactive)
-  (my/meow-select-to-line-end)
-  (meow-change))
-
-;; Prefix keys replay as input rather than bind a keymap object: binding
-;; `mode-specific-map' reaches only global C-c keys, missing mode-local
-;; ones such as outline's C-c @ or org's C-c '.
-(defun my/meow--replay (keys)
-  "Feed KEYS back as input, so the keys after them see every active map.
-Each event is wrapped as (t . EVENT) so it is recorded in
-`this-command-keys': otherwise only the first lands there, and the echo
-area and which-key show C-c instead of C-c @."
-  (setq unread-command-events
-        (mapcar (lambda (event) (cons t event))
-                (listify-key-sequence (kbd keys)))))
-
-(defun my/meow-ctrl-c ()
-  "Act as \\`C-c'."
-  (interactive)
-  (my/meow--replay "C-c"))
-
-(defun my/meow-outline-prefix ()
-  "Act as \\`C-c @', the `outline-minor-mode' prefix."
-  (interactive)
-  (my/meow--replay "C-c @"))
-
-;; Line-wise edits (> < = #) share one notion of "the selected lines".
-;; Not meow's own: with no selection `meow-indent' (C-M-\) reindents
-;; from point to a possibly stale mark, and `meow-comment' (M-;
-;; `comment-dwim') appends an end-of-line comment instead of toggling.
-(defun my/meow--line-range ()
-  "Return (BEG . END) spanning the lines the selection touches.
-Without a selection, the current line.  A selection ending at a line
-start (linewise) excludes that line."
-  (let* ((active (region-active-p))
-         (beg (if active (region-beginning) (point)))
-         (end (if active (region-end) (point))))
-    (cons (save-excursion (goto-char beg) (line-beginning-position))
-          (save-excursion
-            (goto-char end)
-            (when (and (bolp) (> end beg)) (backward-char))
-            (line-end-position)))))
-
-(defun my/meow--edit-lines (edit &rest args)
-  "Call EDIT with the selected lines' bounds and ARGS, keeping the selection
-active so the command can repeat."
-  (pcase-let ((`(,beg . ,end) (my/meow--line-range)))
-    (apply edit beg end args))
-  (setq deactivate-mark nil))
-
-(defun my/meow-indent-right (n)
-  "Shift selected lines right by N times `standard-indent'."
-  (interactive "p")
-  (my/meow--edit-lines #'indent-rigidly (* n standard-indent)))
-
-(defun my/meow-indent-left (n)
-  "Shift selected lines left by N times `standard-indent'."
-  (interactive "p")
-  (my/meow--edit-lines #'indent-rigidly (* (- n) standard-indent)))
-
-(defun my/meow-comment-lines ()
-  "Toggle comments on the selected lines."
-  (interactive)
-  (my/meow--edit-lines #'comment-or-uncomment-region))
-
-(defun my/meow-reindent-lines ()
-  "Reindent the selected lines per the major mode."
-  (interactive)
-  (my/meow--edit-lines #'indent-region))
-
-;; Case.  Not `upcase-dwim': without a region it acts from point to
-;; the word's end, so mid-word it changes only the tail.
-(defun my/meow--change-case (change-region)
-  "Apply CHANGE-REGION to the selection, else the whole word at point.
-Point and the selection are kept."
-  (pcase-let ((`(,beg . ,end)
-               (if (region-active-p)
-                   (cons (region-beginning) (region-end))
-                 (or (bounds-of-thing-at-point 'word)
-                     (user-error "No word at point")))))
-    (funcall change-region beg end))
-  (setq deactivate-mark nil))
-
-(defun my/meow-upcase ()
-  "Upcase the selection, else the word at point."
-  (interactive)
-  (my/meow--change-case #'upcase-region))
-
-(defun my/meow-downcase ()
-  "Downcase the selection, else the word at point."
-  (interactive)
-  (my/meow--change-case #'downcase-region))
-
-;; Surround (Helix `ms' / `md' / `mr'), selection-first: select the
-;; inner text (e.g. `, (' or `, "'), then edit the flanking delimiters.
-(defconst my/meow-surround-things
-  '((round  ?\( . ?\))
-    (square ?\[ . ?\])
-    (curly  ?\{ . ?\})
-    (angle  ?\< . ?\>)
-    (string ?\" . ?\"))
-  "Delimiter pairs by meow thing.  Any other character pairs with itself.")
-
-(defun my/meow--surround-pair (char)
-  "Return (OPEN . CLOSE) for CHAR, which may be either delimiter."
-  (let ((pairs (mapcar #'cdr my/meow-surround-things)))
-    (or (assq char pairs)
-        (rassq char pairs)
-        (cons char char))))
-
-(defun my/meow--surround-input-pair (char)
-  "Like `my/meow--surround-pair', but CHAR may also be a thing letter.
-Letters come from `meow-char-thing-table', as `,' / `.' read them
-\(r → (), c → {}, ...)."
-  (or (alist-get (alist-get char meow-char-thing-table)
-                 my/meow-surround-things)
-      (my/meow--surround-pair char)))
-
-(defun my/meow--surround-bounds ()
-  "Return the selection's (BEG . END) when a delimiter pair flanks it."
-  (unless (region-active-p)
-    (user-error "Select the text inside the delimiters first"))
-  (let ((beg (region-beginning))
-        (end (region-end)))
-    (unless (and (> beg (point-min))
-                 (< end (point-max))
-                 (equal (my/meow--surround-pair (char-before beg))
-                        (cons (char-before beg) (char-after end))))
-      (user-error "Selection is not inside a delimiter pair"))
-    (cons beg end)))
-
-(defun my/meow-surround (char)
-  "Wrap the selection in the delimiter pair for CHAR (or thing letter).
-The selection stays on the content.  Without one, insert the pair
-with point inside."
-  (interactive "cSurround with: ")
-  (pcase-let ((`(,open . ,close) (my/meow--surround-input-pair char))
-              (beg (if (region-active-p) (region-beginning) (point)))
-              (end (if (region-active-p) (region-end) (point))))
-    (save-excursion
-      (goto-char end)
-      (insert close)
-      (goto-char beg)
-      ;; Markers at BEG (mark or point) move past OPEN onto the content.
-      (insert-before-markers open)))
-  (setq deactivate-mark nil))
-
-(defun my/meow-surround-delete ()
-  "Delete the delimiter pair around the selection."
-  (interactive)
-  (pcase-let ((`(,beg . ,end) (my/meow--surround-bounds)))
-    (delete-region end (1+ end))
-    (delete-region (1- beg) beg))
-  (setq deactivate-mark nil))
-
-(defun my/meow-surround-replace (char)
-  "Replace the delimiter pair around the selection with CHAR's pair."
-  (interactive "cReplace surround with: ")
-  (pcase-let ((`(,beg . ,end) (my/meow--surround-bounds))
-              (`(,open . ,close) (my/meow--surround-input-pair char)))
-    ;; In place, so the selection's markers stay put.
-    (subst-char-in-region end (1+ end) (char-after end) close)
-    (subst-char-in-region (1- beg) beg (char-before beg) open))
-  (setq deactivate-mark nil))
-
-(defvar my-surround-map
-  (define-keymap
-    "s" #'my/meow-surround
-    "d" #'my/meow-surround-delete
-    "r" #'my/meow-surround-replace)
-  "Meow normal `m': surround the selection.")
-
-;; Binding tables read as bodies: indent two columns, not under the call.
-(dolist (fn '(meow-motion-define-key meow-leader-define-key meow-normal-define-key
-                                     which-key-add-key-based-replacements))
-  (function-put fn 'lisp-indent-function 0))
-
-(defun meow-setup ()
-  (setq meow-cheatsheet-layout meow-cheatsheet-layout-qwerty)
-
-  (meow-motion-define-key
-    '("<left>"    . meow-left)
-    '("<right>"   . meow-right)
-    '("<up>"      . meow-prev)
-    '("<down>"    . meow-next)
-    '("S-<left>"  . meow-left-expand)
-    '("S-<right>" . meow-right-expand)
-    '("S-<up>"    . meow-prev-expand)
-    '("S-<down>"  . meow-next-expand)
-
-    '("!" . consult-buffer)
-    '("/" . avy-goto-char-2)
-    '("o" . my/meow-ctrl-c)
-
-    '("<escape>" . ignore))
-
-  (meow-leader-define-key
-    ;; Digit arguments.
-    '("1" . meow-digit-argument)
-    '("2" . meow-digit-argument)
-    '("3" . meow-digit-argument)
-    '("4" . meow-digit-argument)
-    '("5" . meow-digit-argument)
-    '("6" . meow-digit-argument)
-    '("7" . meow-digit-argument)
-    '("8" . meow-digit-argument)
-    '("9" . meow-digit-argument)
-    '("0" . meow-digit-argument)
-    '("/" . meow-keypad-describe-key)
-    ;; SPC ? → my/meow-gallium-cheatsheet (bound in dl-meow-cheatsheet.el)
-    ;; Flick-style user-buffer cycling.
-    '("[" . my/previous-user-buffer)
-    '("]" . my/next-user-buffer)
-    ;; Mirror C-c <letter> prefix maps onto SPC <letter>.
-    ;; Note: lowercase m and g are eaten by meow-keypad as the meta /
-    ;; ctrl-meta prefix dispatchers before leader-keymap is consulted,
-    ;; so git and term use capital aliases (SPC G, SPC M) in Meow.
-    ;; Lowercase C-c g / C-c m still work directly outside Meow.
-    (cons "f" my-file-map)
-    (cons "b" my-buffer-map)
-    (cons "w" my-window-map)
-    (cons "s" my-search-map)
-    (cons "p" my-project-map)
-    (cons "j" my-jump-map)
-    (cons "G" my-git-map)
-    (cons "n" my-notes-map)
-    (cons "o" my-org-map)
-    (cons "t" my-toggle-map)
-    (cons "e" my-eval-map)
-    (cons "M" my-term-map)
-    (cons "z" my-fold-map)
-    (cons "d" my-diagnostics-map)
-    (cons "L" my-llm-map)
-    (cons "u" my-umbriel-map))
-
-  (meow-normal-define-key
-    ;; Numeric expansion.
-    '("0" . meow-expand-0)
-    '("1" . meow-expand-1)
-    '("2" . meow-expand-2)
-    '("3" . meow-expand-3)
-    '("4" . meow-expand-4)
-    '("5" . meow-expand-5)
-    '("6" . meow-expand-6)
-    '("7" . meow-expand-7)
-    '("8" . meow-expand-8)
-    '("9" . meow-expand-9)
-    '("-" . negative-argument)
-
-    ;; Arrow-native movement (NAV layer / joystick).
-    '("<left>"    . meow-left)
-    '("<right>"   . meow-right)
-    '("<up>"      . meow-prev)
-    '("<down>"    . meow-next)
-    '("S-<left>"  . meow-left-expand)
-    '("S-<right>" . meow-right-expand)
-    '("S-<up>"    . meow-prev-expand)
-    '("S-<down>"  . meow-next-expand)
-    '("C-<left>"  . meow-back-word)
-    '("C-<right>" . meow-next-word)
-    '("M-<left>"  . meow-back-symbol)
-    '("M-<right>" . meow-next-symbol)
-
-    ;; Word/symbol motion — spatial pair (h left of e on Gallium home row).
-    '("h" . meow-back-word)
-    '("H" . meow-back-symbol)
-    '("e" . meow-next-word)
-    '("E" . meow-next-symbol)
-
-    ;; Insert/append.
-    '("i" . meow-insert)
-    '("I" . meow-open-above)
-    '("a" . meow-append)
-    '("A" . meow-open-below)
-
-    ;; Edit actions.
-    '("c" . meow-change)
-    '("C" . my/meow-change-to-line-end)
-    '("d" . my/meow-delete-dwim)
-    '("D" . my/meow-select-to-line-end)
-    '("r" . meow-replace)
-    '("R" . meow-swap-grab)
-    '("u" . meow-undo)
-    ;; Helix redo.  C-r stays global backward search; undo within the
-    ;; selection is plain C-/ with a selection active.
-    '("U" . undo-redo)
-    '("p" . meow-yank)
-    '("P" . consult-yank-pop)
-    '("y" . meow-save)
-    '("Y" . meow-sync-grab)
-
-    ;; Targeted jumps.
-    '("f" . meow-find)
-    '("F" . meow-find-expand)
-    '("t" . meow-till)
-    '("T" . meow-till-expand)
-    '("n" . meow-search)
-
-    ;; Selection / text objects.
-    '("w" . meow-mark-word)
-    '("W" . meow-mark-symbol)
-    '("l" . meow-line)
-    '("L" . meow-goto-line)
-    '("b" . meow-block)
-    '("B" . meow-to-block)
-    '("," . meow-inner-of-thing)
-    '("." . meow-bounds-of-thing)
-    '("[" . meow-beginning-of-thing)
-    '("]" . meow-end-of-thing)
-
-    ;; Selection manipulation.
-    '("g" . meow-cancel-selection)
-    '("G" . meow-grab)
-    '("j" . meow-join)
-    '("x" . expreg-expand)
-    '("X" . expreg-contract)
-    '(">" . my/meow-indent-right)
-    '("<" . my/meow-indent-left)
-    '("=" . my/meow-reindent-lines)
-    '("#" . my/meow-comment-lines)
-    '("~" . my/meow-upcase)
-    '("`" . my/meow-downcase)
-    '("^" . back-to-indentation)
-    '("$" . move-end-of-line)
-    (cons "m" my-surround-map)
-    '("z" . meow-pop-selection)
-    '(";" . meow-reverse)
-
-    ;; Prefix / mode-specific (C-c dispatch).
-    '("o" . my/meow-ctrl-c)
-    '("@" . my/meow-outline-prefix)
-
-    ;; Misc.
-    '("%" . my/forward-or-backward-sexp)
-    '("v" . meow-visit)
-    '("q" . meow-quit)
-    '("'" . repeat)
-    '("!" . consult-buffer)
-    '("/" . avy-goto-char-2)
-    ;; Jump back/forward (Helix C-o/C-i; C-i is TAB, so C-S-o).
-    '("C-o"   . dogears-back)
-    '("C-S-o" . dogears-forward)
-    '("<escape>" . ignore)))
+(my/bind my-umbriel-map "u" #'my/umbriel                   "buffer")
+(my/bind my-umbriel-map "w" #'my/umbriel-switch-workspace  "switch workspace")
+(my/bind my-umbriel-map "l" #'my/umbriel-set-active-layout "set layout (active)")
+(my/bind my-umbriel-map "f" #'dl-umbriel-focus-frame       "focus frame")
 
 ;; Other
 ;; C-. goto last change
 ;; C-; iedit-mode
-
 
 (provide 'dl-keymap)
 ;;; dl-keymap.el ends here

@@ -53,10 +53,11 @@
  ("C-s-<return>" . eshell-other-window)) ; `dl-term.el'
 
 ;; Org entry points: the reserved `C-c <letter>' singletons (KEYS.md).
-(bind-keys
- ("C-c a" . org-agenda)
- ("C-c c" . org-capture)
- ("C-c l" . org-store-link))
+;; USE KEYMAP FOR THESE FFS
+;; (bind-keys
+;;  ("C-c a" . org-agenda)
+;;  ("C-c c" . org-capture)
+;;  ("C-c l" . org-store-link))
 
 (bind-keys :map comint-mode-map
            ("C-p" . comint-previous-input)
@@ -121,7 +122,7 @@ Window resize: _<left>_/_<right>_ width  _<up>_/_<down>_ height  _=_ balance  _q
      keymap)
     (nreverse bindings)))
 
-;; Use HIPPIE-EXPAND instead of dabbrev-expand
+;; Use HIPPIE-EXPAND instead of dabbrev-expand for C-/
 (bind-keys ([remap dabbrev-expand] . hippie-expand))
 
 ;; Discovery cheatsheet:
