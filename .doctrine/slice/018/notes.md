@@ -106,10 +106,10 @@ Seat: /super-orchestrator, started 2026-11-11. Main worktree, no dispatch.
 
 **Operator rulings (user, this session):**
 - Planning artefacts committed by the seat as one commit before PHASE-01/02.
-- PHASE-01: the user adds `/home/david/dev/umbriel` to quotient `roots`
-  (policy.src.json) and approves it. A pi run sees only its own root, so the
-  cross-repo copy (config → `~/dev/umbriel`) is a Claude step; pi does the
-  rest with `cwd` `~/dev/umbriel`. To read the satan precedent, a pi run
+- Repo is `~/dev/umbriel.el`, origin `git@github.com:davidlee/umbriel.el.git`, never pushed by the run (DEC-038 supersedes DEC-033; design/plan/scope paths rewritten by the seat, flag for audit).
+- PHASE-01: quotient `roots` needs `/home/david/dev/umbriel.el` (user act; `~/dev/umbriel` was added first, then renamed). A pi run sees only its own root, so the
+  cross-repo copy (config → `~/dev/umbriel.el`) is a Claude step; pi does the
+  rest with `cwd` `~/dev/umbriel.el`. To read the satan precedent, a pi run
   needs `cwd` `~/dev/satan` (allowed root).
 - Gate: host `just check` is the only authoritative gate. Sandbox-only
   failures below are known, not form gaps.
@@ -134,3 +134,5 @@ Seat: /super-orchestrator, started 2026-11-11. Main worktree, no dispatch.
 Commit only a phase's own paths.
 
 ## Autonomy log
+- Re-probe at `~/dev/umbriel` (before the rename): pi `write` form writable, has git/just/rg, **no emacs** (no project flake yet). Until PHASE-01's flake exists and its form is approved (`quotient allow`, a user act), the package's lint/tests run on the host. If pi is refused `form-unapproved` there, run the step on the host; do not wait.
+- seat · DEC-033→DEC-038 path/remote rewrite across design.md, plan.toml, plan.md, slice-018.md · user ruling mid-preflight · decided (audit: confirm no stale `~/dev/umbriel` path)

@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 38
+slug = "umbriel-package-repo-devumbrielel-satan-layout-origin-davidleeumbrielel-no-push"
+title = "umbriel package repo: ~/dev/umbriel.el, SATAN layout, origin davidlee/umbriel.el, no push"
+record_kind = "decision"
+status = "accepted"
+created = "2026-11-10"
+updated = "2026-11-10"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-018 extracts the umbriel Emacs client into its own package repo. The GitHub name umbriel is taken (the user's compositor fork); a remote exists as davidlee/umbrella, which the user renames."
+choice = "Repo at ~/dev/umbriel.el with SATAN layout (umbriel/*.el, umbriel/test/, dev/ runner, justfile, flake.nix). origin = git@github.com:davidlee/umbriel.el.git. Elisp feature and umbriel-* prefix unchanged. The run never pushes; the user pushes after review."
+alternatives = ["~/dev/umbriel with no remote (DEC-033)", "umbriel-emacs", "keep umbrella", "full rename to umbrella-*"]
+rationale = "foo.el is the common Elisp package repo convention and avoids the taken umbriel name; pushing stays the user's outward-facing act."
+consequences = ["dl-dirs-checkouts gains ~/dev/umbriel.el/umbriel", "quotient root is ~/dev/umbriel.el", "design/plan paths read ~/dev/umbriel.el"]
+decided_by = "user"
+decided_on = "2026-11-11"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = ["DEC-033"]   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-018"

@@ -8,7 +8,7 @@ shading, saved faces, and one integration file.
 
 ```
 before                               after
-~/.config/emacs                      ~/dev/umbriel            ~/.config/emacs
+~/.config/emacs                      ~/dev/umbriel.el            ~/.config/emacs
   desktop/dl-umbriel*.el  ──move──▶    umbriel/umbriel*.el      desktop/dl-umbriel.el (integration)
   test/dl-umbriel*-test.el ─move──▶    umbriel/test/*.el        test/dl-umbriel-keys-test.el
   keys/, ui/dl-faces.el,               dev/umbriel-test.el      keys/, ui/dl-faces.el,
@@ -22,10 +22,10 @@ handling.
 <!-- doctrine:section sec-2 -->
 ## Package repo (DEC-033)
 
-`~/dev/umbriel`, a new git repo. It has no remote until the user asks for one.
+`~/dev/umbriel.el`, a new git repo; origin `git@github.com:davidlee/umbriel.el.git`, never pushed by the run (DEC-038, superseding DEC-033).
 
 ```
-~/dev/umbriel/
+~/dev/umbriel.el/
   umbriel/umbriel.el            client      (was dl-umbriel.el)
   umbriel/umbriel-model.el      pure model  (was dl-umbriel-model.el)
   umbriel/umbriel-columns.el    pure layout (was dl-umbriel-columns.el)
@@ -105,14 +105,14 @@ plus the tests.
 
 ```
 init.el ──require──▶ desktop/dl-umbriel.el ──use-package──▶ umbriel-buffer, umbriel-focus
-                         │                                     (~/dev/umbriel/umbriel)
+                         │                                     (~/dev/umbriel.el/umbriel)
                          └─calls─▶ core/dl-checkout.el  dl-checkout-compile-stale
 ai/dl-satan.el ──calls──▶ core/dl-checkout.el
 keys/dl-keymap.el ─binds─▶ umbriel, umbriel-switch-workspace, umbriel-set-active-layout, umbriel-focus-frame
 ui/dl-faces.el ─shades─▶ umbriel-buffer-{active-workspace[-window],workspace-name,layout}
 ```
 
-- **`core/dl-dirs.el`**: append `"~/dev/umbriel/umbriel"` to
+- **`core/dl-dirs.el`**: append `"~/dev/umbriel.el/umbriel"` to
   `dl-dirs-checkouts` (:34-35). Load path, lint, Flymake and tests all read it.
 - **`core/dl-checkout.el`** (new, DEC-036): its one concern is packages
   loaded from git checkouts.
@@ -127,11 +127,11 @@ ui/dl-faces.el ─shades─▶ umbriel-buffer-{active-workspace[-window],workspa
 - **`desktop/dl-umbriel.el`** (new content, at the path freed by the move):
 
   ```elisp
-  ;;; dl-umbriel.el --- integration with umbriel (~/dev/umbriel) -*- lexical-binding: t; -*-
+  ;;; dl-umbriel.el --- integration with umbriel (~/dev/umbriel.el) -*- lexical-binding: t; -*-
   (require 'dl-checkout)
   (if (not (locate-library "umbriel-buffer"))
       (display-warning 'dl-umbriel
-                       "umbriel checkout not on load-path (~/dev/umbriel); skipped")
+                       "umbriel checkout not on load-path (~/dev/umbriel.el); skipped")
     (dl-checkout-compile-stale "umbriel.el")
     (use-package umbriel-buffer :ensure nil :demand t)
     (use-package umbriel-focus :ensure nil :demand t))
@@ -166,7 +166,7 @@ ui/dl-faces.el ─shades─▶ umbriel-buffer-{active-workspace[-window],workspa
 | `dl-satan-test` | config | unchanged; still green proves the satan call site |
 
 The config's `just check` runs config suites only. The package suites run
-from `~/dev/umbriel` with `just check`. **Count check.** Take the baseline from the
+from `~/dev/umbriel.el` with `just check`. **Count check.** Take the baseline from the
 config's `just check` summary at the end of P2 (today 595 `ert-deftest`, 245 of
 them umbriel). After P3: package total + config total = baseline + new tests
 (dl-checkout, the smoke test). Skipped tests are reported separately.
@@ -176,7 +176,7 @@ them umbriel). After P3: package total + config total = baseline + new tests
 
 Design targets (recorded as `design-target` selectors):
 
-- new repo: `~/dev/umbriel/**` (outside this checkout; noted, not a selector)
+- new repo: `~/dev/umbriel.el/**` (outside this checkout; noted, not a selector)
 - removed: `desktop/dl-umbriel-{model,columns,focus,buffer}.el`,
   `test/dl-umbriel{,-model,-columns,-focus,-buffer}-test.el`
 - rewritten: `desktop/dl-umbriel.el` (now the integration file)
@@ -199,7 +199,7 @@ Unchanged: `keys/dl-meow-map.el`, `~/flakes/**` (no Nix input; DEC-033).
 Copy, then cut over (SL-012). The config stays green at every commit.
 
 ```
-P1 package repo   copy + rename into ~/dev/umbriel; runner, justfile, flake;
+P1 package repo   copy + rename into ~/dev/umbriel.el; runner, justfile, flake;
                   package `just check` green.   Config untouched.
 P2 shared helper  core/dl-checkout.el (TDD); ai/dl-satan.el calls it.
                   Config `just check` green.
@@ -226,9 +226,9 @@ P4 docs + records docs move, AGENTS.md, CHANGELOG, backlog bodies, memories,
 
 | Id | Check | Mode |
 |---|---|---|
-| V1 | `~/dev/umbriel`: `just check` green; runner reports 5 suites loaded and 0 unexpected; it fails on zero tests loaded | test |
+| V1 | `~/dev/umbriel.el`: `just check` green; runner reports 5 suites loaded and 0 unexpected; it fails on zero tests loaded | test |
 | V2 | config: `just check` green, new files tracked first; lint zero warnings; the keys suite's smoke test loads `dl-umbriel` in a fresh Emacs | test |
-| V3 | in `~/dev/umbriel`, both sec-3 sweeps (old names; config paths and bare record ids) are empty; `rg 'my/umbriel\|dl-umbriel-(model\|columns\|focus\|buffer\|refresh)' --glob '!.doctrine/**' --glob '!CHANGELOG.md'` in config empty | agent |
+| V3 | in `~/dev/umbriel.el`, both sec-3 sweeps (old names; config paths and bare record ids) are empty; `rg 'my/umbriel\|dl-umbriel-(model\|columns\|focus\|buffer\|refresh)' --glob '!.doctrine/**' --glob '!CHANGELOG.md'` in config empty | agent |
 | V4 | package + config test totals = P2 baseline + new tests; skipped reported separately | agent |
 | V5 | `dl-checkout-test`: compiles stale, skips fresh, writes nothing while compiling | test |
 | V6 | live, after daemon restart: `C-c u u` and `SPC u u` open `*umbriel*`; workspace/layout faces keep their look; `emacsclient` focus still raises the frame | human |
@@ -248,12 +248,12 @@ P4 docs + records docs move, AGENTS.md, CHANGELOG, backlog bodies, memories,
   byte-compile treats warnings as errors.
 - **Hosts without the checkout** (fresh machine, Guix, darwin): the config
   starts, warns, and has no umbriel. The checkout reaches a host by
-  `git clone`, by hand, until there is a remote (DEC-033). The umbriel
+  `git clone` from origin, by hand (DEC-038). The umbriel
   tests in the config skip there.
 - **Guix hosts:** On Guix, `magit-section` comes from
   Guix Home, as today.
 
 Follow-ups (backlog, at P4): make the focus hook opt-in (DEC-035); publish
-or add a remote when the user decides (DEC-033); fix the SATAN author email
+(push to origin) when the user decides (DEC-038); fix the SATAN author email
 (in the SATAN repo).
 

@@ -21,7 +21,7 @@ SL-012 (SATAN extraction) is the worked example for this pattern.
 
 ### In scope
 
-1. **New repo** for the package (`~/dev/umbriel`, DEC-033). It holds the five modules, their tests,
+1. **New repo** for the package (`~/dev/umbriel.el`, DEC-033). It holds the five modules, their tests,
    a test runner, and package headers (`Package-Requires` lists
    `magit-section`).
 2. **Namespace.** `dl-umbriel-*` → `umbriel-*` (functions, variables, faces,
@@ -89,7 +89,7 @@ SL-012 (SATAN extraction) is the worked example for this pattern.
   rename without migrating them silently drops the user's face settings.
 - **Risk:** the daemon loads the config at start. A half-done rename breaks
   `C-c u` and the meow `u` binding until the user restarts the daemon.
-- **Settled:** repo `~/dev/umbriel`, SATAN layout, no remote yet (DEC-033);
+- **Settled:** repo `~/dev/umbriel.el`, SATAN layout, origin davidlee/umbriel.el, no push by the run (DEC-038, supersedes DEC-033);
   one-step cutover, no aliases (DEC-034); records stay (DEC-037).
 
 ## Verification / closure

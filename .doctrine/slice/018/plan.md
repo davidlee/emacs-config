@@ -19,7 +19,7 @@ PHASE-02 dl-checkout  ──┘    (one config commit)
 ## Sequencing & Rationale
 
 - **PHASE-01 and PHASE-02 are independent.** PHASE-01 touches only
-  `~/dev/umbriel`; PHASE-02 touches only `core/`, `ai/dl-satan.el` and a new
+  `~/dev/umbriel.el`; PHASE-02 touches only `core/`, `ai/dl-satan.el` and a new
   test. Either may go first or both run in parallel.
 - **PHASE-01 before any config edit** proves the suites pass across the repo
   boundary, under `-Q`, under the new names, before the config depends on
@@ -36,7 +36,7 @@ PHASE-02 dl-checkout  ──┘    (one config commit)
 
 ## Evidence outside this checkout
 
-`~/dev/umbriel` sits outside this repo, so no selector, VT mandate or
+`~/dev/umbriel.el` sits outside this repo, so no selector, VT mandate or
 `verify-vt` run can see it. PHASE-01's checks (V1, V3 package half, V7) are
 therefore `VA` rows whose evidence (command and summary line) goes into
 `notes.md`. PHASE-03 VA-3 (V4) reuses PHASE-01's recorded package total.
