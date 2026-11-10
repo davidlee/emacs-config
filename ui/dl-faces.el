@@ -24,50 +24,50 @@
 
   '(;; Monospace
 
-    (jetbrains-mono . "JetBrainsMono NF")
+    (jetbrains-mono      . "JetBrainsMono NF")
     (jetbrains-mono-nerd . "JetBrainsMono Nerd Font Mono")
-    (monolisa . "MonoLisa Nerd Font Mono")
-    (zedmono . "ZedMono NF")
-    (iosevka . "Iosevka NF")
-    (monaspace-neon . "Monaspace Neon NF")
-    (monaspace-argon . "Monaspace Argon NF")
-    (hack . "Hack")
-    (dejavu-mono . "DejaVu Sans Mono")
-    (geist . "Geist Mono")
+    (monolisa            . "MonoLisa Nerd Font Mono")
+    (zedmono             . "ZedMono NF")
+    (iosevka             . "Iosevka NF")
+    (monaspace-neon      . "Monaspace Neon NF")
+    (monaspace-argon     . "Monaspace Argon NF")
+    (hack                . "Hack")
+    (dejavu-mono         . "DejaVu Sans Mono")
+    (geist               . "Geist Mono")
 
     ;; Sans
 
-    (inter . "Inter")
-    (inter-display . "Inter Display")
-    (roboto . "Roboto")
-    (noto-sans . "Noto Sans")
-    (geist-sans . "Geist")
+    (inter               . "Inter")
+    (inter-display       . "Inter Display")
+    (roboto              . "Roboto")
+    (noto-sans           . "Noto Sans")
+    (geist-sans          . "Geist")
 
     ;; Serif
 
-    (et-book . "ETBembo")
-    (libertinus-serif . "Libertinus Serif")
-    (libertine . "Linux Libertine O")
-    (source-serif . "Source Serif 4")
-    (noto-serif . "Noto Serif")))
+    (et-book             . "ETBembo")
+    (libertinus-serif    . "Libertinus Serif")
+    (libertine           . "Linux Libertine O")
+    (source-serif        . "Source Serif 4")
+    (noto-serif          . "Noto Serif")))
 
 (defvar my/font-roles
-  '((mono . jetbrains-mono)
-    (sans . roboto)
-    (ui . inter)
-    (modeline . geist)
-    (header . mono)
-    (tab . mono)
-    (tab-line . inter)
+  '((mono        . jetbrains-mono)
+    (sans        . roboto)
+    (ui          . inter)
+    (modeline    . geist)
+    (header      . mono)
+    (tab         . mono)
+    (tab-line    . inter)
     (line-number . zedmono)
-    (org-body . et-book)
+    (org-body    . et-book)
     ;; (org-body . monolisa)
-    (org-code . mono)
+    (org-code    . mono)
     (org-heading . inter-display)
-    ;; Spare: nothing reads these yet, so setting them changes nothing.
-    (mono-alt . monolisa)
+    ;; Spare: nothing reads these yet, so setting them changes nothing
+    (mono-alt    . monolisa)
     (mono-narrow . iosevka)
-    (serif . source-serif)))
+    (serif       . source-serif)))
 
 (defun my/set-font-role (role font)
   "Set font ROLE to FONT and reapply fonts."
