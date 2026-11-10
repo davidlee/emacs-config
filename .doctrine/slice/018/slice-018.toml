@@ -1,7 +1,7 @@
 id = 18
 slug = "extract-umbriel-client-to-standalone-elisp-package"
 title = "Extract umbriel client to standalone Elisp package"
-status = "design"
+status = "ready"
 created = "2026-11-10"
 updated = "2026-11-10"
 tags = []
@@ -12,23 +12,23 @@ after = []                      # slice→work soft sequence: { to, rank }
 
 [[selector]]
 selector = "desktop/dl-umbriel*.el"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "test/dl-umbriel*-test.el"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "init.el"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "core/dl-dirs.el"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "keys/dl-keymap.el"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "keys/dl-meow-map.el"
@@ -36,15 +36,15 @@ intent = "scope-relevant"
 
 [[selector]]
 selector = "ui/dl-faces.el"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "custom-vars.el"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "test/dl-faces-test.el"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "desktop/**"
@@ -52,7 +52,31 @@ intent = "scope-relevant"
 
 [[selector]]
 selector = "docs/emacs/umbriel.md"
-intent = "scope-relevant"
+intent = "design-target"
+
+[[selector]]
+selector = "test/dl-umbriel-keys-test.el"
+intent = "design-target"
+
+[[selector]]
+selector = "core/dl-checkout.el"
+intent = "design-target"
+
+[[selector]]
+selector = "test/dl-checkout-test.el"
+intent = "design-target"
+
+[[selector]]
+selector = "ai/dl-satan.el"
+intent = "design-target"
+
+[[selector]]
+selector = "AGENTS.md"
+intent = "design-target"
+
+[[selector]]
+selector = "CHANGELOG.md"
+intent = "design-target"
 
 [[relation]]
 label = "fulfils"

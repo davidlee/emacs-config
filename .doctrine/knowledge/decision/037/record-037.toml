@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 37
+slug = "umbriel-doctrine-records-stay-in-the-config-repo"
+title = "umbriel doctrine records stay in the config repo"
+record_kind = "decision"
+status = "accepted"
+created = "2026-11-10"
+updated = "2026-11-10"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "DECs, memories and backlog items about umbriel live in this repo's .doctrine; the new repo has no tracker."
+choice = "DECs and memories stay as history; backlog items IMP-030, ISS-012, ISS-015, ISS-018, IDE-003 stay here with paths updated to the new repo."
+alternatives = ["Bootstrap doctrine in the new repo and move the items"]
+rationale = "No cross-repo move verb; SL-012 D1 did not bootstrap doctrine in its new repo."
+consequences = ["Backlog bodies cite the package repo paths"]
+decided_by = "user"
+decided_on = "2026-11-11"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-018"

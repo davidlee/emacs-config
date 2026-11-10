@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 36
+slug = "one-config-helper-compiles-stale-elc-for-git-checkout-packages"
+title = "One config helper compiles stale .elc for git-checkout packages"
+record_kind = "decision"
+status = "accepted"
+created = "2026-11-10"
+updated = "2026-11-10"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "ai/dl-satan.el:9-16 byte-compiles SATAN sources newer than their .elc; umbriel loads from a checkout too."
+choice = "Generalise it into one config helper that takes a library name, keeping its guards; SATAN and umbriel integrations both call it."
+alternatives = ["Copy the shim per package"]
+rationale = "DRY; one place for the guards (darwin, Guix, byte-compile-current-file)."
+consequences = ["ai/dl-satan.el loses its private shim"]
+decided_by = "user"
+decided_on = "2026-11-11"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-018"

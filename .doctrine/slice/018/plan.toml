@@ -1,0 +1,122 @@
+# Implementation plan for SL-018 — the authored, durable phase plan.
+#
+# This is the single source of each phase's objective, criteria, verification,
+# and links. Runtime status lives separately under .doctrine/state/ (phase
+# tracking) — never record progress here. Hand-edit freely: the tool reads this
+# file but does not rewrite it.
+schema  = "doctrine.plan.overview"
+version = 1
+slice   = "SL-018"
+
+[specs]
+primary       = []
+collaborators = []
+
+[requirements]
+targets      = []
+dependencies = []
+
+# Order IS execution order. PHASE-01 and PHASE-02 are independent; PHASE-03
+# needs both. Ids are immutable: edits append, never renumber.
+
+[[phase]]
+id        = "PHASE-01"
+name      = "Package repo bring-up"
+objective = "Create ~/dev/umbriel per design sec-2: copy the five modules, the five suites (minus the keys block), and docs/emacs/umbriel.md; apply the sec-3 namespace and reference rewrite; add headers, defgroup, runner, justfile, flake, paren checker, README/AGENTS/.gitignore. Package `just check` green. The config checkout is untouched."
+entrance_criteria = [
+  { id = "EN-1", text = "SL-018 design locked (slice status plan or later)" },
+  { id = "EN-2", text = "~/dev/umbriel does not exist (nothing to overwrite)" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "Layout matches design sec-2: umbriel/umbriel{,-model,-columns,-focus,-buffer}.el, umbriel/test/umbriel{,-model,-columns,-focus,-buffer}-test.el, dev/umbriel-test-runner.el, docs/umbriel.md, bin/elisp-locate-paren-error{,.el} (copied from the config: the package must not depend on the config checkout), justfile, flake.nix, flake.lock, README.md, AGENTS.md, .gitignore (*.elc, *.eln)" },
+  { id = "EX-2", text = "Keys block (config dl-umbriel-buffer-test.el:3280-EOF: `;;;; keys` heading, its requires, meow-setup, helpers, 5 tests) is NOT in umbriel/test/umbriel-buffer-test.el; it moves to the config in PHASE-03. No package file requires meow, dl-keymap or dl-meow-map" },
+  { id = "EX-3", text = "Namespace rewrite (design sec-3, DEC-034) applied by one ordered script: refresh pair first (dl-umbriel-refresh -> umbriel-refresh; my/umbriel-refresh -> umbriel-buffer-refresh), then my/umbriel, then dl-umbriel. Config paths and bare record ids rewritten as foreign refs (emacs-config:DEC-019) or docs/umbriel.md. Config-owned names the sec-3 sweeps miss are rewritten too: the four `ui/dl-faces.el` docstring mentions (dl-umbriel-buffer.el:104,110,142,148) say a user's config may shade the face, and the suites' `Run:` header comments name the package's `just check`, not dl-test. The script's text is kept in notes.md" },
+  { id = "EX-4", text = "Headers (design sec-2): umbriel.el has lexical-binding, Author: David Lee with the personal git identity, Version: 0.1.0, Package-Requires ((emacs \"30.1\") (magit-section \"4.0\")), Keywords, URL; other files have standard headers. No work address anywhere (memory: no-work-email-in-artefacts)" },
+  { id = "EX-5", text = "defgroup umbriel lives in umbriel-buffer.el before its first defface; all 16 faces (design sec-2 says 17; the source has 16, today :group 'faces) carry :group 'umbriel; umbriel-model.el and umbriel-columns.el stay client-free (model-test subprocess assertion passes)" },
+  { id = "EX-6", text = "Runner dev/umbriel-test-runner.el (feature umbriel-test-runner) per design sec-2 contract: loads every umbriel/test/*-test.el, sets load-prefer-newer, prints the ERT summary, exits non-zero on any unexpected result, any load error, or zero tests loaded" },
+  { id = "EX-7", text = "justfile: check = lint + test; lint = paren check + byte-compile with warnings as errors on each of umbriel/*.el, umbriel/test/*.el and dev/*.el (the config lint covers the suites today; keep that gate), one Emacs per file, writing no .elc into the checkout (compile to a temp dest, as the config's Flymake-based lint does) so dl-checkout-compile-stale never sees a devshell-built .elc as fresh; test = emacs -Q --batch -L umbriel -L umbriel/test -L dev -l umbriel-test-runner -f umbriel-test-runner-run-batch-and-exit" },
+  { id = "EX-8", text = "flake.nix devshell: wrapped Emacs from the same input SATAN uses (~/dev/satan/flake.nix emacs.url), just, ripgrep. Files git-added before any flake eval (AGENTS.md trap 1)" },
+  { id = "EX-9", text = "One import commit, local only (no remote, DEC-033), whose message cites the config SHA the files were copied from. Pushing waits on the user" },
+]
+verification = [
+  { id = "VA-1", text = "V1: in ~/dev/umbriel, `just check` exits 0 inside the devshell; runner output shows 5 suites loaded, 0 unexpected; total recorded in notes.md (expected 245 - 5 keys tests = 240). Zero-loaded guard demonstrated: in a scratch copy with umbriel/test/*-test.el removed, the runner exits non-zero. Evidence (command + summary line) pasted into notes.md: the package is outside this checkout, so no selector or VT can see it" },
+  { id = "VA-2", text = "V3 (package half): in ~/dev/umbriel, `rg 'dl-umbriel|my/umbriel'` and `rg --pcre2 '\\.doctrine|docs/emacs|(?<![:\\w])(DEC|IMP|ISS|IDE|SL)-\\d{3}'` both return nothing; plus a plan-level third sweep `rg '\\bdl-|\\bmy[-/]'` returns nothing (catches config-owned names such as ui/dl-faces.el, dl-test, my-umbriel-map); outputs recorded in notes.md" },
+  { id = "VA-3", text = "V7: lm-header reads Author, Version and Package-Requires from umbriel/umbriel.el (batch command + output in notes.md); `rg -i inlight` over the tree and `git log --format='%ae %ce'` show no work address" },
+  { id = "VA-4", text = "Config checkout unchanged by this phase: `git status --short` here lists nothing outside .doctrine/" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-02"
+name      = "Shared checkout compile helper"
+objective = "Add core/dl-checkout.el (DEC-036, design sec-4): (dl-checkout-compile-stale LIBRARY) byte-compiles stale .el files in LIBRARY's directory and does nothing while byte-compile-current-file is bound. Move dl-satan--compile-stale's body there; ai/dl-satan.el calls the helper. TDD. Record the config test baseline for PHASE-03."
+entrance_criteria = [
+  { id = "EN-1", text = "SL-018 design locked. Independent of PHASE-01" },
+  { id = "EN-2", text = "Config `just check` green before starting (ISS-022 flake tolerated: re-run once)" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "core/dl-checkout.el provides dl-checkout and defines dl-checkout-compile-stale (LIBRARY); the byte-compile-current-file guard lives inside the helper" },
+  { id = "EX-2", text = "ai/dl-satan.el requires dl-checkout and calls (dl-checkout-compile-stale \"satan.el\") inside its darwin/Guix gate; dl-satan--compile-stale and the caller-side byte-compile-current-file guard are gone" },
+  { id = "EX-3", text = "core/dl-checkout.el and test/dl-checkout-test.el are git-added before lint (bin/elisp-lint:16 lints tracked files only)" },
+  { id = "EX-4", text = "Baseline recorded in notes.md from the config `just check` ERT summary at phase end: total, passed, skipped (design sec-5 count check)" },
+]
+verification = [
+  { id = "VT-1", expects = "V5: a stale .el is compiled; a fresh one is skipped; nothing is written while byte-compile-current-file is bound. Written red first", test_file = "test/dl-checkout-test.el", keywords = ["dl-checkout-compile-stale", "byte-compile-current-file", "ert-deftest"], waived = false },
+  { id = "VT-2", expects = "dl-satan-test still green: the satan call site still configures off-Guix and skips on Guix", test_file = "ai/dl-satan.el", keywords = ["(require 'dl-checkout)", "dl-checkout-compile-stale \"satan.el\""], waived = false },
+  { id = "VA-1", text = "Config `just check` green, lint zero warnings; rg 'dl-satan--compile-stale' over the config returns nothing" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-03"
+name      = "Config cutover"
+objective = "Switch the config to the package in one commit (design sec-4, sec-5, sec-7): dl-dirs-checkouts entry, desktop/dl-umbriel.el rewritten as the soft-loading integration file, old modules and suites deleted, keys tests moved to test/dl-umbriel-keys-test.el with a load smoke test, keymap / faces / saved faces / dl-faces-test renamed, init.el requires replaced."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-01 complete: ~/dev/umbriel `just check` green at its committed HEAD" },
+  { id = "EN-2", text = "PHASE-02 complete: baseline recorded in notes.md" },
+  { id = "EN-3", text = "`git status --short ui/dl-faces.el custom-vars.el` is empty. If not, stage only the rename hunks (filtered `git apply --cached`, design sec-7); never revert user hunks; never git stash / git checkout" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "core/dl-dirs.el: \"~/dev/umbriel/umbriel\" appended to dl-dirs-checkouts" },
+  { id = "EX-2", text = "desktop/dl-umbriel.el is the design sec-4 integration file: requires dl-checkout; warns via display-warning and skips when (locate-library \"umbriel-buffer\") is nil; otherwise compiles stale and use-packages umbriel-buffer and umbriel-focus (:ensure nil :demand t); provides dl-umbriel" },
+  { id = "EX-3", text = "Deleted: desktop/dl-umbriel-{model,columns,focus,buffer}.el and test/dl-umbriel{,-model,-columns,-focus,-buffer}-test.el" },
+  { id = "EX-4", text = "init.el: the two umbriel requires become (require 'dl-umbriel)" },
+  { id = "EX-5", text = "keys/dl-keymap.el: declare-functions point at umbriel-buffer / umbriel-focus with renamed symbols; the four binds use umbriel, umbriel-switch-workspace, umbriel-set-active-layout, umbriel-focus-frame; the :627 comment names the package. my-umbriel-map unchanged; keys/dl-meow-map.el unchanged" },
+  { id = "EX-6", text = "ui/dl-faces.el shading targets umbriel-buffer-{active-workspace[-window],workspace-name,layout}; my/shade-umbriel-* names unchanged. custom-vars.el:81-84 saved faces renamed in place, specs unchanged" },
+  { id = "EX-7", text = "test/dl-faces-test.el: (require 'umbriel-buffer nil t); the two umbriel tests skip-unless (featurep 'umbriel-buffer); face names renamed" },
+  { id = "EX-8", text = "test/dl-umbriel-keys-test.el holds the moved keys block (renamed) plus: (a) smoke test, a fresh `emacs -Q --batch` with the config load path requires dl-umbriel and asserts (featurep 'umbriel-buffer) and (commandp 'umbriel); (b) soft-load test, the same subprocess with the checkout removed from load-path requires dl-umbriel without error and does not provide umbriel-buffer (closes the RV-023 notes' open probe of the warn branch). Both subprocesses bind byte-compile-current-file non-nil, so dl-checkout-compile-stale writes no .elc into ~/dev/umbriel during the config's `just check` (the helper's own guard, PHASE-02 EX-1). Checkout-dependent tests skip-unless (locate-library \"umbriel-buffer\"); subprocesses scrub LD_LIBRARY_PATH (AGENTS.md trap 6)" },
+  { id = "EX-9", text = "New test file git-added before lint. The whole cutover is one commit (made when the user asks; user commits by hand by default)" },
+]
+verification = [
+  { id = "VT-1", expects = "Keys suite: four binds resolve to the renamed commands, leader mirrors global map, motion-state checks, load-order check; smoke test loads dl-umbriel in a fresh Emacs; soft-load test passes without the checkout", test_file = "test/dl-umbriel-keys-test.el", keywords = ["umbriel-switch-workspace", "umbriel-focus-frame", "my-umbriel-map", "(featurep 'umbriel-buffer)", "(commandp 'umbriel)", "skip-unless", "LD_LIBRARY_PATH"], waived = false },
+  { id = "VT-2", expects = "dl-faces umbriel tests pass against the package faces and skip without the checkout", test_file = "test/dl-faces-test.el", keywords = ["(require 'umbriel-buffer nil t)", "umbriel-buffer-active-workspace-window", "umbriel-buffer-workspace-name", "skip-unless"], waived = false },
+  { id = "VT-3", expects = "Integration file soft-loads the package through the shared helper", test_file = "desktop/dl-umbriel.el", keywords = ["(require 'dl-checkout)", "(locate-library \"umbriel-buffer\")", "display-warning", "dl-checkout-compile-stale \"umbriel.el\"", "(provide 'dl-umbriel)"], waived = false },
+  { id = "VA-1", text = "V2: config `just check` green; lint zero warnings" },
+  { id = "VA-2", text = "V3 (config half): `rg 'my/umbriel|dl-umbriel-(model|columns|focus|buffer|refresh)' --glob '!.doctrine/**' --glob '!CHANGELOG.md'` returns nothing" },
+  { id = "VA-3", text = "V4: package total (PHASE-01 VA-1) + config total = PHASE-02 baseline + new tests (dl-checkout-test's, and the keys file's smoke and soft-load tests); skipped counted separately; arithmetic in notes.md" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-04"
+name      = "Docs, records, live check"
+objective = "Finish the move on the documentation and record side (design sec-6, DEC-037): drop the config copy of the umbriel doc, point at the package, update the changelog, backlog bodies and memories, file the follow-ups. Then the user's live check after a daemon restart."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-03 cutover committed" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "docs/emacs/umbriel.md removed from the config; AGENTS.md \"More\" gains a pointer to ~/dev/umbriel/docs/umbriel.md; no config doc links to the removed file" },
+  { id = "EX-2", text = "CHANGELOG.md entry names the renamed commands (umbriel, umbriel-switch-workspace, umbriel-set-active-layout, umbriel-focus-frame, umbriel-buffer-refresh), keys C-c u u/w/l/f and SPC u, the new checkout requirement and its warning" },
+  { id = "EX-3", text = "Bodies of IMP-030, ISS-012, ISS-015, ISS-018, IDE-003 cite the package paths (~/dev/umbriel/umbriel/…) and new names; the three umbriel memories (face layering; pad windows; window-move-to-scratchpad) get path and name updates" },
+  { id = "EX-4", text = "Backlog: new issue, make umbriel-focus's load-time server-switch-hook opt-in (DEC-035); new idea, add a remote / publish the package (DEC-033). SATAN author-email defect recorded where the SATAN repo tracks work (its doctrine backlog), cited foreign-form from notes.md" },
+]
+verification = [
+  { id = "VA-1", text = "`rg 'docs/emacs/umbriel' --glob '!.doctrine/**' --glob '!CHANGELOG.md'` returns nothing; config `just check` green" },
+  { id = "VA-2", text = "doctrine show of each backlog item in EX-3/EX-4 renders the new paths/titles" },
+  { id = "VH-1", text = "V6: after a daemon restart, C-c u u and SPC u u open *umbriel*; workspace and layout faces keep their saved look; emacsclient focus still raises the frame" },
+]
+specs        = []
+requirements = []

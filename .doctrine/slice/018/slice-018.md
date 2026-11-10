@@ -21,17 +21,17 @@ SL-012 (SATAN extraction) is the worked example for this pattern.
 
 ### In scope
 
-1. **New repo** for the package (path and name are decided in design;
-   working name `~/dev/umbriel.el`). It holds the five modules, their tests,
+1. **New repo** for the package (`~/dev/umbriel`, DEC-033). It holds the five modules, their tests,
    a test runner, and package headers (`Package-Requires` lists
    `magit-section`).
 2. **Namespace.** `dl-umbriel-*` → `umbriel-*` (functions, variables, faces,
    features, files). Interactive `my/umbriel-*` (buffer.el:640-1082, entry
    `my/umbriel`) → `umbriel-*`. Design settles collisions and whether to
    keep obsolete aliases.
-3. **Self-location**, if any package-owned paths exist. The probe found no
-   `user-emacs-directory` / `dl-dirs` use in the umbriel files. Design
-   confirms this.
+3. ~~Self-location~~ — not needed: no `user-emacs-directory` / `dl-dirs`
+   use in the umbriel files (research.md ✓). Instead: move the five
+   config-side key tests (`dl-umbriel-buffer-test.el:3282-3360`) to a config
+   suite, and resolve the `refresh` name collision (design sec-3).
 4. **Config couplings become package surface.** The config consumes the
    package only through its public commands, faces and defcustoms:
    - `init.el:32-33` requires → `use-package umbriel …` in a single
@@ -46,17 +46,18 @@ SL-012 (SATAN extraction) is the worked example for this pattern.
    to `dl-dirs-checkouts` (`core/dl-dirs.el:35`) and load with
    `use-package … :ensure nil`. (Evidence: SATAN is wired this way, not by a
    Nix input — `~/flakes/emacs/emacs.nix` has no satan entry. The IDE-006
-   handover said otherwise.) Whether umbriel also needs the stale-`.elc`
-   compile shim (`ai/dl-satan.el:9-17`) is a design question. Prefer one
-   shared helper over a copy (DRY).
+   handover said otherwise.) The stale-`.elc` compile shim
+   (`ai/dl-satan.el:9-16`) becomes one shared helper, `core/dl-checkout.el`,
+   used by both packages (DEC-036).
 6. **Tests.** The moved suites pass in the new repo. `just check` here
    stays green with the umbriel tests gone and `dl-faces-test` updated.
 7. **Docs.** `docs/emacs/umbriel.md` moves to the new repo or is cut to a
    pointer. Update AGENTS.md / CHANGELOG / the five open umbriel backlog
    cards.
-8. **Backlog disposition.** Decide per item whether IMP-030, ISS-012,
-   ISS-015, ISS-018, IDE-003 move to the new repo's tracker or stay here.
-   IDE-006 resolves when this slice closes.
+8. **Records (DEC-037).** DECs and memories stay here as history; IMP-030,
+   ISS-012, ISS-015, ISS-018, IDE-003 stay here with paths updated. IDE-006
+   resolves when this slice closes. New follow-up issue: make the focus
+   module's load-time `server-switch-hook` opt-in (DEC-035).
 
 ### Out of scope
 
@@ -74,7 +75,9 @@ SL-012 (SATAN extraction) is the worked example for this pattern.
 - `test/dl-umbriel*-test.el` (removed from here)
 - `init.el`, `core/dl-dirs.el`, `keys/dl-keymap.el`, `keys/dl-meow-map.el`
 - `ui/dl-faces.el`, `custom-vars.el`, `test/dl-faces-test.el`
-- new `desktop/` integration file (name decided in design)
+- `desktop/dl-umbriel.el` rewritten as the integration file
+- `core/dl-checkout.el`, `ai/dl-satan.el` (shared compile helper)
+- `test/dl-umbriel-keys-test.el`, `test/dl-checkout-test.el` (new)
 - `docs/emacs/umbriel.md`, `AGENTS.md`, `CHANGELOG.md`
 - new repo (outside this checkout)
 
@@ -86,12 +89,8 @@ SL-012 (SATAN extraction) is the worked example for this pattern.
   rename without migrating them silently drops the user's face settings.
 - **Risk:** the daemon loads the config at start. A half-done rename breaks
   `C-c u` and the meow `u` binding until the user restarts the daemon.
-- **Open:** repo name and path, and whether it gets a GitHub remote
-  (outward-facing: confirm with the user before pushing).
-- **Open:** keep `dl-umbriel-*` obsolete aliases for one release, or cut
-  over in one step? (SL-012 cut over in one step.)
-- **Open:** do the decisions that bind the code shape (DEC-013, -014, -017,
-  -027, -028, -030, -031) move with the code or stay here as history?
+- **Settled:** repo `~/dev/umbriel`, SATAN layout, no remote yet (DEC-033);
+  one-step cutover, no aliases (DEC-034); records stay (DEC-037).
 
 ## Verification / closure
 

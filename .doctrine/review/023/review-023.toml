@@ -1,0 +1,408 @@
+id    = 23
+slug  = "design-review-of-sl-018"
+title = "design review of SL-018"
+# no status — a review's status is DERIVED from its findings, so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "design"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+rounds_base = 0
+contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "Pass 1: pi (deepseek-flash, review profile) read design.md, scope, research, notes, SL-012 precedent and the config sites; findings transcribed by the orchestrator. Run run-20261110T152943879Z-5-d755815d3cf9."
+
+[target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
+ref   = "SL-018"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "blocker"
+title = "Integration file must require dl-checkout and provide dl-umbriel"
+detail = "sec-4 skeleton omitted (provide 'dl-umbriel) and (require 'dl-checkout); init.el's (require 'dl-umbriel) would fail. (transcribed from pi review run-20261110T152943879Z-5-d755815d3cf9)"
+disposition = "fix-now"
+response = 'Fixed in the revised design; the user reviewed the revision ("accepted", 2026-11-11).'
+route = "review"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "sec-4 skeleton now requires dl-checkout and provides dl-umbriel."
+
+[[finding.turn]]
+act = "amend"
+role = "responder"
+note = "Route: review — design text change, checked by human section review."
+disposition = "fix-now"
+route = "review"
+response = 'Fixed in the revised design; the user reviewed the revision ("accepted", 2026-11-11).'
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Raiser re-check (pi review profile, quotient run run-20261110T154155679Z-12-7b2c632eebd7, 2026-11-11): answer resolves F-1 against design.md (rev 31, locked). satan-test.el:117 skip-if-featurep re-read by the orchestrator (pi sandbox cannot read ~/dev/satan)."
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "blocker"
+title = "Runner feature umbriel-test collides with the client suite"
+detail = "Runner dev/umbriel-test.el provides umbriel-test; the copied runner skips files whose feature is provided (dev/dl-test.el:76), so umbriel/test/umbriel-test.el (54 tests) would silently not run. (transcribed from pi review run-20261110T152943879Z-5-d755815d3cf9)"
+disposition = "fix-now"
+response = 'Fixed in the revised design; the user reviewed the revision ("accepted", 2026-11-11).'
+route = "review"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Confirmed (satan-test.el:117 has the same skip). Runner renamed dev/umbriel-test-runner.el, feature umbriel-test-runner (sec-2)."
+
+[[finding.turn]]
+act = "amend"
+role = "responder"
+note = "Route: review — design text change, checked by human section review."
+disposition = "fix-now"
+route = "review"
+response = 'Fixed in the revised design; the user reviewed the revision ("accepted", 2026-11-11).'
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Raiser re-check (pi review profile, quotient run run-20261110T154155679Z-12-7b2c632eebd7, 2026-11-11): answer resolves F-2 against design.md (rev 31, locked). satan-test.el:117 skip-if-featurep re-read by the orchestrator (pi sandbox cannot read ~/dev/satan)."
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "major"
+title = "Config gains a hard dependency on the ~/dev/umbriel checkout"
+detail = "use-package :demand t errors on hosts without the checkout, and test/dl-faces-test.el:8 fails; SATAN is gated (ai/dl-satan.el:20). (transcribed from pi review run-20261110T152943879Z-5-d755815d3cf9)"
+disposition = "fix-now"
+response = 'Fixed in the revised design; the user reviewed the revision ("accepted", 2026-11-11).'
+route = "review"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Soft-load: locate-library check, display-warning otherwise; config umbriel tests skip-unless the checkout (sec-4, sec-5, sec-9)."
+
+[[finding.turn]]
+act = "amend"
+role = "responder"
+note = "Route: review — design text change, checked by human section review."
+disposition = "fix-now"
+route = "review"
+response = 'Fixed in the revised design; the user reviewed the revision ("accepted", 2026-11-11).'
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Raiser re-check (pi review profile, quotient run run-20261110T154155679Z-12-7b2c632eebd7, 2026-11-11): answer resolves F-3 against design.md (rev 31, locked). satan-test.el:117 skip-if-featurep re-read by the orchestrator (pi sandbox cannot read ~/dev/satan)."
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "major"
+title = "No gate loads the integration file"
+detail = "init.el is not linted (dev/dl-lint.el:22-24) and no suite requires dl-umbriel, so a broken integration file passes just check. (transcribed from pi review run-20261110T152943879Z-5-d755815d3cf9)"
+disposition = "fix-now"
+response = 'Fixed in the revised design; the user reviewed the revision ("accepted", 2026-11-11).'
+route = "review"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Keys suite gains a fresh-Emacs smoke test that requires dl-umbriel (sec-5, V2)."
+
+[[finding.turn]]
+act = "amend"
+role = "responder"
+note = "Route: review — design text change, checked by human section review."
+disposition = "fix-now"
+route = "review"
+response = 'Fixed in the revised design; the user reviewed the revision ("accepted", 2026-11-11).'
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Raiser re-check (pi review profile, quotient run run-20261110T154155679Z-12-7b2c632eebd7, 2026-11-11): answer resolves F-4 against design.md (rev 31, locked). satan-test.el:117 skip-if-featurep re-read by the orchestrator (pi sandbox cannot read ~/dev/satan)."
+
+[[finding]]
+id = "F-5"
+status = "verified"
+severity = "major"
+title = "defgroup in umbriel.el contradicts the client-free model test"
+detail = "test/dl-umbriel-model-test.el:628-651 asserts loading the model does not load the client. (transcribed from pi review run-20261110T152943879Z-5-d755815d3cf9)"
+disposition = "fix-now"
+response = 'Fixed in the revised design; the user reviewed the revision ("accepted", 2026-11-11).'
+route = "review"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Confirmed (model-test.el:647). defgroup moves to umbriel-buffer.el beside the faces (sec-2)."
+
+[[finding.turn]]
+act = "amend"
+role = "responder"
+note = "Route: review — design text change, checked by human section review."
+disposition = "fix-now"
+route = "review"
+response = 'Fixed in the revised design; the user reviewed the revision ("accepted", 2026-11-11).'
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Raiser re-check (pi review profile, quotient run run-20261110T154155679Z-12-7b2c632eebd7, 2026-11-11): answer resolves F-5 against design.md (rev 31, locked). satan-test.el:117 skip-if-featurep re-read by the orchestrator (pi sandbox cannot read ~/dev/satan)."
+
+[[finding]]
+id = "F-6"
+status = "verified"
+severity = "major"
+title = "Lint cannot see untracked new files"
+detail = "bin/elisp-lint:16 lints git ls-files only. (transcribed from pi review run-20261110T152943879Z-5-d755815d3cf9)"
+disposition = "fix-now"
+response = 'Fixed in the revised design; the user reviewed the revision ("accepted", 2026-11-11).'
+route = "review"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Confirmed (bin/elisp-lint:16). New files git-added before lint (sec-7, V2)."
+
+[[finding.turn]]
+act = "amend"
+role = "responder"
+note = "Route: review — design text change, checked by human section review."
+disposition = "fix-now"
+route = "review"
+response = 'Fixed in the revised design; the user reviewed the revision ("accepted", 2026-11-11).'
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Raiser re-check (pi review profile, quotient run run-20261110T154155679Z-12-7b2c632eebd7, 2026-11-11): answer resolves F-6 against design.md (rev 31, locked). satan-test.el:117 skip-if-featurep re-read by the orchestrator (pi sandbox cannot read ~/dev/satan)."
+
+[[finding]]
+id = "F-7"
+status = "verified"
+severity = "major"
+title = "Package recipe drops -Q; runner contract unclear; no zero-loaded guard"
+detail = "sec-2 recipe lacks -Q while sec-9 relies on it; PASS cannot prove suites ran. (transcribed from pi review run-20261110T152943879Z-5-d755815d3cf9)"
+disposition = "fix-now"
+response = 'Fixed in the revised design; the user reviewed the revision ("accepted", 2026-11-11).'
+route = "review"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Recipe uses -Q; runner contract stated; fails on zero tests loaded (sec-2, V1)."
+
+[[finding.turn]]
+act = "amend"
+role = "responder"
+note = "Route: review — design text change, checked by human section review."
+disposition = "fix-now"
+route = "review"
+response = 'Fixed in the revised design; the user reviewed the revision ("accepted", 2026-11-11).'
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Raiser re-check (pi review profile, quotient run run-20261110T154155679Z-12-7b2c632eebd7, 2026-11-11): answer resolves F-7 against design.md (rev 31, locked). satan-test.el:117 skip-if-featurep re-read by the orchestrator (pi sandbox cannot read ~/dev/satan)."
+
+[[finding]]
+id = "F-8"
+status = "verified"
+severity = "major"
+title = "No sweep for config path and record references in moved code"
+detail = "desktop/dl-umbriel.el:29, test/dl-umbriel-buffer-test.el:5,1860,3085, desktop/dl-umbriel-buffer.el:692,740,897 cite docs/emacs and .doctrine records. (transcribed from pi review run-20261110T152943879Z-5-d755815d3cf9)"
+disposition = "fix-now"
+response = 'Fixed in the revised design; the user reviewed the revision ("accepted", 2026-11-11).'
+route = "review"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "47 hits; rewrite as foreign refs (emacs-config:DEC-019) plus a sweep in sec-3 and V3."
+
+[[finding.turn]]
+act = "amend"
+role = "responder"
+note = "Route: review — design text change, checked by human section review."
+disposition = "fix-now"
+route = "review"
+response = 'Fixed in the revised design; the user reviewed the revision ("accepted", 2026-11-11).'
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Raiser re-check (pi review profile, quotient run run-20261110T154155679Z-12-7b2c632eebd7, 2026-11-11): answer resolves F-8 against design.md (rev 31, locked). satan-test.el:117 skip-if-featurep re-read by the orchestrator (pi sandbox cannot read ~/dev/satan)."
+
+[[finding]]
+id = "F-9"
+status = "verified"
+severity = "minor"
+title = "Compile output in the package checkout unmanaged"
+detail = "No *.elc/*.eln in .gitignore; runner does not set load-prefer-newer (cf. dev/dl-test.el:38-40). (transcribed from pi review run-20261110T152943879Z-5-d755815d3cf9)"
+disposition = "fix-now"
+response = ".gitignore *.elc *.eln; runner sets load-prefer-newer (sec-2)."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = ".gitignore *.elc *.eln; runner sets load-prefer-newer (sec-2)."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Raiser re-check (pi review profile, quotient run run-20261110T154155679Z-12-7b2c632eebd7, 2026-11-11): answer resolves F-9 against design.md (rev 31, locked). satan-test.el:117 skip-if-featurep re-read by the orchestrator (pi sandbox cannot read ~/dev/satan)."
+
+[[finding]]
+id = "F-10"
+status = "verified"
+severity = "minor"
+title = "V7 not checkable; magit-section pin unverified"
+detail = "Byte-compile does not inspect headers; Package-Requires magit-section 4.0 pin unverified. (transcribed from pi review run-20261110T152943879Z-5-d755815d3cf9)"
+disposition = "fix-now"
+response = "V7 now checks headers with lm-header. Pin concern rejected: installed magit-section 20260926.1436 satisfies 4.0."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "V7 now checks headers with lm-header. Pin concern rejected: installed magit-section 20260926.1436 satisfies 4.0."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Raiser re-check (pi review profile, quotient run run-20261110T154155679Z-12-7b2c632eebd7, 2026-11-11): answer resolves F-10 against design.md (rev 31, locked). satan-test.el:117 skip-if-featurep re-read by the orchestrator (pi sandbox cannot read ~/dev/satan)."
+
+[[finding]]
+id = "F-11"
+status = "verified"
+severity = "minor"
+title = "V4 count arithmetic inconsistent and baseline stale"
+detail = "sec-5 says 593, V4 says >=; rg finds 595 ert-deftest, 245 umbriel. (transcribed from pi review run-20261110T152943879Z-5-d755815d3cf9)"
+disposition = "fix-now"
+response = "Equality against the P2 just-check baseline (595 / 245 umbriel); skipped reported separately (sec-5, V4)."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Equality against the P2 just-check baseline (595 / 245 umbriel); skipped reported separately (sec-5, V4)."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Raiser re-check (pi review profile, quotient run run-20261110T154155679Z-12-7b2c632eebd7, 2026-11-11): answer resolves F-11 against design.md (rev 31, locked). satan-test.el:117 skip-if-featurep re-read by the orchestrator (pi sandbox cannot read ~/dev/satan)."
+
+[[finding]]
+id = "F-12"
+status = "verified"
+severity = "minor"
+title = "Compile helper used asymmetrically; no central list"
+detail = "Each integration file calls dl-checkout-compile-stale privately; a third package edits a third file. (transcribed from pi review run-20261110T152943879Z-5-d755815d3cf9)"
+disposition = "design-wrong"
+response = "A central list in core/ couples it to every package; each integration file owning its package's call is the STD-001 shape. Package-side compile is out of scope."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = "A central list in core/ couples it to every package; each integration file owning its package's call is the STD-001 shape. Package-side compile is out of scope."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Raiser re-check (pi review profile, quotient run run-20261110T154155679Z-12-7b2c632eebd7, 2026-11-11): answer resolves F-12 against design.md (rev 31, locked). satan-test.el:117 skip-if-featurep re-read by the orchestrator (pi sandbox cannot read ~/dev/satan)."
+
+[[finding]]
+id = "F-13"
+status = "verified"
+severity = "minor"
+title = "Stale line refs; DEC revision treatment undecided"
+detail = "keys/dl-keymap.el comment at :627, binds :629-632; ui/dl-faces.el has no with-eval-after-load; DEC-014/023/027/031 treatment. (transcribed from pi review run-20261110T152943879Z-5-d755815d3cf9)"
+disposition = "fix-now"
+response = "Line refs corrected (sec-4). DEC treatment already settled by DEC-037: stay as history."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Line refs corrected (sec-4). DEC treatment already settled by DEC-037: stay as history."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Raiser re-check (pi review profile, quotient run run-20261110T154155679Z-12-7b2c632eebd7, 2026-11-11): answer resolves F-13 against design.md (rev 31, locked). satan-test.el:117 skip-if-featurep re-read by the orchestrator (pi sandbox cannot read ~/dev/satan)."
+
+# Findings are append-only `[[finding]]` tables, added by `review raise`.
+# Empty here at creation — a fresh review is Active, awaiting the raiser.

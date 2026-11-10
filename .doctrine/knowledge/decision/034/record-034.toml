@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 34
+slug = "umbriel-namespace-cutover-in-one-step-no-aliases"
+title = "umbriel namespace cutover in one step, no aliases"
+record_kind = "decision"
+status = "accepted"
+created = "2026-11-10"
+updated = "2026-11-10"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "Extraction renames dl-umbriel-* and my/umbriel-* to umbriel-*."
+choice = "Rename everything in one step; no obsolete aliases."
+alternatives = ["define-obsolete-function-alias for a release"]
+rationale = "Single user; aliases only add clutter. SL-012 precedent."
+consequences = ["Config callers (keymap, faces, custom-vars, tests) change in the same cutover commit", "Daemon must restart to pick up new names"]
+decided_by = "user"
+decided_on = "2026-11-11"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-018"

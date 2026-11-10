@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 35
+slug = "umbriel-focus-keeps-its-load-time-server-switch-hook-during-extraction"
+title = "umbriel focus keeps its load-time server-switch-hook during extraction"
+record_kind = "decision"
+status = "accepted"
+created = "2026-11-10"
+updated = "2026-11-10"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "dl-umbriel-focus.el:40 adds server-switch-hook at load; packages normally make such hooks opt-in."
+choice = "Keep the hook as is; file a backlog issue to make it opt-in later."
+alternatives = ["Opt-in minor mode or setup function now"]
+rationale = "SL-018 excludes behaviour changes."
+consequences = ["Loading umbriel-focus still changes global state; tracked as follow-up"]
+decided_by = "user"
+decided_on = "2026-11-11"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-018"

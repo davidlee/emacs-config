@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 33
+slug = "umbriel-package-repo-devumbriel-satan-layout-no-remote-yet"
+title = "umbriel package repo: ~/dev/umbriel, SATAN layout, no remote yet"
+record_kind = "decision"
+status = "accepted"
+created = "2026-11-10"
+updated = "2026-11-10"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-018 extracts the umbriel Emacs client from the config into its own package repo."
+choice = "Repo at ~/dev/umbriel; code in umbriel/*.el, tests in umbriel/test/, a dev/ test runner, justfile and flake.nix devshell modelled on ~/dev/satan. No GitHub remote until the user asks."
+alternatives = ["Flat layout (*.el at repo root)", "Ship the client inside the compositor repo (rejected 2026-11-11)"]
+rationale = "Same shape as SATAN, so the config wiring (dl-dirs-checkouts + use-package) and the runner pattern carry over unchanged. Pushing is outward-facing."
+consequences = ["dl-dirs-checkouts gains ~/dev/umbriel/umbriel", "Publishing needs a later user decision"]
+decided_by = "user"
+decided_on = "2026-11-11"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-018"
