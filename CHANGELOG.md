@@ -2,6 +2,11 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-11-11 — `C-c u f` unbound
+
+`C-c u f` / `SPC u f` (`umbriel-focus-frame`) is no longer bound: a frame that runs a key
+already has focus. The command still runs from `server-switch-hook` and `M-x`. DEC-024 amended.
+
 ## 2026-11-11 — umbriel client moved to its own package
 
 The umbriel client (`*umbriel*` buffer, frame focus) now lives in `~/dev/umbriel.el`

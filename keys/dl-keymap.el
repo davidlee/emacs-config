@@ -198,7 +198,6 @@
 (declare-function umbriel                               "umbriel-buffer")
 (declare-function umbriel-switch-workspace              "umbriel-buffer")
 (declare-function umbriel-set-active-layout             "umbriel-buffer")
-(declare-function umbriel-focus-frame                   "umbriel-focus")
 
 
 (defun my/narrow-or-widen-dwim ()
@@ -629,7 +628,6 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-umbriel-map "u" #'umbriel                   "buffer")
 (my/bind my-umbriel-map "w" #'umbriel-switch-workspace  "switch workspace")
 (my/bind my-umbriel-map "l" #'umbriel-set-active-layout "set layout (active)")
-(my/bind my-umbriel-map "f" #'umbriel-focus-frame       "focus frame")
 
 ;; Other
 ;; C-. goto last change

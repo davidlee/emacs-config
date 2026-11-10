@@ -25,14 +25,15 @@
 (defconst dl-umbriel-keys-test--global-keys
   '(("u" . umbriel)
     ("w" . umbriel-switch-workspace)
-    ("l" . umbriel-set-active-layout)
-    ("f" . umbriel-focus-frame))
+    ("l" . umbriel-set-active-layout))
   "The `my-umbriel-map' bindings (DEC-024).")
 
-(ert-deftest dl-umbriel-keys/global-map-binds-the-four-commands ()
-  "`my-umbriel-map' carries u/w/l/f, and sits on C-c u."
+(ert-deftest dl-umbriel-keys/global-map-binds-the-three-commands ()
+  "`my-umbriel-map' carries u/w/l, not f, and sits on C-c u.
+A frame that runs a key already has focus, so f had nothing to do."
   (pcase-dolist (`(,key . ,command) dl-umbriel-keys-test--global-keys)
     (should (eq (keymap-lookup my-umbriel-map key) command)))
+  (should-not (keymap-lookup my-umbriel-map "f"))
   (should (eq (keymap-lookup global-map "C-c u") my-umbriel-map)))
 
 (ert-deftest dl-umbriel-keys/leader-mirrors-the-global-map ()
@@ -98,21 +99,20 @@ a dev-shell value breaks every subprocess (AGENTS.md trap 6)."
   "Elisp text that requires FEATURES in order and princs the C-c u keys."
   (concat "(dolist (feature '" (prin1-to-string features) ")"
           " (require feature))"
-          " (dolist (key '(\"u\" \"w\" \"l\" \"f\"))"
+          " (dolist (key '(\"u\" \"w\" \"l\"))"
           "   (let ((cmd (keymap-lookup global-map"
           " (concat \"C-c u \" key))))"
           "     (princ (format \"%s %S %s\\n\" key cmd (commandp cmd))))))"))
 
 (ert-deftest dl-umbriel-keys/keys-resolve-in-either-load-order ()
-  "C-c u u/w/l/f resolve and are commands whichever loads first."
+  "C-c u u/w/l resolve and are commands whichever loads first."
   (skip-unless (locate-library "umbriel-buffer"))
   (skip-unless (file-executable-p (expand-file-name invocation-name
                                                     invocation-directory)))
   (skip-unless (executable-find "timeout"))
   (let ((expected (concat "u umbriel t\n"
                           "w umbriel-switch-workspace t\n"
-                          "l umbriel-set-active-layout t\n"
-                          "f umbriel-focus-frame t\n")))
+                          "l umbriel-set-active-layout t\n")))
     (dolist (order '((dl-keymap umbriel-buffer umbriel-focus)
                      (umbriel-buffer umbriel-focus dl-keymap)))
       (let ((result (dl-umbriel-keys-test--fresh-emacs
