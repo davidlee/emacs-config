@@ -2,6 +2,11 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-11-11 — org-bullets removed
+
+`org/dl-org.el` no longer loads `org-bullets` (ISS-024). Its hook never turned the mode on,
+so org buffers look the same. The package is still in `~/flakes/emacs/emacs.nix`.
+
 ## 2026-11-11 — lint gate matches Flymake
 
 No command or key changes (ISS-019). `just lint` no longer loads `core/dl-path.el`. That

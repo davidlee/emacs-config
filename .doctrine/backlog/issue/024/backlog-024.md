@@ -23,3 +23,10 @@ defines the variable.
 Either `:hook (org-mode . org-bullets-mode)`, which turns bullets on in
 every org buffer (a visible change), or delete the stanza if bullets are
 not wanted. Line 109 holds a commented-out hook for the same thing.
+
+## Resolution (2026-11-11)
+
+The user chose to delete it: bullets make no visible difference. Removed
+the `org-bullets` `use-package` stanza and the commented-out hook from
+`org/dl-org.el`. `org-bullets` stays in `~/flakes/emacs/emacs.nix` (line
+186) for now; drop it there to stop installing it.

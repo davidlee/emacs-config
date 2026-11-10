@@ -68,10 +68,6 @@
   :config
   (global-org-modern-mode))
 
-(use-package org-bullets
-  :hook (org-mode .(lambda  () org-bullets-mode 1))
-  :after org-modern)
-
 (defun my/org-setup-margins ()
   "Buffer-local margins for org buffers."
   (setq left-margin-width 2
@@ -105,8 +101,6 @@ local `hl-line-mode' is redundant."
 
 (add-hook 'org-mode-hook #'my/org-setup-margins)
 (add-hook 'org-mode-hook #'my/org-setup-line-display)
-
-;;(add-hook 'org-mode-hook (lambda () (org-bullets-mode 1)))
 
 ;; At compile time too, so the compiler finds the `require' below.
 (eval-and-compile
