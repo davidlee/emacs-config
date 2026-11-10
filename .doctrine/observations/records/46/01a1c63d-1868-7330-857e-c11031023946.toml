@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a1c63d-1868-7330-857e-c11031023946"
+recorded_at = "2026-11-10T16:14:15.144365189Z"
+kind = "friction"
+summary = "git in an un-inited dir under ~ hits the home repo"
+detail = "SL-018 PHASE-01: /home/david is itself a git repo (nix-config), so git commands in ~/dev/umbriel.el before git init operated on the home repo. Nothing mutating ran, but a git add/remote there would land in nix-config. Briefs for new repos should git init first."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"
