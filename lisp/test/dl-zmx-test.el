@@ -5,6 +5,7 @@
 (require 'ert)
 (require 'cl-lib)
 (require 'dl-zmx)
+(defvar consult-buffer-sources)         ; consult is optional here
 
 (ert-deftest dl-zmx/session-name-joins-project-and-identifier ()
   (should (equal (dl-zmx-session-name "hris" "claude") "hris.claude")))
@@ -462,8 +463,8 @@ Of the sessions, only `dl-zmx-test--open-session' has a live terminal."
 ;; A stand-in for ghostel, so that these need neither its module nor a terminal.
 (defmacro dl-zmx-test--with-open-terminal (&rest body)
   "Run BODY with `dl-zmx--open' reaching stub ghostel functions.
-`docked' holds the buffers a `ghostel-mode' display rule took; `spawned' the argv
-of each `ghostel-exec'.  `buffer' is the terminal for session `hris.2'."
+`docked' holds the buffers a `ghostel-mode' display rule took; `spawned' the
+argv of each `ghostel-exec'.  `buffer' is the terminal for session `hris.2'."
   (declare (indent 0))
   `(let* ((docked nil)
           (spawned nil)

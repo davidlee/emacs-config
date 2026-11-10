@@ -22,6 +22,7 @@
 (require 'org-ql)
 
 (declare-function org-ql-search "org-ql-search")
+(declare-function org-ql--normalize-query "org-ql" (query))
 (declare-function consult-ripgrep "consult")
 (declare-function my/weekly-note "dl-denote-journal")
 (declare-function my/work-weekly-note "dl-denote-journal")

@@ -2,18 +2,25 @@
 
 (require 'meow)
 
+(defgroup dl-meow-cheatsheet nil
+  "Gallium-Corne meow cheatsheet."
+  :group 'faces)
+
 (defface my/meow-cheatsheet-key
   '((t (:inherit default :weight bold)))
-  "Face for key names in the Gallium cheatsheet. Inherits default size.")
+  "Face for key names in the Gallium cheatsheet. Inherits default size."
+  :group 'dl-meow-cheatsheet)
 
 (defface my/meow-cheatsheet-cmd
   '((((background dark)) (:inherit default :foreground "#89b4fa"))
     (t (:inherit default :foreground "#1e66f5")))
-  "Face for command labels. Inherits default size.")
+  "Face for command labels. Inherits default size."
+  :group 'dl-meow-cheatsheet)
 
 (defface my/meow-cheatsheet-dim
   '((t (:inherit shadow)))
-  "Face for shifted/secondary labels.")
+  "Face for shifted/secondary labels."
+  :group 'dl-meow-cheatsheet)
 
 (defvar my/meow-cheatsheet-labels
   '((meow-insert . "insert")

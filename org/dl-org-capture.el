@@ -2,6 +2,8 @@
 
 (require 'dl-notes-paths)
 
+(defvar org-capture-templates)
+
 ;; Capture-body helpers.  Each builder returns a 0-arg function that
 ;; assembles the body lazily, so templates read one line per list entry
 ;; instead of a single string speckled with `\n'.

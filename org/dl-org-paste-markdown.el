@@ -6,6 +6,11 @@
 
 ;; (add-hook 'org-mode-hook #'variable-pitch-mode)
 
+(declare-function org-element-map "org-element")
+(declare-function org-element-parse-buffer "org-element")
+(declare-function org-element-property "org-element-ast")
+(declare-function org-table-align "org-table")
+
 ;; PASTE AGENT SLOP AS ORG-MODE
 ;; can you tell an agent wrote this elisp?
 (defun org-paste-markdown-as-org ()

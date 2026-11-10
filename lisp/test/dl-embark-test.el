@@ -4,6 +4,8 @@
 
 (require 'ert)
 (require 'dl-embark)
+(require 'org)
+(require 'avy)
 
 (ert-deftest dl-embark/act-bound-globally ()
   "`C-,' reaches `embark-act', and the command can load on demand."

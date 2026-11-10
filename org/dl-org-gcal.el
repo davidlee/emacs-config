@@ -6,6 +6,9 @@
 ;; for the symmetric-encrypted plstore (org-gcal's OAuth refresh
 ;; token) is read in the minibuffer, then cached for the session.
 ;; Pairs with `allow-loopback-pinentry' in ~/.gnupg/gpg-agent.conf.
+(defvar oauth2-auto-plstore)
+(declare-function my/op-read "dl-secret")
+
 (setq epg-pinentry-mode 'loopback)
 (setq plstore-cache-passphrase-for-symmetric-encryption t)
 
@@ -21,6 +24,7 @@
 ;; `:commands' defers load until first invocation, so `op read' (which
 ;; can trigger a biometric prompt) does not fire at Emacs startup.
 (use-package org-gcal
+  :functions org-gcal-reload-client-id-secret
   :commands (org-gcal-sync
               org-gcal-fetch
               org-gcal-fetch-buffer

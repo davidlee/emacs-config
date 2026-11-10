@@ -13,6 +13,8 @@
 
 (use-package agent-shell
   :ensure t
+  :functions (agent-shell-openai-make-authentication
+               agent-shell-default-agent-config-makers)
   :config
   ;; codex-acp has no nixpkgs derivation and the codex CLI has no `acp'
   ;; subcommand, so it runs from npm.  It depends on @openai/codex itself,

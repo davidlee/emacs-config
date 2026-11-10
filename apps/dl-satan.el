@@ -17,7 +17,10 @@ interpreted, its timers stall input.  Native-comp JIT follows the .elc."
           (byte-compile-file el))))))
 
 (unless (or (eq system-type 'darwin) (dl-guix-system-p))
-  (dl-satan--compile-stale)
+  ;; Not while compiling another file (Flymake, `just lint'): that
+  ;; compiler binds where .elc files go, and must not write any.
+  (unless (bound-and-true-p byte-compile-current-file)
+    (dl-satan--compile-stale))
   (use-package satan
     :ensure nil
     :demand t

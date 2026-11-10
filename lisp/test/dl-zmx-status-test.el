@@ -13,6 +13,11 @@
     (add-to-list 'load-path ghostel-dir)
     (require 'ghostel)))
 
+;; ghostel joins the load path only at load time, so the compiler cannot see it.
+(declare-function ghostel-status--indicator-text "ghostel-status")
+(declare-function ghostel-status-buffers "ghostel-status")
+(defvar ghostel-program-status)
+
 (defun dl-zmx-status-test--session (name state)
   "Return a session record NAME, with a `state' label of STATE unless nil."
   `((name . ,name) ,@(and state `((state . ,state)))))

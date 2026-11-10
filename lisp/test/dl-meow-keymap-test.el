@@ -5,6 +5,7 @@
 (require 'ert)
 (require 'meow)
 (require 'dl-keymap)
+(require 'dl-meow-map)
 
 (meow-setup)
 

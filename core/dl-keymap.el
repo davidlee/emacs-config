@@ -435,7 +435,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 ;; TRIAL: Do i really need these at C-c _ ?
 (my/bind my-org-map     "a" #'org-agenda                      "agenda")
 (my/bind my-org-map     "c" #'org-capture                     "capture")
-(my/bind my-org-map     "a" #'org-store-link                  "store-link")
+(my/bind my-org-map     "l" #'org-store-link                  "store-link")
 
 (my/bind my-org-map     "h" #'consult-org-heading         "heading (buffer)")
 (my/bind my-org-map     "H" (lambda () (interactive)

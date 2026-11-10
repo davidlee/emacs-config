@@ -161,6 +161,8 @@ graphical frame the daemon goes on to create."
 ;; (use-package visual-fill-column
 ;;   :hook (prog-mode . visual-fill-column-mode))
 
+(declare-function visual-fill-column-mode "visual-fill-column")
+
 (defun my/toggle-margins ()
   "Toggle body-width margins for the current buffer.
 Uses `visual-fill-column-mode' in `prog-mode' derivatives,

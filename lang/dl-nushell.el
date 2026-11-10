@@ -3,6 +3,7 @@
 ;; The mode warns at load if the grammar is missing, and Guix doesn't have it.
 (use-package nushell-ts-mode
   :if (treesit-language-available-p 'nu)
+  :functions (highlight-parentheses-mode electric-local-indent-mode)
   :config
   ;; (require 'nushell-ts-babel)
   (defun my/nushell-mode-hook ()
@@ -10,7 +11,7 @@
     (highlight-parentheses-mode 1)
     (electric-pair-local-mode 1)
     (electric-local-indent-mode 1))
-  (add-hook 'nushell-ts-mode 'my/nushell-mode-hook))
+  (add-hook 'nushell-ts-mode-hook 'my/nushell-mode-hook))
 
 ;; (with-eval-after-load 'org-contrib
 ;;   (org-babel-do-load-languages

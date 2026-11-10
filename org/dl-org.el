@@ -108,7 +108,9 @@ local `hl-line-mode' is redundant."
 
 ;;(add-hook 'org-mode-hook (lambda () (org-bullets-mode 1)))
 
-(add-to-list 'load-path "~/.config/emacs/elpa/org-pretty-table")
+;; At compile time too, so the compiler finds the `require' below.
+(eval-and-compile
+  (add-to-list 'load-path "~/.config/emacs/elpa/org-pretty-table"))
 (require 'org-pretty-table)
 (add-hook 'org-mode-hook (lambda () (org-pretty-table-mode)))
 
@@ -126,6 +128,7 @@ local `hl-line-mode' is redundant."
               ([remap meow-next] . org-timeblock-list-next-line)))
 
 (use-package org-alert
+  :functions org-alert-enable
   :custom
   (alert-default-style 'libnotify)
   (org-alert-interval 300)

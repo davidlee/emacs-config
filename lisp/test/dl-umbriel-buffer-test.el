@@ -317,6 +317,128 @@ pair, so a lone `%' would be read as a construct."
   "STRING with every `%' doubled, as a mode-line construct needs."
   (replace-regexp-in-string "%" "%%" string t t))
 
+;;;; prompt and send isolation (used from scratchpads on)
+
+(defvar dl-umbriel-buffer-test--send-all-calls nil
+  "Calls to the faked `dl-umbriel-send-all', newest first: (PLAN . CALLBACK).")
+
+(defvar dl-umbriel-buffer-test--refreshes nil
+  "Calls to the faked `dl-umbriel-refresh', newest first: CALLBACK.")
+
+(defvar dl-umbriel-buffer-test--prompts nil
+  "Prompt calls, newest first: (KIND PROMPT COLLECTION REQUIRE-MATCH).")
+
+(defvar dl-umbriel-buffer-test--prompt-choice nil
+  "What the faked `completing-read' answers.")
+
+(defvar dl-umbriel-buffer-test--prompt-confirm t
+  "What the faked `y-or-n-p' answers.")
+
+(defvar dl-umbriel-buffer-test--prompt-hook nil
+  "Function the faked prompts call before answering, or nil.")
+
+(defvar dl-umbriel-buffer-test--prompt-allowed t
+  "When nil, a faked prompt fails the test instead of answering.")
+
+(defvar dl-umbriel-buffer-test--messages nil
+  "Messages the faked `message' recorded, newest first.")
+
+(defvar dl-umbriel-buffer-test--fake-timers nil
+  "The timers `--with-scheduled' faked for the code under test.")
+
+(defun dl-umbriel-buffer-test--prompting (kind prompt &optional c match)
+  "Record a prompt of KIND for PROMPT, C and MATCH; fail when none may run."
+  (unless dl-umbriel-buffer-test--prompt-allowed
+    (ert-fail (format "%s ran where no prompt may run: %s" kind prompt)))
+  (when dl-umbriel-buffer-test--prompt-hook
+    (funcall dl-umbriel-buffer-test--prompt-hook))
+  (push (list kind prompt c match) dl-umbriel-buffer-test--prompts))
+
+(defmacro dl-umbriel-buffer-test--with-send-all (&rest body)
+  "Run BODY with `dl-umbriel-send-all' capturing instead of sending.
+The calls land in `--send-all-calls'.  `dl-umbriel-send' and
+`make-network-process' fail the test, so no request can leave."
+  (declare (indent 0))
+  `(let ((dl-umbriel-buffer-test--send-all-calls nil))
+     (cl-letf (((symbol-function 'dl-umbriel-send-all)
+                (lambda (plan callback)
+                  (push (cons plan callback)
+                        dl-umbriel-buffer-test--send-all-calls)))
+               ((symbol-function 'dl-umbriel-send)
+                (lambda (&rest _)
+                  (ert-fail "a request bypassed `dl-umbriel-send-all'")))
+               ((symbol-function 'make-network-process)
+                (lambda (&rest _)
+                  (ert-fail "a test opened a socket"))))
+       ,@body)))
+
+(defmacro dl-umbriel-buffer-test--with-refresh (&rest body)
+  "Run BODY with `dl-umbriel-refresh' recording its callbacks in `--refreshes'."
+  (declare (indent 0))
+  `(let ((dl-umbriel-buffer-test--refreshes nil))
+     (cl-letf (((symbol-function 'dl-umbriel-refresh)
+                (lambda (&optional callback)
+                  (push callback dl-umbriel-buffer-test--refreshes)
+                  nil)))
+       ,@body)))
+
+(defmacro dl-umbriel-buffer-test--with-fake-status (variable &rest body)
+  "Run BODY with `dl-umbriel-stream-status' answering VARIABLE's value."
+  (declare (indent 1))
+  `(cl-letf (((symbol-function 'dl-umbriel-stream-status)
+              (lambda () ,variable)))
+     ,@body))
+
+(defmacro dl-umbriel-buffer-test--with-messages (&rest body)
+  "Run BODY with `message' recorded in `--messages' instead of shown."
+  (declare (indent 0))
+  `(let ((dl-umbriel-buffer-test--messages nil))
+     (cl-letf (((symbol-function 'message)
+                (lambda (format-string &rest args)
+                  (push (condition-case nil
+                            (apply #'format format-string args)
+                          (error format-string))
+                        dl-umbriel-buffer-test--messages)
+                  nil)))
+       ,@body)))
+
+(defmacro dl-umbriel-buffer-test--with-prompts (&rest body)
+  "Run BODY with the prompting functions faked.
+`completing-read' answers `--prompt-choice', `y-or-n-p' answers
+`--prompt-confirm', and the `read-' family answers \"\".  Each records
+its arguments in `--prompts' and calls `--prompt-hook' first.  With
+`--prompt-allowed' nil a prompt fails the test instead: that is how a
+callback or a timer is checked for never prompting."
+  (declare (indent 0))
+  `(let ((dl-umbriel-buffer-test--prompts nil)
+         (dl-umbriel-buffer-test--prompt-choice nil)
+         (dl-umbriel-buffer-test--prompt-confirm t)
+         (dl-umbriel-buffer-test--prompt-hook nil)
+         (dl-umbriel-buffer-test--prompt-allowed t))
+     (cl-letf (((symbol-function 'completing-read)
+                (lambda (prompt collection &optional _predicate require-match
+                                 &rest _)
+                  (dl-umbriel-buffer-test--prompting 'completing-read prompt
+                                                     collection require-match)
+                  dl-umbriel-buffer-test--prompt-choice))
+               ((symbol-function 'y-or-n-p)
+                (lambda (prompt)
+                  (dl-umbriel-buffer-test--prompting 'y-or-n-p prompt)
+                  dl-umbriel-buffer-test--prompt-confirm))
+               ((symbol-function 'read-string)
+                (lambda (prompt &rest _)
+                  (dl-umbriel-buffer-test--prompting 'read-string prompt)
+                  ""))
+               ((symbol-function 'read-from-minibuffer)
+                (lambda (prompt &rest _)
+                  (dl-umbriel-buffer-test--prompting 'read-from-minibuffer prompt)
+                  ""))
+               ((symbol-function 'read-number)
+                (lambda (prompt &rest _)
+                  (dl-umbriel-buffer-test--prompting 'read-number prompt)
+                  0)))
+       ,@body)))
+
 ;;;; scratchpads (SL-017)
 
 (defconst dl-umbriel-buffer-test--toggle
@@ -1856,128 +1978,6 @@ alist or a plain list of strings cannot answer at all."
     (goto-char (oref section start))
     (call-interactively command)))
 
-;;;; actions: isolation
-
-(defvar dl-umbriel-buffer-test--send-all-calls nil
-  "Calls to the faked `dl-umbriel-send-all', newest first: (PLAN . CALLBACK).")
-
-(defvar dl-umbriel-buffer-test--refreshes nil
-  "Calls to the faked `dl-umbriel-refresh', newest first: CALLBACK.")
-
-(defvar dl-umbriel-buffer-test--prompts nil
-  "Prompt calls, newest first: (KIND PROMPT COLLECTION REQUIRE-MATCH).")
-
-(defvar dl-umbriel-buffer-test--prompt-choice nil
-  "What the faked `completing-read' answers.")
-
-(defvar dl-umbriel-buffer-test--prompt-confirm t
-  "What the faked `y-or-n-p' answers.")
-
-(defvar dl-umbriel-buffer-test--prompt-hook nil
-  "Function the faked prompts call before answering, or nil.")
-
-(defvar dl-umbriel-buffer-test--prompt-allowed t
-  "When nil, a faked prompt fails the test instead of answering.")
-
-(defvar dl-umbriel-buffer-test--messages nil
-  "Messages the faked `message' recorded, newest first.")
-
-(defvar dl-umbriel-buffer-test--fake-timers nil
-  "The timers `--with-scheduled' faked for the code under test.")
-
-(defun dl-umbriel-buffer-test--prompting (kind prompt &optional c match)
-  "Record a prompt of KIND for PROMPT, C and MATCH; fail when none may run."
-  (unless dl-umbriel-buffer-test--prompt-allowed
-    (ert-fail (format "%s ran where no prompt may run: %s" kind prompt)))
-  (when dl-umbriel-buffer-test--prompt-hook
-    (funcall dl-umbriel-buffer-test--prompt-hook))
-  (push (list kind prompt c match) dl-umbriel-buffer-test--prompts))
-
-(defmacro dl-umbriel-buffer-test--with-send-all (&rest body)
-  "Run BODY with `dl-umbriel-send-all' capturing instead of sending.
-The calls land in `--send-all-calls'.  `dl-umbriel-send' and
-`make-network-process' fail the test, so no request can leave."
-  (declare (indent 0))
-  `(let ((dl-umbriel-buffer-test--send-all-calls nil))
-     (cl-letf (((symbol-function 'dl-umbriel-send-all)
-                (lambda (plan callback)
-                  (push (cons plan callback)
-                        dl-umbriel-buffer-test--send-all-calls)))
-               ((symbol-function 'dl-umbriel-send)
-                (lambda (&rest _)
-                  (ert-fail "a request bypassed `dl-umbriel-send-all'")))
-               ((symbol-function 'make-network-process)
-                (lambda (&rest _)
-                  (ert-fail "a test opened a socket"))))
-       ,@body)))
-
-(defmacro dl-umbriel-buffer-test--with-refresh (&rest body)
-  "Run BODY with `dl-umbriel-refresh' recording its callbacks in `--refreshes'."
-  (declare (indent 0))
-  `(let ((dl-umbriel-buffer-test--refreshes nil))
-     (cl-letf (((symbol-function 'dl-umbriel-refresh)
-                (lambda (&optional callback)
-                  (push callback dl-umbriel-buffer-test--refreshes)
-                  nil)))
-       ,@body)))
-
-(defmacro dl-umbriel-buffer-test--with-fake-status (variable &rest body)
-  "Run BODY with `dl-umbriel-stream-status' answering VARIABLE's value."
-  (declare (indent 1))
-  `(cl-letf (((symbol-function 'dl-umbriel-stream-status)
-              (lambda () ,variable)))
-     ,@body))
-
-(defmacro dl-umbriel-buffer-test--with-messages (&rest body)
-  "Run BODY with `message' recorded in `--messages' instead of shown."
-  (declare (indent 0))
-  `(let ((dl-umbriel-buffer-test--messages nil))
-     (cl-letf (((symbol-function 'message)
-                (lambda (format-string &rest args)
-                  (push (condition-case nil
-                            (apply #'format format-string args)
-                          (error format-string))
-                        dl-umbriel-buffer-test--messages)
-                  nil)))
-       ,@body)))
-
-(defmacro dl-umbriel-buffer-test--with-prompts (&rest body)
-  "Run BODY with the prompting functions faked.
-`completing-read' answers `--prompt-choice', `y-or-n-p' answers
-`--prompt-confirm', and the `read-' family answers "".  Each records
-its arguments in `--prompts' and calls `--prompt-hook' first.  With
-`--prompt-allowed' nil a prompt fails the test instead: that is how a
-callback or a timer is checked for never prompting."
-  (declare (indent 0))
-  `(let ((dl-umbriel-buffer-test--prompts nil)
-         (dl-umbriel-buffer-test--prompt-choice nil)
-         (dl-umbriel-buffer-test--prompt-confirm t)
-         (dl-umbriel-buffer-test--prompt-hook nil)
-         (dl-umbriel-buffer-test--prompt-allowed t))
-     (cl-letf (((symbol-function 'completing-read)
-                (lambda (prompt collection &optional _predicate require-match
-                                 &rest _)
-                  (dl-umbriel-buffer-test--prompting 'completing-read prompt
-                                                     collection require-match)
-                  dl-umbriel-buffer-test--prompt-choice))
-               ((symbol-function 'y-or-n-p)
-                (lambda (prompt)
-                  (dl-umbriel-buffer-test--prompting 'y-or-n-p prompt)
-                  dl-umbriel-buffer-test--prompt-confirm))
-               ((symbol-function 'read-string)
-                (lambda (prompt &rest _)
-                  (dl-umbriel-buffer-test--prompting 'read-string prompt)
-                  ""))
-               ((symbol-function 'read-from-minibuffer)
-                (lambda (prompt &rest _)
-                  (dl-umbriel-buffer-test--prompting 'read-from-minibuffer prompt)
-                  ""))
-               ((symbol-function 'read-number)
-                (lambda (prompt &rest _)
-                  (dl-umbriel-buffer-test--prompting 'read-number prompt)
-                  0)))
-       ,@body)))
-
 (defmacro dl-umbriel-buffer-test--with-scheduled (calls &rest body)
   "Run BODY with CALLS collecting the timers the code under test schedules.
 A `run-at-time' with a delay of 0 and no repeat -- how a reply leaves a
@@ -3281,6 +3281,7 @@ No `C-<left>'/`[' or `C-<right>'/`]' row key, and no scroll commands."
 
 (require 'meow)
 (require 'dl-keymap)
+(require 'dl-meow-map)
 (meow-setup)
 
 (defconst dl-umbriel-buffer-test--global-keys

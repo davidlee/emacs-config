@@ -1,6 +1,7 @@
 ;;; dl-prescient.el --- PRESCIENT -*- lexical-binding: t; -*-
 
 (use-package prescient
+  :functions prescient-persist-mode
   :config
   (prescient-persist-mode 1))
 

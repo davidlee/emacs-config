@@ -17,7 +17,7 @@
 
 ;;; Code:
 
-(require 'map)
+(require 'cl-lib)
 (require 'gptel)
 (require 'text-property-search)
 
@@ -107,7 +107,7 @@ delimiter; it moves point past the form and returns the replacement."
 
 (defun dl-gptel-notify-response (info)
   "Post a desktop notice with the start of the reply described by INFO."
-  (pcase-let (((map :position :tracking-marker :buffer) info))
+  (cl-destructuring-bind (&key position tracking-marker buffer &allow-other-keys) info
     (when (buffer-live-p (marker-buffer position))
       (require 'notifications)
       (notifications-notify

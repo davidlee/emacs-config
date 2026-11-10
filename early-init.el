@@ -11,20 +11,15 @@
 ;; -- guix: Guix Home supplies most packages; `just guix-packages' fetches
 ;;    the rest into elpa/ (see dl-guix.el). Startup never downloads.
 
-(setq my/debug-startup nil)
+(defvar my/debug-startup nil
+  "Non-nil to debug startup: errors enter the debugger, use-package reports.")
 
 (when my/debug-startup
   (setq debug-on-error t)
   (setq use-package-verbose t)
   (setq use-package-compute-statistics t))
 
-(setopt
-  package-enable-at-startup nil
-  package-archives nil ; don't download if missing
-  use-package-always-ensure nil)
-
-(require 'package)
-(package-initialize)
+(load (expand-file-name "core/dl-package" user-emacs-directory) nil 'nomessage)
 
 (require 'use-package)
 (require 'package-vc)

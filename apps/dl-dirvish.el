@@ -3,6 +3,7 @@
 ;; `dired' core config lives in `apps/dl-dired.el'.
 
 (use-package dirvish
+  :defines dirvish-side-attributes
   :init
 
   :custom

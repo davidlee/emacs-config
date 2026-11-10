@@ -24,3 +24,38 @@ Approach:
 
 Governance: the user chose a backlog item over a slice on 2026-11-10
 (sized at one session, mostly mechanical).
+
+## Progress (2026-11-10)
+
+Done, uncommitted:
+- Gate: `dev/dl-lint.el` (+ `lisp/test/dl-lint-test.el`), `bin/elisp-lint`,
+  `just lint`, `check: lint`. Exclusions (`dl-lint-excluded`) are shared with
+  live Flymake via `lang/dl-elisp.el`: init.el (compiling it boots the whole
+  config: gpg prompts, processes), themes/noctalia-theme.el (generated
+  elsewhere), compost/, .spec-driver/.
+- Environment parity: `core/dl-package.el` (package activation, extracted
+  from early-init.el); `bin/elisp-compile-child` loads it before compiling
+  and drops `kill-emacs-hook` on exit so a scratch child never writes state
+  files (recentf, project-window-list). Flymake uses the same child
+  (`elisp-flymake-byte-compile-executable`). This alone removed ~90 false
+  positives (autoloaded commands, `:vc` packages in elpa/).
+- Fixes across ~45 files; full lint is clean.
+
+Real defects found on the way:
+- `dl-satan--compile-stale` ran during any compile that loaded the config
+  and crashed it (nil dest file); now skipped under `byte-compile-current-file`.
+- `dl-faces` applied org faces at load, depending on org-faces being loaded
+  first; now applied when org-faces loads.
+- `dl-claude`: `:config` called two defcustoms as functions; the error
+  skipped `claude-code-ide-emacs-tools-setup`, which now runs.
+- `dl-nushell`: hook added to `nushell-ts-mode` instead of `-hook`.
+- Tests whose `let` bound package variables lexically (isolation silently
+  void): dl-agent-review, dl-gptel-mcp, dl-session.
+- dl-umbriel-buffer-test: macros used before definition.
+- Three test files failed to load after `meow-setup` moved to dl-meow-map.
+
+- Duplicate `a` in `my-org-map` (org-agenda / org-store-link) broke two
+  tests; store-link moved to `l` (user's choice, 2026-11-11).
+
+`just check` green: lint clean, 587/589 ERT pass (2 skipped).
+Lint run: ~17 s (package-initialize per child).

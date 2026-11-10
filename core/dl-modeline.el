@@ -5,6 +5,20 @@
 ;; ./elpa/lambda-line/lambda-line.el
 (defvar lambda-line--selected-window)
 (defvar lambda-line-user-mode)
+(defvar lambda-line-display-group-start)
+(defvar lambda-line-display-group-end)
+(defvar lambda-line-hspace)
+(defvar lambda-line-vc-symbol)
+(defvar org-mode-line-string)
+(declare-function lambda-line-mode-name "lambda-line")
+(declare-function lambda-line-vc-project-branch "lambda-line")
+(declare-function lambda-line-compose "lambda-line")
+(declare-function lambda-line-status "lambda-line")
+(declare-function lambda-line-project-name "lambda-line")
+;; Defined by `define-advice' inside `with-eval-after-load' below.
+(declare-function lambda-line-compose@margin-aware "dl-modeline")
+(declare-function lambda-line-org-clock-mode@fix-arity "dl-modeline")
+(declare-function lambda-line-vc-project-branch@extra-spacing "dl-modeline")
 
 (defvar dl-modeline-segments nil
   "Functions prepended, in order, to the lambda-line after the user mode.

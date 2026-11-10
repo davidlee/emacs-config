@@ -71,7 +71,7 @@ to a function returning those lines."
     (should (equal (funcall argv) '("read --no-newline op://v/i/f")))))
 
 (ert-deftest dl-secret-op-read-signals-on-failure ()
-  (dl-secret-test--with-stub-op (argv 1)
+  (dl-secret-test--with-stub-op (_argv 1)
     (should-error (my/op-read "op://v/i/f"))
     (should-not (gethash "op://v/i/f" my/op--cache))))
 

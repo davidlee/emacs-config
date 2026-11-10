@@ -6,6 +6,15 @@
 (require 'tab-bar)
 (require 'tab-line)
 
+(defgroup dl-faces nil
+  "Font roles and face customization."
+  :group 'faces)
+
+;; Forward declarations: set below, defined by deferred packages.
+(defvar display-line-numbers-mode)
+(defvar org-todo-keyword-faces)
+(defvar org-modern-todo-faces)
+
 ;; Single home for face customization in this config: font roles,
 ;; per-face attrs, line-numbers, mode-line, org headings, flymake /
 ;; jinx underlines.  Other files don't set face attributes —
@@ -127,7 +136,8 @@ ad-hoc edits, leaving the two faces in different families (misaligned)."
                               ((t :inherit line-number :family ,family :height 1.0 :weight regular))))))
 
 (defface dl-faces-org-body '((t))
-  "Plain text in org buffers.  `my/org-face-styles' gives it the `org-body' role.")
+  "Plain text in org buffers.  `my/org-face-styles' gives it the `org-body' role."
+  :group 'dl-faces)
 
 (defun dl-faces--draw-org-body ()
   "Draw the current buffer's plain text in `dl-faces-org-body'.
@@ -265,8 +275,13 @@ Variadic to fit `enable-theme-functions', which passes the theme."
 
   (my/apply-icon-fontset)
   (my/apply-ui-faces)
-  (my/apply-org-faces)
+  ;; Org's faces exist only once org-faces loads; see below.
+  (when (featurep 'org-faces)
+    (my/apply-org-faces))
   (my/apply-hl-line-faces))
+
+(with-eval-after-load 'org-faces
+  (my/apply-org-faces))
 
 ;; Diagnostic underlines — straight lines, muted hues. Wave style is noisy.
 (with-eval-after-load 'flymake

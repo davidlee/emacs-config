@@ -12,6 +12,7 @@
 (require 'org-ql)
 (require 'dl-notes-paths)
 (require 'dl-review)
+(declare-function org-ql--normalize-query "org-ql" (query))
 
 ;;; VT-1 — journal-open query surfaces open-keyword headings only.
 ;;

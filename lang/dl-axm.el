@@ -7,6 +7,7 @@
 
 (add-to-list 'auto-mode-alist '("\\.axm\\'" . axm-mode))
 
+(defvar eglot-server-programs)
 (with-eval-after-load 'eglot
   (add-to-list 'eglot-server-programs
     '(axm-mode . ("axiomata-lsp" "--stdio"))))

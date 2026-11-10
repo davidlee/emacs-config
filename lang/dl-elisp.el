@@ -25,6 +25,18 @@
 (require 'dl-path)
 (setq-default elisp-flymake-byte-compile-load-path
   (cons "./" (dl-path-config-load-path)))
+;; ... and its installed packages, or every autoloaded command is "not
+;; known to be defined".  bin/elisp-lint runs the same child.
+(setq elisp-flymake-byte-compile-executable
+  (expand-file-name "bin/elisp-compile-child" user-emacs-directory))
+
+;; Flymake skips the files `just lint' skips, so the two always agree.
+(require 'dl-lint)
+(defun dl-elisp--skip-excluded-byte-compile ()
+  "Drop Flymake's byte-compile check in files the lint excludes."
+  (when (and buffer-file-name (dl-lint-excluded-p buffer-file-name))
+    (remove-hook 'flymake-diagnostic-functions #'elisp-flymake-byte-compile t)))
+(add-hook 'emacs-lisp-mode-hook #'dl-elisp--skip-excluded-byte-compile)
 
 ;; Turn Flymake's "not known to be defined" warnings into declare-function forms.
 (use-package dl-declare

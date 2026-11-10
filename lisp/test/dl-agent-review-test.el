@@ -2,6 +2,11 @@
 
 (require 'ert)
 (require 'cl-lib)
+;; Optional: the tests skip when magit or hunk-notes is not installed.
+(require 'dl-magit nil t)
+(require 'dl-agent-review nil t)
+(require 'magit-filenotify nil t)
+(require 'hunk-notes nil t)
 
 (defun dl-agent-review-test--git (directory &rest args)
   (let ((default-directory directory))

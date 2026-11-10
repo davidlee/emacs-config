@@ -14,6 +14,7 @@
      (python-mode     . python-ts-mode)))
 
 (use-package treesit-auto
+  :functions (treesit-auto-add-to-auto-mode-alist global-treesit-auto-mode)
   :custom
   (treesit-auto-install t)
   :config

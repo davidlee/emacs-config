@@ -2,6 +2,7 @@
 (require 'dl-llm-gateway)
 
 (use-package minuet
+  :functions minuet-set-optional-options
   :config
   (setq minuet-provider 'openai-compatible)
   (setq minuet-request-timeout 2.5)

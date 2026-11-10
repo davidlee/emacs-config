@@ -7,7 +7,11 @@
 
 (require 'ert)
 (require 'dl-test-notes)
-(when (locate-library "mcp-hub") (require 'dl-gptel-mcp))
+(require 'dl-notes-paths)
+(require 'server)
+(require 'gptel)
+(require 'dl-gptel-mcp nil t)
+(require 'mcp-server-lib nil t)
 
 (declare-function dl-gptel-mcp-org-connect "dl-gptel-mcp")
 (declare-function dl-gptel-mcp-org-server "dl-gptel-mcp")

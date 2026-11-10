@@ -3,6 +3,7 @@
 (load (expand-file-name
         "dl-spotify.secret.el" user-emacs-directory) t)
 
+(defvar smudge-transport)
 (setq smudge-transport 'connect)
 (use-package smudge
   :defer t

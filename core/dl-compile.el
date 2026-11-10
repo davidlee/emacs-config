@@ -30,8 +30,8 @@
   :config
   (add-hook 'emacs-lisp-mode-hook #'compile-angel-on-save-local-mode)
 
-  (push "/init.el" compile-angel-excluded-files)
-  (push "/early-init.el" compile-angel-excluded-files)
+  (push "/init.el" compile-angel-excluded-path-suffixes)
+  (push "/early-init.el" compile-angel-excluded-path-suffixes)
 
   ;; (compile-angel-on-load-mode 1))
   (compile-angel-on-save-mode 1))

@@ -4,6 +4,7 @@
 
 (require 'ert)
 (require 'cl-lib)
+(require 'org)        ; `org-agenda-files' special when the tests compile
 (require 'dl-session)
 
 (defun dl-session-test--save-conflicting (daemon)
@@ -38,7 +39,6 @@ Its question would go to the initial terminal, whose stdin is
 
 (ert-deftest dl-session/agenda-files-not-saved ()
   "Agenda files stay out of the desktop: org-agenda reopens them anyway."
-  (require 'org)
   (let ((org-agenda-files '("/tmp/dl-session-agenda.org")))
     (should-not (desktop-save-buffer-p
                  "/tmp/dl-session-agenda.org" "dl-session-agenda.org" 'org-mode))

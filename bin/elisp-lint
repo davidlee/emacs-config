@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Byte-compile lint, as Flymake's elisp backend sees it (dev/dl-lint.el).
+# Usage: elisp-lint [FILE...]   (default: every tracked config .el)
+# Prints FILE:LINE: LEVEL: MESSAGE; exits non-zero if any file reported
+# a diagnostic or its Emacs failed (a crashed child prints nothing).
+set -uo pipefail
+
+root="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$root" || exit 2
+
+if [ $# -gt 0 ]; then
+  files=("$@")
+else
+  # Exclusions live in dev/dl-lint.el (`dl-lint-excluded'), shared with Flymake.
+  mapfile -t files < <(git ls-files '*.el')
+fi
+
+# One Emacs per file: compiling evaluates the file's compile-time forms,
+# so files must not share a process.
+printf '%s\0' "${files[@]}" |
+  xargs -0 -P "$(nproc)" -I{} \
+    bin/elisp-compile-child -Q --batch -L core -L dev -l dl-lint \
+      -f dl-lint-batch {} 2>/dev/null |
+  grep -aE '^[^[:space:]:]+:[0-9]+: (error|warning|note|debug): ' |
+  sort -t: -k1,1 -k2,2n
+status=("${PIPESTATUS[@]}")
+[ "${status[1]}" -eq 0 ]

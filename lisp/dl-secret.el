@@ -15,6 +15,7 @@
 
 (require 'auth-source)
 (require 'cl-lib)
+(declare-function notifications-notify "notifications")
 
 ;;;; Auth-source
 

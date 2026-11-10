@@ -36,6 +36,9 @@ Recomputed by `my/org-agenda-refresh-files'.")
   "Union of personal + work agenda files.
 Recomputed by `my/org-agenda-refresh-files'.")
 
+(defvar org-agenda-files)
+(defvar org-agenda-custom-commands)
+
 (defun my/org-agenda-refresh-files ()
   "Recompute agenda file lists from the notes corpus.
 Call after adding new notes if you don't want to wait for the next

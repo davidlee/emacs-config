@@ -17,6 +17,8 @@
   :ensure nil
   :after ewm
   :demand t
+  :defines ewm-mode-map
+  :functions foxmacs-mode
   :bind (:map ewm-mode-map
           ("s-b o" . foxmacs-open-url)
           ("s-b h" . foxmacs-hint)

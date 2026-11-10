@@ -13,6 +13,7 @@
         :rev :newest)
   :custom
   (claude-code-ide-cli-path "/home/david/.local/bin/claude")
+  (claude-code-ide-terminal-backend 'vterm)
   :bind ("C-c '" . claude-code-ide-menu)
   :config
   (require 'web-server)
@@ -20,8 +21,6 @@
     (defun ws-process (obj)
       "Compatibility accessor for web-server objects."
       (oref obj process)))
-  (claude-code-ide-cli-path "/home/david/.local/bin/claude")
-  (claude-code-ide-terminal-backend 'vterm)
   (claude-code-ide-emacs-tools-setup))
 
 ;; (use-package claude-code-ide

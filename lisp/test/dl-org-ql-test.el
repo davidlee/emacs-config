@@ -11,6 +11,9 @@
 (require 'dl-org-ql)
 (require 'dl-keymap)
 
+;; org-ql's macros expand to calls of this; org-ql defines it with `fset'.
+(declare-function org-ql--normalize-query "org-ql" (query))
+
 (defconst dl-org-ql-test--corpus
   '("inbox.org" "slips/idea.org" "slips/archived-thought.org"
     "references/deep/paper.org" "archive/old.org" "slips/archive/older.org"

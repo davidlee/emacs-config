@@ -26,11 +26,11 @@
 
 ;;;; `dl-umbriel-focus-frame'
 
-(defun dl-umbriel-focus-test--run (window-system title replies)
-  "Focus a WINDOW-SYSTEM frame bearing TITLE; this process is pid 42.
+(defun dl-umbriel-focus-test--run (frame-type title replies)
+  "Focus a FRAME-TYPE frame bearing TITLE; this process is pid 42.
 `dl-umbriel-send' answers REPLIES in order.  Return (REQUESTS MESSAGES)."
   (let (requests messages)
-    (cl-letf (((symbol-function 'framep) (lambda (_) window-system))
+    (cl-letf (((symbol-function 'framep) (lambda (_) frame-type))
               ((symbol-function 'frame-parameter)
                (lambda (_ param) (and (eq param 'name) title)))
               ((symbol-function 'emacs-pid) (lambda () 42))

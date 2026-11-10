@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Emacs for byte-compile children: Flymake (`elisp-flymake-byte-compile-
+# executable', set in lang/dl-elisp.el) and bin/elisp-lint.  Activates the
+# installed packages first (core/dl-package.el), as early-init.el does, so
+# the compiler sees the packages and autoloads the live config sees.
+# Compiling init.el loads the config, which installs exit hooks that save
+# state (recentf, project layouts, ...); the child drops them on exit so
+# a scratch session never writes over the real state files.
+# Usage: as `emacs'.  Leading -Q / --batch stay first.
+set -euo pipefail
+
+package_el="$(dirname "$(realpath "$0")")/../core/dl-package.el"
+lead=()
+while [ $# -gt 0 ] && { [ "$1" = -Q ] || [ "$1" = --batch ]; }; do
+  lead+=("$1"); shift
+done
+no_exit_hooks="(advice-add 'kill-emacs :before
+  (lambda (&rest _) (setq kill-emacs-hook nil)))"
+exec "${EMACS:-emacs}" "${lead[@]}" --eval "$no_exit_hooks" -l "$package_el" "$@"

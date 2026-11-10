@@ -7,6 +7,9 @@
 (require 'ert)
 (require 'cl-lib)
 (require 'dl-nostr)
+(require 'meow)
+(require 'dl-keymap)
+(require 'dl-meow-map)
 
 (defmacro dl-nostr-test--with-stub-op-read (calls-var &rest body)
   "Run BODY with `my/op-read' stubbed to return \"nsec1test\".
@@ -39,8 +42,6 @@ CALLS-VAR is bound to a list of (REF . CONTEXT), newest first."
 Meow's motion map otherwise takes them; its arrows stay.
 The map is registered as `meow-global-mode' does, ahead of minor modes."
   (skip-unless (require 'nostr-timeline nil t))
-  (require 'meow)
-  (require 'dl-keymap)
   (meow-setup)
   (let ((emulation-mode-map-alists
           (cons `((meow-motion-mode . ,meow-motion-state-keymap))

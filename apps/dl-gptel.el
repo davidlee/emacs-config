@@ -143,6 +143,8 @@ from protocol, host and endpoint only) and :endpoint (chat completions)."
 (use-package gptel-agent
   :vc ( :url "https://github.com/karthink/gptel-agent"
         :rev :newest)
+  :defines dl-gptel-emcp-tools
+  :functions dl-gptel-emcp-tool-spec
   :config
   (setq gptel-agent-dirs
     (cons (expand-file-name "agents/" user-emacs-directory)

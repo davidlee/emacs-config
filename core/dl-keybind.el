@@ -23,6 +23,14 @@
 ;;   M-PgUp/PgDn  `scroll-other-window-down' / `-window' (still C-M-S-v / C-M-v)
 ;; ghostel lets them through via `ghostel-keymap-exceptions'
 ;; (apps/dl-ghostel.el).
+(require 'tab-line)                     ; not autoloaded; bound below
+(declare-function my/unfill-paragraph "dl-prose")
+(declare-function split-and-follow-horizontally "dl-window")
+(declare-function split-and-follow-vertically "dl-window")
+(declare-function eshell-other-window "dl-term")
+(declare-function my/journal-quick-capture "dl-denote-journal")
+(declare-function my/zmx-new "dl-zmx")
+
 (bind-keys
  ("C-<prior>"   . tab-bar-switch-to-prev-tab)
  ("C-<next>"    . tab-bar-switch-to-next-tab)

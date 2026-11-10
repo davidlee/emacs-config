@@ -7,9 +7,14 @@
 ;; `enable-theme-functions' wiring) — single source of truth for face
 ;; customization in this config.
 
+(defgroup dl-meow nil
+  "Meow modal bindings."
+  :group 'meow)
+
 (defface dl-meow-indicator-inactive
   '((t (:background "#45475a" :foreground "#7f849c" :weight bold)))
-  "Face for the meow state indicator in inactive modelines.")
+  "Face for the meow state indicator in inactive modelines."
+  :group 'dl-meow)
 
 (defun dl-meow-indicator ()
   "Wrap `meow-indicator', greying it out in inactive modelines."
@@ -22,6 +27,7 @@
       s)))
 
 (use-package meow
+  :functions (meow-thing-register meow-setup)
   :custom
   (meow-use-cursor-position-hack t)
   (meow-use-clipboard t)
