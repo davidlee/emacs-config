@@ -6,7 +6,7 @@
 
 ## Idea
 
-Umbriel support (`apps/dl-umbriel*.el`: 5 modules, about 2k lines, of which
+Umbriel support (`desktop/dl-umbriel*.el` (moved from `apps/` by CHR-015): 5 modules, about 1.9k lines, of which
 `dl-umbriel-buffer.el` is 1089; plus 5 test files) is the biggest
 self-contained family in the config. Like SATAN (SL-012), it could become a
 standalone package with its own repo and tests, loaded by `use-package`.
