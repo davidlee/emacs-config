@@ -25,3 +25,9 @@ Something outside the run changes state: perhaps the live daemon
 (compile-angel) rewriting `.elc` files under `load-prefer-newer`, or
 `core/dl-faces.el` being edited at the same time. `dl-faces` is loaded by both
 failing tests and by `dl-org`.
+
+## Closed (2026-11-11)
+
+The user reports the failures came from their own cleanup running at the
+same time (leftovers from an earlier agent, in `core/dl-faces.el`). Not a
+defect in the gate.
