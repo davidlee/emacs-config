@@ -2,6 +2,15 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-11-10 — EWM: Emacs as the compositor, a second session
+
+EWM (Emacs Wayland Manager, codeberg.org/ezemtsov/ewm) joins the package list in
+`~/flakes/emacs/emacs.nix`, and the greeter offers an **ewm** session beside umbriel. It runs
+this config in the same Emacs derivation; the launcher requires and starts `ewm` itself, so no
+config file loads it. The usual Emacs daemon is skipped in an EWM session, where Emacs owns the
+server socket. EWM runs only from a VT (no nested mode), and only one daemon may hold the default
+server name: an Emacs daemon left running elsewhere makes the EWM one exit at startup.
+
 ## 2026-11-10 — daemon: starts and stops with the graphical session
 
 The Emacs daemon (home-manager `services.emacs`, in `~/flakes/features/editor/emacs.nix`) is
