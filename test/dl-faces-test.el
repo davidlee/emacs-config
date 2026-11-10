@@ -5,7 +5,7 @@
 (require 'ert)
 (require 'org)                        ; dl-faces sets org faces at load
 (require 'dl-faces)
-(require 'dl-umbriel-buffer)
+(require 'umbriel-buffer nil t)
 
 (ert-deftest dl-faces/loads-before-anything-defines-hl-line ()
   "Applying faces at load needs `hl-line', so dl-faces must load it itself.
@@ -80,6 +80,7 @@ unresolved; the hooks are idempotent, so they re-run once a real frame exists."
 
 (ert-deftest dl-faces/umbriel-workspace-shades-step-darker-and-survive-recalc ()
   "Rows sit below `default', the heading below the rows, across a recalc."
+  (skip-unless (featurep 'umbriel-buffer))
   ;; White: batch `color-name-to-rgb' snaps to the nearest terminal colour.
   (let ((default "#ffffff"))
     (cl-letf (((symbol-function 'face-attribute)
@@ -90,16 +91,17 @@ unresolved; the hooks are idempotent, so they re-run once a real frame exists."
                      (apply real face args)))))
               ((symbol-function 'color-defined-p) #'always))
       (my/shade-umbriel-active-workspace))
-    (dolist (face '(dl-umbriel-buffer-active-workspace
-                    dl-umbriel-buffer-active-workspace-window))
+    (dolist (face '(umbriel-buffer-active-workspace
+                    umbriel-buffer-active-workspace-window))
       (custom-theme-recalc-face face)
       (should (eq t (face-attribute face :extend nil))))
-    (should (< (dl-faces-test--red 'dl-umbriel-buffer-active-workspace)
-               (dl-faces-test--red 'dl-umbriel-buffer-active-workspace-window)
+    (should (< (dl-faces-test--red 'umbriel-buffer-active-workspace)
+               (dl-faces-test--red 'umbriel-buffer-active-workspace-window)
                (car (color-values-from-color-spec default))))))
 
 (ert-deftest dl-faces/umbriel-pills-sit-below-their-sources-and-survive-recalc ()
   "The muted name and layout pills are darker than the colours they derive from."
+  (skip-unless (featurep 'umbriel-buffer))
   ;; White: batch `color-name-to-rgb' snaps to the nearest terminal colour.
   (let ((source "#ffffff"))
     (cl-letf (((symbol-function 'face-attribute)
@@ -110,7 +112,7 @@ unresolved; the hooks are idempotent, so they re-run once a real frame exists."
                      (apply real face args)))))
               ((symbol-function 'color-defined-p) #'always))
       (my/shade-umbriel-pills))
-    (dolist (face '(dl-umbriel-buffer-workspace-name dl-umbriel-buffer-layout))
+    (dolist (face '(umbriel-buffer-workspace-name umbriel-buffer-layout))
       (custom-theme-recalc-face face)
       (should (< (dl-faces-test--red face)
                  (car (color-values-from-color-spec source)))))))

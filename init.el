@@ -29,8 +29,7 @@
 
 ;; desktop/
 (require 'dl-sleipnir-doctor)
-(require 'dl-umbriel-focus)
-(require 'dl-umbriel-buffer)
+(require 'dl-umbriel)
 (require 'dl-emskin)
 (require 'dl-foxmacs)
 

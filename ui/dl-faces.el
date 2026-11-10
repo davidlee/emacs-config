@@ -350,9 +350,9 @@ the defface spec, so these carry the whole face."
     (when (color-defined-p bg)
       (custom-theme-set-faces
        'user
-       `(dl-umbriel-buffer-active-workspace-window
+       `(umbriel-buffer-active-workspace-window
          ((t :background ,(color-darken-name bg 20) :extend t)))
-       `(dl-umbriel-buffer-active-workspace
+       `(umbriel-buffer-active-workspace
          ((t :inherit magit-section-heading
              :background ,(color-darken-name bg 40) :extend t)))))))
 
@@ -369,11 +369,11 @@ reasons `my/blend-borders-into-background' gives."
     (when (and (color-defined-p accent) (color-defined-p fg))
       (custom-theme-set-faces
        'user
-       `(dl-umbriel-buffer-workspace-name
+       `(umbriel-buffer-workspace-name
          ((t :inherit default
              :background ,(color-darken-name
                            (color-desaturate-name accent 50) 50))))
-       `(dl-umbriel-buffer-layout
+       `(umbriel-buffer-layout
          ((t :background ,(color-darken-name fg 70))))))))
 
 (my/shade-umbriel-pills)

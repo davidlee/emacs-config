@@ -195,10 +195,10 @@
 (declare-function transpose-frame                       "transpose-frame")
 (declare-function vr/query-replace                      "visual-regexp")
 (declare-function vr/replace                            "visual-regexp")
-(declare-function my/umbriel                            "dl-umbriel-buffer")
-(declare-function my/umbriel-switch-workspace           "dl-umbriel-buffer")
-(declare-function my/umbriel-set-active-layout          "dl-umbriel-buffer")
-(declare-function dl-umbriel-focus-frame                "dl-umbriel-focus")
+(declare-function umbriel                               "umbriel-buffer")
+(declare-function umbriel-switch-workspace              "umbriel-buffer")
+(declare-function umbriel-set-active-layout             "umbriel-buffer")
+(declare-function umbriel-focus-frame                   "umbriel-focus")
 
 
 (defun my/narrow-or-widen-dwim ()
@@ -624,12 +624,12 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-toggle-map "=" #'aggressive-indent-mode           "aggressive-indent")
 (my/bind my-toggle-map "E" #'my/eglot-toggle                  "eglot")
 
-;; Umbriel map — the compositor (desktop/dl-umbriel-buffer.el, dl-umbriel-focus.el).
+;; Umbriel map — the compositor (the umbriel package, ~/dev/umbriel.el).
 
-(my/bind my-umbriel-map "u" #'my/umbriel                   "buffer")
-(my/bind my-umbriel-map "w" #'my/umbriel-switch-workspace  "switch workspace")
-(my/bind my-umbriel-map "l" #'my/umbriel-set-active-layout "set layout (active)")
-(my/bind my-umbriel-map "f" #'dl-umbriel-focus-frame       "focus frame")
+(my/bind my-umbriel-map "u" #'umbriel                   "buffer")
+(my/bind my-umbriel-map "w" #'umbriel-switch-workspace  "switch workspace")
+(my/bind my-umbriel-map "l" #'umbriel-set-active-layout "set layout (active)")
+(my/bind my-umbriel-map "f" #'umbriel-focus-frame       "focus frame")
 
 ;; Other
 ;; C-. goto last change

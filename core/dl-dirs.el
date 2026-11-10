@@ -32,7 +32,8 @@
   "My own Lisp directories.")
 
 (defconst dl-dirs-checkouts
-  '("checkout" "elpa/org-timeblock" "~/dev/satan/satan")
+  '("checkout" "elpa/org-timeblock" "~/dev/satan/satan"
+    "~/dev/umbriel.el/umbriel")
   "Installed checkout Lisp directories, under `user-emacs-directory'.")
 
 (defconst dl-dirs-tests '("test")
