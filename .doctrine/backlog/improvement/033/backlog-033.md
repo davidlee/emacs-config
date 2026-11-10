@@ -28,3 +28,16 @@ Related config leftover: `custom-vars.el:81-84` saves fixed colours for four
 `umbriel-buffer-*` faces that `ui/dl-faces.el` also computes; they look like a
 stale Customize snapshot and override the theme-tracking shades until a theme
 change.
+
+**Added 2026-11-11 (user):**
+
+5. **Pills in the default faces.** Without the config's shading, names and
+   layouts read as plain text. The defaults should give pill faces a
+   background (workspace names, scratchpad names, layouts) so the pill
+   shape shows under any theme.
+6. **Visible-workspace icon.** A workspace heading should carry the
+   `visible` flag icon (eye, U+F0208) when that workspace is on screen. The
+   wire's workspace record has `active`/`focused`/`urgent` and no `visible`
+   (live query, 2026-11-11); headings currently put `active` in the `active`
+   column. Open: is a workspace's `active` exactly "shown on its output"? If
+   so, map it to the `visible` column for headings.
