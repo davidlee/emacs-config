@@ -18,27 +18,24 @@ used:
 # chokepoint guard refuses the production socket loudly.
 # load-prefer-newer: source edited outside Emacs (no compile-angel) is
 # newer than its .elc; test the source, not the stale bytecode.
-check:
+# Lint runs first: the config must byte-compile warning-free.
+check: lint
   @emacs --batch -Q --init-directory="{{justfile_directory()}}" \
     --eval '(setq load-prefer-newer t)' \
     -L core -L lisp -L org -L editing -L completion -L apps -L lang -L dev -L lisp/test -L ~/dev/satan/satan -L /workspace/org-incremental-writing \
     -l dev/dl-test.el \
     --eval '(princ (dl-test-run-suite))' 2>&1 | tee /dev/stderr | grep -q PASS
 
+# Byte-compile every tracked .el as Flymake does; fail on any warning.
+# Pass files to lint only those: `just lint core/dl-path.el`.
+lint *files:
+  @bin/elisp-lint {{files}}
+
 # On Guix System, fetch the packages Guix lacks into elpa/ (core/dl-guix.el).
 guix-packages:
   @emacs --batch -Q --init-directory="{{justfile_directory()}}" \
     -l "{{justfile_directory()}}/early-init.el" \
     -f dl-guix-install-packages
-
-db-start:
-  supabase start
-
-db-stop:
-  supabase stop
-
-db-status:
-  supabase status
 
 clean: clean-eln
   @find . -name '*.elc' -delete
