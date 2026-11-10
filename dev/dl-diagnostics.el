@@ -12,7 +12,7 @@
 ;;   flycheck checkers ──┘           ├──► consult-flymake (C-c d d / D)
 ;;                                   └──► modeline counters (dl-modeline)
 ;;
-;; Keys: `C-c d' family in core/dl-keymap.el; M-n / M-p below.
+;; Keys: `C-c d' family in keys/dl-keymap.el; M-n / M-p below.
 
 ;;; Code:
 

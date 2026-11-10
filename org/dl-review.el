@@ -16,7 +16,7 @@
 ;; the same shape against the work compartment.
 ;;
 ;; Bound under `C-c n v …' (personal) and `C-c n W v …' (work) in
-;; `core/dl-keymap.el'.
+;; `keys/dl-keymap.el'.
 
 (require 'dl-notes-paths)
 (require 'org-ql)

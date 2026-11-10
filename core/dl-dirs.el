@@ -27,7 +27,8 @@
   "The checkout holding this file: this file lives in its core/.")
 
 (defconst dl-dirs-config
-  '("core" "editing" "completion" "apps" "org" "dev" "lang")
+  '("core" "ui" "keys" "desktop" "editing" "completion" "org" "dev" "lang"
+    "term" "ai" "comms" "apps")
   "My own Lisp directories.")
 
 (defconst dl-dirs-checkouts

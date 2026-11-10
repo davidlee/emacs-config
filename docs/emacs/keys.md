@@ -5,8 +5,8 @@
 
 - **Leader**: `C-c <letter>` is the durable prefix. In Meow normal state, `SPC <letter>` mirrors it and `o` acts as `C-c` (`my/meow-ctrl-c` replays the key, so mode-local `C-c` maps work too: `o @` is outline's `C-c @`, `o '` is org's `C-c '`; `@` likewise acts as `C-c @`, the `outline-minor-mode` prefix). `C-c f f`, `SPC f f`, and `o f f` all reach `find-file`. The `o` route permits lowercase `g` / `m` without the capital-letter workaround the `SPC` leader needs.
 - **Editing vs. commands**: Meow normal state stays editing-focused (motions, selection, operators). Commands live under the leader.
-- **Single source of truth**: prefix maps, the `my/bind` helper, the Meow leader mirror, and which-key prefix labels all live in `core/dl-keymap.el`. Package files declare commands (`:commands`) and own their keys, global and mode-local, in `use-package :bind`. Keys with no owning package live in `core/dl-keybind.el` as `bind-keys`. See [Ownership rules](#ownership-rules).
-- **Discoverability**: `C-h` after a prefix triggers `embark-prefix-help-command`. `describe-keymap RET my-file-map RET` lists a map. `SPC ?` runs the Gallium Meow cheatsheet. `which-key-idle-delay` is `0.3` (see `core/dl-keybind.el`); auto-popups fire after a third of a second of hesitation.
+- **Single source of truth**: prefix maps, the `my/bind` helper, the Meow leader mirror, and which-key prefix labels all live in `keys/dl-keymap.el`. Package files declare commands (`:commands`) and own their keys, global and mode-local, in `use-package :bind`. Keys with no owning package live in `keys/dl-keybind.el` as `bind-keys`. See [Ownership rules](#ownership-rules).
+- **Discoverability**: `C-h` after a prefix triggers `embark-prefix-help-command`. `describe-keymap RET my-file-map RET` lists a map. `SPC ?` runs the Gallium Meow cheatsheet. `which-key-idle-delay` is `0.3` (see `keys/dl-keybind.el`); auto-popups fire after a third of a second of hesitation.
 
 ## Policy
 
@@ -52,14 +52,14 @@ writer, so load order never decides a binding.
 
 - **R1** A package's keys live in its `use-package :bind`, including
   `:map` sections for its mode maps.
-- **R2** Keys with no owning `use-package` live in `core/dl-keybind.el`,
+- **R2** Keys with no owning `use-package` live in `keys/dl-keybind.el`,
   written with `bind-keys` (`bind-keys :map M` for a mode map).
   Forbidden elsewhere: `global-set-key`, `keymap-global-set`,
   `global-unset-key`, `local-set-key`, literal `define-key` /
   `keymap-set`. Code that builds its own keymap uses `defvar-keymap` /
   `define-keymap`.
 - **R3** Exceptions. The `C-c <letter>` family prefixes stay literal
-  `define-key global-map` lines in `core/dl-keymap.el` (a prefix is a
+  `define-key global-map` lines in `keys/dl-keymap.el` (a prefix is a
   keymap value; `bind-keys` would bind the symbol's empty function
   cell). `my/bind` stays the form for writes into `my-…-map` maps.
   `meow-*-define-key` stays meow's DSL (not linted).
@@ -388,8 +388,8 @@ In `flymake-mode-map`: `M-n` / `M-p` next / previous diagnostic
 
 ## LLM (`C-c L`)
 
-gptel (`apps/dl-gptel.el`). Presets (`@gpt`, `@think`, `@include`, …)
-are typed in the prompt; `apps/dl-gptel-presets.el` lists them.
+gptel (`ai/dl-gptel.el`). Presets (`@gpt`, `@think`, `@include`, …)
+are typed in the prompt; `ai/dl-gptel-presets.el` lists them.
 
 | Key | Command | |
 |---|---|---|
@@ -468,8 +468,8 @@ Direction keys are arrow keys, not h/j/k/l — see [Layout](#layout).
 | `C-c w r`       | `hydra-window-resize/body`   | resize hydra (sticky `←/→` width, `↑/↓` height, `=` balance, `q` quit) |
 
 `transpose-frame` is also bound chord-style at `C-x 7` (see
-`core/dl-interface.el`). Split-and-follow lives in
-`core/dl-interface.el`; rotate-windows live in `core/dl-window.el`.
+`ui/dl-interface.el`). Split-and-follow lives in
+`ui/dl-interface.el`; rotate-windows live in `core/dl-window.el`.
 
 ## Git (`C-c g`)
 
@@ -484,7 +484,7 @@ the leader alias. `C-c g` always works.
 ## Term (`C-c m`)
 
 [ghostel](https://github.com/dakra/ghostel) terminals plus zmx
-persistent sessions (`apps/dl-zmx.el`). `SPC m` is eaten by
+persistent sessions (`term/dl-zmx.el`). `SPC m` is eaten by
 `meow-keypad` (M- dispatcher) — use `SPC M` as the leader alias.
 
 | Key | Command | |
@@ -541,7 +541,7 @@ Lowercase/uppercase pairs follow the [Policy](#policy) variant rule:
 
 ## Words (package-owned globals)
 
-Spelling and word lookup, bound in `core/dl-prose.el`. `#` pairs with
+Spelling and word lookup, bound in `editing/dl-prose.el`. `#` pairs with
 `$`; the `C-M-` variant is the adjacent tool.
 
 | Key | Command | Does |
@@ -555,7 +555,7 @@ Spelling and word lookup, bound in `core/dl-prose.el`. `#` pairs with
 
 ### To an existing prefix map
 
-In `core/dl-keymap.el`:
+In `keys/dl-keymap.el`:
 
 ```elisp
 (my/bind my-file-map "p" #'find-file-other-window "other-window")
@@ -588,7 +588,7 @@ On the package's `use-package` (R1):
 
 ### Keys with no owning package
 
-`bind-keys` in `core/dl-keybind.el` (R2):
+`bind-keys` in `keys/dl-keybind.el` (R2):
 
 ```elisp
 (bind-keys ("C-;" . iedit-mode))
@@ -599,10 +599,10 @@ On the package's `use-package` (R1):
 Declare autoloads on the source package with `:commands`. Then bind centrally:
 
 ```elisp
-;; apps/dl-term.el
+;; term/dl-term.el
 (use-package multi-vterm :commands (multi-vterm multi-vterm-next multi-vterm-prev))
 
-;; core/dl-keymap.el
+;; keys/dl-keymap.el
 (my/bind my-term-map "t" #'multi-vterm "vterm")
 ```
 
@@ -656,7 +656,7 @@ removed.
 ## Deferred
 
 - **More hydras**. `hydra-window-resize` (at `C-c w r`) is the first
-  defhydra; the package is now loaded eagerly in `core/dl-keybind.el`.
+  defhydra; the package is now loaded eagerly in `keys/dl-keybind.el`.
   Future candidates: zoom (now plain keys: `C-+` / `C-_` / `C-0`
   buffer, `C-M-=` / `C-M-+` / `C-M--` / `C-S-0` global), error navigation
   (now `M-n` / `M-p` in `flymake-mode-map`), and outline traversal.
@@ -677,4 +677,4 @@ removed.
   `meow.local.el` for the precedent.
 - **`C-c t` collision watch**. The toggle map is well-populated now, but mind the `C-c t C-c t` / `C-c t C-h` use-package conventions some major modes still grab when adding new toggles.
 - **Reserved letters**. `k` (config / "kit") is kept free for a future tier-1 family per the [Policy](#policy) budget. Don't grab it for one-off binds. (`d` went to diagnostics.)
-- **Slack re-enable**. `apps/dl-slack.el` is currently uninstalled (`init.el:76` commented). If/when it returns, the global `C-c S …` family must be lifted into `core/dl-keymap.el` under a sub-prefix — see the header comment in `dl-slack.el`.
+- **Slack re-enable**. `apps/dl-slack.el` is currently uninstalled (`init.el:76` commented). If/when it returns, the global `C-c S …` family must be lifted into `keys/dl-keymap.el` under a sub-prefix — see the header comment in `dl-slack.el`.

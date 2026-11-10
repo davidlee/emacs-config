@@ -2,7 +2,7 @@
 
 (require 'dl-notes-paths)
 
-;; Bindings live in `core/dl-keymap.el' under the consolidated `C-c n …'
+;; Bindings live in `keys/dl-keymap.el' under the consolidated `C-c n …'
 ;; map (`my-notes-map' + sub-prefixes).  Keep this module to settings only.
 (use-package denote
   :custom

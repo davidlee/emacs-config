@@ -118,7 +118,7 @@ Pops `*Policy Lint*' when there are violations; otherwise echoes
                         (my-policy-lint--format-binding (plist-get v :binding))
                         (plist-get v :reason))))
             (insert "\nSee docs/emacs/keys.md `Policy'.  Lift offending bindings into\n"
-              "`core/dl-keymap.el' under the appropriate `my-*-map' family,\n"
+              "`keys/dl-keymap.el' under the appropriate `my-*-map' family,\n"
               "or disable the foreign package's global key install.\n")
             (goto-char (point-min)))
           (display-buffer (current-buffer)))
@@ -293,8 +293,8 @@ form's first line.  Signals an error when FILE does not read."
 
 (defun my-policy-lint--family-prefix-p (record)
   "Non-nil when RECORD is an R3 family prefix: `C-c <letter>' bound to
-a `my-…-map' in `global-map', written in `core/dl-keymap.el'."
-  (and (equal (plist-get record :file) "core/dl-keymap.el")
+a `my-…-map' in `global-map', written in `keys/dl-keymap.el'."
+  (and (equal (plist-get record :file) "keys/dl-keymap.el")
        (eq (plist-get record :map) 'global-map)
        (string-match-p "\\`C-c [a-zA-Z]\\'" (plist-get record :key))
        (my-policy-lint--family-name-p (plist-get record :command))))

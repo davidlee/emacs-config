@@ -1,7 +1,7 @@
 ;;; dl-consult-notes.el --- consult-notes with per-class sources -*- lexical-binding: t; -*-
 
 ;; Backs `C-c n f' (`consult-notes') and `C-c n s'
-;; (`consult-notes-search-in-all-notes'), bound in `core/dl-keymap.el'.
+;; (`consult-notes-search-in-all-notes'), bound in `keys/dl-keymap.el'.
 ;;
 ;; Per-class sources expose each notes subdir as a narrowable bucket
 ;; (e.g. press `j SPC' at the consult prompt to scope to journal/).

@@ -42,3 +42,36 @@ edit. Without it, every move edits about five hand-written copies of the list.
 after `home-switch`.
 
 Raised in a file-structure review (2026-11-10).
+
+## Done (2026-11-11)
+
+Moves as proposed, with these settlements:
+
+- `core/` keeps `dl-dirs`, `dl-path`, `dl-package`: `early-init.el`,
+  `bin/elisp-compile-child` and `dl-dirs-root` find them by path.
+- Borderline: `dl-dwim`, `dl-prose`, `dl-diagram` → `editing/` (init.el
+  already loaded them as editing). Siblings follow their parent:
+  `gptel-*` → `ai/`, `umbriel-*` → `desktop/`, `zmx-*` → `term/`.
+- `dl-dirs-config`: core ui keys desktop editing completion org dev lang
+  term ai comms apps.
+- `init.el`: one section per directory. Order kept where it matters:
+  ui before keys (`dl-meow` requires `dl-modeline`; no ui file names a
+  `my-*-map`), `dl-keybind` still last so its chords win.
+  `dl-persist`/`dl-session` moved from the old CORE block to editing/
+  (they live there); `dl-secret`, `dl-buffer-management`, `dl-window`
+  now load in core/. No collisions between `dl-keybind`'s keys and the
+  files that now load before it.
+- `dl-policy-lint` R3 exemption and its tests name `keys/dl-keymap.el`.
+- Stale `.elc` of moved files deleted: `apps/` and `core/` stay on the
+  load path, so an old `apps/dl-gnus.elc` would shadow `comms/dl-gnus.el`.
+- `test/dl-umbriel-model-test.el` hard-coded `../apps`; it now finds the
+  model with `locate-library`.
+- Path mentions updated in comments, `AGENTS.md`, `docs/emacs/`.
+- Gate: lint clean; 591/594 pass, 2 skipped, 1 failure:
+  `dl-gptel-mcp/org-tools-…` (ISS-022, pre-existing).
+- Batch init load found ISS-023 (pre-existing, from CHR-014).
+- Outside this repo, stale paths remain: `~/flakes` comments
+  (`emacs/emacs.nix`, `features/agents.nix`, `SATAN.md`), satan
+  `docs/governance.md` (`~/.emacs.d/core/dl-path.el`, already stale).
+- Still to do: restart the daemon (its `load-path` predates the new
+  directories); `just clean-eln` after the next `home-switch`.

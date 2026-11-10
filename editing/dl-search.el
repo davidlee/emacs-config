@@ -1,13 +1,13 @@
 ;;; dl-search.el --- Search -*- lexical-binding: t; -*-
 
 ;; `rg-menu' lives at `C-c s g' via `my-search-map' in
-;; `core/dl-keymap.el'.  `rg-enable-default-bindings' would clobber
+;; `keys/dl-keymap.el'.  `rg-enable-default-bindings' would clobber
 ;; `C-c s' with `rg-global-map' and break the family map; don't.
 (use-package rg
   :commands (rg rg-menu rg-dwim))
 
 ;; Global `vr/query-replace' / `vr/replace' live in `my-search-map'
-;; (`C-c s q' / `C-c s Q') via `core/dl-keymap.el'.  Isearch chords stay
+;; (`C-c s q' / `C-c s Q') via `keys/dl-keymap.el'.  Isearch chords stay
 ;; here because they shadow the Emacs isearch globals, not personal keys.
 (use-package visual-regexp-steroids
   :commands (vr/replace vr/query-replace)

@@ -4,7 +4,7 @@
 ;; open/close/toggle commands to whichever backend the current buffer
 ;; uses (outline-minor-mode, hs-minor-mode, treesit-fold, org, ...),
 ;; so a single C-c z prefix works across modes.  Bindings live in
-;; core/dl-keymap.el under `my-fold-map'.
+;; keys/dl-keymap.el under `my-fold-map'.
 ;; https://github.com/jamescherti/kirigami.el
 (use-package kirigami
   :commands (kirigami-open-fold
@@ -37,7 +37,7 @@
 ;; treesit-fold uses the tree-sitter syntax tree for accurate
 ;; structural folding (functions, classes, comments, docstrings).
 ;; URL: https://github.com/emacs-tree-sitter/treesit-fold
-;; treesit-fold-replacement-face attrs live in `core/dl-faces.el'.
+;; treesit-fold-replacement-face attrs live in `ui/dl-faces.el'.
 (use-package treesit-fold
   :commands (treesit-fold-close
               treesit-fold-close-all

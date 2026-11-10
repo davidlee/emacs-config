@@ -101,13 +101,13 @@ Every `%' is doubled, because the result is a mode-line construct."
 (defface dl-umbriel-buffer-active-workspace
   '((t :inherit magit-section-heading :extend t))
   "Face for the heading of an active workspace.
-`core/dl-faces.el' shades it a step darker than the rows below it."
+`ui/dl-faces.el' shades it a step darker than the rows below it."
   :group 'faces)
 
 (defface dl-umbriel-buffer-active-workspace-window
   '((t :extend t))
   "Face for the window rows of an active workspace.
-`core/dl-faces.el' shades it darker than `default'."
+`ui/dl-faces.el' shades it darker than `default'."
   :group 'faces)
 
 (defun dl-umbriel-buffer--window-face (window)
@@ -139,13 +139,13 @@ the overlay, which then evaporates."
 (defface dl-umbriel-buffer-workspace-name
   '((t :inherit default))
   "Face for the name pill in an inactive workspace's heading.
-`core/dl-faces.el' gives it a muted shade of the active pill's colour."
+`ui/dl-faces.el' gives it a muted shade of the active pill's colour."
   :group 'faces)
 
 (defface dl-umbriel-buffer-layout
   '((t))
   "Face every layout pill shares; it sets no foreground, so a layout can.
-`core/dl-faces.el' gives it a background."
+`ui/dl-faces.el' gives it a background."
   :group 'faces)
 
 (defface dl-umbriel-buffer-layout-scrolling

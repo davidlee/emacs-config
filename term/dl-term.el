@@ -26,7 +26,7 @@
 ;;
 ;; GHOSTEL (replaces vterm / multi-vterm / vterm-toggle)
 ;;
-;; Ghostel package itself is installed in apps/dl-ghostel.el.
+;; Ghostel package itself is installed in term/dl-ghostel.el.
 ;; Key bindings for ghostel live in dl-keymap.el under my-term-map (C-c m).
 
 (defvar ghostel-buffer-name)

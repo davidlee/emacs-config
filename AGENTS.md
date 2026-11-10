@@ -68,7 +68,7 @@ the Nix integration.
 ~/.config/emacs/core/dl-path.el     load-path, exec-path, trusted-content, direnv
 ~/.config/emacs/core/dl-dirs.el     THE list of config / checkout / test dirs
 ~/.config/emacs/init.el             main config
-~/.config/emacs/{core,apps,lang,editing,completion,org,dev}/*.el
+~/.config/emacs/{core,ui,keys,desktop,editing,completion,org,dev,lang,term,ai,comms,apps}/*.el
 ~/.config/emacs/test/*-test.el      every ERT suite (`just check`)
 ```
 

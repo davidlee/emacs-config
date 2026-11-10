@@ -1,7 +1,7 @@
 ;;; dl-file-ops.el --- File-on-disk helpers -*- lexical-binding: t; -*-
 
 ;; Commands for acting on the file backing the current buffer.
-;; Bindings live in `core/dl-keymap.el' (`my-file-map').
+;; Bindings live in `keys/dl-keymap.el' (`my-file-map').
 
 (defun my/delete-current-buffer-file ()
   "Delete the file backing the current buffer and kill the buffer.

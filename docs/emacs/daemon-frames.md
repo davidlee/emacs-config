@@ -12,7 +12,7 @@ frame. Anything resolved from the display at that point is wrong or missing:
 ## Rule
 
 Code on `enable-theme-functions` that reads resolved face or frame state must
-be **idempotent**. `my/refire-theme-hooks-on-graphical-frame` (`core/dl-faces.el`)
+be **idempotent**. `my/refire-theme-hooks-on-graphical-frame` (`ui/dl-faces.el`)
 re-runs that hook for the enabled themes on each graphical frame, so hooks
 that skipped at startup (guard with `color-defined-p` / `display-graphic-p`)
 get a second go. Don't add a per-feature `after-make-frame-functions` hook.

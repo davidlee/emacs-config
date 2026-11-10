@@ -22,7 +22,7 @@
 ;;   C-PgUp/PgDn  `scroll-right' / `scroll-left'          (still C-x > / C-x <)
 ;;   M-PgUp/PgDn  `scroll-other-window-down' / `-window' (still C-M-S-v / C-M-v)
 ;; ghostel lets them through via `ghostel-keymap-exceptions'
-;; (apps/dl-ghostel.el).
+;; (term/dl-ghostel.el).
 (require 'tab-line)                     ; not autoloaded; bound below
 (declare-function my/unfill-paragraph "dl-prose")
 (declare-function split-and-follow-horizontally "dl-window")
@@ -148,7 +148,7 @@ Window resize: _<left>_/_<right>_ width  _<up>_/_<down>_ height  _=_ balance  _q
 
 ;; Function keys.  Fast journal capture: <f1> pops a small org buffer;
 ;; C-c C-c / C-RET appends a timestamped entry under today's `* Log'.
-;; Help stays on C-h; C-<f1> is `popterm-toggle' (apps/dl-ghostel.el).
+;; Help stays on C-h; C-<f1> is `popterm-toggle' (term/dl-ghostel.el).
 ;;   f2 - view menu (needs work)    f3 - start macro
 ;;   f4 - end or call macro         f10 - collides w/ WM
 (bind-keys

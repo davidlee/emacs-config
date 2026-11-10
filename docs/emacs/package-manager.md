@@ -108,7 +108,7 @@ don't try to install via package-install either." Anything that needs
 
 ### VC packages that shadow a melpa-nix name (ghostel, 2026-05-15)
 
-`apps/dl-ghostel.el` had `(use-package ghostel)`. The parser saw it,
+`term/dl-ghostel.el` had `(use-package ghostel)`. The parser saw it,
 melpa-nix had a `ghostel` recipe, nix baked it into
 `/nix/store/...-emacs-packages-deps/.../ghostel-*`. Read-only. Ghostel's
 runtime tries to write `ghostel-module.so` next to its `.el` source via
@@ -188,12 +188,12 @@ Tradeoffs:
 | Common case | "just add `use-package`, rebuild"            | "add `use-package` + `:ensure t`, rebuild" |
 | VC package   | needs `:ensure nil :vc` (easy to forget)   | needs `:ensure nil :vc` (still — but the symptom of forgetting is a clean "package not found" rather than a silent read-only-store trap) |
 | Audit        | hard — every `use-package` is implicitly in scope | easy — only `:ensure t` forms are nix's problem |
-| Migration    | n/a                                          | one-time pass over every `use-package` in `core/ apps/ lang/ ...` to add `:ensure t` where wanted |
+| Migration    | n/a                                          | one-time pass over every `use-package` in the config directories to add `:ensure t` where wanted |
 | Failure mode when wrong | "package was unexpectedly read-only" | "package was unexpectedly missing" |
 
 The migration cost is the obvious blocker. It's mechanical but not
-trivial — roughly: grep for `(use-package` across `core/`, `apps/`,
-`lang/`, `editing/`, `completion/`, `org/`, `dev/`, and add
+trivial — roughly: grep for `(use-package` across the directories in `dl-dirs-config`
+(`core/dl-dirs.el`), and add
 `:ensure t` to each one whose package should be nix-managed. Built-in
 modes (those using `:ensure nil` today) and VC packages stay as they are.
 
@@ -233,8 +233,8 @@ find /nix/store -maxdepth 5 -name parse.nix -path '*emacs*'
 | `~/flakes/modules/home/emacs.nix`              | Layer 1 entry point. `extraEmacsPackages` for things outside use-package scanning. |
 | `~/.config/emacs/early-init.el`                | Sets `package-archives nil` — disables `package-install`. |
 | `~/.config/emacs/custom-vars.el`               | `package-vc-selected-packages` lives here. |
-| `~/.config/emacs/apps/dl-ghostel.el`           | Reference example of `:ensure nil :vc :lisp-dir`. |
-| `~/.config/emacs/apps/dl-claude.el`            | Reference example of `:vc` without `:ensure nil` (works because name isn't in melpa-nix). |
-| `~/.config/emacs/apps/dl-eaf.el`               | Reference example of `:ensure nil :demand t` for a package supplied by `extraEmacsPackages`. |
+| `~/.config/emacs/term/dl-ghostel.el`           | Reference example of `:ensure nil :vc :lisp-dir`. |
+| `~/.config/emacs/ai/dl-claude.el`              | Reference example of `:vc` without `:ensure nil` (works because name isn't in melpa-nix). |
+| `~/.config/emacs/desktop/dl-eaf.el`           | Reference example of `:ensure nil :demand t` for a package supplied by `extraEmacsPackages`. |
 | nix-community/emacs-overlay `parse.nix`        | Layer 1 parser. Cached at `/nix/store/*-source/parse.nix`. |
 | emacs `lisp/emacs-lisp/package-vc.el`          | Layer 2 VC install machinery. |

@@ -40,7 +40,7 @@ in Dired still drops to `wdired-change-to-wdired-mode` (built-in).
   `dired-find-alternate-file` enabled so `dirvish-side` can auto-close.
 - `apps/dl-dirvish.el` — Dirvish config + the `my/yazi-here` / `my/broot-here`
   wrappers and shared `my/file-manager--launch` helper.
-- `core/dl-keymap.el` — `my-file-map` entries + the two `C-x` globals.
+- `keys/dl-keymap.el` — `my-file-map` entries + the two `C-x` globals.
 - `editing/dl-project.el` — `project` + `diredfl`. (`dired-subtree` retired;
   Dirvish's `dirvish-subtree-toggle` on `TAB` supersedes it.)
 - `editing/dl-persist.el` — autosave / saveplace / vundo. (Duplicate
@@ -52,7 +52,7 @@ in Dired still drops to `wdired-change-to-wdired-mode` (built-in).
 ## Yazi / Broot wrappers
 
 `my/file-manager--launch` is the shared shape (same `ghostel-exec`
-pattern as `apps/dl-zmx.el`):
+pattern as `term/dl-zmx.el`):
 
 1. Pick a starting directory — the visited file's directory if any, else
    `default-directory`.
@@ -75,7 +75,7 @@ single-quoted). Use **alt-enter** in broot to fire the `:cd` verb.
 - `dired-sidebar` — `dirvish-side` replaces.
 - `nerd-icons-dired` — Dirvish's `nerd-icons` attribute already paints icons;
   running both produced visible double icons. Removed from `apps/dl-dired.el`
-  *and* `core/dl-interface.el` (the inventory missed the second copy).
+  *and* `ui/dl-interface.el` (the inventory missed the second copy).
 - `dired-subtree` — `dirvish-subtree-toggle` on TAB.
 - Duplicate `recentf` in `editing/dl-persist.el`.
 - `("C-c f" . dirvish-dwim)` in `apps/dl-dirvish.el` — shadowed the prefix.

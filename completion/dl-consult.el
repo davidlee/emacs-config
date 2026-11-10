@@ -1,6 +1,6 @@
 ;;; dl-consult.el --- CONSULT -*- lexical-binding: t; -*-
 
-;; `C-c s …' search map bindings live in `core/dl-keymap.el' so the
+;; `C-c s …' search map bindings live in `keys/dl-keymap.el' so the
 ;; scope ladder (lower=narrower, upper=wider) is in one place.  These
 ;; non-prefix globals stay here — they're Emacs-native escape hatches,
 ;; not part of the family map.

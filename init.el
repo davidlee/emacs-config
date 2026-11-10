@@ -2,37 +2,46 @@
 (setopt debug-on-event 'sigusr2)
 (setopt auth-sources '("secrets:Login"))
 
-;; CORE
+;; One section per config directory (`dl-dirs-config', core/dl-dirs.el).
+
+;; core/
 (require 'dl-compile)
 (require 'dl-core)
-(require 'dl-keymap)
-(require 'dl-meow-map)
 (require 'dl-notes-paths)
 (require 'dl-backup)
-(require 'dl-persist)
-(require 'dl-session)
 (require 'dl-policy-lint)
+(require 'dl-help)
+(require 'dl-secret)
+(require 'dl-buffer-management)
+(require 'dl-window)
+
+;; ui/
 (require 'dl-theme)
 (require 'dl-faces)
 (require 'dl-interface)
 (require 'dl-popups)
-(require 'dl-prose)
 (require 'dl-modeline)
-(require 'dl-meow)
-(require 'dl-help)
 
+;; keys/ (dl-keybind loads last, below)
+(require 'dl-keymap)
+(require 'dl-meow-map)
+(require 'dl-meow)
+
+;; desktop/
 (require 'dl-sleipnir-doctor)
 (require 'dl-umbriel-focus)
 (require 'dl-umbriel-buffer)
+(require 'dl-emskin)
+(require 'dl-foxmacs)
 
-;; DEV
+;; dev/
 (require 'dl-eglot)
 (require 'dl-diagnostics)
 (require 'dl-treesit)
 (require 'dl-delimiters)
 (require 'dl-test)
 
-;; Completion / VOMPECCC
+;; completion/ (VOMPECCC)
 (require 'dl-completion) ; vanilla emacs completion
 (require 'dl-vertico)    ; better minibuffer UI
 (require 'dl-orderless)  ; fuzzy / flexible matching
@@ -43,7 +52,10 @@
 (require 'dl-consult-notes) ; per-class notes sources
 (require 'dl-corfu)      ; in-buffer completions
 
-;; Editing
+;; editing/
+(require 'dl-persist)
+(require 'dl-session)
+(require 'dl-prose)
 (require 'dl-format)
 (require 'dl-multi-edit)
 (require 'dl-project)
@@ -59,8 +71,9 @@
 (require 'dl-fold)
 (require 'dl-crux)
 (require 'dl-move-text)
+(require 'dl-file-ops)
 
-;; Org
+;; org/
 (require 'dl-org)
 (require 'dl-org-capture)
 (require 'dl-org-agenda)
@@ -75,10 +88,9 @@
 (require 'dl-org-gcal)
 (require 'dl-org-iw)
 
-
-
-;; Language support
+;; lang/
 (require 'dl-elisp)
+(require 'dl-insert-elisp-header)
 (require 'dl-markdown)
 (require 'dl-lang-common)
 (require 'dl-nix)
@@ -86,43 +98,40 @@
 (require 'dl-nushell)
 (require 'dl-zig)
 
-;; Apps
-(require 'dl-satan)
+;; term/
 (require 'dl-term)
 (require 'dl-ghostel)
 (require 'dl-zmx)
 (require 'dl-zmx-status)
 (when (executable-find dl-zmx-command) (dl-zmx-status-mode))
 (with-eval-after-load 'ol (require 'dl-zmx-org)) ;; LLMS be fucking up my pretty
-(require 'dl-magit)
-(require 'dl-agent-review)
-(require 'dl-ediff)
+
+;; ai/
+(require 'dl-satan)
 (require 'dl-claude)
-(require 'dl-gnus)
-(require 'dl-erc)
-(require 'dl-elpher)
-(require 'dl-nostr)
-(require 'dl-emskin)
-(require 'dl-foxmacs)
-(require 'dl-excali)
 (require 'dl-agent-shell)
-(require 'dl-smudge)
-(require 'dl-secret)
+(require 'dl-agent-review)
 (require 'dl-llm-gateway)
 (require 'dl-gptel)
 (require 'dl-minuet)
 (require 'dl-eca)
-
-
-(require 'dl-keybind)
-(require 'dl-dired)
-(require 'dl-dirvish)
 (require 'dl-sediment)
 
-;; elisp: util
-(require 'dl-insert-elisp-header)
-(require 'dl-buffer-management)
-(require 'dl-window)
-(require 'dl-file-ops)
+;; comms/
+(require 'dl-gnus)
+(require 'dl-erc)
+(require 'dl-elpher)
+(require 'dl-nostr)
+
+;; apps/
+(require 'dl-magit)
+(require 'dl-ediff)
+(require 'dl-excali)
+(require 'dl-smudge)
+(require 'dl-dired)
+(require 'dl-dirvish)
+
+;; keys/: last, so its chords win over package bindings.
+(require 'dl-keybind)
 
 ;;; init.el ends here

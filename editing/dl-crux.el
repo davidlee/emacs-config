@@ -1,7 +1,7 @@
 ;;; dl-crux.el --- crux -*- lexical-binding: t; -*-
 
 ;; `crux-open-with' (`C-c f o') and `crux-kill-buffer-truename' (`C-c f p')
-;; are bound via `my-file-map' in `core/dl-keymap.el'.
+;; are bound via `my-file-map' in `keys/dl-keymap.el'.
 (use-package crux
   :bind (([remap move-beginning-of-line] . crux-move-beginning-of-line)
          ([remap keyboard-quit]          . crux-keyboard-quit-dwim)

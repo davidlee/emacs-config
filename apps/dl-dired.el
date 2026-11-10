@@ -2,7 +2,7 @@
 
 ;; Dired is the base file manager. Dirvish (see dl-dirvish.el) provides
 ;; the UI; Yazi / Broot wrappers live alongside it. Bindings for the
-;; whole stack live in core/dl-keymap.el under my-file-map (C-c f).
+;; whole stack live in keys/dl-keymap.el under my-file-map (C-c f).
 
 (use-package dired
   :ensure nil
@@ -26,7 +26,7 @@
 
 (use-package ready-player
   ;; Opt out of the package's global `C-c m' keymap install; the term
-  ;; family owns that prefix via `my-term-map' in `core/dl-keymap.el'.
+  ;; family owns that prefix via `my-term-map' in `keys/dl-keymap.el'.
   :custom (ready-player-set-global-bindings nil)
   :config (ready-player-mode +1))
 

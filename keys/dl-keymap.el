@@ -418,7 +418,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-diagnostics-map "b" #'flymake-running-backends          "running backends")
 (my/bind my-diagnostics-map "B" #'flymake-switch-to-log-buffer      "log")
 
-;; LLM map — gptel (apps/dl-gptel.el).
+;; LLM map — gptel (ai/dl-gptel.el).
 (my/bind my-llm-map "l" #'gptel           "chat")
 (my/bind my-llm-map "s" #'gptel-send      "send")
 (my/bind my-llm-map "m" #'gptel-menu      "menu")
@@ -624,7 +624,7 @@ Warns when KEY already has a binding in MAP that differs from CMD."
 (my/bind my-toggle-map "=" #'aggressive-indent-mode           "aggressive-indent")
 (my/bind my-toggle-map "E" #'my/eglot-toggle                  "eglot")
 
-;; Umbriel map — the compositor (apps/dl-umbriel-buffer.el, dl-umbriel-focus.el).
+;; Umbriel map — the compositor (desktop/dl-umbriel-buffer.el, dl-umbriel-focus.el).
 
 (my/bind my-umbriel-map "u" #'my/umbriel                   "buffer")
 (my/bind my-umbriel-map "w" #'my/umbriel-switch-workspace  "switch workspace")

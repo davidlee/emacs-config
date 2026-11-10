@@ -8,7 +8,7 @@
   (add-hook 'xref-backend-functions #'dumb-jump-xref-activate))
 
 ;; avy: chord bindings here are escape hatches; the family map lives
-;; centrally at `C-c j' (`my-jump-map') in `core/dl-keymap.el'.
+;; centrally at `C-c j' (`my-jump-map') in `keys/dl-keymap.el'.
 (use-package avy
   :commands (avy-goto-char avy-goto-char-2 avy-goto-char-timer
               avy-goto-line avy-goto-word-1)
@@ -36,7 +36,7 @@
 (use-package copy-as-format) ; https://github.com/sshaw/copy-as-format
 
 ;; dogears: jump list.  Meow normal `C-o' / `C-S-o' walk it (bound in
-;; `core/dl-keymap.el'); `C-c j l' picks a place by completion.
+;; `keys/dl-keymap.el'); `C-c j l' picks a place by completion.
 ;; dogears only records landings (`dogears-functions', :after) and idle
 ;; dwells.  A Helix-style jump list also needs the origin, so each
 ;; command in `dl-motion-jump-commands' is wrapped to dogear both ends.

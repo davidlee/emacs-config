@@ -37,7 +37,7 @@
            "refs/%<%Y%m%dT%H%M%S>--${slug}__reference.org"
            "#+title: ${title}\n#+filetags: :reference:\n")
          :unnarrowed t)))
-  ;; Bindings live in `my-roam-map' at `C-c n r' via `core/dl-keymap.el'.
+  ;; Bindings live in `my-roam-map' at `C-c n r' via `keys/dl-keymap.el'.
   :commands ( org-roam-node-find org-roam-node-insert
               org-roam-buffer-toggle org-roam-capture
               org-roam-db-sync org-roam-graph)

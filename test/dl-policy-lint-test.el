@@ -195,7 +195,7 @@ and commented-out code are not forms."
   (let ((files (mapcar (lambda (f) (file-relative-name f user-emacs-directory))
                        (my-policy-lint-config-files))))
     (should (member "init.el" files))
-    (should (member "core/dl-keymap.el" files))
+    (should (member "keys/dl-keymap.el" files))
     (should-not (seq-some (lambda (f) (string-match-p "-test\\.el\\'\\|/test-" f))
                          files))))
 
@@ -229,18 +229,18 @@ forms are not."
                  '(("C-p" forbidden-form) ("C-," forbidden-form)))))
 
 (ert-deftest dl-policy-lint/l2-family-prefix-exempt ()
-  "R3: `C-c <letter>' family prefixes in `core/dl-keymap.el' are exempt;
+  "R3: `C-c <letter>' family prefixes in `keys/dl-keymap.el' are exempt;
 the same line elsewhere, or a non-family value, is not."
   (let ((prefix (dl-policy-lint-test--record
                  'global-map "C-c f" :command 'my-file-map :form 'define-key)))
     (should-not (my-policy-lint-form-violations
-                 (list (plist-put (copy-sequence prefix) :file "core/dl-keymap.el"))))
+                 (list (plist-put (copy-sequence prefix) :file "keys/dl-keymap.el"))))
     (should (my-policy-lint-form-violations
              (list (plist-put (copy-sequence prefix) :file "core/dl-other.el"))))
     (should (my-policy-lint-form-violations
              (list (dl-policy-lint-test--record
                     'global-map "C-c f" :command 'find-file :form 'define-key
-                    :file "core/dl-keymap.el"))))))
+                    :file "keys/dl-keymap.el"))))))
 
 (ert-deftest dl-policy-lint/l2-my-bind-foreign-map ()
   "`my/bind' into a map not named `my-…-map' is flagged."

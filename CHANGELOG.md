@@ -2,6 +2,18 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-11-11 — apps/ and core/ split into domain directories
+
+Layout only; no command or key changes (CHR-015). New directories: `ai/` (gptel, minuet,
+claude, eca, agent-shell, agent-review, satan, llm-gateway, bough, sediment), `desktop/`
+(umbriel, emskin, eaf, foxmacs, sleipnir-doctor), `term/` (term, ghostel, zmx), `comms/`
+(gnus, erc, elfeed, elpher, nostr), `ui/` (theme, faces, modeline, popups, interface) and
+`keys/` (keymap, keybind, keymap-shadow, meow, meow-map, meow-cheatsheet). `dl-dwim`,
+`dl-prose` and `dl-diagram` moved to `editing/`. `apps/` keeps dired, dirvish, magit,
+ediff, blog, excali and smudge; `core/` keeps startup plumbing. `init.el` has one section
+per directory; `dl-keybind` still loads last. Restart the daemon to pick up the new
+load path.
+
 ## 2026-11-11 — repo root and docs tidied; lint works in a worktree
 
 Layout and docs only; no command or key changes (CHR-014, CHR-005). Deleted the retired

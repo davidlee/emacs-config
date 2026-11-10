@@ -21,7 +21,7 @@ serve two populations:
 
 ## LLM gateway keys
 
-`apps/dl-llm-gateway.el` owns where the gateway is and what a client's key is.
+`ai/dl-llm-gateway.el` owns where the gateway is and what a client's key is.
 
 - `dl-llm-gateway-url` (default `http://127.0.0.1:4000/v1`): the
   OpenAI-compatible base URL.
@@ -84,7 +84,7 @@ the in-process LLM clients.
 ## Wiring a package
 
 Pass the key as a **function** so it is re-resolved per request — never the
-resolved string. gptel (`apps/dl-gptel.el`):
+resolved string. gptel (`ai/dl-gptel.el`):
 
 ```elisp
 (defun dl-gptel--key ()
@@ -99,7 +99,7 @@ resolved string. gptel (`apps/dl-gptel.el`):
        (dl-gptel--gateway))
 ```
 
-minuet (`apps/dl-minuet.el`):
+minuet (`ai/dl-minuet.el`):
 
 ```elisp
 (plist-put minuet-openai-compatible-options :api-key

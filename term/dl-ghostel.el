@@ -44,7 +44,7 @@ scrolling stays smooth."
         :rev :newest)
   :custom
   ;; Upstream's list, plus the tab chords and window moves
-  ;; (core/dl-keybind.el, editing/dl-motion.el) so they work here too,
+  ;; (keys/dl-keybind.el, editing/dl-motion.el) so they work here too,
   ;; and S-PgUp/PgDn so they page the scrollback, as in ghostty.  The
   ;; terminal no longer sees these.
   (xterm-extra-capabilities '(getSelection setSelection)) ;; make selection work / OSC 52

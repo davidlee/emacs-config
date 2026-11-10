@@ -1,8 +1,8 @@
 ;;; dl-window.el --- Window helpers -*- lexical-binding: t; -*-
 
 ;; Window-management defuns, modes, and the transpose-frame wrapper.
-;; Bindings live in `core/dl-keymap.el' (window-map) and
-;; `core/dl-keybind.el' (ergonomic chords).
+;; Bindings live in `keys/dl-keymap.el' (window-map) and
+;; `keys/dl-keybind.el' (ergonomic chords).
 
 (require 'cl-lib)
 

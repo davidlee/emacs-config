@@ -73,13 +73,11 @@ A non-string fails the test as an assertion instead of erroring below."
   (should (stringp value))
   (if (stringp value) value ""))
 
-;; Where this file lives, captured at load time: the EX-4 subprocess needs the
-;; repository's apps directory without trusting `default-directory'.
-(defvar dl-umbriel-model-test--apps-dir
-  (expand-file-name "../apps"
-                    (file-name-directory (or load-file-name buffer-file-name
-                                             default-directory)))
-  "The repository's apps directory, found relative to this test file.")
+;; The EX-4 subprocess needs the directory holding the model, found the
+;; way `require' found it above, not from `default-directory'.
+(defvar dl-umbriel-model-test--model-dir
+  (file-name-directory (locate-library "dl-umbriel-model"))
+  "The directory holding `dl-umbriel-model'.")
 
 ;;;; group (C-1, C-2, VT-1)
 
@@ -640,7 +638,7 @@ Unassigned group, which is last."
                                                     invocation-directory)
                                   nil t nil
                                   "-Q" "--batch"
-                                  "-L" dl-umbriel-model-test--apps-dir
+                                  "-L" dl-umbriel-model-test--model-dir
                                   "--eval"
                                   (concat "(progn"
                                           " (unless (require 'dl-umbriel-model nil t)"

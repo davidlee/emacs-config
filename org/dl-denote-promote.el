@@ -5,7 +5,7 @@
 ;; that links to the new note.  Wraps `denote-org-extract-org-subtree' rather
 ;; than reimplementing its title/keyword/date derivation.
 ;;
-;; Bound to `C-c n p' in `core/dl-keymap.el'.
+;; Bound to `C-c n p' in `keys/dl-keymap.el'.
 
 (require 'dl-notes-paths)
 (require 'org)

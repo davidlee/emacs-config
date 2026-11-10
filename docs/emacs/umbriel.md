@@ -13,7 +13,7 @@ metadata:
 
 umbriel is the Wayland compositor this config runs under. Emacs talks to it
 over its IPC (inter-process communication) socket, from four files in
-`apps/`:
+`desktop/`:
 
 | File | Owns |
 | --- | --- |
@@ -163,7 +163,7 @@ HDMI-1 2 scrolling 0 windows
 - An `active` workspace is shaded darker than `default`:
   `dl-umbriel-buffer-active-workspace-window` on its rows,
   `dl-umbriel-buffer-active-workspace` a step darker on its heading. The shades
-  derive from `default` in `core/dl-faces.el`, so they follow the theme, and
+  derive from `default` in `ui/dl-faces.el`, so they follow the theme, and
   the point highlight and the row colours above show over them.
 - Window columns take their colour from `dl-umbriel-buffer-window-app`,
   `-placement` and `-flags`, which inherit theme faces; the `active` and
@@ -174,7 +174,7 @@ HDMI-1 2 scrolling 0 windows
 - A workspace name and a layout are padded pills, overlays that stay shown under
   the point highlight. A name uses `dl-umbriel-buffer-active-workspace-name` when
   active, otherwise `dl-umbriel-buffer-workspace-name`, a muted shade derived in
-  `core/dl-faces.el`.
+  `ui/dl-faces.el`.
 - A layout shows a Nerd Font icon and its face, `dl-umbriel-buffer-layout-scrolling`,
   `-dwindle`, `-master`, `-stacking` or `-toggle`, listed in
   `dl-umbriel-buffer-layouts`. Each inherits the shared background of

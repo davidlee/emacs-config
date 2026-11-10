@@ -3,7 +3,7 @@
 (require 'dl-keymap)
 (require 'dl-modeline)
 
-;; Meow indicator face attrs live in `core/dl-faces.el' (with
+;; Meow indicator face attrs live in `ui/dl-faces.el' (with
 ;; `enable-theme-functions' wiring) — single source of truth for face
 ;; customization in this config.
 

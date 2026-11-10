@@ -44,7 +44,7 @@
       lua-ts-mode
       terraform-mode) . eglot-ensure))
 
-  ;; Beside the diagnostics keys (`C-c d', core/dl-keymap.el): most
+  ;; Beside the diagnostics keys (`C-c d', keys/dl-keymap.el): most
   ;; code actions fix a diagnostic.
   :bind (:map eglot-mode-map
           ("C-c d a" . eglot-code-actions))
