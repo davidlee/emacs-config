@@ -19,10 +19,13 @@ or directory, ~/.config/emacs/agents
 signals, and use-package aborts the rest of `:config`: the
 `dl-gptel-emcp` tool registration that follows never runs.
 
-## Fix options
+## Fixed (2026-11-11)
 
 - Drop the `agents/` entry (the definitions were judged unused).
 - Or restore a directory of agent definitions, if gptel-agent should
   have local ones.
 
 Found while verifying CHR-015 (2026-11-11).
+
+Dropped the `agents/` entry from `gptel-agent-dirs`. Batch init now loads
+without the error and `dl-gptel-emcp` is loaded.

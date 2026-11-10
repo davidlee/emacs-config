@@ -146,9 +146,6 @@ from protocol, host and endpoint only) and :endpoint (chat completions)."
   :defines dl-gptel-emcp-tools
   :functions dl-gptel-emcp-tool-spec
   :config
-  (setq gptel-agent-dirs
-    (cons (expand-file-name "agents/" user-emacs-directory)
-      gptel-agent-dirs))
   (gptel-agent-update)
   (require 'gptel-agent-tools-introspection)
   (require 'dl-gptel-emcp)
