@@ -6,7 +6,7 @@
 
 ## Problem
 
-`dl-umbriel-focus-frame` finds a frame's compositor window by `(pid, title)`;
+`umbriel-focus-frame` finds a frame's compositor window by `(pid, title)`;
 two frames on the same buffer share a title, so it takes the first match.
 GTK3 pgtk cannot set `xdg_tag` (xdg-toplevel-tag-v1), and `emacsclient -F`
 only applies to frames emacsclient creates — the wrapper's `-r -n` reuse case
@@ -41,3 +41,5 @@ delete-frame-functions / window absent from a snapshot → drop the entry
   developers (not ours to change).
 - Unblocks the SL-016 follow-ups: collect/scatter Emacs frames, tag sets,
   zmx/ghostel composition.
+
+- 2026-11-11 (SL-018): the client moved to the umbriel package, `~/dev/umbriel.el`. Paths and names above were rewritten to it (`dl-umbriel-*`, `my/umbriel-*` became `umbriel-*`; `my/umbriel-refresh` became `umbriel-buffer-refresh`).

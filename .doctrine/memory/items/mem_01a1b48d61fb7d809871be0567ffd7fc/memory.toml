@@ -7,10 +7,10 @@ status = "active"
 title = "umbriel window-move-to-scratchpad targets the workspace focus, not the keyboard"
 summary = "window-move-to-scratchpad acts on the pointer output's active workspace focus, so window-focus first does not aim it at a pad window or a window on another output."
 created = "2026-11-07"
-updated = "2026-11-07"
+updated = "2026-11-10"
 
 [scope]
-paths = ["apps/dl-umbriel-buffer.el"]
+paths = ["~/dev/umbriel.el/umbriel/umbriel-buffer.el"]
 globs = []
 commands = []
 tags = ["umbriel"]

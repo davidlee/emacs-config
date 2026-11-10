@@ -18,7 +18,7 @@ umbriel code into the live Emacs during IMP-030.
 
 - 2026-11-07 preflight findings. The message is Emacs's generic status for EOF from
   the peer, so it does not name a cause. Reloading code cannot produce it directly:
-  a local `delete-process` reports `deleted`, and `dl-umbriel--forget-process`
+  a local `delete-process` reports `deleted`, and `umbriel--forget-process`
   detaches the handle first.
 - The compositor journal has 8 lines `[ipc] subscriber fd N is not draining (~250 KB
   queued), disconnecting`, all today: 10:37:50, 10:57:13, 11:01:15, 11:09:23,
@@ -106,3 +106,5 @@ umbriel code into the live Emacs during IMP-030.
   automatic reconnect is the fallback; it needs a decision superseding DEC-018.
 
 Add each further sighting here, with the time and what was happening.
+
+- 2026-11-11 (SL-018): the client moved to the umbriel package, `~/dev/umbriel.el`. Paths and names above were rewritten to it (`dl-umbriel-*`, `my/umbriel-*` became `umbriel-*`; `my/umbriel-refresh` became `umbriel-buffer-refresh`).

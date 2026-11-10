@@ -2,6 +2,21 @@
 
 Notable changes to this Emacs config. Loosely dated; not versioned.
 
+## 2026-11-11 — umbriel client moved to its own package
+
+The umbriel client (`*umbriel*` buffer, frame focus) now lives in `~/dev/umbriel.el`
+(SL-018) and loads from that checkout (`core/dl-dirs.el`). Commands renamed, no aliases:
+`my/umbriel` → `umbriel`, `my/umbriel-switch-workspace` → `umbriel-switch-workspace`,
+`my/umbriel-set-active-layout` → `umbriel-set-active-layout`, `dl-umbriel-focus-frame` →
+`umbriel-focus-frame`, `my/umbriel-refresh` → `umbriel-buffer-refresh`. Keys unchanged:
+`C-c u u/w/l/f` and `SPC u`. Faces are now `umbriel-buffer-*`; saved faces in
+`custom-vars.el` were renamed with them. `desktop/dl-umbriel.el` is the integration file:
+without the checkout it shows a `dl-umbriel` warning ("umbriel checkout not on
+load-path") and the config starts without umbriel. Docs moved to
+`~/dev/umbriel.el/docs/umbriel.md`. Stale `.elc` compiling for SATAN and umbriel now
+goes through one helper, `core/dl-checkout.el`. Restart the daemon to pick up the new
+names.
+
 ## 2026-11-11 — org-bullets removed
 
 `org/dl-org.el` no longer loads `org-bullets` (ISS-024). Its hook never turned the mode on,

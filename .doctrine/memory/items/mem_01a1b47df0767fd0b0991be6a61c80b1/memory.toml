@@ -6,10 +6,10 @@ status = "active"
 title = "umbriel pad windows report no workspace"
 summary = 'A scratchpad window reports workspace "", shown or hidden; output and scratchpad stay set.'
 created = "2026-11-07"
-updated = "2026-11-07"
+updated = "2026-11-10"
 
 [scope]
-paths = ["apps/dl-umbriel-model.el", "apps/dl-umbriel-buffer.el"]
+paths = ["~/dev/umbriel.el/umbriel/umbriel-model.el", "~/dev/umbriel.el/umbriel/umbriel-buffer.el"]
 globs = []
 commands = []
 tags = ["umbriel"]

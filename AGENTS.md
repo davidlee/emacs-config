@@ -126,6 +126,7 @@ Full detail: [docs/emacs/traps.md](docs/emacs/traps.md).
 - [docs/emacs/debug-commands.md](docs/emacs/debug-commands.md) — rebuild, inspect, cache reset.
 - `docs/emacs/` also holds `keys.md` (key policy), `notes.md` (notes system), `package-manager.md`, `file-manager.md`, `keyboard-layout.md`.
 - SATAN docs live in its own repo: `~/dev/satan/docs/INDEX.md`.
+- umbriel (the compositor client: `*umbriel*`, `C-c u`) is its own package; its docs: `~/dev/umbriel.el/docs/umbriel.md`.
 
 ## What we know about this user's setup
 

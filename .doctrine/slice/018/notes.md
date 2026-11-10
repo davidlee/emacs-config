@@ -177,6 +177,16 @@ perl -pi -e 's/(?<![:\w-])((?:DEC|IMP|ISS|IDE|SL|RV)-\d{3})/emacs-config:$1/g' \
 - VA-2: sweep hits only `docs/emacs/umbriel.md` (removed in PHASE-04, whose VA-1 covers it).
 - VA-3: config 600 - 245 umbriel suites + 7 keys suite (5 moved + smoke + soft-load) = 362 = observed. Package 240 + config 362 = 602 = baseline 600 + 2 new tests. Skipped: 2 before, 2 after.
 
+## PHASE-04 evidence
+
+- EX-1: `docs/emacs/umbriel.md` removed; AGENTS.md "More" points at `~/dev/umbriel.el/docs/umbriel.md`. VA-1 sweep `rg 'docs/emacs/umbriel' --glob '!.doctrine/**' --glob '!CHANGELOG.md'`: empty. PHASE-03 VA-2 sweep now also empty.
+- EX-2: CHANGELOG.md entry 2026-11-11 "umbriel client moved to its own package".
+- EX-3: IMP-030, ISS-012, ISS-015, ISS-018, IDE-003 bodies rewritten with the sec-3 rules plus path rules (apps/|desktop/dl-umbriel*.el, test/dl-umbriel*-test.el, docs/emacs/umbriel.md to `~/dev/umbriel.el/...`), each with a dated move note. The three umbriel memories: bodies rewritten, `scope.paths` repointed (`memory edit --path-scope`); face-layering memory also `core/dl-faces.el` to `ui/dl-faces.el`.
+- EX-4: ISS-025 (opt-in focus hook, DEC-035), IDE-007 (publish the package, DEC-038). SATAN author-email defect: satan:ISS-068 in `~/dev/satan/.doctrine/backlog/issue/068/`, left uncommitted in the SATAN repo.
+- VA-2: `doctrine show` of the seven items renders `~/dev/umbriel.el` paths.
+- Host `just check` exit 0: `Ran 362 tests, 360 results as expected, 0 unexpected, 2 skipped`. No `.elc` in the package checkout.
+- VH-1: pending (user: daemon restart + live check).
+
 ## Autonomy log
 - Re-probe at `~/dev/umbriel` (before the rename): pi `write` form writable, has git/just/rg, **no emacs** (no project flake yet). Until PHASE-01's flake exists and its form is approved (`quotient allow`, a user act), the package's lint/tests run on the host. If pi is refused `form-unapproved` there, run the step on the host; do not wait.
 - seat · DEC-033→DEC-038 path/remote rewrite across design.md, plan.toml, plan.md, slice-018.md · user ruling mid-preflight · decided (audit: confirm no stale `~/dev/umbriel` path)
@@ -191,3 +201,6 @@ perl -pi -e 's/(?<![:\w-])((?:DEC|IMP|ISS|IDE|SL|RV)-\d{3})/emacs-config:$1/g' \
 - PHASE-03 · VA-2 sweep evaluated with docs/emacs/umbriel.md as the one expected hit · the file is removed in PHASE-04 (EX-1), whose VA-1 sweep covers it · decided
 - PHASE-03 · subprocess compile guard set with a top-level `defvar byte-compile-current-file` instead of a `let` · `--eval` is lexically bound, so a `let` is invisible to `bound-and-true-p`; same intent as EX-8 · decided
 - PHASE-03 · deletions staged with `git rm --cached` before `just check` · bin/elisp-lint lints `git ls-files`, so unstaged deletions fail lint · decided
+- PHASE-04 · edits made by the orchestrator, not pi · all doctrine-record work (orchestrator-owned) plus three small doc edits; a brief would cost more than the work · decided
+- PHASE-04 · backlog bodies rewritten in place with a dated move note, rather than only appending a pointer · EX-3 asks the bodies to cite package paths and names; the note keeps the old names findable · decided
+- PHASE-04 · satan:ISS-068 created in ~/dev/satan but not committed there · plan EX-4 places it there; the charter authorises commits only in this repo, and the SATAN tree already holds the user's uncommitted work · decided (user commits it)

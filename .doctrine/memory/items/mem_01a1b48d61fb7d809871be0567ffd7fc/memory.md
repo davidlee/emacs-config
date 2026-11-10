@@ -4,4 +4,4 @@ So `window-focus ROW` first does not aim it when ROW is a pad window, or on anot
 
 It also never moves a window between pads: `ScratchpadManager::admit` returns false for an interactive move of a member, and the IPC reply is still ok because no error string is set.
 
-`my/umbriel-send-to-pad` (`P`) refuses those rows through `pointer-window` addressing (IMP-031).
+`umbriel-send-to-pad` (`P`) refuses those rows through `pointer-window` addressing (IMP-031).
