@@ -1,9 +1,9 @@
 id = 18
 slug = "extract-umbriel-client-to-standalone-elisp-package"
 title = "Extract umbriel client to standalone Elisp package"
-status = "started"
+status = "reconcile"
 created = "2026-11-10"
-updated = "2026-11-10"
+updated = "2026-11-11"
 tags = []
 
 [relationships]

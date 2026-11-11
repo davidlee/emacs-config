@@ -6,25 +6,27 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-11-11 · planned (status ready) · f505183 (+ uncommitted doctrine artefacts)
+fresh-as-of: 2026-11-11 · audit · 96b9c8a (+ RV-024, plan.toml VT-1 waiver/VT-4, uncommitted)
 
 ### Produced
 
-DEC-033, DEC-034, DEC-035, DEC-036, DEC-037 · RV-023 (done: 13 findings
-raiser-verified at plan time, pi run run-20261110T154155679Z-12-7b2c632eebd7) ·
-design.md (run rev 31, locked) · research/research.md (restamped at plan) ·
-plan.toml + plan.md (PHASE-01..04; plan-time refinements in plan.md)
+- PHASE-01..04 done (09f7962 cutover, 23a73a5 helper, 41fa239 docs/records; package `~/dev/umbriel.el` c315b3b, 8d3bb77)
+- RV-024: audit ledger (6 findings) with Reconciliation Brief
+- minted: ISS-025 — opt-in focus hook; IDE-007 — publish the package; satan:ISS-068 — SATAN author email (uncommitted in the SATAN repo)
+- user follow-ups since: IMP-033 — package font/face/docs leftovers; 79e5086 — `C-c u f` dropped
+- PHASE-03 VT-1 waived and VT-4 appended (RV-024 F-1, user choice)
 
 ### Learned
 
-- Runner/suite feature collision trap: a runner named `<pkg>-test` hides the
-  `<pkg>-test.el` suite (satan-test.el:117 skip-if-featurep). Candidate
-  memory at close.
+- mem.fact.elisp.test-runner-feature-collision — runner named `<pkg>-test` hides the suite
+- mem.fact.elisp.batch-eval-let-is-lexical — `--eval` let can't reach `bound-and-true-p`; use defvar
 
 ### Open
 
-- Follow-up backlog to file at P4: opt-in focus hook (DEC-035); SATAN
-  author-email defect (SATAN repo); remote/publish (DEC-033).
+- RV-024 F-5 — user commits `~/.config/umbriel/app_support.toml` and satan:ISS-068 in their repos
+- CHR-008 — `doctrine check gate` has no `gate` recipe
+- DEC-035 — focus hook opt-in, tracked by ISS-025
+- DEC-038 — push to origin waits on the user (IDE-007)
 
 ## Design triage (2026-11-11, exploring)
 

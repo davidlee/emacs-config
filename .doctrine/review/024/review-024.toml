@@ -1,0 +1,219 @@
+id    = 24
+slug  = "reconciliation-review-of-sl-018"
+title = "reconciliation review of SL-018"
+# no status — a review's status is DERIVED from its findings, so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "reconciliation"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+rounds_base = 0
+contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = """
+Conformance audit of SL-018 at 96b9c8a (config) and 8d3bb77 (~/dev/umbriel.el). Examined: slice conformance (undeclared/undelivered); config and package `just check` re-run (362/0 unexpected/2 skipped; 240/240); slice verify-vt; integration file, dl-checkout helper, keymap, faces against design sec-2..sec-7; rename and stale-path sweeps in the config, the package and external callers; post-PHASE-04 commits 79e5086 and 96b9c8a; uncommitted work in other repos. Six findings, all terminal; F-1 plan side settled by user choice (VT-1 waived, VT-4).
+"""
+
+[target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
+ref   = "SL-018"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "major"
+title = "PHASE-03 VT-1 expects umbriel-focus-frame in the keys suite; observed absent after 79e5086 dropped C-c u f"
+detail = """
+Expected: plan PHASE-03 VT-1 keywords include `umbriel-focus-frame`; EX-5 says the four binds include `umbriel-focus-frame`; design sec-4 diagram and keymap bullet name it.
+Observed: `doctrine slice verify-vt SL-018` -> `PHASE-03 ✗ FAIL VT-1 — keyword umbriel-focus-frame absent from test/dl-umbriel-keys-test.el`. Commit 79e5086 (after VH-1 passed) removed the `C-c u f` bind and its declare-function, updated the keys test and DEC-024's choice ("dropped 2026-11-11 by user ruling: a frame that runs a key already has focus"). The package's README was updated in 8d3bb77.
+The code follows a user ruling made after the plan; the plan criterion and design prose are stale. It is also a behaviour change, which slice scope put out of scope; the commit carries no SL-018 tag.
+"""
+disposition = "design-wrong"
+response = """
+Code follows the user's post-plan ruling (79e5086; DEC-024 choice updated). Plan side settled now as a user-approved escalation (user chose "Waive VT-1, append VT-4" in this session): PHASE-03 VT-1 `waived = true` with waived_reason/by/on; VT-4 appended without `umbriel-focus-frame`; `doctrine slice verify-vt SL-018` now all PASS/WAIVED. Remaining design prose (sec-4 diagram, keymap bullet) goes to reconcile via F-2's brief entry. EX-5 text stays as written (immutable) and is explained by the waiver.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+Code follows the user's post-plan ruling (79e5086; DEC-024 choice updated). Plan side settled now as a user-approved escalation (user chose "Waive VT-1, append VT-4" in this session): PHASE-03 VT-1 `waived = true` with waived_reason/by/on; VT-4 appended without `umbriel-focus-frame`; `doctrine slice verify-vt SL-018` now all PASS/WAIVED. Remaining design prose (sec-4 diagram, keymap bullet) goes to reconcile via F-2's brief entry. EX-5 text stays as written (immutable) and is explained by the waiver.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "verify-vt: PHASE-03 VT-1 WAIVED with reason, VT-4 PASS; design prose covered by brief entry for F-2"
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "minor"
+title = "Design prose matches the delivered code; observed five stale statements"
+detail = """
+Expected: design.md describes what was built.
+Observed:
+- sec-1 diagram: `dev/umbriel-test.el`; built and specified in sec-2 as `dev/umbriel-test-runner.el`.
+- sec-2: "beside the 17 faces"; source has 16 (plan PHASE-01 EX-5 already notes this).
+- sec-4 diagram line and keymap bullet: binds `umbriel-focus-frame`; dropped by 79e5086 (see F-1).
+- sec-5 count check: "new tests (dl-checkout, the smoke test)"; delivered new tests are dl-checkout's 5, the smoke test and the soft-load test (notes PHASE-03 VA-3: 600 - 245 + 7 = 362).
+- sec-7 last bullet: "Pushing waits on the user (DEC-033)"; DEC-038 supersedes DEC-033 (sec-2 cites DEC-038).
+"""
+disposition = "design-wrong"
+response = """
+Code is right; design.md prose is stale in five places. Reconcile by direct edit of design.md (Reconciliation Brief, per-slice: sec-1, sec-2, sec-4, sec-5, sec-7).
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+Code is right; design.md prose is stale in five places. Reconcile by direct edit of design.md (Reconciliation Brief, per-slice: sec-1, sec-2, sec-4, sec-5, sec-7).
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Reconciliation Brief per-slice entry written"
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "nit"
+title = "Conformance clean on delivered paths; observed spurious undelivered selector test/dl-umbriel-keys-test.el"
+detail = """
+Expected: no undelivered cell when every declared file was delivered.
+Observed: `doctrine slice conformance 018` lists `test/dl-umbriel-keys-test.el` as undelivered, while the same path is conformant under the broader `test/dl-umbriel*-test.el` selector. The exact selector is redundant with the glob; conformance attributes the path to the glob.
+"""
+disposition = "design-wrong"
+response = """
+The exact selector duplicates the glob. Load-bearing fix is the registry: `doctrine slice selector rm SL-018 test/dl-umbriel-keys-test.el` (the glob keeps it covered). design.md sec-6 keeps naming the file as "new"; no prose change needed. Brief entry under per-slice.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+The exact selector duplicates the glob. Load-bearing fix is the registry: `doctrine slice selector rm SL-018 test/dl-umbriel-keys-test.el` (the glob keeps it covered). design.md sec-6 keeps naming the file as "new"; no prose change needed. Brief entry under per-slice.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Reconciliation Brief per-slice entry written"
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "minor"
+title = "Undeclared cell holds only planned record edits; observed 20 .doctrine paths incl. IMP-033"
+detail = """
+Expected: undeclared paths are scope creep, missed design updates or planned-but-unselected touches.
+Observed: all 20 undeclared paths are under `.doctrine/`: bodies of IDE-003, IMP-030, ISS-012, ISS-015, ISS-018; new ISS-025 and IDE-007; the three umbriel memories; slice notes.md. Design sec-6 lists all of these as doctrine edits (DEC-037), deliberately not as selectors. Also present: IMP-033 (umbriel package font/face/docs leftovers), filed by the user after PHASE-04 (e2c6431, 96b9c8a), not by the slice.
+"""
+disposition = "aligned"
+response = """
+Every undeclared path is a record edit design sec-6 planned under DEC-037 (records stay here, bodies updated) or slice notes. Record paths are not design targets by design. IMP-033 is the user's own follow-up capture, outside the slice's deliverable; it needs no reconciliation here.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "aligned"
+response = """
+Every undeclared path is a record edit design sec-6 planned under DEC-037 (records stay here, bodies updated) or slice notes. Record paths are not design targets by design. IMP-033 is the user's own follow-up capture, outside the slice's deliverable; it needs no reconciliation here.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-5"
+status = "verified"
+severity = "minor"
+title = "Rename leaves no old-name callers anywhere; observed uncommitted fixes and history mentions in two other repos"
+detail = """
+Expected: every caller of renamed names is updated and landed (seat autonomy log asked the audit to sweep outside the config).
+Observed (sweep of ~/.config/umbriel, ~/flakes, ~/.local/bin, ~/bin, ~/dev/satan, ~/dev/umbriel.el):
+- No live callers left. `~/.config/umbriel/app_support.toml` calls `umbriel` now, but that fix is uncommitted there (`git status`: ` M app_support.toml`).
+- `~/.config/umbriel/NOTES.md:113,118,128` and `UPSTREAM.md:73-74` name `my/umbriel`, `dl-umbriel-buffer--focus-act-restore`, `apps/dl-umbriel-model.el`: dated notes, not callers.
+- satan:ISS-068 (SATAN author email) is untracked in ~/dev/satan (`?? .doctrine/backlog/issue/068/`), as PHASE-04 logged.
+In-config sweep `rg 'my/umbriel|dl-umbriel-(model|columns|focus|buffer|refresh)' --glob '!.doctrine/**' --glob '!CHANGELOG.md'` and stale-path sweep for `~/dev/umbriel` (not `.el`) are empty.
+"""
+disposition = "tolerated"
+response = """
+Nothing in this repo is wrong. The two leftover writes sit in repos the user owns and the run had no commit authority over (charter: commits in this repo only; the SATAN tree holds the user's uncommitted work). The user commits `~/.config/umbriel/app_support.toml` and `~/dev/satan/.doctrine/backlog/issue/068/` by hand; recorded in notes.md Harvest "Open". NOTES.md/UPSTREAM.md mentions are dated history in the compositor's notes, like CHANGELOG here; rewriting them would falsify history.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "tolerated"
+response = """
+Nothing in this repo is wrong. The two leftover writes sit in repos the user owns and the run had no commit authority over (charter: commits in this repo only; the SATAN tree holds the user's uncommitted work). The user commits `~/.config/umbriel/app_support.toml` and `~/dev/satan/.doctrine/backlog/issue/068/` by hand; recorded in notes.md Harvest "Open". NOTES.md/UPSTREAM.md mentions are dated history in the compositor's notes, like CHANGELOG here; rewriting them would falsify history.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-6"
+status = "verified"
+severity = "nit"
+title = "doctrine check gate runs the end-of-phase gate; observed error: justfile has no gate recipe"
+detail = """
+Expected: `doctrine check gate` (audit step 2) runs the project gate.
+Observed: `error: justfile does not contain recipe 'gate'`. Unconfigured gate falls back to `just gate`. The auditor ran `just check` directly instead: exit 0, `Ran 362 tests, 360 results as expected, 0 unexpected, 2 skipped`; package `nix develop -c just check` exit 0, `240/240`, 5 suites loaded. Already tracked as CHR-008.
+"""
+disposition = "follow-up"
+response = """
+Not an SL-018 defect: project gate wiring. Already owned by CHR-008 ("Wire doctrine check gate to just check (no gate recipe)"). The audit used `just check` directly in both repos, both green.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "follow-up"
+response = """
+Not an SL-018 defect: project gate wiring. Already owned by CHR-008 ("Wire doctrine check gate to just check (no gate recipe)"). The audit used `just check` directly in both repos, both green.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+# Findings are append-only `[[finding]]` tables, added by `review raise`.
+# Empty here at creation — a fresh review is Active, awaiting the raiser.

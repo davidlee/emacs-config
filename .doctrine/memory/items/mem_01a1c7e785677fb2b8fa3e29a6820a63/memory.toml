@@ -1,0 +1,46 @@
+memory_uid = "mem_01a1c7e785677fb2b8fa3e29a6820a63"
+memory_key = "mem.fact.elisp.batch-eval-let-is-lexical"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "In emacs --batch --eval, a let of an undeclared var is lexical"
+summary = "Code in --eval is lexically bound: let of an undefvar'd variable is invisible to bound-and-true-p in called code; use a top-level defvar"
+created = "2026-11-11"
+updated = "2026-11-11"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["elisp", "testing"]
+workspace = "default"
+repo = "github.com/davidlee/emacs-config"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "14b41256dae7738982f67f12621fa30d2b8c1200"
+ref_name = "refs/heads/main"
+checkout_state_id = "7c725656582ec616418e15324c7f480fd2705089ae48a59fed2dbd04f797f147"
+base_commit = "96b9c8ad025fa0eb575e381e234440798849d601"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "medium"
+weight = 0
+
+[[source]]
+kind = "slice"
+ref = "SL-018"
+

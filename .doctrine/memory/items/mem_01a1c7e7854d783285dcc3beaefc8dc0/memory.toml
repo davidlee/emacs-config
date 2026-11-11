@@ -1,0 +1,46 @@
+memory_uid = "mem_01a1c7e7854d783285dcc3beaefc8dc0"
+memory_key = "mem.fact.elisp.test-runner-feature-collision"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "A batch test runner named <pkg>-test hides the <pkg>-test.el suite"
+summary = "Runners that skip already-provided features silently drop the suite whose feature matches the runner's own name"
+created = "2026-11-11"
+updated = "2026-11-11"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["elisp", "testing"]
+workspace = "default"
+repo = "github.com/davidlee/emacs-config"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "14b41256dae7738982f67f12621fa30d2b8c1200"
+ref_name = "refs/heads/main"
+checkout_state_id = "937e027c7cac9e8dbdb53cd355074c2f0fde64890de24e5b9e6b97a862fb37b0"
+base_commit = "96b9c8ad025fa0eb575e381e234440798849d601"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "medium"
+weight = 0
+
+[[source]]
+kind = "slice"
+ref = "SL-018"
+
